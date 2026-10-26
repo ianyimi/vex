@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toTitleCase } from "./utils";
+import { toTitleCase } from "./index";
 
 describe("toTitleCase", () => {
   it("capitalizes a single word", () => {

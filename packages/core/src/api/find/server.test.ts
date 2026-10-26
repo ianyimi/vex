@@ -109,7 +109,7 @@ describe("find (server)", () => {
     expect(docs.map((d) => d.title)).toEqual(["Second", "First"]);
   });
 
-  test("filter narrows results by field value", async () => {
+  test("where narrows results by field value", async () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       await ctx.db.insert("posts", {
@@ -126,14 +126,44 @@ describe("find (server)", () => {
         ctx,
         collection: "posts",
 
-        filter: (q: any) => q.eq(q.field("featured"), true),
+        where: (q: any) => q.eq("featured", true),
       });
     });
     expect(docs).toHaveLength(1);
     expect(docs[0].title).toBe("Published");
   });
 
-  test("filter with limit applies both constraints", async () => {
+  test("where composes or/not and still meets the access filter", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "A", slug: "a", featured: true });
+      await ctx.db.insert("posts", { title: "B", slug: "b", featured: false });
+      await ctx.db.insert("posts", { title: "C", slug: "c", featured: true });
+      return find({
+        ctx,
+        collection: "posts",
+        where: (q: any) => q.or(q.eq("slug", "b"), q.not(q.eq("featured", false))),
+      });
+    });
+    expect(docs.map((d) => d.title)).toEqual(["A", "B", "C"]);
+  });
+
+  test("a plain where node compiles the same as the equivalent builder", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "A", slug: "a", featured: true });
+      await ctx.db.insert("posts", { title: "B", slug: "b", featured: false });
+      await ctx.db.insert("posts", { title: "C", slug: "c", featured: true });
+      return find({
+        ctx,
+        collection: "posts",
+        where: { field: "featured", op: "eq", value: true },
+      });
+    });
+    expect(docs.map((d) => d.title)).toEqual(["A", "C"]);
+  });
+
+  test("where with limit applies both constraints", async () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       for (let i = 0; i < 4; i++) {
@@ -152,7 +182,7 @@ describe("find (server)", () => {
         ctx,
         collection: "posts",
 
-        filter: (q: any) => q.eq(q.field("featured"), true),
+        where: (q: any) => q.eq("featured", true),
         limit: 2,
       });
     });
@@ -230,7 +260,7 @@ describe("find (server)", () => {
     expect(docs[0].featured).toBe(true);
   });
 
-  test("withIndex + filter compose (index narrows, filter refines)", async () => {
+  test("withIndex + where compose (index narrows, filter refines)", async () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       await ctx.db.insert("posts", {
@@ -256,7 +286,7 @@ describe("find (server)", () => {
           range: (q: any) => q.eq("featured", true),
         },
         // secondary filter on top of the index range
-        filter: (q: any) => q.gt(q.field("title").length ?? q.field("title"), "S"),
+        where: (q: any) => q.gt("title", "S"),
       });
     });
     // featured docs only (index), further narrowed by filter
@@ -284,7 +314,7 @@ describe("find (server)", () => {
       return find({
         ctx,
         collection: "posts",
-        filter: (q: any) => q.eq(q.field("featured"), true),
+        where: (q: any) => q.eq("featured", true),
         limit: 2,
         populate: { author: true },
       } as any) as Promise<{ author: unknown; featured: unknown; [k: string]: unknown }[]>;
@@ -304,13 +334,16 @@ describe("find (server)", () => {
     expect(docs.map((d) => d.title)).toEqual(["Second", "First"]);
   });
 
-  test("no args returns all docs up to default limit", async () => {
+  test.each([
+    ["omitted", undefined],
+    ["0", 0],
+  ])("limit %s returns every matching doc", async (_label, limit) => {
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       for (let i = 0; i < 5; i++) {
         await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}` });
       }
-      return find({ ctx, collection: "posts" });
+      return find({ ctx, collection: "posts", limit });
     });
     expect(docs).toHaveLength(5);
   });
@@ -569,7 +602,7 @@ describe("find (server) — depth auto-populate", () => {
     expect(firstDoc.author[0].name).toBe("Lena");
   });
 
-  test("paginationOpts: works with order and filter", async () => {
+  test("paginationOpts: works with order and where", async () => {
     const t = convexTest(schema, modules);
     const result: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       for (let i = 0; i < 5; i++) {
@@ -584,7 +617,7 @@ describe("find (server) — depth auto-populate", () => {
         collection: "posts",
         order: "desc",
 
-        filter: (q: any) => q.eq(q.field("featured"), true),
+        where: (q: any) => q.eq("featured", true),
         paginationOpts: { numItems: 2, cursor: null },
       });
     });
@@ -597,9 +630,9 @@ describe("find (server) — depth auto-populate", () => {
 // ── Access-constraint narrowing fixture ────────────────────────────────────
 const constrainedPostsResource = defineCollection({
   slug: "posts",
-  // `featured` declares a real index: `defineAccess` validates every rule's recorded
-  // range against the resource's DECLARED indexes, so naming one that does not exist
-  // fails at config time — before any of the assertions below get a chance to run.
+  // `featured` declares a real index, matching what `vex generate` would emit —
+  // config-time index validation (`validateAccessConfig`, run from `defineConfig`)
+  // is not exercised by this file, which builds `VexConfig` by hand.
   fields: { title: text(), slug: text(), featured: checkbox({ index: "by_featured" }) },
 });
 
@@ -614,7 +647,7 @@ const constrainedAccess = {
       contributor: {
         posts: {
           read: {
-            constraints: ({ q }) => q.withIndex("by_featured", (ix) => ix.eq("featured", true)),
+            withIndex: { name: "by_featured", range: (ix) => ix.eq("featured", true) },
           },
         },
       },
@@ -661,7 +694,7 @@ describe("find (server) — access constraints", () => {
   });
 
   test("caller's index displaces the access index: constraint still narrows via filter, full page", async () => {
-    // The collision this test sets up is exactly what `pickQueryIndex`'s dev diagnostic
+    // The collision this test sets up is exactly what `pickConvexQueryIndex`'s dev diagnostic
     // reports ("Access index ... cannot be applied: this query already uses ..."), so the
     // warning firing is part of the contract under test, not incidental output. Spied and
     // asserted below instead of left to print on stderr.
@@ -692,7 +725,7 @@ describe("find (server) — access constraints", () => {
         config: constrainedAccess,
         auth: contributorAuth,
         // Names a DIFFERENT index than the access rule's `by_featured` —
-        // `pickQueryIndex` gives the `withIndex` slot to this caller index.
+        // `pickConvexQueryIndex` gives the `withIndex` slot to this caller index.
         withIndex: { name: "by_slug" },
         limit: 3,
       } as any);
@@ -709,6 +742,65 @@ describe("find (server) — access constraints", () => {
   });
 });
 
+// `reader` may read every post but not its `featured` field.
+const featuredHiddenAccess = {
+  ...fixtureConfig,
+  // fixtureConfig's `posts` entry declares only title/author/parent — this
+  // describe block's `where` probes `slug`/`featured`, which `constrainedPostsResource`
+  // (not fixtureConfig) declares. Swap it in so `whereFieldNames` resolves them.
+  collections: [
+    constrainedPostsResource,
+    ...fixtureConfig.collections.filter((c) => c.slug !== "posts"),
+  ],
+  access: defineAccess({
+    roles: ["reader"] as const,
+    resources: [constrainedPostsResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: { reader: { posts: { read: () => ({ "*": true, featured: false }) } } },
+  }),
+} as unknown as VexConfig;
+
+const readerAuth = { user: { _id: "u2", roles: "reader" } };
+
+describe("find (server) — where cannot probe a field the caller cannot read", () => {
+  /** Inserts A (featured) and B (not), then runs `find` as `reader`. */
+  const findAsReader = (extra: Record<string, unknown>) => {
+    const t = convexTest(schema, modules);
+    return t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "A", slug: "a", featured: true });
+      await ctx.db.insert("posts", { title: "B", slug: "b", featured: false });
+      return find({ ctx, collection: "posts", config: featuredHiddenAccess, auth: readerAuth, ...extra } as any);
+    });
+  };
+
+  test("a where on a denied field returns nothing for that caller", async () => {
+    // Not ["A"]: that would reveal A's hidden `featured` value.
+    const docs = await findAsReader({ where: { field: "featured", op: "eq", value: true } });
+    expect(docs).toEqual([]);
+  });
+
+  test("a where on a readable field is unaffected, and the hidden field is still stripped", async () => {
+    const docs = await findAsReader({ where: { field: "slug", op: "eq", value: "a" } });
+    expect(docs.map((d: any) => d.title)).toEqual(["A"]);
+    expect(docs[0]).not.toHaveProperty("featured");
+  });
+
+  test("access: { bypass: true } skips the guard", async () => {
+    const docs = await findAsReader({ where: { field: "featured", op: "eq", value: true }, access: { bypass: true } });
+    expect(docs.map((d: any) => d.title)).toEqual(["A"]);
+  });
+
+  test("totalDocs excludes the rows the page excludes", async () => {
+    const result: any = await findAsReader({
+      where: { field: "featured", op: "eq", value: true },
+      paginationOpts: { numItems: 1, cursor: null, totalDocs: true },
+    });
+    expect(result.page).toEqual([]);
+    expect(result.totalDocs).toBe(0);
+  });
+});
+
 // ── Filter-only and index+filter narrowing ─────────────────────────────────
 const filterOnlyAccess = {
   ...fixtureConfig,
@@ -722,7 +814,7 @@ const filterOnlyAccess = {
         posts: {
           // No index named — the flat algebra, which is also the only form a
           // wildcard entry can express.
-          read: { constraints: ({ q }) => q.filter((f) => f.eq("featured", true)) },
+          read: { where: ({ q }) => q.eq("featured", true) },
         },
       },
     },
@@ -740,10 +832,8 @@ const indexAndFilterAccess = {
       contributor: {
         posts: {
           read: {
-            constraints: ({ q }) =>
-              q
-                .withIndex("by_featured", (ix) => ix.eq("featured", true))
-                .filter((f) => f.neq("slug", "hidden")),
+            withIndex: { name: "by_featured", range: (ix) => ix.eq("featured", true) },
+            where: ({ q }) => q.neq("slug", "hidden"),
           },
         },
       },
@@ -824,12 +914,12 @@ describe("find (server) — index plus filter both apply", () => {
   });
 });
 
-// ── Same-name index composition (composeRanges) ─────────────────────────────
+// ── Same-name index composition (composeConvexQueryRanges) ─────────────────────────────
 // Declares BOTH real indexes (`by_slug`, `by_featured`) on the access-resource
 // side, unlike `constrainedPostsResource` which only declares `by_featured` —
-// needed here because the ACCESS RULE itself (not just the caller) calls
-// `q.withIndex("by_slug", …)`, and `defineAccess` validates a rule's index
-// name against its own resource's declared indexes.
+// needed here because the ACCESS RULE itself (not just the caller) declares
+// `withIndex: { name: "by_slug", … }`, matching what `vex generate` would emit
+// for this resource.
 const dualIndexedPostsResource = defineCollection({
   slug: "posts",
   fields: {
@@ -850,9 +940,9 @@ const sameIndexBoundsAccess = {
       contributor: {
         posts: {
           // Lower bound only — the caller's own `withIndex` below supplies the
-          // upper bound on the SAME index name, so `pickQueryIndex` must
+          // upper bound on the SAME index name, so `pickConvexQueryIndex` must
           // compose the two into one range rather than picking one side.
-          read: { constraints: ({ q }) => q.withIndex("by_slug", (ix) => ix.gte("slug", "m")) },
+          read: { withIndex: { name: "by_slug", range: (ix) => ix.gte("slug", "m") } },
         },
       },
     },
@@ -944,14 +1034,14 @@ const shortCircuitAccess = {
           // Never touches `q` — resolves to a flat true/false instead of a
           // condition. Constraints callbacks never receive `data`, so this
           // decision is uniform across the whole query and every document.
-          read: { constraints: ({ user }) => (user as { vip?: boolean }).vip === true },
+          read: { where: ({ user }) => (user as { vip?: boolean }).vip === true },
         },
       },
     },
   }),
 } as unknown as VexConfig;
 
-describe("find (server) — constraints callback short-circuits to a flat boolean", () => {
+describe("find (server) — withIndex/where callback short-circuits to a flat boolean", () => {
   test("outcome true: unrestricted, and pagination reads every row with no narrowing", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
@@ -1116,14 +1206,14 @@ const actionWildcardAccess = {
         posts: {
           // No explicit "read" key — resolved through the subject-level "*",
           // which `resolveActionCheck` must honor identically for narrowing
-          // (`resolveAccessIndex`/`resolveAccessConstraint`) and for the
+          // (`resolveQueryIndex`/`resolveQueryConstraint`) and for the
           // per-document `hasPermission` pass. `q` here is typed as the
-          // predicate-only `AccessPredicateBuilder` (DD 14) rather than
-          // `AccessQueryBuilder` — a "*" entry could equally resolve for a
+          // predicate-only `FilterConstraintBuilder` (DD 14) rather than a query's
+          // `withIndex` — a "*" entry could equally resolve for a
           // non-query action (e.g. "delete"), which has no `withIndex` slot
-          // to offer, so `.filter` is the only sound form for a wildcard.
+          // to offer, so `where` is the only sound form for a wildcard.
           "*": {
-            constraints: ({ q }) => q.filter((f) => f.eq("featured", true)),
+            where: ({ q }) => q.eq("featured", true),
           },
         },
       },
@@ -1158,10 +1248,10 @@ const multiRoleOrAccess = {
     userRolesField: "roles",
     permissions: {
       contributor: {
-        posts: { read: { constraints: ({ q }) => q.filter((f) => f.eq("featured", true)) } },
+        posts: { read: { where: ({ q }) => q.eq("featured", true) } },
       },
       reviewer: {
-        posts: { read: { constraints: ({ q }) => q.filter((f) => f.eq("slug", "special")) } },
+        posts: { read: { where: ({ q }) => q.eq("slug", "special") } },
       },
     },
   }),
@@ -1178,7 +1268,7 @@ const multiRoleDenyAllowAccess = {
       contributor: {
         posts: {
           read: {
-            constraints: ({ q }) => q.withIndex("by_featured", (ix) => ix.eq("featured", true)),
+            withIndex: { name: "by_featured", range: (ix) => ix.eq("featured", true) },
           },
         },
       },
@@ -1201,7 +1291,7 @@ const multiRoleUnrestrictedAccess = {
         posts: { read: true },
       },
       reviewer: {
-        posts: { read: { constraints: ({ q }) => q.filter((f) => f.eq("featured", true)) } },
+        posts: { read: { where: ({ q }) => q.eq("featured", true) } },
       },
     },
   }),
@@ -1648,7 +1738,7 @@ describe("find (server) — versioned collection status filtering", () => {
    * is `"draft"` — has never been published and so has no published counterpart
    * at all. It must be excluded from a published-only read exactly like an
    * ordinary draft that DOES have a published parent, since the filter in
-   * `composeStatusConstraint` keys purely on `vex_status`, never on whether
+   * `composeStatusQueryConstraint` keys purely on `vex_status`, never on whether
    * `vex_publishedId` is set — this pins that down explicitly, since this exact
    * row shape did not exist when this test file was first written.
    */
@@ -1756,7 +1846,7 @@ describe("find (server) — per-index draftStatus composition", () => {
     fields: {
       title: text(),
       slug: text(),
-      body: text({ index: "by_body", indexDraftStatus: true }),
+      body: text({ index: { name: "by_body", draftStatus: true } }),
       excerpt: text({ index: "by_excerpt" }),
     },
     versions: { drafts: true },
@@ -1843,7 +1933,7 @@ describe("find (server) — per-index draftStatus composition", () => {
    * `drafts: true` against a `draftStatus: true`-ONLY index (`by_body`, no
    * unprefixed physical form) drops the caller's range and falls the RBAC
    * constraint back to `.filter()`, warning once — the conservative,
-   * correct behavior case 4 of `composeStatusConstraint` chooses.
+   * correct behavior case 4 of `composeStatusQueryConstraint` chooses.
    */
   test("drafts: true on a draftStatus: true index drops the range and falls back to .filter(), with a dev warning", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -1911,7 +2001,7 @@ describe("find (server) — per-index draftStatus composition", () => {
             collection: "posts",
             config: draftStatusConfig,
             // `by_excerpt` is read published-only by no other test, so the warn-once
-            // memory in `statusConstraint.ts` has not consumed this pair yet.
+            // memory in `statusQueryConstraint.ts` has not consumed this pair yet.
             withIndex: { name: "by_excerpt", range: (q: any) => q.eq("excerpt", "intro") },
           }),
         };

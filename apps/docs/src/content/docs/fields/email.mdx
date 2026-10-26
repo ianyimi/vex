@@ -18,7 +18,7 @@ enforces email-format validation on the server, renders a native
 | `defaultValue` | `string` | `""` | Pre-filled value shown in the admin form when creating a new document. |
 | `min` | `number \| [value: number, error: string]` | — | Minimum character length, applied to the email string itself. Bare number uses a default message; the tuple form supplies a custom one. |
 | `max` | `number \| [value: number, error: string]` | — | Maximum character length, applied to the email string itself. |
-| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `index` | `string \| { name, additionalFields?, draftStatus? }` | — | Convex index name, or the object form for a [compound index](/fields/text/#compound-indexes). |
 | `searchIndex` | `{ name: string, filterFields: string[] }` | — | Full-text search index on this field. The field becomes the `searchField`. |
 | `description` | `string` | — | Helper text shown below the field input. |
 | `validate` | `(props) => Promise<void> \| void` | — | Server-only async validation, receives the resolved `string` value. |

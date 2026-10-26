@@ -1,4 +1,4 @@
-import type { DocumentByResourceSlug, VexMutationCtx, VexResourceSlug } from "../types/generated";
+import type { CollectionsFieldTypeMap, DocumentByResourceSlug, GlobalsFieldTypeMap, VexMutationCtx, VexResourceSlug } from "../types/generated";
 import type { FieldConditionProps } from "./ui/types";
 import type { VexCallbackApi } from "../api/server";
 import type {
@@ -384,6 +384,86 @@ export interface FieldAdminConfig<
 }
 
 /**
+ * The data field keys of resource `S`, read from the generated field-type
+ * registry. Widens to `string` before `vex generate` runs; with the default
+ * `VexResourceSlug` it is every collection's and global's keys.
+ *
+ * @typeParam S - A collection or global slug.
+ */
+export type FieldKeyOfResource<S extends VexResourceSlug> = S extends keyof CollectionsFieldTypeMap
+  ? [CollectionsFieldTypeMap[S][keyof CollectionsFieldTypeMap[S]]] extends [never]
+    ? string
+    : CollectionsFieldTypeMap[S][keyof CollectionsFieldTypeMap[S]] & string
+  : S extends keyof GlobalsFieldTypeMap
+    ? [GlobalsFieldTypeMap[S][keyof GlobalsFieldTypeMap[S]]] extends [never]
+      ? string
+      : GlobalsFieldTypeMap[S][keyof GlobalsFieldTypeMap[S]] & string
+    : string;
+
+/**
+ * A field-level index in object form. The index covers this field first, then
+ * `additionalFields` in order:
+ *
+ * ```ts
+ * author: relationship({ collection: users, index: { name: "by_author_status", additionalFields: ["status"] } })
+ * // .index("by_author_status", ["author", "status"])
+ * ```
+ *
+ * A field-level index wins over a collection-level `indexes` entry of the same
+ * name, as every field setting wins over its collection's.
+ *
+ * @typeParam TCollectionSlug - The owning collection, which types `additionalFields`.
+ * @typeParam TFieldKey - This field's own key, which `additionalFields` may not repeat.
+ */
+export interface FieldIndexInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
+> {
+  /** The Convex index name. */
+  name: string;
+  /** Fields after this one, in index order. Omit for a single-field index. */
+  additionalFields?: readonly Exclude<FieldKeyOfResource<TCollectionSlug>, TFieldKey>[];
+  /**
+   * Also narrow this index on `vex_status` for draft/publish status composition.
+   * Requires the collection's `versions.drafts: true`; `defineCollection` throws
+   * otherwise. Same `true` (replaces the index) / `"both"` (adds a
+   * `vex_status`-prefixed twin) contract as `CollectionConfigInput.indexes[].draftStatus`.
+   */
+  draftStatus?: true | "both";
+}
+
+/**
+ * A field's `index`: the index name, for a single-field index, or a
+ * {@link FieldIndexInput}.
+ */
+export type FieldIndexConfigInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
+> = string | FieldIndexInput<TCollectionSlug, TFieldKey>;
+
+/**
+ * A field's resolved `index`, after defaults are applied. Structurally the
+ * same shape as {@link FieldIndexInput} but not parametrized by the owning
+ * collection or field key — the names were already checked against them at
+ * input time (`FieldIndexInput`'s generics), so the resolved field's
+ * `additionalFields` is simply the collection's keys, with no further
+ * type-level narrowing to repeat.
+ */
+export interface ResolvedFieldIndexInput {
+  /** The Convex index name. */
+  name: string;
+  /** Fields after this one, in index order. */
+  additionalFields?: readonly string[];
+  /** Draft-status narrowing for this index. @see {@link FieldIndexInput.draftStatus} */
+  draftStatus?: true | "both";
+}
+
+/**
+ * A field's resolved `index`: the index name, or a {@link ResolvedFieldIndexInput}.
+ */
+export type ResolvedFieldIndexConfigInput = string | ResolvedFieldIndexInput;
+
+/**
  * Properties shared by all field types.
  *
  * Every field type (text, number, checkbox, etc.) extends this interface
@@ -404,6 +484,7 @@ export interface FieldAdminConfig<
  */
 export interface BaseFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
 > {
   /** Display label for the field in the admin form. */
@@ -440,21 +521,12 @@ export interface BaseFieldInput<
    * ```ts
    * slug: { type: "text", index: "by_slug", required: true }
    * // Generates: .index("by_slug", ["slug"])
+   *
+   * author: { type: "relationship", index: { name: "by_author_status", additionalFields: ["status"] } }
+   * // Generates: .index("by_author_status", ["author", "status"])
    * ```
    */
-  index?: string;
-  /**
-   * Also narrow this field's index on `vex_status` for draft/publish status
-   * composition (Step 13, `versions/statusConstraint.ts`). Meaningless
-   * without an index to attach to — set `index` too, or this is a
-   * relationship field (which auto-indexes `by_<fieldKey>`) — and without
-   * the owning collection's `versions.drafts: true`; `defineCollection`
-   * throws otherwise for either violation (`collections/config.ts`). Same
-   * `true` (replaces the index) / `"both"` (adds a `vex_status`-prefixed
-   * twin) contract as `CollectionConfigInput.indexes[].draftStatus` — see
-   * there for the full narrowing/fallback behavior.
-   */
-  indexDraftStatus?: true | "both";
+  index?: FieldIndexConfigInput<TCollectionSlug, TFieldKey>;
   meta?: TFieldMeta;
   /**
    * Server-only async validation, run after the generated Zod schema passes.
@@ -497,20 +569,8 @@ export interface BaseField<
   description?: string;
   /** The JSDoc comment on the generated document interface property */
   interfaceDescription?: string;
-  /** Convex index name for this field. */
-  index?: string;
-  /**
-   * Also narrow this field's index on `vex_status` for draft/publish status
-   * composition (Step 13, `versions/statusConstraint.ts`). Meaningless
-   * without an index to attach to — set `index` too, or this is a
-   * relationship field (which auto-indexes `by_<fieldKey>`) — and without
-   * the owning collection's `versions.drafts: true`; `defineCollection`
-   * throws otherwise for either violation (`collections/config.ts`). Same
-   * `true` (replaces the index) / `"both"` (adds a `vex_status`-prefixed
-   * twin) contract as `CollectionConfigInput.indexes[].draftStatus` — see
-   * there for the full narrowing/fallback behavior.
-   */
-  indexDraftStatus?: true | "both";
+  /** Convex index name for this field, or the object form for a compound index. */
+  index?: ResolvedFieldIndexConfigInput;
   /** TypeScript type string written to generated document interfaces (e.g. `"string"`, `"number"`, `"string[]"`). */
   interfaceType: string;
   meta: TFieldMeta;
@@ -551,11 +611,10 @@ export interface BaseUIFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
 > extends Omit<
-    BaseFieldInput<TCollectionSlug, TFieldMeta>,
+    BaseFieldInput<TCollectionSlug, never, TFieldMeta>,
     | "required"
     | "defaultValue"
     | "index"
-    | "indexDraftStatus"
     | "interfaceDescription"
     | "validate"
     | "admin"
@@ -578,7 +637,6 @@ export interface BaseUIField<
     | "required"
     | "defaultValue"
     | "index"
-    | "indexDraftStatus"
     | "interfaceDescription"
     | "interfaceType"
     | "validate"

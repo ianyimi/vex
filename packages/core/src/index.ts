@@ -46,6 +46,9 @@ export * from "./versions";
 
 export * from "./utils";
 export * from "./framework";
+export * from "./errors";
+export type { VexWhere, VexWhereNode } from "./api/queryArgs";
+export { validateWhereNode, whereToNode } from "./api/queryArgs";
 export * from "./api/convex";
 export * from "./api/types";
 export type { GetGlobalReturn } from "./api/globals/get.server";

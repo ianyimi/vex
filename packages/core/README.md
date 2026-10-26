@@ -274,12 +274,14 @@ A field's `validate()` is fully typed from one type argument — the owning coll
 or global's slug, which is also the field factory's first type parameter:
 
 ```ts
+import { text, VexError } from "@vexcms/core"
+
 slug: text<typeof TABLE_SLUG_PAGES>({
   validate: async ({ value, doc, ctx }) => {
     const existing = await ctx.db.query("pages")
       .withIndex("by_slug", (q) => q.eq("slug", value)).first()
     if (existing && existing._id !== doc._id) {
-      throw new ConvexError({ code: "SLUG_CONFLICT", message: "Slug already in use." })
+      throw new VexError({ code: "SLUG_CONFLICT", message: "Slug already in use." })
     }
   },
 })
@@ -296,8 +298,8 @@ returns flat globals and populated relationships and shares the real access reso
 Reads only — a callback that writes is a design error, and `ctx` remains for anything
 else. Access **bypasses by default** (a uniqueness check that skipped rows the editor
 cannot read would let a duplicate through); pass `access` to opt into the rules. **Reject by throwing** — a plain `Error`, your own subclass,
-or a `ConvexError` with structured data; `validateFields` attaches the field key and
-re-throws one `ConvexError` shape. Returning normally accepts the value.
+or a `VexError` with structured data; `validateFields` attaches the field key and
+re-throws it with that data intact. Returning normally accepts the value.
 
 The `xValidator` helpers (`textValidator`, `numberValidator`, …) remain exported for
 typing a validator declared away from its field, but no config needs them.
@@ -309,8 +311,7 @@ because Convex mutations are transactional) → the write → `afterChange` / `a
 `beforeDelete` runs the same way ahead of a hard delete.
 
 ```typescript
-import { defineCollection, text, beforeChangeHook, textValidator } from "@vexcms/core"
-import { ConvexError } from "convex/values"
+import { defineCollection, text, beforeChangeHook, textValidator, VexError } from "@vexcms/core"
 import type { DataModel } from "../convex/_generated/dataModel"
 
 const TABLE_SLUG_POSTS = "posts"
@@ -331,7 +332,7 @@ const posts = defineCollection({
             .withIndex("by_slug", (q) => q.eq("slug", value))
             .first()
           if (existing && existing._id !== doc._id) {
-            throw new ConvexError({ message: `${field.label} must be unique.` })
+            throw new VexError({ message: `${field.label} must be unique.` })
           }
         },
       ),

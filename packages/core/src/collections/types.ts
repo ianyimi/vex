@@ -278,7 +278,7 @@ export interface CollectionConfigInput<
     fields: NoInfer<DataFieldSlug<TFields>>[];
     /**
      * Also narrow this index on `vex_status` for draft/publish status
-     * composition (Step 13, `versions/statusConstraint.ts`). Only valid
+     * composition (Step 13, `versions/statusQueryConstraint.ts`). Only valid
      * when this collection declares `versions.drafts: true` —
      * `defineCollection` throws otherwise for a dynamically-assembled
      * config; a literal `{ drafts: false }` (or omitted) config fails to

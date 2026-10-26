@@ -1,4 +1,4 @@
-import type { IndexRangeFn, QueryIndex } from "./types";
+import type { ConvexQueryIndexRangeFn, ConvexQueryIndex } from "./convexTypes";
 
 /**
  * Ordered `(accessIndex, callerIndex)` pairs already warned about.
@@ -52,9 +52,9 @@ function warnDisplacedAccessIndex(props: {
  * whenever fields remain. Ordering matters — the first range owns the index
  * prefix, so it must run first.
  *
- * Exported for `versions/statusConstraint.ts`, which reuses it unmodified to
+ * Exported for `versions/statusQueryConstraint.ts`, which reuses it unmodified to
  * prefix a `vex_status` equality onto a `draftStatus`-indexed query's own
- * range — the same "prefix, then continue" shape `pickQueryIndex` already
+ * range — the same "prefix, then continue" shape `pickConvexQueryIndex` already
  * uses to merge an access range and a caller range on one index.
  *
  * @param props - Input props.
@@ -64,14 +64,14 @@ function warnDisplacedAccessIndex(props: {
  *   supplied, or `undefined` when neither is — an absent range means "use this
  *   index unconstrained", which `buildQuery` expresses by omitting the arg.
  */
-export function composeRanges(props: {
-  first?: IndexRangeFn;
-  second?: IndexRangeFn;
-}): IndexRangeFn | undefined {
+export function composeConvexQueryRanges(props: {
+  first?: ConvexQueryIndexRangeFn;
+  second?: ConvexQueryIndexRangeFn;
+}): ConvexQueryIndexRangeFn | undefined {
   const { first, second } = props;
   if (!first) return second;
   if (!second) return first;
-  return (q) => second(first(q) as Parameters<IndexRangeFn>[0]);
+  return (q) => second(first(q) as Parameters<ConvexQueryIndexRangeFn>[0]);
 }
 
 /**
@@ -92,7 +92,7 @@ export function composeRanges(props: {
  * document. Arbitration decides how many rows get read, not which are allowed.
  *
  * @param props - Input props.
- * @param props.accessIndex - `resolveAccessIndex`'s result for this query, if any.
+ * @param props.accessIndex - `resolveQueryIndex`'s result for this query, if any.
  * @param props.callerIndex - The index the caller explicitly requested, if any.
  *   Its `range` is optional, mirroring `find`'s `withIndex` arg — a caller may
  *   name an index purely to order results.
@@ -101,16 +101,16 @@ export function composeRanges(props: {
  *
  * @example
  * ```ts
- * pickQueryIndex({
+ * pickConvexQueryIndex({
  *   accessIndex: { name: "by_author", range: (q) => q.eq("authorId", "u1") },
  * });
  * // → { name: "by_author", range: … }  (free slot)
  * ```
  */
-export function pickQueryIndex(props: {
-  accessIndex?: QueryIndex;
-  callerIndex?: { name: string; range?: IndexRangeFn };
-}): QueryIndex | undefined {
+export function pickConvexQueryIndex(props: {
+  accessIndex?: ConvexQueryIndex;
+  callerIndex?: { name: string; range?: ConvexQueryIndexRangeFn };
+}): ConvexQueryIndex | undefined {
   const { accessIndex, callerIndex } = props;
 
   // Neither side narrows — identical to today's behavior for a collection or
@@ -127,7 +127,7 @@ export function pickQueryIndex(props: {
   if (accessIndex.name === callerIndex.name) {
     return {
       name: accessIndex.name,
-      range: composeRanges({ first: accessIndex.range, second: callerIndex.range }),
+      range: composeConvexQueryRanges({ first: accessIndex.range, second: callerIndex.range }),
     };
   }
 

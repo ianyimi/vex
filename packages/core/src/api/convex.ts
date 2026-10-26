@@ -4,6 +4,7 @@ import type { PaginationOptions, PaginationResult, VexApiAuth } from "./types";
 import { CollectionSlug, VexDocumentGlobal } from "../types";
 import { VERSION_SYSTEM_FIELDS, VexVersionStatus, VersionSummary } from "../versions";
 import type { VersionSnapshotResult } from "./versions/getVersionSnapshot.server";
+import type { VexWhereNodeOf } from "../access/queryConstraintTypes";
 
 /**
  * Base type for all VexCMS documents as returned from Convex queries.
@@ -116,6 +117,7 @@ export interface VexFindArgs {
   limit?: number;
   paginationOpts?: PaginationOptions;
   drafts?: boolean;
+  where?: VexWhereNodeOf<unknown>;
 }
 
 /** Args for `api.vex.find`. */
@@ -127,6 +129,7 @@ export interface VexFindPaginatedArgs {
   depth?: number;
   limit?: number;
   paginationOpts: PaginationOptions;
+  where?: VexWhereNodeOf<unknown>;
 }
 
 /** Args for `api.vex.get`. */
@@ -153,6 +156,7 @@ export interface VexSearchArgs {
   depth?: number;
   paginationOpts?: PaginationOptions;
   drafts?: boolean;
+  where?: VexWhereNodeOf<unknown>;
 }
 
 /** Args for `api.vex.create`. */

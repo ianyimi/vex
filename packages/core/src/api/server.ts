@@ -70,6 +70,7 @@ export { buildDepthPopulate } from "./depth";
 
 export { find } from "./find/server";
 export type { FindServerArgs } from "./find/server";
+export type { QueryIndexFieldsFor, VexWhere, VexWhereNode, VexWithIndex } from "./queryArgs";
 
 export { get } from "./get/server";
 export type { GetServerArgs } from "./get/server";
@@ -455,6 +456,7 @@ export function collectionsApi<
         depth: v.optional(v.number()),
         limit: v.optional(v.number()),
         drafts: v.optional(v.boolean()),
+        where: v.optional(v.any()),
         paginationOpts: v.optional(
           paginationOptsValidator.extend({ totalDocs: v.optional(v.boolean()) }),
         ),
@@ -470,6 +472,7 @@ export function collectionsApi<
           config,
           limit: args.limit,
           drafts: args.drafts,
+          where: args.where,
           paginationOpts: args.paginationOpts as never,
         });
       },
@@ -508,6 +511,7 @@ export function collectionsApi<
         populate: v.optional(v.any()),
         depth: v.optional(v.number()),
         drafts: v.optional(v.boolean()),
+        where: v.optional(v.any()),
         paginationOpts: v.optional(
           paginationOptsValidator.extend({ totalDocs: v.optional(v.boolean()) }),
         ),
@@ -525,6 +529,7 @@ export function collectionsApi<
           populate: args.populate,
           depth: args.depth,
           drafts: args.drafts,
+          where: args.where,
           paginationOpts: args.paginationOpts as never,
           config,
         });

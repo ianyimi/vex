@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CONSTRAINT_COMPARATORS, DEFAULT_AUTOSAVE_DEBOUNCE_MS } from "@vexcms/core";
+import { valuesEqual, DEFAULT_AUTOSAVE_DEBOUNCE_MS } from "@vexcms/core";
 
 /** Current state of an {@link useAutosave} instance. */
 export type AutosaveStatus = "idle" | "saving" | "saved" | "error";
@@ -32,7 +32,7 @@ export interface UseAutosaveResult {
  *
  * Comparison is against the values from the LAST SUCCESSFUL save (seeded
  * from `props.values` at mount, so mounting never itself counts as a
- * change), via `CONSTRAINT_COMPARATORS.eq` (content equality — the same
+ * change), via `valuesEqual.eq` (content equality — the same
  * comparator `useLiveFieldMerge` already uses for this exact "did this
  * actually change" question, since a fresh `changedValues(form)` object is
  * a new reference on every render even when its contents match).
@@ -116,7 +116,7 @@ export function useAutosave<TValues extends Record<string, unknown>>(props: {
         hasPendingChangeRef.current = false;
         if (
           Object.keys(latestValuesRef.current).length > 0 &&
-          !CONSTRAINT_COMPARATORS.eq(latestValuesRef.current, lastSavedValuesRef.current)
+          !valuesEqual(latestValuesRef.current, lastSavedValuesRef.current)
         ) {
           void runSave();
         }
@@ -128,7 +128,7 @@ export function useAutosave<TValues extends Record<string, unknown>>(props: {
     if (props.enabled === false) return;
     // Content equality, not `===`: a fresh `changedValues(form)` object every
     // render must not count as a change.
-    if (CONSTRAINT_COMPARATORS.eq(props.values, lastSavedValuesRef.current)) return;
+    if (valuesEqual(props.values, lastSavedValuesRef.current)) return;
     // An empty change set means nothing is unsaved — e.g. right after the caller
     // resets its form on a successful save, `changedValues(form)` drops to `{}`.
     // Saving it would write an empty draft and a spurious history row.

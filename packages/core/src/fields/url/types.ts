@@ -66,8 +66,9 @@ export interface UrlFieldAdminConfig<
  */
 export interface UrlFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /** Admin UI configuration for this field. */
   admin?: UrlFieldAdminInput<TCollectionSlug>;
   /**

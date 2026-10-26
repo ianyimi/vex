@@ -105,19 +105,38 @@ export type ConstraintValue<TDoc, F extends string> = unknown extends TDoc
  * One node of an unindexed constraint tree: a comparison on a document field,
  * or a boolean combination of nodes.
  *
- * Unlike {@link AccessIndexConstraint} this is recursive, because `FilterBuilder`
+ * Unlike {@link QueryIndexConstraint} this is recursive, because `FilterBuilder`
  * supports `and` / `or` / `not` and an index range does not.
  */
-export type AccessFilterConstraint<TDoc> =
+export type QueryFilterConstraint<TDoc> =
   | {
       kind: "compare";
       field: ConstraintField<TDoc>;
       op: FilterOp;
       value: ConstraintValue<TDoc, ConstraintField<TDoc>>;
     }
-  | { kind: "and"; nodes: AccessFilterConstraint<TDoc>[] }
-  | { kind: "or"; nodes: AccessFilterConstraint<TDoc>[] }
-  | { kind: "not"; node: AccessFilterConstraint<TDoc> };
+  | { kind: "and"; nodes: QueryFilterConstraint<TDoc>[] }
+  | { kind: "or"; nodes: QueryFilterConstraint<TDoc>[] }
+  | { kind: "not"; node: QueryFilterConstraint<TDoc> };
+
+/**
+ * The plain, JSON-serializable form of a `where` predicate over `TDoc`: a
+ * comparison leaf, or an `and` / `or` / `not` of nodes. The same predicate
+ * the `where` builder (`FilterConstraintBuilder`) records, with friendlier
+ * keys. Accepted by `find` / `search`'s `where` (as `VexWhereNode<S>`) and by
+ * an access rule's `where` property.
+ *
+ * @typeParam TDoc - Document shape field names and values are typed from.
+ */
+export type VexWhereNodeOf<TDoc> =
+  | {
+      field: ConstraintField<TDoc>;
+      op: FilterOp;
+      value: ConstraintValue<TDoc, ConstraintField<TDoc>>;
+    }
+  | { and: readonly VexWhereNodeOf<TDoc>[] }
+  | { or: readonly VexWhereNodeOf<TDoc>[] }
+  | { not: VexWhereNodeOf<TDoc> };
 
 /**
  * Builder for an unindexed constraint — the `q` a rule receives when it
@@ -146,15 +165,15 @@ export interface FilterConstraintBuilder<TDoc> {
  * One recorded positional constraint: `field` is pinned to a literal, `op`
  * is one of {@link IndexOp}, and `value` is typed from the document shape
  * at that field. This is what a `ConstraintBuilder` chain call records
- * (`createConstraintBuilder`, `access/createConstraintBuilder.ts`), and
- * what a later compiler step reads back to build a `withIndex` range, a
+ * (`createQueryIndexConstraintBuilder`, `access/createQueryIndexConstraintBuilder.ts`),
+ * and what a later compiler step reads back to build a `withIndex` range, a
  * `FilterBuilder` expression, or a JS predicate — the same recorded data
  * feeds all three, which is the reason a builder replaces a callback.
  *
  * @typeParam TField - The field name this constraint pins.
  * @typeParam TDoc - The document shape `value`'s type is read from.
  */
-export type AccessIndexConstraint<TField extends string, TDoc> = {
+export type QueryIndexConstraint<TField extends string, TDoc> = {
   field: TField;
   op: IndexOp;
   value: ConstraintValue<TDoc, TField>;
@@ -227,9 +246,9 @@ export type NextConstraintBuilder<TFields extends readonly string[], TDoc, N ext
     : ConstraintBuilder<TFields, TDoc, PlusOne<N>>;
 
 /**
- * Position-tracking constraint builder — the type `createConstraintBuilder`
- * (`access/createConstraintBuilder.ts`) returns, and what a rule's
- * `constraints` callback receives. `eq` pins the field at cursor `N` and
+ * Position-tracking constraint builder — the type `createQueryIndexConstraintBuilder`
+ * (`access/createQueryIndexConstraintBuilder.ts`) returns, and what a rule's
+ * `withIndex.range` receives. `eq` pins the field at cursor `N` and
  * advances to `N + 1`; `gt`/`gte`/`lt`/`lte` (inherited from {@link
  * LowerBoundConstraintBuilder}) pin the SAME field and close the chain to
  * further constraints. This encodes Convex's complete index rule: zero or
@@ -255,130 +274,22 @@ export interface ConstraintBuilder<
 }
 
 /**
- * Terminal marker for a completed access CONDITION — the value a rule's
- * `constraints` callback returns.
+ * The index half of an access rule: which declared index to read through and the
+ * range over its fields, as a discriminated object — the same shape as `find`'s
+ * `withIndex` argument, with `range` required.
  *
- * Deliberately NOT {@link ConstraintResult}. That one marks a completed
- * *expression* inside one algebra's callback; this marks a completed *condition* on
- * the query as a whole. Keeping them separate is what makes the mistake
- * unrepresentable: `FilterConstraintBuilder.and` takes `ConstraintResult`, so an
- * index condition can never be passed into a boolean combinator. Under a single
- * shared terminal it type-checked and produced a filter node with no `kind`, which
- * the compilers silently turned into `undefined` — a rule that appeared to
- * constrain and did not.
+ * Discriminating on the literal `name` is what types `ix` against THAT index's
+ * field tuple, in declaration order, so Convex's field-order rule is a compile
+ * error at the rule.
  *
- * Nominal for the same reason as `ConstraintResult`: a plain object literal must
- * not satisfy it, so only a real `q.withIndex(…)` / `q.filter(…)` call can produce
- * one.
+ * @typeParam TDoc - Document shape range values are typed from.
+ * @typeParam TIndexFields - The resource's index name → field tuple map.
  */
-export declare abstract class AccessConditionResult {
-  private _isAccessConditionResult: undefined;
-}
-
-/**
- * An index-backed condition, which may still add a filter.
- *
- * Returned by {@link AccessQueryBuilder.withIndex}. Already a complete condition on
- * its own — return it directly for index-only narrowing — or continue with
- * `.filter(…)` to add predicates the index range cannot express.
- *
- * @typeParam TDoc - Document shape for the resource this rule governs.
- */
-export interface IndexedAccessCondition<TDoc> extends AccessConditionResult {
-  /**
-   * Adds a per-document predicate alongside the index range.
-   *
-   * Compiles to `.withIndex(name, range).filter(expr)` — Convex's own shape, and
-   * the reason both halves can coexist: the range narrows what is READ, the filter
-   * rejects rows within it that the range cannot describe (`neq`, `or`, `not`).
-   *
-   * @param predicate - Builds the expression from the flat filter algebra.
-   * @returns The completed condition.
-   */
-  filter(
-    predicate: (q: FilterConstraintBuilder<TDoc>) => ConstraintResult,
-  ): AccessConditionResult;
-}
-
-/**
- * The `q` a rule on a NON-query action receives: predicates only.
- *
- * The same authoring shape as {@link AccessQueryBuilder} minus `withIndex`, so a
- * rule reads identically whichever action it guards — `q.filter((f) => …)` either
- * way. A create/update/delete has no query to narrow, so index pushdown is simply
- * absent rather than rejected, and `q.withIndex` fails at the call with a
- * missing-method error rather than as a whole-object shape mismatch (DD 14).
- *
- * @typeParam TDoc - Document shape for the resource this rule governs.
- */
-export interface AccessPredicateBuilder<TDoc> {
-  /**
-   * Narrows by predicate.
-   *
-   * @param predicate - Builds the expression from the flat filter algebra.
-   * @returns The completed condition.
-   */
-  filter(
-    predicate: (q: FilterConstraintBuilder<TDoc>) => ConstraintResult,
-  ): AccessConditionResult;
-}
-
-/**
- * The `q` a query-shaped rule receives.
- *
- * Mirrors Convex's own query surface, one layer up — each algebra gets its own
- * callback with its own builder, and the two never meet in one expression:
- *
- * ```ts
- * // Convex
- * ctx.db.query("pages")
- *   .withIndex("by_author", (q) => q.eq("authorId", u))
- *   .filter((q) => q.neq(q.field("archived"), true));
- *
- * // an access rule
- * q.withIndex("by_author", (ix) => ix.eq("authorId", u))
- *  .filter((f) => f.neq("archived", true));
- * ```
- *
- * That confinement is load-bearing, not stylistic: `ix` exists only inside the
- * range callback and `f` only inside the predicate callback, so an index expression
- * cannot reach a boolean combinator even by accident.
- *
- * Selecting the index through a METHOD is also what makes positional typing
- * reachable — `N` is the method's own type parameter, so the literal at the call
- * site resolves that index's real field tuple and Convex's field ORDER becomes a
- * compile error. A sibling property cannot be seen by its neighbour's callback
- * type, which is why earlier `{ withIndex, constraints }` shapes could only offer
- * the resource's flat field-key union.
- *
- * Rules on mutation actions receive a bare {@link FilterConstraintBuilder} instead
- * — no query exists to narrow, so `withIndex` is absent rather than rejected.
- *
- * @typeParam TDoc - Document shape for the resource this rule governs.
- * @typeParam TIndexFields - The resource's declared indexes, name → field tuple
- *   in declaration order (`IndexFieldsBySlug[slug]`, `types/generated.ts`).
- */
-export interface AccessQueryBuilder<TDoc, TIndexFields extends Record<string, readonly string[]>>
-  extends AccessPredicateBuilder<TDoc> {
-  /**
-   * Narrows the query through a declared index.
-   *
-   * **The range callback is REQUIRED**, unlike Convex's, where it is optional. A
-   * range-less `withIndex` excludes no documents — every row has an index entry, so
-   * it only re-orders, and the docs are explicit that it scans the whole table.
-   * Convex allows it because a caller may legitimately want ordering; an access rule
-   * never does, and a range-less one would read as a restriction while being none.
-   *
-   * @typeParam N - The index name, inferred from the literal passed.
-   * @param name - A declared index on this resource.
-   * @param range - Builds the range. `ix` is positional: Convex's index rules,
-   *   field order included, apply inside it.
-   * @returns A condition that may be returned as-is or continued with `.filter(…)`.
-   */
-  withIndex<N extends keyof TIndexFields & string>(
-    name: N,
-    range: (ix: ConstraintBuilder<TIndexFields[N], TDoc, 0>) => ConstraintResult,
-  ): IndexedAccessCondition<TDoc>;
-
-}
-
+export type AccessIndexSelection<TDoc, TIndexFields extends Record<string, readonly string[]>> = {
+  [N in keyof TIndexFields & string]: {
+    /** A declared index on this resource. */
+    name: N;
+    /** Range over the index's fields. Required: a range-less index restricts nothing. */
+    range: (ix: ConstraintBuilder<TIndexFields[N], TDoc, 0>) => ConstraintResult;
+  };
+}[keyof TIndexFields & string];

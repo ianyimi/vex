@@ -205,25 +205,27 @@ export * from "./components/ui";
 /**
  * Relationship field input type with the React component slot bound.
  *
- * Identical to `@vexcms/core`'s `RelationshipFieldInput<TCollectionSlug>` except
- * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TCollectionSlug>>`
- * instead of an opaque `ApplyComponent<ComponentHKT, _>`.
+ * Identical to `@vexcms/core`'s `RelationshipFieldInput` except
+ * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TTargetSlug>>`.
  */
 export type RelationshipFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> = CoreRelationshipFieldInput<VexResourceSlug, TFieldMeta, TCollectionSlug, ReactHKT>;
+  TTargetSlug extends CollectionSlug = CollectionSlug,
+> = CoreRelationshipFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, TTargetSlug, ReactHKT>;
 
 /**
  * Resolved relationship field type with the React component slot bound.
  *
- * Identical to `@vexcms/core`'s `RelationshipField<TCollectionSlug>` except
- * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TCollectionSlug>>`.
+ * Identical to `@vexcms/core`'s `RelationshipField` except
+ * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TTargetSlug>>`.
  */
 export type RelationshipField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> = CoreRelationshipField<VexResourceSlug, TFieldMeta, TCollectionSlug, ReactHKT>;
+  TTargetSlug extends CollectionSlug = CollectionSlug,
+> = CoreRelationshipField<TCollectionSlug, TFieldMeta, TTargetSlug, ReactHKT>;
 
 /**
  * Collection admin configuration input with the React component slot bound.
@@ -275,22 +277,22 @@ export type VexEditorAdapter = CoreVexEditorAdapter<ReactHKT>;
 /**
  * Defines a relationship field with React-typed component slots.
  *
- * Drop-in replacement for `@vexcms/core`'s `relationship` — same behaviour,
- * but `options.admin.components.preview` is typed as a React `ComponentType`.
+ * Drop-in replacement for `@vexcms/core`'s `relationship`, with the same generics
+ * minus the component slot: `relationship<"articles", "author">({ … })` types
+ * `index.additionalFields`, `admin.condition` and `validate()` against `articles`.
  *
  * @param options - Relationship field configuration.
  * @returns The resolved relationship field definition.
  */
 export function relationship<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
   TTargetSlug extends CollectionSlug = CollectionSlug,
 >(
-  options: RelationshipFieldInput<TFieldMeta, TTargetSlug>,
-): RelationshipField<TFieldMeta, TTargetSlug> {
-  // Core's own parameter order is `<resource slug, meta, target slug, component>`;
-  // this wrapper only ever binds the component slot, so the resource slug stays
-  // at its default.
-  return coreRelationship<VexResourceSlug, TFieldMeta, TTargetSlug, ReactHKT>(options);
+  options: RelationshipFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, TTargetSlug>,
+): RelationshipField<TCollectionSlug, TFieldMeta, TTargetSlug> {
+  return coreRelationship<TCollectionSlug, TFieldKey, TFieldMeta, TTargetSlug, ReactHKT>(options);
 }
 
 /**

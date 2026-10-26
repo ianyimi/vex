@@ -48,9 +48,7 @@ const access = defineAccess({
     // Doc-scoped: only documents with `status: "published"` are readable.
     scoped: {
       posts: {
-        read: {
-          constraints: ({ q }) => q.withIndex("by_status", (ix) => ix.eq("status", "published")),
-        },
+        read: { withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") } },
       },
     },
   },

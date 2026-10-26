@@ -48,9 +48,10 @@ import type { CheckboxFieldInput, CheckboxField } from "./types";
  */
 export function checkbox<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 >(
-  options?: CheckboxFieldInput<TCollectionSlug, TFieldMeta>,
+  options?: CheckboxFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): CheckboxField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.checkbox.type,

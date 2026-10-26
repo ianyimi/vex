@@ -59,9 +59,10 @@ import type { DateFieldInput, DateField } from "./types";
  */
 export function date<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 >(
-  options?: DateFieldInput<TCollectionSlug, TFieldMeta>,
+  options?: DateFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): DateField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.date.type,

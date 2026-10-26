@@ -30,7 +30,7 @@ export const relationshipTargetCollection = defineCollection({
  * here, the shared harness's `testCollection` ("posts"), standing in for
  * the collection this relationship field is rendered as part of.
  */
-const fieldDef = relationship<VexResourceSlug, CollectionFieldMeta>({
+const fieldDef = relationship<VexResourceSlug, never, CollectionFieldMeta>({
   collection: { slug: "documents" },
   hasMany: true,
   required: true,

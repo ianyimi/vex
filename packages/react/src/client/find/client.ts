@@ -1,8 +1,9 @@
 import { convexQuery } from "@convex-dev/react-query";
 import type { FunctionReference } from "convex/server";
 import type { VexQueryOptions } from "../types";
+import { whereArg } from "../whereArg";
 
-import { vexConvexApi, type VexFindArgs, type VexFindPaginatedArgs } from "@vexcms/core";
+import { vexConvexApi, type VexFindArgs, type VexFindPaginatedArgs, type VexWhere } from "@vexcms/core";
 import type { CollectionSlug } from "@vexcms/core";
 import type {
   DocReturnItem,
@@ -29,6 +30,11 @@ export interface FindClientArgs<
 > extends GenericQueryClientParams<TCollectionSlug, TPopulate, D> {
   collection: TCollectionSlug;
   limit?: number;
+  /**
+   * Predicate over the collection's fields: a builder callback or a plain node.
+   * The callback is converted to a node before it is sent.
+   */
+  where?: VexWhere<TCollectionSlug>;
   paginationOpts?: PaginationOptions;
 }
 
@@ -47,6 +53,11 @@ export interface FindClientPaginatedArgs<
 > extends GenericQueryClientParams<TCollectionSlug, TPopulate, D> {
   collection: TCollectionSlug;
   limit?: number;
+  /**
+   * Predicate over the collection's fields: a builder callback or a plain node.
+   * The callback is converted to a node before it is sent.
+   */
+  where?: VexWhere<TCollectionSlug>;
   paginationOpts: PaginationOptions;
 }
 
@@ -85,6 +96,10 @@ export interface FindClientPaginatedArgs<
  *   find({ collection: "posts", paginationOpts: { numItems: 20, cursor: null } }),
  * );
  * //      ^? PaginationResult<Post>
+ *
+ * const { data: featured } = useQuery(
+ *   find({ collection: "posts", where: (q) => q.eq("featured", true) }),
+ * );
  * ```
  */
 export function find<
@@ -141,6 +156,7 @@ export function find<
           limit: args.limit,
           depth: args.depth,
           drafts: args.drafts,
+          where: whereArg(args.where),
           paginationOpts: args.paginationOpts,
         },
   );
@@ -171,6 +187,7 @@ export function findQueryKey<
     limit: args.limit,
     depth: args.depth,
     drafts: args.drafts,
+    where: whereArg(args.where),
     paginationOpts: args.paginationOpts,
   }).queryKey;
 }

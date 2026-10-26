@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { checkbox, defineCollection, text } from "../index";
 import { validateFields } from "./utils";
+import { VexError } from "../errors";
 import type { VexConfig } from "../config";
 
 const fixtureCtx = {} as GenericMutationCtx<GenericDataModel>;
@@ -43,6 +44,24 @@ describe("validateFields", () => {
         slug: text({
           validate: () => {
             throw new ConvexError({ message: "Slug taken", code: "SLUG_CONFLICT" });
+          },
+        }),
+      },
+    });
+    await expect(
+      validateFields({ fields: collection.fields, doc: { slug: "dup" }, keys: ["slug"], ctx: fixtureCtx, config: fixtureConfig }),
+    ).rejects.toMatchObject({
+      data: { field: "slug", message: "Slug taken", code: "SLUG_CONFLICT" },
+    });
+  });
+
+  it("preserves a VexError's structured data and attributes it to the field", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        slug: text({
+          validate: () => {
+            throw new VexError({ message: "Slug taken", code: "SLUG_CONFLICT" });
           },
         }),
       },

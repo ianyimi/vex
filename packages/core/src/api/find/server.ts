@@ -1,15 +1,4 @@
-import type {
-  ExpressionOrValue,
-  FilterBuilder,
-  GenericDataModel,
-  IndexNames,
-  IndexRange,
-  IndexRangeBuilder,
-  NamedIndex,
-  NamedTableInfo,
-  TableNamesInDataModel,
-  QueryInitializer,
-} from "convex/server";
+import type { GenericDataModel, GenericDocument, NamedTableInfo, QueryInitializer } from "convex/server";
 
 import type { CollectionSlug } from "../../types/generated";
 import { buildDepthPopulate } from "../depth";
@@ -24,18 +13,24 @@ import type {
   PopulateShape,
 } from "../types";
 import {
-  AccessFilterFn,
-  hasPermission,
-  type IndexRangeFn,
-  pickQueryIndex,
-  type QueryIndex,
-  resolveAccessConstraint,
-  resolveAccessIndex,
-  resolveFieldPermissions,
-  stripDeniedFields,
+  resolveQueryConstraint,
+  resolveQueryIndex,
+  SYSTEM_FIELD_KEYS,
 } from "../../access";
-import { resolveReadCall } from "../utils";
-import { composeStatusConstraint } from "../../versions";
+import { pickConvexQueryIndex } from "../../access/pickConvexQueryIndex";
+import type { ConvexQueryFilterFn, ConvexQueryIndex } from "../../access/convexTypes";
+import type { ConstraintResult } from "../../access/queryConstraintTypes";
+import {
+  andConvexQueryFilters,
+  referencedWhereFields,
+  whereFieldNames,
+  whereToConvexQueryFilter,
+  withIndexToConvexQueryIndex,
+  type VexWhere,
+  type VexWithIndex,
+} from "../queryArgs";
+import { readableDocuments, resolveReadCall } from "../utils";
+import { composeStatusQueryConstraint } from "../../versions";
 
 /**
  * Server-side args for `find`. Extends {@link GenericQueryServerParams}
@@ -58,8 +53,9 @@ export interface FindServerArgs<
   collection: TCollectionSlug;
 
   /**
-   * Maximum number of documents to return. Defaults to 100.
-   * Applied as the terminal `.take(n)` on the Convex query.
+   * Maximum number of documents to return, applied as the terminal `.take(n)`
+   * on the Convex query. Omit it, or pass `0`, to return every matching
+   * document (`.collect()`). Ignored when `paginationOpts` is set.
    */
   limit?: number;
 
@@ -70,55 +66,32 @@ export interface FindServerArgs<
   order?: "asc" | "desc";
 
   /**
-   * Filter predicate applied after index narrowing. Equivalent to
-   * `.filter(q => q.eq(q.field("published"), true))` on the Convex query.
+   * Predicate over the collection's fields, applied after index narrowing.
+   * Fields are referenced by name; combine with `q.and` / `q.or` / `q.not`.
    *
-   * Prefer `withIndex` for performance — `filter` scans every document
-   * in the range and is O(n). Use `filter` for secondary conditions that
-   * can't be expressed as index equality ranges.
+   * Prefer `withIndex` for performance: on Convex, `where` scans every document
+   * in the narrowed range.
    *
    * @example
    * ```ts
-   * find({ ctx, collection: "posts", filter: q => q.eq(q.field("published"), true) })
+   * find({ ctx, collection: "posts", where: (q) => q.eq("published", true) })
+   * find({ ctx, collection: "posts", where: { field: "published", op: "eq", value: true } })
    * ```
    */
-  filter?: (
-    q: FilterBuilder<
-      NamedTableInfo<
-        DataModel,
-        TCollectionSlug extends TableNamesInDataModel<DataModel> ? TCollectionSlug : never
-      >
-    >,
-  ) => ExpressionOrValue<boolean>;
+  where?: VexWhere<TCollectionSlug>;
 
   /**
-   * Index to use for the query, with an optional equality/range constraint.
-   * Equivalent to `.withIndex(name, range?)` on the Convex query.
-   *
-   * Using an index is strongly preferred over `filter` for performance.
+   * Index to read through, with an optional range over its fields in
+   * declaration order. Strongly preferred over `where` for performance.
    *
    * @example
    * ```ts
-   * find({ ctx, collection: "posts", withIndex: { name: "by_slug", range: q => q.eq("slug", "hello") } })
-   * find({ ctx, collection: "posts", withIndex: { name: "by_score", range: q => q.gte("score", 50) } })
+   * find({ ctx, collection: "posts", withIndex: { name: "by_slug", range: (q) => q.eq("slug", "hello") } })
+   * find({ ctx, collection: "posts", withIndex: { name: "by_score", range: (q) => q.gte("score", 50) } })
    * find({ ctx, collection: "posts", withIndex: { name: "by_publishedAt" } })
    * ```
    */
-  withIndex?: TCollectionSlug extends TableNamesInDataModel<DataModel>
-    ? {
-        name: IndexNames<NamedTableInfo<DataModel, TCollectionSlug>>;
-        range?: (
-          q: IndexRangeBuilder<
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            any,
-            NamedIndex<
-              NamedTableInfo<DataModel, TCollectionSlug>,
-              IndexNames<NamedTableInfo<DataModel, TCollectionSlug>>
-            >
-          >,
-        ) => IndexRange;
-      }
-    : never;
+  withIndex?: VexWithIndex<TCollectionSlug>;
 
   /**
    * Pagination options. When provided, the function returns a `PaginationResult`
@@ -225,20 +198,27 @@ export async function find<
     collection: args.collection,
     drafts: args.drafts,
   });
-  const accessIndex = resolveAccessIndex({
+  const accessIndex = resolveQueryIndex({
     access,
     user: args.auth?.user ?? null,
     organization: args.auth?.organization,
     resource,
     action,
   });
-  // `FindServerArgs.withIndex` is a conditional type over `TCollectionSlug`, still an
-  // unresolved type parameter here — TypeScript cannot reduce it, so it stays opaque.
-  // The runtime shape is exactly `{ name, range? }`, already checked against the
-  // collection at the public call site.
-  const callerIndex = args.withIndex as { name: string; range?: IndexRangeFn } | undefined;
-  const rbacResolvedIndex = pickQueryIndex({ accessIndex, callerIndex });
-  const rbacFilter = resolveAccessConstraint({
+  const callerIndex = withIndexToConvexQueryIndex({
+    withIndex: args.withIndex as { name: string; range?: (q: never) => ConstraintResult } | undefined,
+  });
+  const callerFilter = whereToConvexQueryFilter({
+    where: args.where as VexWhere<string> | undefined,
+    fields: whereFieldNames({ config: args.config, collection: args.collection }),
+  });
+  // Only enforced reads are guarded; a bypassed read may filter on anything.
+  const whereFields =
+    access !== undefined && args.where !== undefined
+      ? referencedWhereFields({ where: args.where as VexWhere<string> }).filter((field) => !SYSTEM_FIELD_KEYS.has(field))
+      : [];
+  const rbacResolvedIndex = pickConvexQueryIndex({ accessIndex, callerIndex });
+  const rbacFilter = resolveQueryConstraint({
     access,
     user: args.auth?.user ?? null,
     organization: args.auth?.organization,
@@ -249,10 +229,10 @@ export async function find<
   // Status narrowing is independent of RBAC (design-review.md §3.1) — it runs
   // whenever `requiresPublishedOnly` says so, whether or not `access` above is
   // `undefined` (bypassed or unconfigured). Also arbitrates the winning index's
-  // OWN `draftStatus` declaration (Step 13 D2–D4, `versions/statusConstraint.ts`)
+  // OWN `draftStatus` declaration (Step 13 D2–D4, `versions/statusQueryConstraint.ts`)
   // — a `drafts: true` read against a `draftStatus: true`-only index drops the
   // range and re-applies it as a filter, so no access inputs are needed here.
-  const { resolvedIndex, accessFilter } = composeStatusConstraint({
+  const { resolvedIndex, accessFilter } = composeStatusQueryConstraint({
     config: args.config,
     collection: args.collection,
     drafts: wantsDrafts,
@@ -263,61 +243,23 @@ export async function find<
   const findQuery = buildQuery<DataModel, TCollectionSlug, TPopulate, D>({
     ...args,
     resolvedIndex,
-    accessFilter,
+    filter: andConvexQueryFilters({ filters: [accessFilter, callerFilter] }),
   });
+
+  const readable = (fetched: readonly GenericDocument[]) =>
+    readableDocuments({ docs: fetched, access, auth: args.auth, resource, action, whereFields });
 
   // 4. paginate OR take
   let docs;
   let convexPaginationResult: Awaited<ReturnType<typeof findQuery.paginate>> | undefined;
   if (args.paginationOpts) {
     convexPaginationResult = await findQuery.paginate(args.paginationOpts);
-    docs = convexPaginationResult.page.filter((d) =>
-      hasPermission({
-        access,
-        resource,
-        action,
-        data: d,
-        user: args.auth?.user ?? null,
-        organization: args.auth?.organization,
-      }),
-    );
-  } else if (args.limit) {
-    docs = (await findQuery.take(args.limit)).filter((d) =>
-      hasPermission({
-        access,
-        resource,
-        action,
-        data: d,
-        user: args.auth?.user ?? null,
-        organization: args.auth?.organization,
-      }),
-    );
+    docs = readable(convexPaginationResult.page);
+  } else if (args.limit !== undefined && args.limit > 0) {
+    docs = readable(await findQuery.take(args.limit));
   } else {
-    docs = (await findQuery.collect()).filter((d) =>
-      hasPermission({
-        access,
-        resource,
-        action,
-        data: d,
-        user: args.auth?.user ?? null,
-        organization: args.auth?.organization,
-      }),
-    );
+    docs = readable(await findQuery.collect());
   }
-
-  docs = docs.map((d) =>
-    stripDeniedFields(
-      d,
-      resolveFieldPermissions({
-        access,
-        user: args.auth?.user ?? null,
-        organization: args.auth?.organization,
-        resource,
-        action,
-        data: d,
-      }),
-    ),
-  );
 
   // Explicit populate takes precedence over depth (D11).
   const effectivePopulate =
@@ -350,18 +292,9 @@ export async function find<
           const countQuery = buildQuery({
             ...args,
             resolvedIndex,
-            accessFilter,
+            filter: andConvexQueryFilters({ filters: [accessFilter, callerFilter] }),
           }); // Same filters as main query
-          const totalDocs = (await countQuery.collect()).filter((d) =>
-            hasPermission({
-              access,
-              resource,
-              action,
-              data: d,
-              user: args.auth?.user ?? null,
-              organization: args.auth?.organization,
-            }),
-          );
+          const totalDocs = readable(await countQuery.collect());
           return {
             ...convexPaginationResult,
             page: finalDocs,
@@ -396,12 +329,11 @@ function buildQuery<
   const D extends number = 0,
 >(
   props: FindServerArgs<DataModel, TCollectionSlug, TPopulate, D> & {
-    resolvedIndex?: QueryIndex;
-    accessFilter?: AccessFilterFn;
+    resolvedIndex?: ConvexQueryIndex;
+    filter?: ConvexQueryFilterFn;
   },
 ): QueryInitializer<NamedTableInfo<DataModel, TCollectionSlug>> {
-  const tableName = props.collection;
-  let q = props.ctx.db.query(tableName);
+  let q = props.ctx.db.query(props.collection);
 
   // 1. withIndex — narrows the scan (most efficient).
   if (props.resolvedIndex) {
@@ -413,14 +345,8 @@ function buildQuery<
   // 2. order — applied after index selection.
   // @ts-expect-error building query piece by piece from query args
   if (props.order) q = q.order(props.order);
-  // 3. filter — secondary predicate, full range scan.
-  if (props.accessFilter && props.filter) {
-    q = q.filter((filterQ) => filterQ.and(props.accessFilter!(filterQ), props.filter!(filterQ)));
-  } else if (props.accessFilter) {
-    q = q.filter(props.accessFilter);
-  } else if (props.filter) {
-    q = q.filter(props.filter);
-  }
+  // 3. filter — access constraint and caller `where`, already and-ed by `andConvexQueryFilters`.
+  if (props.filter) q = q.filter(props.filter);
 
   return q;
 }

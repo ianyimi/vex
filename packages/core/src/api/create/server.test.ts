@@ -144,11 +144,11 @@ describe("create (server) — access enforcement", () => {
     expect(typeof id).toBe("string");
   });
 
-  // A constraints callback that never touches `q` or `data` short-circuits to a
-  // flat boolean, resolved before any document is needed — the only shape of
-  // "constraints" check that CAN work on `create` today (see the bug tests below
+  // A `withIndex`/`where` callback that never touches the builder or `data` short-
+  // circuits to a flat boolean, resolved before any document is needed — the only
+  // shape of access check that CAN work on `create` today (see the bug tests below
   // for the shapes that cannot).
-  test("a constraints callback short-circuiting to a boolean gates on the caller alone", async () => {
+  test("a withIndex/where callback short-circuiting to a boolean gates on the caller alone", async () => {
     const t = convexTest(schema, modules);
     const config = {
       ...fixtureConfig,
@@ -161,7 +161,7 @@ describe("create (server) — access enforcement", () => {
           contributor: {
             posts: {
               create: {
-                constraints: (props) => {
+                where: (props) => {
                   const user = props.user as { _id?: string };
                   return user._id === "u1";
                 },
@@ -420,7 +420,7 @@ describe("create (server) — payload-dependent rules (documented contract, curr
         permissions: {
           contributor: {
             posts: {
-              create: { constraints: ({ q }) => q.filter((f) => f.eq("slug", "allowed-slug")) },
+              create: { where: ({ q }) => q.eq("slug", "allowed-slug") },
             },
           },
         },

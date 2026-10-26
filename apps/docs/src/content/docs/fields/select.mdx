@@ -19,7 +19,7 @@ Set `hasMany: true` for a multi-select tag/badge picker.
 | `defaultValue` | `string[]` | `[]` | Pre-filled selection shown in the admin form when creating a new document. |
 | `options` | `{ label: string, value: string, badgeColor?: string }[]` | `[]` | The set of choices available for this field. |
 | `hasMany` | `boolean` | `false` | `false` shows a single-selection dropdown; `true` shows a multi-select badge picker. |
-| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `index` | `string \| { name, additionalFields?, draftStatus? }` | — | Convex index name, or the object form for a [compound index](/fields/text/#compound-indexes). |
 | `description` | `string` | — | Helper text shown below the field input. |
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
 | `admin.readOnly` | `boolean` | `false` | Renders the picker as non-interactive. |

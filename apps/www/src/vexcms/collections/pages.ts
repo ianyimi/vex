@@ -1,5 +1,4 @@
-import { blocks, defineCollection, text, upload } from "@vexcms/core";
-import { ConvexError } from "convex/values";
+import { blocks, defineCollection, text, upload, VexError } from "@vexcms/core";
 
 import { TABLE_SLUG_IMAGES, TABLE_SLUG_PAGES } from "~/db/constants";
 import { resolvePagePath } from "~/lib/resolvePagePath";
@@ -41,7 +40,7 @@ export const pages = defineCollection({
           limit: 1,
         });
         if (existing && existing._id !== doc._id) {
-          throw new ConvexError({
+          throw new VexError({
             code: "SLUG_CONFLICT",
             conflictingPageId: existing._id,
             message: `This slug is already in use by the page '${existing.title}'.`,

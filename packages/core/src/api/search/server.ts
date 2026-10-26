@@ -1,11 +1,8 @@
 import type {
   DocumentByInfo,
-  ExpressionOrValue,
-  FilterBuilder,
   GenericDataModel,
   NamedTableInfo,
   QueryInitializer,
-  TableNamesInDataModel,
 } from "convex/server";
 
 import type { CollectionSlug } from "../../types/generated";
@@ -21,15 +18,20 @@ import type {
   SearchReturnPaginated,
 } from "../types";
 import {
-  AccessFilterFn,
   CRUD_ACTIONS,
   DRAFT_ACTIONS,
-  hasPermission,
-  resolveAccessConstraint,
-  resolveFieldPermissions,
-  stripDeniedFields,
+  resolveQueryConstraint,
+  SYSTEM_FIELD_KEYS,
 } from "../../access";
-import { resolveAccessCall } from "../utils";
+import type { ConvexQueryFilterFn } from "../../access/convexTypes";
+import {
+  andConvexQueryFilters,
+  referencedWhereFields,
+  whereFieldNames,
+  whereToConvexQueryFilter,
+  type VexWhere,
+} from "../queryArgs";
+import { readableDocuments, resolveAccessCall } from "../utils";
 import { requiresPublishedOnly, VERSION_STATUSES } from "../../versions";
 
 /**
@@ -57,7 +59,11 @@ export interface SearchServerArgs<
   searchIndexName: string;
   /** The field the search index is built on. Must match `searchField` in the index declaration. */
   searchField: string;
-  /** Maximum number of results. Defaults to 20. */
+  /**
+   * Maximum number of results, applied as the terminal `.take(n)`. Omit it, or
+   * pass `0`, to return every match (`.collect()`). Ignored when
+   * `paginationOpts` is set.
+   */
   limit?: number;
   /**
    * Pagination options. When provided, the function returns a `PaginationResult`
@@ -67,26 +73,16 @@ export interface SearchServerArgs<
    */
   paginationOpts?: PaginationOptions;
   /**
-   * Filter predicate applied after index narrowing. Equivalent to
-   * `.filter(q => q.eq(q.field("published"), true))` on the Convex query.
-   *
-   * Prefer `withIndex` for performance — `filter` scans every document
-   * in the range and is O(n). Use `filter` for secondary conditions that
-   * can't be expressed as index equality ranges.
+   * Predicate over the collection's fields, applied to the search results.
+   * Same builder as `find`'s `where`.
    *
    * @example
    * ```ts
-   * find({ ctx, collection: "posts", filter: q => q.eq(q.field("published"), true) })
+   * search({ ctx, collection: "posts", query: "hello", searchIndexName: "search_title", searchField: "title", where: (q) => q.eq("published", true) })
+   * search({ ctx, collection: "posts", query: "hello", searchIndexName: "search_title", searchField: "title", where: { field: "published", op: "eq", value: true } })
    * ```
    */
-  filter?: (
-    q: FilterBuilder<
-      NamedTableInfo<
-        DataModel,
-        TCollectionSlug extends TableNamesInDataModel<DataModel> ? TCollectionSlug : never
-      >
-    >,
-  ) => ExpressionOrValue<boolean>;
+  where?: VexWhere<TCollectionSlug>;
   /** Same contract as `FindServerArgs.drafts` — see `find/server.ts`. */
   drafts?: boolean;
 }
@@ -157,14 +153,14 @@ export async function search<
     defaultAction: args.drafts === true ? DRAFT_ACTIONS.readDrafts : CRUD_ACTIONS.read,
     resource: args.collection,
   });
-  const rbacFilter = resolveAccessConstraint({
+  const rbacFilter = resolveQueryConstraint({
     access,
     user: args.auth?.user ?? null,
     organization: args.auth?.organization,
     resource,
     action,
   });
-  let accessFilter: AccessFilterFn | undefined = rbacFilter;
+  let accessFilter: ConvexQueryFilterFn | undefined = rbacFilter;
   if (
     requiresPublishedOnly({
       config: args.config,
@@ -172,66 +168,42 @@ export async function search<
       drafts: args.drafts,
     })
   ) {
-    const statusFilter: AccessFilterFn = (q) =>
+    const statusFilter: ConvexQueryFilterFn = (q) =>
       q.eq(q.field("vex_status"), VERSION_STATUSES.published.key);
     accessFilter = rbacFilter ? (q) => q.and(rbacFilter(q), statusFilter(q)) : statusFilter;
   }
+  const filter = andConvexQueryFilters({
+    filters: [
+      accessFilter,
+      whereToConvexQueryFilter({
+        where: args.where as VexWhere<string> | undefined,
+        fields: whereFieldNames({ config: args.config, collection: args.collection }),
+      }),
+    ],
+  });
+  // Only enforced reads are guarded; a bypassed read may filter on anything.
+  const whereFields =
+    access !== undefined && args.where !== undefined
+      ? referencedWhereFields({ where: args.where as VexWhere<string> }).filter((field) => !SYSTEM_FIELD_KEYS.has(field))
+      : [];
   const searchQuery = buildQuery({
     ...args,
-    accessFilter,
+    filter,
   });
+
+  const readable = (fetched: readonly DocumentByInfo<NamedTableInfo<DataModel, string>>[]) =>
+    readableDocuments({ docs: fetched, access, auth: args.auth, resource, action, whereFields });
 
   let docs: DocumentByInfo<NamedTableInfo<DataModel, string>>[];
   let convexPaginationResult: Awaited<ReturnType<typeof searchQuery.paginate>> | undefined;
   if (args.paginationOpts) {
     convexPaginationResult = await searchQuery.paginate(args.paginationOpts);
-    docs = convexPaginationResult.page.filter((d) =>
-      hasPermission({
-        access,
-        user: args.auth?.user ?? null,
-        organization: args.auth?.organization,
-        resource,
-        action,
-        data: d,
-      }),
-    );
-  } else if (args.limit) {
-    docs = (await searchQuery.take(args.limit)).filter((d) =>
-      hasPermission({
-        access,
-        user: args.auth?.user ?? null,
-        organization: args.auth?.organization,
-        resource,
-        action,
-        data: d,
-      }),
-    );
+    docs = readable(convexPaginationResult.page);
+  } else if (args.limit !== undefined && args.limit > 0) {
+    docs = readable(await searchQuery.take(args.limit));
   } else {
-    docs = (await searchQuery.collect()).filter((d) =>
-      hasPermission({
-        access,
-        user: args.auth?.user ?? null,
-        organization: args.auth?.organization,
-        resource,
-        action,
-        data: d,
-      }),
-    );
+    docs = readable(await searchQuery.collect());
   }
-
-  docs = docs.map((d) =>
-    stripDeniedFields(
-      d,
-      resolveFieldPermissions({
-        access,
-        user: args.auth?.user ?? null,
-        organization: args.auth?.organization,
-        resource,
-        action,
-        data: d,
-      }),
-    ),
-  );
 
   const effectivePopulate =
     args.populate ??
@@ -252,17 +224,8 @@ export async function search<
     if (args.paginationOpts.totalDocs && !args.paginationOpts.cursor) {
       try {
         // Build same search query but collect all to count
-        const countQuery = buildQuery(args); // Same search params
-        const allDocs = (await countQuery.collect()).filter((d) =>
-          hasPermission({
-            access,
-            user: args.auth?.user ?? null,
-            organization: args.auth?.organization,
-            resource,
-            action,
-            data: d,
-          }),
-        );
+        const countQuery = buildQuery({ ...args, filter }); // Same search params
+        const allDocs = readable(await countQuery.collect());
 
         if (convexPaginationResult) {
           return {
@@ -301,8 +264,8 @@ function buildQuery<
   const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
   const D extends number = 0,
 >(
-  args: SearchServerArgs<DataModel, TCollectionSlug, TPopulate, D> & {
-    accessFilter?: AccessFilterFn;
+  args: Omit<SearchServerArgs<DataModel, TCollectionSlug, TPopulate, D>, "where"> & {
+    filter?: ConvexQueryFilterFn;
   },
 ): QueryInitializer<NamedTableInfo<DataModel, TCollectionSlug>> {
   let q = args.ctx.db.query(args.collection);
@@ -310,12 +273,6 @@ function buildQuery<
     // @ts-expect-error building query piece by piece from query args
     q = q.withSearchIndex(args.searchIndexName, (q) => q.search(args.searchField, args.query));
   }
-  if (args.accessFilter && args.filter) {
-    q = q.filter((fq) => fq.and(args.accessFilter!(fq), args.filter!(fq)));
-  } else if (args.accessFilter) {
-    q = q.filter(args.accessFilter);
-  } else if (args.filter) {
-    q = q.filter(args.filter);
-  }
+  if (args.filter) q = q.filter(args.filter);
   return q;
 }

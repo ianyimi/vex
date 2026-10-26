@@ -3,17 +3,17 @@ import type { VexConfig } from "../config";
 import { defineCollection } from "../collections/config";
 // import { relationship } from "../fields/relationship/config";
 import { text } from "../fields";
-import { composeStatusConstraint, requiresPublishedOnly } from "./statusConstraint";
+import { composeStatusQueryConstraint, requiresPublishedOnly } from "./statusQueryConstraint";
 
 const draftStatusTruePosts = defineCollection({
   slug: "posts",
-  fields: { slug: text({ index: "by_slug", indexDraftStatus: true }) },
+  fields: { slug: text({ index: { name: "by_slug", draftStatus: true } }) },
   versions: { drafts: true },
 });
 
 const draftStatusBothPosts = defineCollection({
   slug: "posts",
-  fields: { slug: text({ index: "by_slug", indexDraftStatus: "both" }) },
+  fields: { slug: text({ index: { name: "by_slug", draftStatus: "both" } }) },
   versions: { drafts: true },
 });
 
@@ -49,9 +49,9 @@ describe("requiresPublishedOnly", () => {
   });
 });
 
-describe("composeStatusConstraint — published-only, draftStatus: true index", () => {
+describe("composeStatusQueryConstraint — published-only, draftStatus: true index", () => {
   it("claims the prefixed physical index with a vex_status-leading range and no .filter()", () => {
-    const result = composeStatusConstraint({
+    const result = composeStatusQueryConstraint({
       config: configOf(draftStatusTruePosts),
       collection: "posts",
       resolvedIndex: { name: "by_slug", range: (q: any) => q.eq("slug", "hello") },
@@ -73,9 +73,9 @@ describe("composeStatusConstraint — published-only, draftStatus: true index", 
   });
 });
 
-describe('composeStatusConstraint — published-only, draftStatus: "both" index', () => {
+describe('composeStatusQueryConstraint — published-only, draftStatus: "both" index', () => {
   it("claims the twin physical index, not the unprefixed name", () => {
-    const result = composeStatusConstraint({
+    const result = composeStatusQueryConstraint({
       config: configOf(draftStatusBothPosts),
       collection: "posts",
       resolvedIndex: { name: "by_slug" },
@@ -85,11 +85,11 @@ describe('composeStatusConstraint — published-only, draftStatus: "both" index'
   });
 });
 
-describe("composeStatusConstraint — published-only, index with no draftStatus", () => {
+describe("composeStatusQueryConstraint — published-only, index with no draftStatus", () => {
   it("falls back to .filter() and warns exactly once across repeated calls", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const call = () =>
-      composeStatusConstraint({
+      composeStatusQueryConstraint({
         config: configOf(plainIndexPosts),
         collection: "posts",
         resolvedIndex: { name: "by_slug", range: (q: any) => q.eq("slug", "hello") },
@@ -104,9 +104,9 @@ describe("composeStatusConstraint — published-only, index with no draftStatus"
   });
 });
 
-describe('composeStatusConstraint — drafts: true, draftStatus: "both" index', () => {
+describe('composeStatusQueryConstraint — drafts: true, draftStatus: "both" index', () => {
   it("uses the unprefixed physical index untouched", () => {
-    const result = composeStatusConstraint({
+    const result = composeStatusQueryConstraint({
       config: configOf(draftStatusBothPosts),
       collection: "posts",
       drafts: true,
@@ -118,10 +118,10 @@ describe('composeStatusConstraint — drafts: true, draftStatus: "both" index', 
   });
 });
 
-describe("composeStatusConstraint — drafts: true, draftStatus: true index", () => {
+describe("composeStatusQueryConstraint — drafts: true, draftStatus: true index", () => {
   it("drops the range and moves the RBAC constraint to .filter(), warning once", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const result = composeStatusConstraint({
+    const result = composeStatusQueryConstraint({
       config: configOf(draftStatusTruePosts),
       collection: "posts",
       drafts: true,
@@ -134,7 +134,7 @@ describe("composeStatusConstraint — drafts: true, draftStatus: true index", ()
   });
 });
 
-describe("composeStatusConstraint — drafts: true, draftStatus: true index, caller's range", () => {
+describe("composeStatusQueryConstraint — drafts: true, draftStatus: true index, caller's range", () => {
   /** A FilterBuilder stand-in that renders each expression as a string. */
   const q = {
     field: (name: string) => `field(${name})`,
@@ -146,7 +146,7 @@ describe("composeStatusConstraint — drafts: true, draftStatus: true index, cal
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     // The caller's own index won the slot, so `accessFilter` is already the
     // whole RBAC condition and the dropped range is the caller's `slug` lookup.
-    const result = composeStatusConstraint({
+    const result = composeStatusQueryConstraint({
       config: configOf(draftStatusTruePosts),
       collection: "posts",
       drafts: true,
@@ -165,7 +165,7 @@ describe("composeStatusConstraint — drafts: true, draftStatus: true index, cal
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     // `find` resolved accessFilter with `indexAlreadyApplied: true`, so it carries
     // only the rule's leftover filter half; the index half lives in the range.
-    const result = composeStatusConstraint({
+    const result = composeStatusQueryConstraint({
       config: configOf(draftStatusTruePosts),
       collection: "posts",
       drafts: true,
@@ -184,14 +184,14 @@ describe("composeStatusConstraint — drafts: true, draftStatus: true index, cal
     const compound = defineCollection({
       slug: "posts",
       fields: {
-        authorId: text({ index: "by_author_slug", indexDraftStatus: true }),
-        slug: text({ index: "by_author_slug" }),
+        authorId: text({ index: { name: "by_author_slug", additionalFields: ["slug"], draftStatus: true } }),
+        slug: text(),
       },
       versions: { drafts: true },
     });
-    // Same index name on both sides: `pickQueryIndex` composed access's prefix
+    // Same index name on both sides: `pickConvexQueryIndex` composed access's prefix
     // with the caller's continuation into one range.
-    const result = composeStatusConstraint({
+    const result = composeStatusQueryConstraint({
       config: configOf(compound),
       collection: "posts",
       drafts: true,
@@ -211,7 +211,7 @@ describe("composeStatusConstraint — drafts: true, draftStatus: true index, cal
 
   it("adds no filter when the dropped range is ordering-only", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const result = composeStatusConstraint({
+    const result = composeStatusQueryConstraint({
       config: configOf(draftStatusTruePosts),
       collection: "posts",
       drafts: true,
@@ -225,7 +225,7 @@ describe("composeStatusConstraint — drafts: true, draftStatus: true index, cal
 
   it("filters by the dropped range alone when there is no RBAC filter", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const result = composeStatusConstraint({
+    const result = composeStatusQueryConstraint({
       config: configOf(draftStatusTruePosts),
       collection: "posts",
       drafts: true,

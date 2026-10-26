@@ -102,9 +102,10 @@ export function defineBlock(options: BlockConfigInput): BlockConfig {
  */
 export function blocks<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 >(
-  options: BlocksFieldInput<TCollectionSlug, TFieldMeta>,
+  options: BlocksFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): BlocksField<TCollectionSlug, TFieldMeta> {
   // Validate unique slugs
   const seen = new Set<string>();

@@ -1,30 +1,11 @@
 import { type GenericDocument } from "convex/server";
-import type { AccessConditionResult, AccessIndexConstraint } from "./constraintTypes";
+import type { QueryIndexConstraint } from "./queryConstraintTypes";
 import { AccessResource, VexAccessConfig, VexAccessConfigError } from "./types";
-import { ADMIN_FIELDS, getDataFields } from "../fields";
-import { createAccessQueryBuilder, readAccessCondition } from "./createAccessQueryBuilder";
-
-/**
- * Declared Convex index name → field tuple for one resource, read the same
- * way `collectIndexNames` (`types/generateVexTypes.ts`) builds `.index()`
- * calls: one index per `field.index`, or an auto `by_<fieldKey>` for
- * relationship fields. Every declared index is single-field today; this
- * returns single-element tuples accordingly and stays correct if a
- * compound-index authoring mechanism lands later. @internal
- * @param resource @see {@link AccessResource} the collection / resource
- * @returns Record<string, readonly string[]> A record of indexes to fields
- */
-function collectResourceIndexFields(resource: AccessResource): Record<string, readonly string[]> {
-  const indexFields: Record<string, readonly string[]> = {};
-  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: resource.fields }))) {
-    if (field.index) {
-      indexFields[field.index] = [fieldKey];
-    } else if (field.type === ADMIN_FIELDS.relationship.type) {
-      indexFields[`by_${fieldKey}`] = [fieldKey];
-    }
-  }
-  return indexFields;
-}
+import { resolveCollectionIndexes } from "../collections/resolveCollectionIndexes";
+import { evaluateQueryConstraint, type QueryConstraintOutcome } from "./evaluateQueryConstraint";
+import { validateWhereNode } from "../api/queryArgs";
+import { VexError } from "../errors";
+import { getDataFields } from "../fields";
 
 /**
  *
@@ -51,75 +32,84 @@ export function validateAccessConfig(props?: VexAccessConfig) {
     for (const [resourceSlug, actions] of Object.entries(subjects as Record<string, unknown>)) {
       const resource = resourcesBySlug.get(resourceSlug);
       // Custom resources and admin subjects carry no declared indexes and
-      // are skipped here — see `validateAccessConstraints`'s edge cases.
+      // are skipped here — see `validateQueryIndexConstraints`'s edge cases.
       if (resource === undefined || typeof actions !== "object" || actions === null) continue;
       for (const [action, check] of Object.entries(actions as Record<string, unknown>)) {
         // The action-level wildcard IS resolved here, unlike the role-level one
-        // (boolean-only). Its `q` is an `AccessPredicateBuilder`, so it can never
-        // name an index and `validateAccessConstraints` will have nothing to check —
-        // but running the callback is still worth it, because that is what turns a
+        // (boolean-only). A typed mutation rule cannot declare a `withIndex` (its type is
+        // `WithIndexOnMutationError`), so it can never name an index and
+        // `validateQueryIndexConstraints` will have nothing to check —
+        // but running the callbacks is still worth it, because that is what turns a
         // rule that throws into a `VexAccessConfigError` at module load rather than
         // at query time. Skipping it made the wildcard the one place a broken
         // constraint stayed hidden until a request hit it.
         if (typeof check !== "object" || check === null) continue;
-        if (!("constraints" in check)) continue;
-        let outcome: boolean | AccessConditionResult;
+        if (!("withIndex" in check || "where" in check)) continue;
+        const staticWhere = (check as { where?: unknown }).where;
+        if (staticWhere !== undefined && typeof staticWhere !== "function") {
+          try {
+            validateWhereNode({
+              node: staticWhere,
+              fields: [...Object.keys(getDataFields({ fields: resource.fields })), "_id", "_creationTime"],
+            });
+          } catch (error) {
+            const message =
+              error instanceof VexError && typeof error.data === "object"
+                ? String(error.data.message)
+                : error instanceof Error
+                  ? error.message
+                  : String(error);
+            throw new VexAccessConfigError(`role "${role}" on ${resourceSlug}.${action}: invalid static where — ${message}`);
+          }
+        }
+        let outcome: QueryConstraintOutcome;
         try {
-          outcome = (
-            check as {
-              constraints: (
-                callbackProps: Record<string, unknown>,
-              ) => boolean | AccessConditionResult;
-            }
-          ).constraints({
-            user: {},
-            organization: {},
-            q: createAccessQueryBuilder(),
+          outcome = evaluateQueryConstraint({
+            check: check as { withIndex?: unknown; where?: (p: never) => unknown },
+            callerProps: { user: {}, organization: {} },
           });
         } catch (error) {
-          // Resolving a rule means RUNNING its callback at module load, so a rule
+          // Resolving a rule means RUNNING its callbacks at module load, so a rule
           // that reached past its types — `as any`, a hand-built object, a method
           // the builder does not have — surfaces here as whatever it threw. Rethrow
           // as a config error so every `defineAccess` failure has one shape and
           // names the offending rule, instead of leaking a bare `TypeError` with no
           // indication of which role or action produced it.
           throw new VexAccessConfigError(
-            `role "${role}" on ${resourceSlug}.${action}: the constraints callback threw ` +
+            `role "${role}" on ${resourceSlug}.${action}: the withIndex/where callback threw ` +
               `while being resolved — ${error instanceof Error ? error.message : String(error)}. ` +
-              `Constraints must be a pure chain on the supplied "q"; they run once at ` +
-              `config time with no documents and no database access.`,
+              `Rules must be pure; they run once at config time with no documents and no ` +
+              `database access.`,
           );
         }
         // A rule that short-circuits to a flat allow/deny has no condition to check.
         if (typeof outcome === "boolean") continue;
-        const condition = readAccessCondition<GenericDocument>(outcome);
-        // Anything built through `q` is readable here. An unreadable value therefore
-        // means the callback never touched the builder and returned something else —
-        // a bare object, `undefined`, a number. Previously that fell through the
-        // `condition?.index === undefined` guard below and was accepted as "excludes
-        // nothing", which is the most dangerous possible default for an access rule:
-        // the author believes they wrote a restriction and the config silently has
+        // Anything built through `withIndex` / `where` is readable here. An unreadable
+        // value therefore means a half returned something that did not come from the
+        // supplied builder — a bare object, `undefined`, a number. Previously that fell
+        // through the `condition?.index === undefined` guard below and was accepted as
+        // "excludes nothing", which is the most dangerous possible default for an access
+        // rule: the author believes they wrote a restriction and the config silently has
         // none. `resolveAccessRule` still fails SAFE for this shape at request time;
         // config time should fail LOUD.
-        if (condition === undefined) {
+        if (outcome === undefined) {
           throw new VexAccessConfigError(
-            `role "${role}" on ${resourceSlug}.${action}: the constraints callback did not ` +
-              `return a constraint built from the supplied "q" (got ` +
-              `${outcome === null ? "null" : typeof outcome}). Build a condition with ` +
-              `q.withIndex(...) / q.filter(...), or return a boolean to allow or deny outright.`,
+            `role "${role}" on ${resourceSlug}.${action}: withIndex must be { name, range } or ` +
+              `a function returning { name, range } or a boolean, and where must be a plain where object ` +
+              `or return a predicate built from the supplied "q" or a boolean.`,
           );
         }
         // This validator enforces Convex's INDEX rules — the index name, field order
         // and operator sequencing — so it applies only when the rule chose an index. A
         // predicate compiles to `.filter()`, which imposes none of them.
-        if (condition.index === undefined) continue;
-        validateAccessConstraints({
+        if (outcome.index === undefined) continue;
+        validateQueryIndexConstraints({
           role,
           resource: resourceSlug,
           action,
-          constraints: condition.index.constraints,
-          indexFields: collectResourceIndexFields(resource),
-          indexName: condition.index.name,
+          constraints: outcome.index.constraints,
+          indexFields: Object.fromEntries(resolveCollectionIndexes({ collection: resource }).map((index) => [index.name, index.fields])),
+          indexName: outcome.index.name,
         });
       }
     }
@@ -136,14 +126,13 @@ export function validateAccessConfig(props?: VexAccessConfig) {
  * @param props.resource - Resource slug the rule guards (for the error message).
  * @param props.action - Action name the rule guards (for the error message).
  * @param props.constraints - The rule's recorded constraint list, already
- *   produced by invoking its `constraints` callback with a fresh builder.
+ *   produced by invoking its `withIndex.range` with a fresh builder.
  * @param props.indexFields - The resource's declared indexes, index name →
  *   field tuple in declaration order. The caller derives this from real
  *   Convex index declarations (`defineAccess` reads it off `field.index` /
  *   relationship auto-index the same way `collectIndexNames`,
- *   `types/generateVexTypes.ts`, builds `.index()` calls) — every declared
- *   index is single-field today, but this validator is written generically
- *   and stays correct if compound indexes are ever declarable.
+ *   `types/generateVexTypes.ts`, builds `.index()` calls) — compound indexes
+ *   come from a field's `index.additionalFields` or the collection's `indexes`.
  * @returns Nothing; throws on violation.
  * @param props.indexName - The index the rule actually named, when known. Given, it
  *   must be declared by the resource and is the only tuple the fields may prefix.
@@ -155,20 +144,20 @@ export function validateAccessConfig(props?: VexAccessConfig) {
  *   role, resource, action, and the 1-based position of the offending
  *   constraint.
  */
-export function validateAccessConstraints<
+export function validateQueryIndexConstraints<
   TDocument extends GenericDocument = GenericDocument,
 >(props: {
   role: string;
   resource: string;
   action: string;
-  constraints: readonly AccessIndexConstraint<string, TDocument>[];
+  constraints: readonly QueryIndexConstraint<string, TDocument>[];
   indexFields: Readonly<Record<string, readonly string[]>>;
   indexName?: string;
 }): void {
   const where = `role "${props.role}" on ${props.resource}.${props.action}`;
 
   // ── 0. The named index must exist ──────────────────────────────────────────
-  // Checked before the empty-constraints bail: `q.withIndex("nope", (ix) => ix)`
+  // Checked before the empty-constraints bail: `withIndex: { name: "nope", range: (ix) => ix }`
   // records no constraints but still names an index Convex will reject at query
   // time. Without this, the field-sequence check below was the only gate, and it
   // only inspects the declared tuples' VALUES — so any field order that happened
@@ -228,7 +217,7 @@ export function validateAccessConstraints<
   // the more precise complaint, so it is tested first. Likewise a second lower
   // bound on a different field would also read as a mismatched bound pair, so the
   // second-bound check precedes the same-field check. Reordering these silently
-  // changes which message an author sees — `validateAccessConstraints.test.ts`
+  // changes which message an author sees — `validateQueryIndexConstraints.test.ts`
   // pins each one exactly.
   let lowerBoundSeen = false;
   let upperBoundSeen = false;
@@ -277,7 +266,7 @@ export function validateAccessConstraints<
  * @param op - A recorded constraint's operator.
  * @returns `true` for `gt`/`gte`.
  */
-function isLowerBound(op: AccessIndexConstraint<string, GenericDocument>["op"]): boolean {
+function isLowerBound(op: QueryIndexConstraint<string, GenericDocument>["op"]): boolean {
   return op === "gt" || op === "gte";
 }
 
@@ -287,6 +276,6 @@ function isLowerBound(op: AccessIndexConstraint<string, GenericDocument>["op"]):
  * @param op - A recorded constraint's operator.
  * @returns `true` for `lt`/`lte`.
  */
-function isUpperBound(op: AccessIndexConstraint<string, GenericDocument>["op"]): boolean {
+function isUpperBound(op: QueryIndexConstraint<string, GenericDocument>["op"]): boolean {
   return op === "lt" || op === "lte";
 }

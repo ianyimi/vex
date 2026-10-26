@@ -224,7 +224,7 @@ describe("update (server) — access enforcement", () => {
         permissions: {
           contributor: {
             posts: {
-              update: { constraints: ({ q }) => q.filter((f) => f.eq("featured", true)) },
+              update: { where: ({ q }) => q.eq("featured", true) },
             },
           },
         },
@@ -272,7 +272,7 @@ describe("update (server) — access enforcement", () => {
           contributor: {
             posts: {
               update: {
-                constraints: ({ q }) => q.filter((f) => f.eq("featured", true)),
+                where: ({ q }) => q.eq("featured", true),
                 filter: ({ data }: { data: { title?: string } }) => data?.title === "Approved",
               },
             },
@@ -309,7 +309,7 @@ describe("update (server) — access enforcement", () => {
     });
   });
 
-  test("a constraints callback short-circuiting to a boolean gates on the caller alone, ignoring the doc", async () => {
+  test("a withIndex/where callback short-circuiting to a boolean gates on the caller alone, ignoring the doc", async () => {
     const config = {
       ...fixtureConfig,
       access: defineAccess({
@@ -321,7 +321,7 @@ describe("update (server) — access enforcement", () => {
           contributor: {
             posts: {
               update: {
-                constraints: (props) => {
+                where: (props) => {
                   const user = props.user as { _id?: string };
                   return user._id === "u1";
                 },

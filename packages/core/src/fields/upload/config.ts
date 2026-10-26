@@ -26,9 +26,10 @@ import type { UploadFieldInput, UploadField } from "./types";
  */
 export function upload<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 >(
-  options: UploadFieldInput<TCollectionSlug, TFieldMeta>,
+  options: UploadFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): UploadField<TCollectionSlug, TFieldMeta> {
   if (!options.to || !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(options.to)) {
     throw new Error(`upload(): "to" must be a valid collection slug. Got "${options.to}".`);

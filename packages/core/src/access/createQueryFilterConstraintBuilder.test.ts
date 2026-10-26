@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createFilterConstraintBuilder } from "./createFilterConstraintBuilder";
-import type { AccessFilterConstraint, ConstraintResult } from "./constraintTypes";
+import { createQueryFilterConstraintBuilder } from "./createQueryFilterConstraintBuilder";
+import type { QueryFilterConstraint, ConstraintResult } from "./queryConstraintTypes";
 
 type PagesDoc = {
   authorId: string;
@@ -17,13 +17,13 @@ type PagesDoc = {
  * @param result - Value returned by a chain call.
  * @returns The same object, typed as a constraint node.
  */
-function tree(result: ConstraintResult): AccessFilterConstraint<PagesDoc> {
-  return result as unknown as AccessFilterConstraint<PagesDoc>;
+function tree(result: ConstraintResult): QueryFilterConstraint<PagesDoc> {
+  return result as unknown as QueryFilterConstraint<PagesDoc>;
 }
 
-describe("createFilterConstraintBuilder — comparisons", () => {
+describe("createQueryFilterConstraintBuilder — comparisons", () => {
   it("records a flat comparison as one compare node", () => {
-    const q = createFilterConstraintBuilder<PagesDoc>();
+    const q = createQueryFilterConstraintBuilder<PagesDoc>();
     expect(tree(q.eq("authorId", "u1"))).toEqual({
       kind: "compare",
       field: "authorId",
@@ -33,7 +33,7 @@ describe("createFilterConstraintBuilder — comparisons", () => {
   });
 
   it("records each operator with its own op literal", () => {
-    const q = createFilterConstraintBuilder<PagesDoc>();
+    const q = createQueryFilterConstraintBuilder<PagesDoc>();
     expect(tree(q.eq("score", 1))).toMatchObject({ op: "eq", value: 1 });
     expect(tree(q.neq("score", 2))).toMatchObject({ op: "neq", value: 2 });
     expect(tree(q.gt("score", 3))).toMatchObject({ op: "gt", value: 3 });
@@ -43,7 +43,7 @@ describe("createFilterConstraintBuilder — comparisons", () => {
   });
 
   it("supports `neq`, which the indexed builder cannot express", () => {
-    const q = createFilterConstraintBuilder<PagesDoc>();
+    const q = createQueryFilterConstraintBuilder<PagesDoc>();
     expect(tree(q.neq("isPublic", false))).toEqual({
       kind: "compare",
       field: "isPublic",
@@ -53,9 +53,9 @@ describe("createFilterConstraintBuilder — comparisons", () => {
   });
 });
 
-describe("createFilterConstraintBuilder — combinators", () => {
+describe("createQueryFilterConstraintBuilder — combinators", () => {
   it("records `and` children in argument order", () => {
-    const q = createFilterConstraintBuilder<PagesDoc>();
+    const q = createQueryFilterConstraintBuilder<PagesDoc>();
     expect(tree(q.and(q.eq("authorId", "u1"), q.gt("score", 3)))).toEqual({
       kind: "and",
       nodes: [
@@ -66,7 +66,7 @@ describe("createFilterConstraintBuilder — combinators", () => {
   });
 
   it("records `or` children in argument order", () => {
-    const q = createFilterConstraintBuilder<PagesDoc>();
+    const q = createQueryFilterConstraintBuilder<PagesDoc>();
     expect(tree(q.or(q.eq("authorId", "u1"), q.eq("isPublic", true)))).toEqual({
       kind: "or",
       nodes: [
@@ -77,7 +77,7 @@ describe("createFilterConstraintBuilder — combinators", () => {
   });
 
   it("preserves tree shape for a nested `or` inside an `and`", () => {
-    const q = createFilterConstraintBuilder<PagesDoc>();
+    const q = createQueryFilterConstraintBuilder<PagesDoc>();
     const result = q.and(
       q.eq("categoryId", "news"),
       q.or(q.eq("authorId", "u1"), q.eq("isPublic", true)),
@@ -98,7 +98,7 @@ describe("createFilterConstraintBuilder — combinators", () => {
   });
 
   it("wraps exactly one node in `not`", () => {
-    const q = createFilterConstraintBuilder<PagesDoc>();
+    const q = createQueryFilterConstraintBuilder<PagesDoc>();
     expect(tree(q.not(q.eq("isPublic", false)))).toEqual({
       kind: "not",
       node: { kind: "compare", field: "isPublic", op: "eq", value: false },
@@ -106,22 +106,22 @@ describe("createFilterConstraintBuilder — combinators", () => {
   });
 
   it("records a zero-argument `and` as an empty node list — the identity case", () => {
-    const q = createFilterConstraintBuilder<PagesDoc>();
+    const q = createQueryFilterConstraintBuilder<PagesDoc>();
     expect(tree(q.and())).toEqual({ kind: "and", nodes: [] });
   });
 });
 
-describe("createFilterConstraintBuilder — statelessness", () => {
+describe("createQueryFilterConstraintBuilder — statelessness", () => {
   it("returns a fresh node per call — an earlier result is never mutated by a later one", () => {
-    const q = createFilterConstraintBuilder<PagesDoc>();
+    const q = createQueryFilterConstraintBuilder<PagesDoc>();
     const first = tree(q.eq("authorId", "u1"));
     q.eq("authorId", "u2");
     expect(first).toEqual({ kind: "compare", field: "authorId", op: "eq", value: "u1" });
   });
 
   it("does not share state between two builders — a combinator only sees what it was passed", () => {
-    const a = createFilterConstraintBuilder<PagesDoc>();
-    const b = createFilterConstraintBuilder<PagesDoc>();
+    const a = createQueryFilterConstraintBuilder<PagesDoc>();
+    const b = createQueryFilterConstraintBuilder<PagesDoc>();
     a.eq("authorId", "u1");
     expect(tree(b.and(b.eq("score", 9)))).toEqual({
       kind: "and",
@@ -130,8 +130,8 @@ describe("createFilterConstraintBuilder — statelessness", () => {
   });
 
   it("accepts a node built by a DIFFERENT builder — nodes are plain values, not bound to an instance", () => {
-    const a = createFilterConstraintBuilder<PagesDoc>();
-    const b = createFilterConstraintBuilder<PagesDoc>();
+    const a = createQueryFilterConstraintBuilder<PagesDoc>();
+    const b = createQueryFilterConstraintBuilder<PagesDoc>();
     expect(tree(a.not(b.eq("isPublic", true)))).toEqual({
       kind: "not",
       node: { kind: "compare", field: "isPublic", op: "eq", value: true },

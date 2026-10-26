@@ -77,8 +77,9 @@ export interface TextFieldAdminConfig<
  */
 export interface TextFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /** Admin UI configuration for this field. */
   admin?: TextFieldAdminInput<TCollectionSlug>;
   /**

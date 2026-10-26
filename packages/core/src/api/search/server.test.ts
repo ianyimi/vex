@@ -55,6 +55,24 @@ describe("search (server)", () => {
     expect(docs).toHaveLength(3);
   });
 
+  test("limit 0 returns every match, like an omitted limit", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      for (let i = 0; i < 5; i++) {
+        await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}` });
+      }
+      return search({
+        ctx,
+        collection: "posts",
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        limit: 0,
+      });
+    });
+    expect(docs).toHaveLength(5);
+  });
+
   test("non-empty query does not throw (withSearchIndex not implemented in convex-test)", async () => {
     const t = convexTest(schema, modules);
     let result: unknown[] = [];
@@ -73,6 +91,44 @@ describe("search (server)", () => {
       // withSearchIndex not implemented in convex-test v0.0.38 — acceptable
     }
     expect(Array.isArray(result)).toBe(true);
+  });
+
+  test("where narrows the result set", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "A", slug: "a", featured: true });
+      await ctx.db.insert("posts", { title: "B", slug: "b", featured: false });
+      await ctx.db.insert("posts", { title: "C", slug: "c", featured: true });
+      return search({
+        ctx,
+        collection: "posts",
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        limit: 10,
+        where: (q) => q.eq("featured", true),
+      });
+    });
+    expect(docs.map((d) => d.title)).toEqual(["A", "C"]);
+  });
+
+  test("a plain where node narrows the result set like the builder", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "A", slug: "a", featured: true });
+      await ctx.db.insert("posts", { title: "B", slug: "b", featured: false });
+      await ctx.db.insert("posts", { title: "C", slug: "c", featured: true });
+      return search({
+        ctx,
+        collection: "posts",
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        limit: 10,
+        where: { field: "featured", op: "eq", value: true },
+      });
+    });
+    expect(docs.map((d) => d.title)).toEqual(["A", "C"]);
   });
 
   test("populate works on empty-query search (uses .take() path)", async () => {
@@ -317,14 +373,7 @@ const constrainedAccess = {
       contributor: {
         posts: {
           read: {
-            constraints: (
-               
-              {
-                q,
-              }: {
-                q: any;
-              },
-            ) => q.filter((f: any) => f.eq("featured", true)),
+            where: ({ q }: { q: any }) => q.eq("featured", true),
           },
         },
       },
@@ -375,12 +424,13 @@ describe("search (server) — access constraints", () => {
 // ── Index-shaped, combined, deny-all, and boolean-short-circuit constraints ─
 //
 // `search` uses a SEARCH index for the query's one index slot, so an access
-// rule's index half can never reach `.withIndex()` — `resolveAccessConstraint`
+// rule's index half can never reach `.withIndex()` — `resolveQueryConstraint`
 // always compiles the WHOLE condition (index half included) into `.filter()`.
 const indexedPostsResource = defineCollection({
   slug: "posts",
-  // `featured` declares a real index — `defineAccess` validates a rule's
-  // `withIndex` call against it at config time.
+  // `featured` declares a real index, matching what `vex generate` would emit —
+  // config-time index validation (`validateAccessConfig`, run from `defineConfig`)
+  // is not exercised by this file, which builds `VexConfig` by hand.
   fields: { title: text(), slug: text(), featured: checkbox({ index: "by_featured" }) },
 });
 
@@ -394,7 +444,7 @@ const indexShapedAccess = {
     permissions: {
       contributor: {
         posts: {
-          read: { constraints: ({ q }) => q.withIndex("by_featured", (ix) => ix.eq("featured", true)) },
+          read: { withIndex: { name: "by_featured", range: (ix) => ix.eq("featured", true) } },
         },
       },
     },
@@ -412,10 +462,8 @@ const indexAndFilterAccess = {
       contributor: {
         posts: {
           read: {
-            constraints: ({ q }) =>
-              q
-                .withIndex("by_featured", (ix) => ix.eq("featured", true))
-                .filter((f) => f.neq("slug", "hidden")),
+            withIndex: { name: "by_featured", range: (ix) => ix.eq("featured", true) },
+            where: ({ q }) => q.neq("slug", "hidden"),
           },
         },
       },
@@ -449,7 +497,7 @@ const booleanShortCircuitAccess = {
           // Never touches `q` — a rule may short-circuit to a flat verdict
           // per caller instead of building a condition (`classifyRole`'s
           // outcome check runs before it ever looks for one).
-          read: { constraints: ({ user }) => user._id === "vip" },
+          read: { where: ({ user }) => user._id === "vip" },
         },
       },
     },
@@ -474,7 +522,7 @@ async function seedSearchNarrowing(ctx: GenericMutationCtx<GenericDataModel>) {
 }
 
 describe("search (server) — index-shaped constraint falls back to filter", () => {
-  test("withIndex-recorded constraint still narrows the query: full page, not ragged", async () => {
+  test("withIndex-selected constraint still narrows the query: full page, not ragged", async () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       await seedSearchNarrowing(ctx);
@@ -615,7 +663,7 @@ describe("search (server) — deny-all constraint", () => {
   });
 });
 
-describe("search (server) — boolean short-circuit from a constraints callback", () => {
+describe("search (server) — boolean short-circuit from a withIndex/where callback", () => {
   test("callback resolving to `true` for this caller is fully unrestricted (no narrowing pushed)", async () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {

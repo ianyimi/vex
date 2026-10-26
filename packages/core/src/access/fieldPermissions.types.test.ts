@@ -55,7 +55,7 @@ describe("field maps — type level", () => {
     });
   });
 
-  it("accepts a map returned from `filter` beside `constraints`", () => {
+  it("accepts a map returned from `filter` beside `withIndex`", () => {
     defineAccess({
       roles: ["editor"] as const,
       resources: [posts, users],
@@ -65,7 +65,7 @@ describe("field maps — type level", () => {
         editor: {
           posts: {
             read: {
-              constraints: ({ q }) => q.withIndex("by_slug", (iq) => iq.eq("slug", "a")),
+              withIndex: { name: "by_slug", range: (iq) => iq.eq("slug", "a") },
               filter: () => ({ "*": true, body: false }),
             },
           },
@@ -227,7 +227,7 @@ describe("field maps — type level", () => {
     });
   });
 
-  it("rejects a bad key inside `filter` beside `constraints`", () => {
+  it("rejects a bad key inside `filter` beside `withIndex`", () => {
     defineAccess({
       roles: ["editor"] as const,
       resources: [posts, users],
@@ -238,7 +238,7 @@ describe("field maps — type level", () => {
           posts: {
             // @ts-expect-error — ✖ field map returns a field not on this resource: "titel"
             read: {
-              constraints: ({ q }) => q.withIndex("by_slug", (iq) => iq.eq("slug", "a")),
+              withIndex: { name: "by_slug", range: (iq) => iq.eq("slug", "a") },
               filter: () => ({ "*": false, titel: true }),
             },
           },

@@ -1,4 +1,6 @@
-import type { GeneratedVexTypes } from "./types/generated";
+import type { GeneratedVexTypes } from "../types/generated";
+
+export * from "./valuesEqual";
 
 /**
  * Icon name accepted by `admin.icon` on collections, globals, blocks, and live

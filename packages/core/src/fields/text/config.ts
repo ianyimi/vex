@@ -51,8 +51,9 @@ import type { TextFieldInput, TextField } from "./types";
  */
 export function text<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
->(options?: TextFieldInput<TCollectionSlug, TFieldMeta>): TextField<TCollectionSlug, TFieldMeta> {
+>(options?: TextFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>): TextField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.text.type,
     interfaceType: ADMIN_FIELDS.text.interfaceType,

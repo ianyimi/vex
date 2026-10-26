@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { CONSTRAINT_COMPARATORS } from "@vexcms/core";
+import { valuesEqual } from "@vexcms/core";
 import type { AnyFormApi } from "../components/form/AppFormContext";
 import { isFieldKeyDirty } from "../components/form/changedValues";
 
@@ -23,7 +23,7 @@ import { isFieldKeyDirty } from "../components/form/changedValues";
  * than the value on screen at mount, and Save (gated on `isDefaultValue`)
  * stops enabling itself for an editor who changed nothing.
  *
- * Comparison is `CONSTRAINT_COMPARATORS.eq` (content equality), because
+ * Comparison is `valuesEqual.eq` (content equality), because
  * `relationship`/`select` store arrays, where `===` would report a change on
  * every render.
  *
@@ -48,7 +48,7 @@ export function useLiveFieldMerge(props: {
       if (!Object.prototype.hasOwnProperty.call(document, key)) continue;
 
       const incoming = document[key];
-      if (CONSTRAINT_COMPARATORS.eq(form.getFieldValue(key), incoming)) continue;
+      if (valuesEqual(form.getFieldValue(key), incoming)) continue;
 
       form.setFieldValue(key, incoming, { dontUpdateMeta: true });
     }

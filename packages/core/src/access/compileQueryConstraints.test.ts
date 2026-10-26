@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { AccessFilterConstraint, AccessIndexConstraint } from "./constraintTypes";
+import type { QueryFilterConstraint, QueryIndexConstraint } from "./queryConstraintTypes";
 import {
-  accessConstraintsToFilter,
-  accessConstraintsToIndexRange,
-  accessConstraintsToPredicate,
-  accessFilterTreeToFilter,
-  accessFilterTreeToPredicate,
-} from "./compileConstraints";
+  queryConstraintsToConvexFilter,
+  queryConstraintsToConvexIndexRange,
+  queryConstraintsToPredicate,
+  queryFilterTreeToConvexFilter,
+  queryFilterTreeToPredicate,
+  queryFilterTreeToWhereNode,
+  whereNodeToQueryFilterTree,
+} from "./compileQueryConstraints";
 import { FilterBuilder, GenericDocument, GenericTableInfo } from "convex/server";
 
 type TestDoc = GenericDocument & {
@@ -65,21 +67,21 @@ function evaluatingFilterBuilder(doc: TestDoc) {
 
 describe("constraintsToIndexRange", () => {
   it("applies a single eq constraint", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "authorId", op: "eq", value: "u1" },
     ];
     const { builder, calls } = recordingRangeBuilder();
-    accessConstraintsToIndexRange({ constraints })(builder);
+    queryConstraintsToConvexIndexRange({ constraints })(builder);
     expect(calls).toEqual([["eq", "authorId", "u1"]]);
   });
 
   it("applies eq then a lower bound in order", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "authorId", op: "eq", value: "u1" },
       { field: "score", op: "gte", value: 5 },
     ];
     const { builder, calls } = recordingRangeBuilder();
-    accessConstraintsToIndexRange({ constraints })(builder);
+    queryConstraintsToConvexIndexRange({ constraints })(builder);
     expect(calls).toEqual([
       ["eq", "authorId", "u1"],
       ["gte", "score", 5],
@@ -87,12 +89,12 @@ describe("constraintsToIndexRange", () => {
   });
 
   it("applies a lower bound then an upper bound on the same field", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "score", op: "gte", value: 1 },
       { field: "score", op: "lt", value: 10 },
     ];
     const { builder, calls } = recordingRangeBuilder();
-    accessConstraintsToIndexRange({ constraints })(builder);
+    queryConstraintsToConvexIndexRange({ constraints })(builder);
     expect(calls).toEqual([
       ["gte", "score", 1],
       ["lt", "score", 10],
@@ -101,58 +103,58 @@ describe("constraintsToIndexRange", () => {
 
   it("returns the builder unchanged for an empty constraint list", () => {
     const { builder, calls } = recordingRangeBuilder();
-    expect(accessConstraintsToIndexRange({ constraints: [] })(builder)).toBe(builder);
+    expect(queryConstraintsToConvexIndexRange({ constraints: [] })(builder)).toBe(builder);
     expect(calls).toEqual([]);
   });
 });
 
 describe("constraintsToFilter", () => {
   it("returns a single expression for one constraint, without wrapping in and", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "authorId", op: "eq", value: "u1" },
     ];
     const { builder, calls } = recordingFilterBuilder();
-    accessConstraintsToFilter({ constraints, q: builder });
+    queryConstraintsToConvexFilter({ constraints, q: builder });
     expect(calls).toEqual(["eq"]);
   });
 
   it("ands an eq and a lower bound together", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "authorId", op: "eq", value: "u1" },
       { field: "score", op: "gte", value: 5 },
     ];
     const { builder, calls } = recordingFilterBuilder();
-    accessConstraintsToFilter({ constraints, q: builder });
+    queryConstraintsToConvexFilter({ constraints, q: builder });
     expect(calls).toEqual(["eq", "gte", "and"]);
   });
 
   it("ands a lower and an upper bound on the same field", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "score", op: "gte", value: 1 },
       { field: "score", op: "lt", value: 10 },
     ];
     const { builder, calls } = recordingFilterBuilder();
-    accessConstraintsToFilter({ constraints, q: builder });
+    queryConstraintsToConvexFilter({ constraints, q: builder });
     expect(calls).toEqual(["gte", "lt", "and"]);
   });
 });
 
 describe("constraintsToPredicate", () => {
   it("accepts a matching document and rejects a non-matching one, eq-only", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "authorId", op: "eq", value: "u1" },
     ];
-    const predicate = accessConstraintsToPredicate({ constraints });
+    const predicate = queryConstraintsToPredicate({ constraints });
     expect(predicate({ authorId: "u1", score: 1, title: "x" })).toBe(true);
     expect(predicate({ authorId: "u2", score: 1, title: "x" })).toBe(false);
   });
 
   it("evaluates a lower bound then an upper bound on the same field", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "score", op: "gte", value: 1 },
       { field: "score", op: "lt", value: 10 },
     ];
-    const predicate = accessConstraintsToPredicate({ constraints });
+    const predicate = queryConstraintsToPredicate({ constraints });
     expect(predicate({ authorId: "u1", score: 5, title: "x" })).toBe(true);
     expect(predicate({ authorId: "u1", score: 10, title: "x" })).toBe(false);
     expect(predicate({ authorId: "u1", score: 0, title: "x" })).toBe(false);
@@ -160,7 +162,7 @@ describe("constraintsToPredicate", () => {
 
   it("returns true for an empty constraint list", () => {
     expect(
-      accessConstraintsToPredicate({ constraints: [] })({
+      queryConstraintsToPredicate({ constraints: [] })({
         authorId: "u1",
         score: 1,
         title: "x",
@@ -170,8 +172,8 @@ describe("constraintsToPredicate", () => {
 
   it("includes the boundary for gte and lte, excludes it for gt and lt", () => {
     const doc: TestDoc = { authorId: "u1", score: 5, title: "x" };
-    const at = (op: AccessIndexConstraint<string, TestDoc>["op"]) =>
-      accessConstraintsToPredicate<TestDoc>({ constraints: [{ field: "score", op, value: 5 }] })(
+    const at = (op: QueryIndexConstraint<string, TestDoc>["op"]) =>
+      queryConstraintsToPredicate<TestDoc>({ constraints: [{ field: "score", op, value: 5 }] })(
         doc,
       );
     expect(at("gte")).toBe(true);
@@ -182,14 +184,14 @@ describe("constraintsToPredicate", () => {
   });
 
   it("treats a missing field as unsatisfied rather than throwing", () => {
-    const predicate = accessConstraintsToPredicate<TestDoc>({
+    const predicate = queryConstraintsToPredicate<TestDoc>({
       constraints: [{ field: "absent", op: "eq", value: "x" }],
     });
     expect(predicate({ authorId: "u1", score: 1, title: "x" })).toBe(false);
   });
 
   it("requires EVERY constraint to hold, not just one", () => {
-    const predicate = accessConstraintsToPredicate<TestDoc>({
+    const predicate = queryConstraintsToPredicate<TestDoc>({
       constraints: [
         { field: "authorId", op: "eq", value: "u1" },
         { field: "score", op: "gte", value: 5 },
@@ -203,15 +205,15 @@ describe("constraintsToPredicate", () => {
 
 describe("constraintsToPredicate and constraintsToFilter agree", () => {
   it("agree on a matching and a non-matching document for a mixed eq + bound constraint set", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "authorId", op: "eq", value: "u1" },
       { field: "score", op: "gte", value: 5 },
     ];
     const matching: TestDoc = { authorId: "u1", score: 10, title: "x" };
     const nonMatching: TestDoc = { authorId: "u1", score: 1, title: "x" };
     for (const doc of [matching, nonMatching]) {
-      const viaPredicate = accessConstraintsToPredicate({ constraints })(doc);
-      const viaFilter = accessConstraintsToFilter({
+      const viaPredicate = queryConstraintsToPredicate({ constraints })(doc);
+      const viaFilter = queryConstraintsToConvexFilter({
         constraints,
         q: evaluatingFilterBuilder(doc),
       });
@@ -220,7 +222,7 @@ describe("constraintsToPredicate and constraintsToFilter agree", () => {
   });
 
   it("agree AT the boundary — the case that distinguishes gte from gt", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "score", op: "gte", value: 5 },
       { field: "score", op: "lte", value: 5 },
     ];
@@ -228,19 +230,19 @@ describe("constraintsToPredicate and constraintsToFilter agree", () => {
     const justOutside: TestDoc = { authorId: "u1", score: 6, title: "x" };
     for (const doc of [onBoundary, justOutside]) {
       expect(
-        accessConstraintsToFilter({ constraints, q: evaluatingFilterBuilder(doc) }),
-      ).toBe(accessConstraintsToPredicate({ constraints })(doc));
+        queryConstraintsToConvexFilter({ constraints, q: evaluatingFilterBuilder(doc) }),
+      ).toBe(queryConstraintsToPredicate({ constraints })(doc));
     }
     // And pin the expected answers, so both agreeing on a WRONG value still fails.
-    expect(accessConstraintsToPredicate({ constraints })(onBoundary)).toBe(true);
-    expect(accessConstraintsToPredicate({ constraints })(justOutside)).toBe(false);
+    expect(queryConstraintsToPredicate({ constraints })(onBoundary)).toBe(true);
+    expect(queryConstraintsToPredicate({ constraints })(justOutside)).toBe(false);
   });
 });
 
 describe("constraintsToFilter — caller contract", () => {
   it("throws on an empty constraint list — an unrestricted rule never reaches a compile target", () => {
     const { builder } = recordingFilterBuilder();
-    expect(() => accessConstraintsToFilter({ constraints: [], q: builder })).toThrow(
+    expect(() => queryConstraintsToConvexFilter({ constraints: [], q: builder })).toThrow(
       /must be non-empty/,
     );
   });
@@ -264,7 +266,7 @@ describe("filter tree compilers", () => {
     } as any;
   }
 
-  const nested: AccessFilterConstraint<TestDoc> = {
+  const nested: QueryFilterConstraint<TestDoc> = {
     kind: "and",
     nodes: [
       { kind: "compare", field: "authorId", op: "eq", value: "u1" },
@@ -279,7 +281,7 @@ describe("filter tree compilers", () => {
   };
 
   it("evaluates a nested and/or/not tree as a predicate", () => {
-    const predicate = accessFilterTreeToPredicate({ node: nested });
+    const predicate = queryFilterTreeToPredicate({ node: nested });
     expect(predicate({ authorId: "u1", score: 9, title: "z" })).toBe(true);
     expect(predicate({ authorId: "u1", score: 1, title: "x" })).toBe(true);
     expect(predicate({ authorId: "u1", score: 1, title: "z" })).toBe(false);
@@ -287,7 +289,7 @@ describe("filter tree compilers", () => {
   });
 
   it("supports neq, which the flat index compilers cannot express", () => {
-    const predicate = accessFilterTreeToPredicate<TestDoc>({
+    const predicate = queryFilterTreeToPredicate<TestDoc>({
       node: { kind: "compare", field: "authorId", op: "neq", value: "u1" },
     });
     expect(predicate({ authorId: "u2", score: 1, title: "x" })).toBe(true);
@@ -295,12 +297,12 @@ describe("filter tree compilers", () => {
   });
 
   it("treats an empty and as true and an empty or as false — the operators' identities", () => {
-    expect(accessFilterTreeToPredicate<TestDoc>({ node: { kind: "and", nodes: [] } })({
+    expect(queryFilterTreeToPredicate<TestDoc>({ node: { kind: "and", nodes: [] } })({
       authorId: "u1",
       score: 1,
       title: "x",
     })).toBe(true);
-    expect(accessFilterTreeToPredicate<TestDoc>({ node: { kind: "or", nodes: [] } })({
+    expect(queryFilterTreeToPredicate<TestDoc>({ node: { kind: "or", nodes: [] } })({
       authorId: "u1",
       score: 1,
       title: "x",
@@ -314,8 +316,8 @@ describe("filter tree compilers", () => {
       { authorId: "u1", score: 1, title: "z" },
       { authorId: "u2", score: 9, title: "z" },
     ] satisfies TestDoc[]) {
-      expect(accessFilterTreeToFilter({ node: nested, q: evaluatingTreeBuilder(doc) })).toBe(
-        accessFilterTreeToPredicate({ node: nested })(doc),
+      expect(queryFilterTreeToConvexFilter({ node: nested, q: evaluatingTreeBuilder(doc) })).toBe(
+        queryFilterTreeToPredicate({ node: nested })(doc),
       );
     }
   });
@@ -324,7 +326,7 @@ describe("filter tree compilers", () => {
 describe("agreement — every index operator across a shared candidate set", () => {
   // One constraint value (5) and a battery of candidates spanning the boundary, a
   // type-mismatched string, a null, and a field the document never set at all — run
-  // through every operator `AccessIndexConstraint` supports. A per-operator `it`
+  // through every operator `QueryIndexConstraint` supports. A per-operator `it`
   // keeps a single divergence attributable to one comparator rather than buried in
   // a combined loop.
   const candidates: Array<Partial<Pick<TestDoc, "score">>> = [
@@ -339,13 +341,13 @@ describe("agreement — every index operator across a shared candidate set", () 
 
   for (const op of ["eq", "gt", "gte", "lt", "lte"] as const) {
     it(`predicate and filter agree on every "${op}" candidate`, () => {
-      const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+      const constraints: QueryIndexConstraint<string, TestDoc>[] = [
         { field: "score", op, value: 5 },
       ];
       for (const partial of candidates) {
         const doc = { authorId: "u1", title: "x", ...partial } as unknown as TestDoc;
-        const viaPredicate = accessConstraintsToPredicate({ constraints })(doc);
-        const viaFilter = accessConstraintsToFilter({
+        const viaPredicate = queryConstraintsToPredicate({ constraints })(doc);
+        const viaFilter = queryConstraintsToConvexFilter({
           constraints,
           q: evaluatingFilterBuilder(doc),
         });
@@ -357,10 +359,10 @@ describe("agreement — every index operator across a shared candidate set", () 
 
 describe("predicate — undefined, missing, and null are distinct", () => {
   it("a missing key and an explicit `undefined` value read identically via bracket access", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "score", op: "eq", value: undefined as unknown as number },
     ];
-    const predicate = accessConstraintsToPredicate({ constraints });
+    const predicate = queryConstraintsToPredicate({ constraints });
     const missing = { authorId: "u1", title: "x" } as unknown as TestDoc;
     const explicitUndefined = {
       authorId: "u1",
@@ -375,34 +377,34 @@ describe("predicate — undefined, missing, and null are distinct", () => {
     const nullDoc = { authorId: "u1", title: "x", score: null } as unknown as TestDoc;
     const missingDoc = { authorId: "u1", title: "x" } as unknown as TestDoc;
 
-    const eqUndefined: AccessIndexConstraint<string, TestDoc>[] = [
+    const eqUndefined: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "score", op: "eq", value: undefined as unknown as number },
     ];
-    expect(accessConstraintsToPredicate({ constraints: eqUndefined })(nullDoc)).toBe(false);
+    expect(queryConstraintsToPredicate({ constraints: eqUndefined })(nullDoc)).toBe(false);
 
-    const eqNull: AccessIndexConstraint<string, TestDoc>[] = [
+    const eqNull: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "score", op: "eq", value: null as unknown as number },
     ];
-    expect(accessConstraintsToPredicate({ constraints: eqNull })(missingDoc)).toBe(false);
-    expect(accessConstraintsToPredicate({ constraints: eqNull })(nullDoc)).toBe(true);
+    expect(queryConstraintsToPredicate({ constraints: eqNull })(missingDoc)).toBe(false);
+    expect(queryConstraintsToPredicate({ constraints: eqNull })(nullDoc)).toBe(true);
   });
 });
 
 describe("predicate — falsy values are not treated as absent", () => {
   it("zero satisfies eq(0) and is distinct from a missing field", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "score", op: "eq", value: 0 },
     ];
-    const predicate = accessConstraintsToPredicate({ constraints });
+    const predicate = queryConstraintsToPredicate({ constraints });
     expect(predicate({ authorId: "u1", title: "x", score: 0 })).toBe(true);
     expect(predicate({ authorId: "u1", title: "x" } as unknown as TestDoc)).toBe(false);
   });
 
   it("false satisfies eq(false) and is distinct from 0 and from a missing field", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "featured", op: "eq", value: false },
     ];
-    const predicate = accessConstraintsToPredicate({ constraints });
+    const predicate = queryConstraintsToPredicate({ constraints });
     expect(
       predicate({ authorId: "u1", title: "x", score: 1, featured: false }),
     ).toBe(true);
@@ -413,10 +415,10 @@ describe("predicate — falsy values are not treated as absent", () => {
   });
 
   it('an empty string satisfies eq("") and is distinct from a missing field', () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "title", op: "eq", value: "" },
     ];
-    const predicate = accessConstraintsToPredicate({ constraints });
+    const predicate = queryConstraintsToPredicate({ constraints });
     expect(predicate({ authorId: "u1", title: "", score: 1 })).toBe(true);
     expect(predicate({ authorId: "u1", score: 1 } as unknown as TestDoc)).toBe(false);
   });
@@ -424,13 +426,13 @@ describe("predicate — falsy values are not treated as absent", () => {
 
 describe("constraintsToIndexRange — longer chains", () => {
   it("applies a three-field eq chain in order", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "authorId", op: "eq", value: "u1" },
       { field: "title", op: "eq", value: "hello" },
       { field: "score", op: "eq", value: 5 },
     ];
     const { builder, calls } = recordingRangeBuilder();
-    accessConstraintsToIndexRange({ constraints })(builder);
+    queryConstraintsToConvexIndexRange({ constraints })(builder);
     expect(calls).toEqual([
       ["eq", "authorId", "u1"],
       ["eq", "title", "hello"],
@@ -439,13 +441,13 @@ describe("constraintsToIndexRange — longer chains", () => {
   });
 
   it("applies eq, then a lower bound, then an upper bound in one chain", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "authorId", op: "eq", value: "u1" },
       { field: "score", op: "gte", value: 1 },
       { field: "score", op: "lt", value: 10 },
     ];
     const { builder, calls } = recordingRangeBuilder();
-    accessConstraintsToIndexRange({ constraints })(builder);
+    queryConstraintsToConvexIndexRange({ constraints })(builder);
     expect(calls).toEqual([
       ["eq", "authorId", "u1"],
       ["gte", "score", 1],
@@ -456,13 +458,13 @@ describe("constraintsToIndexRange — longer chains", () => {
 
 describe("constraintsToFilter — longer chains", () => {
   it("ands a three-constraint list in ONE and() call, not nested pairwise", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "authorId", op: "eq", value: "u1" },
       { field: "score", op: "gte", value: 1 },
       { field: "score", op: "lt", value: 10 },
     ];
     const { builder, calls } = recordingFilterBuilder();
-    accessConstraintsToFilter({ constraints, q: builder });
+    queryConstraintsToConvexFilter({ constraints, q: builder });
     expect(calls).toEqual(["eq", "gte", "lt", "and"]);
   });
 });
@@ -480,14 +482,14 @@ describe("agreement — array-valued fields (relationship/select storage) compar
   // model that; it is what the compiled query ACTUALLY selects, unlike the plain
   // `===` of `evaluatingFilterBuilder`/`evaluatingTreeBuilder` above.
   //
-  // `CONSTRAINT_COMPARATORS.eq` / `FILTER_COMPARATORS.eq`+`neq`
-  // (compileConstraints.ts) use JS `===`/`!==`, which is REFERENCE equality for
+  // `QUERY_INDEX_CONSTRAINT_COMPARATORS.eq` / `QUERY_FILTER_CONSTRAINT_COMPARATORS.eq`+`neq`
+  // (compileQueryConstraints.ts) use JS `===`/`!==`, which is REFERENCE equality for
   // arrays. A relationship/select field's stored array and a freshly built
   // comparison array are never the same reference — this is exactly the shape
   // `buildChecks.ts`'s `indexedOwnerCheck` records for a relationship owner field:
   // `ix.eq(field, [id])`, a brand-new array literal built from the caller's id. These
   // were the regression pins for the reference-vs-content equality divergence
-  // (DD 43); `CONSTRAINT_COMPARATORS.eq` is content equality now, so they pass and
+  // (DD 43); `QUERY_INDEX_CONSTRAINT_COMPARATORS.eq` is content equality now, so they pass and
   // guard against a relapse.
 
   function structuralEq(a: unknown, b: unknown): boolean {
@@ -522,39 +524,39 @@ describe("agreement — array-valued fields (relationship/select storage) compar
   }
 
   it("eq on a relationship/select array agrees between query and predicate (indexedOwnerCheck's exact shape)", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "tags", op: "eq", value: ["u1"] },
     ];
     const doc = { authorId: "u1", title: "x", score: 1, tags: ["u1"] } as TestDoc;
 
-    const viaCompiledQuery = accessConstraintsToFilter({
+    const viaCompiledQuery = queryConstraintsToConvexFilter({
       constraints,
       q: structurallyEvaluatingFilterBuilder(doc),
     });
-    const viaPredicate = accessConstraintsToPredicate({ constraints })(doc);
+    const viaPredicate = queryConstraintsToPredicate({ constraints })(doc);
 
     expect(viaCompiledQuery).toBe(true);
     expect(viaPredicate).toBe(viaCompiledQuery);
   });
 
   it("eq on an empty array agrees the same way", () => {
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "tags", op: "eq", value: [] },
     ];
     const doc = { authorId: "u1", title: "x", score: 1, tags: [] } as TestDoc;
 
-    const viaCompiledQuery = accessConstraintsToFilter({
+    const viaCompiledQuery = queryConstraintsToConvexFilter({
       constraints,
       q: structurallyEvaluatingFilterBuilder(doc),
     });
-    const viaPredicate = accessConstraintsToPredicate({ constraints })(doc);
+    const viaPredicate = queryConstraintsToPredicate({ constraints })(doc);
 
     expect(viaCompiledQuery).toBe(true);
     expect(viaPredicate).toBe(viaCompiledQuery);
   });
 
   it("neq on a relationship/select array does not false-positive in the predicate (the dangerous direction)", () => {
-    const node: AccessFilterConstraint<TestDoc> = {
+    const node: QueryFilterConstraint<TestDoc> = {
       kind: "compare",
       field: "tags",
       op: "neq",
@@ -562,11 +564,11 @@ describe("agreement — array-valued fields (relationship/select storage) compar
     };
     const doc = { authorId: "u1", title: "x", score: 1, tags: ["draft"] } as TestDoc;
 
-    const viaCompiledQuery = accessFilterTreeToFilter({
-      node: node as AccessFilterConstraint<GenericDocument>,
+    const viaCompiledQuery = queryFilterTreeToConvexFilter({
+      node: node as QueryFilterConstraint<GenericDocument>,
       q: structurallyEvaluatingTreeBuilder(doc),
     });
-    const viaPredicate = accessFilterTreeToPredicate({ node: node as AccessFilterConstraint<GenericDocument> })(doc);
+    const viaPredicate = queryFilterTreeToPredicate({ node: node as QueryFilterConstraint<GenericDocument> })(doc);
 
     // Structurally, `doc.tags` EQUALS `["draft"]`, so `neq` is false — Convex's
     // real filter excludes this document.
@@ -578,13 +580,13 @@ describe("agreement — array-valued fields (relationship/select storage) compar
 
   it("agrees when the SAME array reference is compared — isolates the bug to identity, not a broken comparator", () => {
     const shared = ["u1"];
-    const constraints: AccessIndexConstraint<string, TestDoc>[] = [
+    const constraints: QueryIndexConstraint<string, TestDoc>[] = [
       { field: "tags", op: "eq", value: shared },
     ];
     const doc = { authorId: "u1", title: "x", score: 1, tags: shared } as TestDoc;
-    expect(accessConstraintsToPredicate({ constraints })(doc)).toBe(true);
+    expect(queryConstraintsToPredicate({ constraints })(doc)).toBe(true);
     expect(
-      accessConstraintsToFilter({ constraints, q: structurallyEvaluatingFilterBuilder(doc) }),
+      queryConstraintsToConvexFilter({ constraints, q: structurallyEvaluatingFilterBuilder(doc) }),
     ).toBe(true);
   });
 });
@@ -606,7 +608,7 @@ describe("filter tree — deeper nested combinators", () => {
   }
 
   it("agrees on a `not` wrapping an `or` — 2 levels deep", () => {
-    const node: AccessFilterConstraint<TestDoc> = {
+    const node: QueryFilterConstraint<TestDoc> = {
       kind: "not",
       node: {
         kind: "or",
@@ -623,18 +625,18 @@ describe("filter tree — deeper nested combinators", () => {
       { authorId: "u1", score: 1, title: "x" },
     ];
     for (const doc of docs) {
-      expect(accessFilterTreeToPredicate({ node: node as AccessFilterConstraint<GenericDocument> })(doc)).toBe(
-        accessFilterTreeToFilter({ node, q: evaluatingRichTreeBuilder(doc) }),
+      expect(queryFilterTreeToPredicate({ node: node as QueryFilterConstraint<GenericDocument> })(doc)).toBe(
+        queryFilterTreeToConvexFilter({ node, q: evaluatingRichTreeBuilder(doc) }),
       );
     }
     // Pin the semantics, not just cross-agreement: `not(draft OR views < 10)`.
-    expect(accessFilterTreeToPredicate({ node: node as AccessFilterConstraint<GenericDocument> })(docs[0]!)).toBe(false); // draft
-    expect(accessFilterTreeToPredicate({ node: node as AccessFilterConstraint<GenericDocument> })(docs[1]!)).toBe(false); // views<10
-    expect(accessFilterTreeToPredicate({ node: node as AccessFilterConstraint<GenericDocument> })(docs[2]!)).toBe(true); // neither
+    expect(queryFilterTreeToPredicate({ node: node as QueryFilterConstraint<GenericDocument> })(docs[0]!)).toBe(false); // draft
+    expect(queryFilterTreeToPredicate({ node: node as QueryFilterConstraint<GenericDocument> })(docs[1]!)).toBe(false); // views<10
+    expect(queryFilterTreeToPredicate({ node: node as QueryFilterConstraint<GenericDocument> })(docs[2]!)).toBe(true); // neither
   });
 
   it("agrees on an `or` containing an `and` — 2 levels deep", () => {
-    const node: AccessFilterConstraint<TestDoc> = {
+    const node: QueryFilterConstraint<TestDoc> = {
       kind: "or",
       nodes: [
         {
@@ -654,20 +656,20 @@ describe("filter tree — deeper nested combinators", () => {
       { authorId: "u1", score: 1, title: "x" },
     ];
     for (const doc of docs) {
-      expect(accessFilterTreeToPredicate({ node: node as AccessFilterConstraint<GenericDocument> })(doc)).toBe(
-        accessFilterTreeToFilter({ node, q: evaluatingRichTreeBuilder(doc) }),
+      expect(queryFilterTreeToPredicate({ node: node as QueryFilterConstraint<GenericDocument> })(doc)).toBe(
+        queryFilterTreeToConvexFilter({ node, q: evaluatingRichTreeBuilder(doc) }),
       );
     }
-    expect(accessFilterTreeToPredicate({ node: node as AccessFilterConstraint<GenericDocument> })(docs[0]!)).toBe(true); // in range
-    expect(accessFilterTreeToPredicate({ node: node as AccessFilterConstraint<GenericDocument> })(docs[1]!)).toBe(true); // featured
-    expect(accessFilterTreeToPredicate({ node: node as AccessFilterConstraint<GenericDocument> })(docs[2]!)).toBe(false); // neither
+    expect(queryFilterTreeToPredicate({ node: node as QueryFilterConstraint<GenericDocument> })(docs[0]!)).toBe(true); // in range
+    expect(queryFilterTreeToPredicate({ node: node as QueryFilterConstraint<GenericDocument> })(docs[1]!)).toBe(true); // featured
+    expect(queryFilterTreeToPredicate({ node: node as QueryFilterConstraint<GenericDocument> })(docs[2]!)).toBe(false); // neither
     // `featured` missing ⇒ `undefined !== false` ⇒ true: absence reads as "not
     // explicitly false", the same falsy-vs-absent distinction pinned above.
-    expect(accessFilterTreeToPredicate({ node: node as AccessFilterConstraint<GenericDocument> })(docs[3]!)).toBe(true);
+    expect(queryFilterTreeToPredicate({ node: node as QueryFilterConstraint<GenericDocument> })(docs[3]!)).toBe(true);
   });
 
   it("agrees on a 3-level and/or/not tree spanning every comparison operator", () => {
-    const node: AccessFilterConstraint<TestDoc> = {
+    const node: QueryFilterConstraint<TestDoc> = {
       kind: "and",
       nodes: [
         {
@@ -736,9 +738,39 @@ describe("filter tree — deeper nested combinators", () => {
       { authorId: "u1", score: 1, title: "x" },
     ];
     for (const doc of docs) {
-      expect(accessFilterTreeToPredicate({ node: node as AccessFilterConstraint<GenericDocument> })(doc)).toBe(
-        accessFilterTreeToFilter({ node, q: evaluatingRichTreeBuilder(doc) }),
+      expect(queryFilterTreeToPredicate({ node: node as QueryFilterConstraint<GenericDocument> })(doc)).toBe(
+        queryFilterTreeToConvexFilter({ node, q: evaluatingRichTreeBuilder(doc) }),
       );
     }
+  });
+});
+
+describe("where node ↔ query filter tree", () => {
+  const node = {
+    and: [
+      { field: "featured", op: "eq", value: true },
+      { or: [{ field: "slug", op: "eq", value: "a" }, { not: { field: "slug", op: "eq", value: "b" } }] },
+    ],
+  } as const;
+  const tree = {
+    kind: "and",
+    nodes: [
+      { kind: "compare", field: "featured", op: "eq", value: true },
+      {
+        kind: "or",
+        nodes: [
+          { kind: "compare", field: "slug", op: "eq", value: "a" },
+          { kind: "not", node: { kind: "compare", field: "slug", op: "eq", value: "b" } },
+        ],
+      },
+    ],
+  } as const;
+
+  it("converts a node to the tree", () => {
+    expect(whereNodeToQueryFilterTree(node as never)).toEqual(tree);
+  });
+
+  it("converts the tree back to the node", () => {
+    expect(queryFilterTreeToWhereNode(tree as never)).toEqual(node);
   });
 });

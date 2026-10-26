@@ -61,8 +61,9 @@ import type { VexResourceSlug } from "../../types/generated";
  */
 export interface DateFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /**
    * Pre-filled Unix timestamp (milliseconds) shown in the admin form when creating a new document.
    * Does not apply to existing database values.

@@ -1264,8 +1264,7 @@ export const testimonials = defineTable({
         // Editors browse their own posts, resolved straight off
         // the by_author index — no post-read filtering.
         read: {
-          constraints: ({ user, q }) =>
-            q.withIndex("by_author", (ix) => ix.eq("authorId", user._id)),
+          withIndex: ({ user }) => ({ name: "by_author", range: (ix) => ix.eq("authorId", user._id) }),
         },
         update: true,
       },
@@ -1275,8 +1274,7 @@ export const testimonials = defineTable({
         // Compiles to withIndex("by_status", ix => ix.eq("status", "published"))
         // on the query itself, so drafts are never read at all.
         read: {
-          constraints: ({ q }) =>
-            q.withIndex("by_status", (ix) => ix.eq("status", "published")),
+          withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") },
         },
       },
     },

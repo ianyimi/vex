@@ -1,6 +1,6 @@
 
 import { AccessResource } from "../access";
-import { validateAccessConfig } from "../access/validateAccessConstraints";
+import { validateAccessConfig } from "../access/validateAccessConfig";
 import { mergeAuthCollections } from "../auth/mergeCollections";
 import { VexAuthConfigError } from "../auth/types";
 import { internalCollections } from "../collections/internal";

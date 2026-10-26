@@ -6,12 +6,12 @@ import {
   PermissionScope,
   WILDCARD_KEY,
 } from "./constants";
-import { createAccessQueryBuilder, readAccessCondition } from "./createAccessQueryBuilder";
+import { evaluateQueryConstraint } from "./evaluateQueryConstraint";
 import {
-  accessConstraintsToPredicate,
-  accessFilterTreeToPredicate,
-  CONSTRAINT_COMPARATORS,
-} from "./compileConstraints";
+  queryConstraintsToPredicate,
+  queryFilterTreeToPredicate,
+  QUERY_INDEX_CONSTRAINT_COMPARATORS,
+} from "./compileQueryConstraints";
 import { createUserReadSentinel } from "./userReadSentinel";
 import { SYSTEM_FIELD_KEYS } from "./resolveFieldPermissions";
 import { VexAccessError } from "./types";
@@ -334,7 +334,7 @@ function deniedFieldIn<TData extends Record<string, unknown>>(props: {
 
     if (
       props.stored !== undefined &&
-      CONSTRAINT_COMPARATORS.eq(props.changes[changedField], props.stored[changedField])
+      QUERY_INDEX_CONSTRAINT_COMPARATORS.eq(props.changes[changedField], props.stored[changedField])
     ) {
       continue;
     }
@@ -348,29 +348,31 @@ function deniedFieldIn<TData extends Record<string, unknown>>(props: {
 const CAPABILITY_PROBE = Symbol("vex.capabilityProbe");
 
 /**
- * True when a resolved check is the constraint object form.
+ * True when a resolved check is the narrowing object form.
  *
- * Presence of `constraints` is the discriminant. This matters here because the
- * early `typeof check !== "function"` return below treats every non-function as a
- * boolean or field-mode value — a constrained object has neither `mode` nor
+ * Presence of `withIndex` or `where` is the discriminant. This matters here because
+ * the early `typeof check !== "function"` return below treats every non-function as a
+ * boolean or field-mode value — a narrowing object has neither `mode` nor
  * `fields`, so it used to be mistaken for one.
  *
  * @param check - The resolved check for one role + action.
- * @returns `true` when `check` carries a `constraints` callback.
+ * @returns `true` when `check` carries `withIndex` or `where`.
  * @internal
  */
 function isConstrainedCheck(
   check: PermissionCheck,
-): check is Extract<PermissionCheck, { constraints: unknown }> {
-  return typeof check === "object" && check !== null && "constraints" in check;
+): check is Extract<PermissionCheck, { withIndex?: unknown; where?: unknown }> {
+  return (
+    typeof check === "object" && check !== null && ("withIndex" in check || "where" in check)
+  );
 }
 
 /**
- * Evaluates a constraint-form check against one document.
+ * Evaluates a narrowing-object check against one document.
  *
- * This is the second half of what makes constraints worth recording as data: the
- * SAME declaration that compiles to a `withIndex` range or a `.filter()` expression
- * on the server also interprets directly in JS here, which is what keeps
+ * This is the second half of what makes `withIndex` / `where` worth recording as
+ * data: the SAME declaration that compiles to a `withIndex` range or a `.filter()`
+ * expression on the server also interprets directly in JS here, which is what keeps
  * client-side `usePermission` working with no server round trip (P-004). A closure
  * could only ever do this half.
  *
@@ -382,7 +384,7 @@ function isConstrainedCheck(
  * @typeParam TUser - User document shape.
  * @typeParam TOrg - Organization document shape.
  * @param props - Input props, as `resolvePermissionCheck` received them.
- * @param props.check - The constraint-form check.
+ * @param props.check - The narrowing-object check.
  * @param props.user - Caller.
  * @param props.data - Document under test; absent means the quantified path.
  * @param props.organization - Active organization, when configured.
@@ -392,12 +394,12 @@ function isConstrainedCheck(
  * @returns Whether this role permits the action on `props.data`, or the field
  *   map `filter` returned when the condition holds.
  * @throws {VexAccessError} When no `data` was supplied under `scope: "doc"` — a
- *   constraint is a per-document condition, so there is nothing to answer without
- *   a document.
+ *   `withIndex`/`where` condition is per-document, so there is nothing to answer
+ *   without a document.
  * @internal
  */
 function resolveConstrainedCheck<TData, TUser, TOrg>(props: {
-  check: Extract<PermissionCheck, { constraints: unknown }>;
+  check: Extract<PermissionCheck, { withIndex?: unknown; where?: unknown }>;
   user: TUser;
   data?: TData;
   organization?: TOrg;
@@ -412,11 +414,13 @@ function resolveConstrainedCheck<TData, TUser, TOrg>(props: {
   // unauthenticated) — see its docstring for why.
   const { user, wasRead: userWasRead } = createUserReadSentinel<TUser>(props.user);
 
-  const outcome = props.check.constraints({
-    user,
-    q: createAccessQueryBuilder(),
-    ...(props.organization !== undefined ? { organization: props.organization } : {}),
-  } as unknown as Parameters<typeof props.check.constraints>[0]);
+  const outcome = evaluateQueryConstraint({
+    check: props.check,
+    callerProps: {
+      user,
+      ...(props.organization !== undefined ? { organization: props.organization } : {}),
+    },
+  });
 
   // The rule asked who the caller is and there is no answer — deny, rather than
   // compile a condition built from `undefined`.
@@ -439,17 +443,17 @@ function resolveConstrainedCheck<TData, TUser, TOrg>(props: {
     });
   }
 
-  const condition = readAccessCondition<GenericDocument>(outcome);
-  // A condition this module cannot read did not come from `q`. Deny rather than
-  // widen: an unreadable condition must never resolve to unrestricted access.
-  if (condition === undefined) return false;
+  // An outcome this evaluator cannot read did not come from `withIndex` / `where`.
+  // Deny rather than widen: an unreadable condition must never resolve to
+  // unrestricted access.
+  if (outcome === undefined) return false;
 
   const doc = props.data as unknown as GenericDocument;
   const indexHolds =
-    condition.index === undefined ||
-    accessConstraintsToPredicate({ constraints: condition.index.constraints })(doc);
+    outcome.index === undefined ||
+    queryConstraintsToPredicate({ constraints: outcome.index.constraints })(doc);
   const filterHolds =
-    condition.filter === undefined || accessFilterTreeToPredicate({ node: condition.filter })(doc);
+    outcome.where === undefined || queryFilterTreeToPredicate({ node: outcome.where })(doc);
   if (!indexHolds || !filterHolds) return false;
 
   // `filter` augments the condition; it never replaces it.
@@ -555,7 +559,7 @@ function resolvePermissionCheck<TData, TUser, TOrg>(props: {
  * action-level wildcard when the explicit action isn't declared.
  *
  * The wildcard precedence lives in exactly one place so `hasPermission`,
- * `resolveAccessIndex`, and any future evaluator (e.g. DB-backed roles) share
+ * `resolveQueryIndex`, and any future evaluator (e.g. DB-backed roles) share
  * it. Presence, not truthiness, decides: an explicit `false` still wins over
  * the wildcard.
  *

@@ -1,11 +1,11 @@
 import type {
-  AccessFilterConstraint,
+  QueryFilterConstraint,
   ConstraintField,
   ConstraintResult,
   ConstraintValue,
   FilterConstraintBuilder,
   FilterOp,
-} from "./constraintTypes";
+} from "./queryConstraintTypes";
 
 /**
  * Creates a fresh unindexed constraint builder: the `q` a rule receives when it
@@ -13,7 +13,7 @@ import type {
  * `and`/`or`/`not` wrap the nodes their arguments produced, so a whole
  * expression evaluates bottom-up into one tree.
  *
- * Unlike {@link createIndexConstraintBuilder} this takes **no sink and keeps no
+ * Unlike {@link createQueryIndexConstraintBuilder} this takes **no sink and keeps no
  * state**. The indexed builder records a flat sequence, so someone has to own the
  * list; here the combinators consume values and return values, which means the
  * callback's own return value already *is* the root of the tree. Two calls to this
@@ -21,7 +21,7 @@ import type {
  * is freshly allocated and reachable only through what the caller was handed.
  *
  * The framework reads the result by reinterpreting the returned
- * {@link ConstraintResult} as {@link AccessFilterConstraint} — the same erasure this
+ * {@link ConstraintResult} as {@link QueryFilterConstraint} — the same erasure this
  * module performs internally on combinator arguments. `ConstraintResult` is nominal
  * precisely so a rule cannot hand back a hand-built object literal; only a real
  * chain call can produce one.
@@ -30,7 +30,7 @@ import type {
  * @returns A stateless builder. Every call returns an independent object, and
  *   nothing is shared between them.
  */
-export function createFilterConstraintBuilder<TDoc>(): FilterConstraintBuilder<TDoc> {
+export function createQueryFilterConstraintBuilder<TDoc>(): FilterConstraintBuilder<TDoc> {
   /**
    * Reinterprets a combinator argument as the node it actually is at runtime.
    * `ConstraintResult`'s nominal private member exists to stop callers forging a
@@ -39,12 +39,12 @@ export function createFilterConstraintBuilder<TDoc>(): FilterConstraintBuilder<T
    * @param result - A value returned by an earlier chain call on this builder.
    * @returns The same object, typed as the tree node it is.
    */
-  const asFilterConstraint = (result: ConstraintResult): AccessFilterConstraint<TDoc> =>
-    result as unknown as AccessFilterConstraint<TDoc>;
+  const asFilterConstraint = (result: ConstraintResult): QueryFilterConstraint<TDoc> =>
+    result as unknown as QueryFilterConstraint<TDoc>;
 
   /**
    * Builds one comparison method. The casts erase per-field narrowing that the
-   * runtime cannot re-derive: `AccessFilterConstraint`'s `field` is
+   * runtime cannot re-derive: `QueryFilterConstraint`'s `field` is
    * `keyof TDoc & string` and its `value` is indexed from `TDoc`, while these
    * parameters are `string` and `unknown`. The call site already checked both.
    *
@@ -54,7 +54,7 @@ export function createFilterConstraintBuilder<TDoc>(): FilterConstraintBuilder<T
    */
   const compare =
     (op: FilterOp) =>
-    (field: string, value: unknown): AccessFilterConstraint<TDoc> => ({
+    (field: string, value: unknown): QueryFilterConstraint<TDoc> => ({
       kind: "compare",
       field: field as ConstraintField<TDoc>,
       op,
@@ -64,16 +64,16 @@ export function createFilterConstraintBuilder<TDoc>(): FilterConstraintBuilder<T
   /**
    * Positionless runtime shape. Keying the comparisons off {@link FilterOp} means a
    * new operator there becomes a compile error here rather than a silently missing
-   * method — the same discipline `createIndexConstraintBuilder` applies to
+   * method — the same discipline `createQueryIndexConstraintBuilder` applies to
    * {@link FilterOp}'s index-only counterpart.
    */
   const builder: Record<
     FilterOp,
-    (field: string, value: unknown) => AccessFilterConstraint<TDoc>
+    (field: string, value: unknown) => QueryFilterConstraint<TDoc>
   > & {
-    and: (...nodes: ConstraintResult[]) => AccessFilterConstraint<TDoc>;
-    or: (...nodes: ConstraintResult[]) => AccessFilterConstraint<TDoc>;
-    not: (node: ConstraintResult) => AccessFilterConstraint<TDoc>;
+    and: (...nodes: ConstraintResult[]) => QueryFilterConstraint<TDoc>;
+    or: (...nodes: ConstraintResult[]) => QueryFilterConstraint<TDoc>;
+    not: (node: ConstraintResult) => QueryFilterConstraint<TDoc>;
   } = {
     eq: compare("eq"),
     neq: compare("neq"),

@@ -6,7 +6,8 @@ import type { AccessCallOptions, VexApiAuth } from "./types";
 import type { TDocument } from "./convex";
 import { CRUD_ACTIONS, DRAFT_ACTIONS, hasPermission } from "../access";
 import { assignArrayItemIds, getFieldsInputSchema, validateFields } from "../fields";
-import { deepEqual, resolveAccessCall, toVexMutationCtx } from "./utils";
+import { resolveAccessCall, toVexMutationCtx } from "./utils";
+import { valuesEqual } from "../utils/valuesEqual";
 import { CollectionOrGlobal } from "../types";
 
 /**
@@ -142,7 +143,7 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
 
   const changedKeys = new Set(Object.keys(props.changes));
   for (const key of Object.keys(transformedFields)) {
-    if (!deepEqual(transformedFields[key], mergedFields[key])) changedKeys.add(key);
+    if (!valuesEqual(transformedFields[key], mergedFields[key])) changedKeys.add(key);
   }
 
   const parsed = getFieldsInputSchema({

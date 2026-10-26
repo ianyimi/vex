@@ -1,8 +1,9 @@
 import { convexQuery } from "@convex-dev/react-query";
 import type { FunctionReference } from "convex/server";
 import type { VexQueryOptions } from "../types";
+import { whereArg } from "../whereArg";
 
-import { vexConvexApi, type VexSearchArgs } from "@vexcms/core";
+import { vexConvexApi, type VexSearchArgs, type VexWhere } from "@vexcms/core";
 import type { CollectionSlug } from "@vexcms/core";
 import type {
   DocReturnItem,
@@ -31,6 +32,11 @@ export interface SearchClientArgs<
   searchIndexName: string;
   searchField: string;
   limit?: number;
+  /**
+   * Predicate over the collection's fields: a builder callback or a plain node.
+   * The callback is converted to a node before it is sent.
+   */
+  where?: VexWhere<TCollectionSlug>;
   paginationOpts?: PaginationOptions;
 }
 
@@ -51,6 +57,11 @@ export interface SearchClientPaginatedArgs<
   searchIndexName: string;
   searchField: string;
   limit?: number;
+  /**
+   * Predicate over the collection's fields: a builder callback or a plain node.
+   * The callback is converted to a node before it is sent.
+   */
+  where?: VexWhere<TCollectionSlug>;
   paginationOpts: PaginationOptions;
 }
 
@@ -131,6 +142,7 @@ export function search<
           populate: args.populate,
           depth: args.depth,
           drafts: args.drafts,
+          where: whereArg(args.where),
           paginationOpts: args.paginationOpts,
         },
   );

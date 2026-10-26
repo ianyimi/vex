@@ -73,8 +73,9 @@ export interface EmailFieldAdminConfig<
  */
 export interface EmailFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /** Admin UI configuration for this field. */
   admin?: EmailFieldAdminInput<TCollectionSlug>;
   /**

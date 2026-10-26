@@ -279,8 +279,9 @@ describe("get (server) — read RBAC enforcement", () => {
 // ── Constraint-object and callback forms interpreted against ONE document ──
 const constrainedPostsResource = defineCollection({
   slug: "posts",
-  // `featured` declares a real index — `defineAccess` validates a rule's
-  // `withIndex` call against it at config time.
+  // `featured` declares a real index, matching what `vex generate` would emit —
+  // config-time index validation (`validateAccessConfig`, run from `defineConfig`)
+  // is not exercised by this file, which builds `VexConfig` by hand.
   fields: { title: text(), slug: text(), featured: checkbox({ index: "by_featured" }) },
 });
 
@@ -327,7 +328,7 @@ const constraintOnlyAccess = {
     permissions: {
       contributor: {
         posts: {
-          read: { constraints: ({ q }) => q.filter((f) => f.eq("featured", true)) },
+          read: { where: ({ q }) => q.eq("featured", true) },
         },
       },
     },
@@ -345,8 +346,8 @@ const constraintPlusFilterAccess = {
       contributor: {
         posts: {
           read: {
-            constraints: ({ q }) => q.withIndex("by_featured", (ix) => ix.eq("featured", true)),
-            // Augments `constraints` — never a substitute. Both must hold.
+            withIndex: { name: "by_featured", range: (ix) => ix.eq("featured", true) },
+            // Augments `withIndex` — never a substitute. Both must hold.
             filter: ({ data }) => data.slug !== "hidden",
           },
         },
@@ -368,7 +369,7 @@ const constraintBooleanShortCircuitAccess = {
         // which `resolveConstrainedCheck` must honor WITHOUT ever consulting
         // the document (it returns the boolean outcome before the per-doc
         // interpretation branch even runs).
-        posts: { read: { constraints: ({ user }) => user._id === "vip" } },
+        posts: { read: { where: ({ user }) => user._id === "vip" } },
       },
     },
   }),
@@ -502,7 +503,7 @@ describe("get (server) — constraint-object form interpreted against the fetche
     expect(deniedByConstraint).toBe(true);
   });
 
-  test("a constraints callback that short-circuits to a boolean bypasses per-document interpretation entirely", async () => {
+  test("a withIndex/where callback that short-circuits to a boolean bypasses per-document interpretation entirely", async () => {
     const t = convexTest(schema, modules);
     const [vipOnUnfeatured, contributorOnFeaturedDenied] = await t.run(
       async (ctx: GenericMutationCtx<GenericDataModel>) => {

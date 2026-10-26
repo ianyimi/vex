@@ -46,11 +46,12 @@ import { resolveFieldLimit, resolveFieldComponents } from "../utils";
  */
 export function relationship<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 >(
-  options: RelationshipFieldInput<TCollectionSlug, TFieldMeta, TTargetSlug, TComponent>,
+  options: RelationshipFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, TTargetSlug, TComponent>,
 ): RelationshipField<TCollectionSlug, TFieldMeta, TTargetSlug, TComponent> {
   return {
     label: "",

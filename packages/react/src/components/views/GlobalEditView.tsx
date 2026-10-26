@@ -5,7 +5,7 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
 import {
-  CONSTRAINT_COMPARATORS,
+  valuesEqual,
   CRUD_ACTIONS,
   DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
   DRAFT_ACTIONS,
@@ -295,7 +295,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   const publishedGlobal = isDraftDoc ? publishedRowWhileDraft : globalDoc;
   const matchesPublished =
     !!publishedGlobal &&
-    CONSTRAINT_COMPARATORS.eq(
+    valuesEqual(
       formValues,
       pickReadableValues(
         getFieldsDefaultValues({ fields: global.fields, document: publishedGlobal }),

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { pickQueryIndex } from "./pickQueryIndex";
-import type { IndexRangeFn } from "./types";
+import { pickConvexQueryIndex } from "./pickConvexQueryIndex";
+import type { ConvexQueryIndexRangeFn } from "./convexTypes";
 
 function recordingBuilder() {
   const calls: Array<[string, unknown]> = [];
@@ -18,20 +18,20 @@ function recordingBuilder() {
   return { builder, calls };
 }
 
-describe("pickQueryIndex — free slot", () => {
+describe("pickConvexQueryIndex — free slot", () => {
   it("gives the access index the slot when the caller supplies none", () => {
     const accessIndex = {
       name: "by_author",
        
       range: (q: any) => q.eq("authorId", "dana"),
     };
-    expect(pickQueryIndex({ accessIndex })).toEqual(accessIndex);
+    expect(pickConvexQueryIndex({ accessIndex })).toEqual(accessIndex);
   });
 });
 
-describe("pickQueryIndex — same name merges ranges", () => {
+describe("pickConvexQueryIndex — same name merges ranges", () => {
   it("composes access's range then the caller's range on the same builder", () => {
-    const selection = pickQueryIndex({
+    const selection = pickConvexQueryIndex({
       accessIndex: {
         name: "by_author_category",
          
@@ -53,7 +53,7 @@ describe("pickQueryIndex — same name merges ranges", () => {
   });
 });
 
-describe("pickQueryIndex — different name: caller wins and warns once", () => {
+describe("pickConvexQueryIndex — different name: caller wins and warns once", () => {
   it("gives the slot to the caller's index and warns exactly once for the same pair", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const accessIndex = {
@@ -67,8 +67,8 @@ describe("pickQueryIndex — different name: caller wins and warns once", () => 
       range: (q: any) => q.eq("slug", "about"),
     };
 
-    const first = pickQueryIndex({ accessIndex, callerIndex });
-    const second = pickQueryIndex({ accessIndex, callerIndex });
+    const first = pickConvexQueryIndex({ accessIndex, callerIndex });
+    const second = pickConvexQueryIndex({ accessIndex, callerIndex });
 
     expect(first).toEqual(callerIndex);
     expect(second).toEqual(callerIndex);
@@ -82,7 +82,7 @@ describe("pickQueryIndex — different name: caller wins and warns once", () => 
   it("warns independently for a different displaced pair", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
-    pickQueryIndex({
+    pickConvexQueryIndex({
       accessIndex: {
         name: "by_region",
          
@@ -94,7 +94,7 @@ describe("pickQueryIndex — different name: caller wins and warns once", () => 
         range: (q: any) => q.eq("locale", "en"),
       },
     });
-    pickQueryIndex({
+    pickConvexQueryIndex({
       accessIndex: {
         name: "by_team",
          
@@ -112,29 +112,29 @@ describe("pickQueryIndex — different name: caller wins and warns once", () => 
   });
 });
 
-describe("pickQueryIndex — no access index: caller passthrough", () => {
+describe("pickConvexQueryIndex — no access index: caller passthrough", () => {
   it("returns the caller's index unchanged when there is no access index", () => {
     const callerIndex = {
       name: "by_updated",
        
       range: (q: any) => q.gte("updatedAt", 100),
     };
-    expect(pickQueryIndex({ callerIndex })).toEqual(callerIndex);
+    expect(pickConvexQueryIndex({ callerIndex })).toEqual(callerIndex);
   });
 });
 
-describe("pickQueryIndex — nothing supplied", () => {
+describe("pickConvexQueryIndex — nothing supplied", () => {
   it("returns undefined when neither an access index nor a caller index applies", () => {
-    expect(pickQueryIndex({})).toBeUndefined();
+    expect(pickConvexQueryIndex({})).toBeUndefined();
   });
 });
 
-describe("pickQueryIndex — same name, caller supplies no range", () => {
+describe("pickConvexQueryIndex — same name, caller supplies no range", () => {
   it("keeps only the access range when the caller named the same index purely for ordering", () => {
-    const selection = pickQueryIndex({
+    const selection = pickConvexQueryIndex({
       accessIndex: {
         name: "by_author_category",
-        range: (q: Parameters<IndexRangeFn>[0]) => q.eq("authorId", "dana"),
+        range: (q: Parameters<ConvexQueryIndexRangeFn>[0]) => q.eq("authorId", "dana"),
       },
       // No `range` at all — a caller may name an index purely to order results.
       callerIndex: { name: "by_author_category" },
@@ -148,33 +148,33 @@ describe("pickQueryIndex — same name, caller supplies no range", () => {
   });
 });
 
-describe("pickQueryIndex — signals indexAlreadyApplied correctly for find/server.ts's downstream wiring", () => {
-  // `find/server.ts` derives this flag straight from `pickQueryIndex`'s own result:
+describe("pickConvexQueryIndex — signals indexAlreadyApplied correctly for find/server.ts's downstream wiring", () => {
+  // `find/server.ts` derives this flag straight from `pickConvexQueryIndex`'s own result:
   // `accessIndex !== undefined && resolvedIndex?.name === accessIndex.name`. Getting
   // it wrong either direction is a correctness bug — see `resolveAccessRule.test.ts`'s
-  // "resolveAccessConstraint — indexAlreadyApplied" for what a wrong value does
+  // "resolveQueryConstraint — indexAlreadyApplied" for what a wrong value does
   // downstream (redundantly re-checks an already-narrowed range as a filter, or
   // silently skips checking a displaced one at all).
 
   it("free slot: the access index claims the withIndex call outright", () => {
     const accessIndex = {
       name: "by_status",
-      range: (q: Parameters<IndexRangeFn>[0]) => q.eq("status", "published"),
+      range: (q: Parameters<ConvexQueryIndexRangeFn>[0]) => q.eq("status", "published"),
     };
-    const resolvedIndex = pickQueryIndex({ accessIndex });
+    const resolvedIndex = pickConvexQueryIndex({ accessIndex });
     expect(accessIndex !== undefined && resolvedIndex?.name === accessIndex.name).toBe(true);
   });
 
   it("same name: the merged range IS the access index's own range, applied", () => {
     const accessIndex = {
       name: "by_status",
-      range: (q: Parameters<IndexRangeFn>[0]) => q.eq("status", "published"),
+      range: (q: Parameters<ConvexQueryIndexRangeFn>[0]) => q.eq("status", "published"),
     };
     const callerIndex = {
       name: "by_status",
-      range: (q: Parameters<IndexRangeFn>[0]) => q.eq("status", "published"),
+      range: (q: Parameters<ConvexQueryIndexRangeFn>[0]) => q.eq("status", "published"),
     };
-    const resolvedIndex = pickQueryIndex({ accessIndex, callerIndex });
+    const resolvedIndex = pickConvexQueryIndex({ accessIndex, callerIndex });
     expect(accessIndex !== undefined && resolvedIndex?.name === accessIndex.name).toBe(true);
   });
 
@@ -182,13 +182,13 @@ describe("pickQueryIndex — signals indexAlreadyApplied correctly for find/serv
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const accessIndex = {
       name: "idx_access_only",
-      range: (q: Parameters<IndexRangeFn>[0]) => q.eq("status", "published"),
+      range: (q: Parameters<ConvexQueryIndexRangeFn>[0]) => q.eq("status", "published"),
     };
     const callerIndex = {
       name: "idx_caller_only",
-      range: (q: Parameters<IndexRangeFn>[0]) => q.eq("slug", "about"),
+      range: (q: Parameters<ConvexQueryIndexRangeFn>[0]) => q.eq("slug", "about"),
     };
-    const resolvedIndex = pickQueryIndex({ accessIndex, callerIndex });
+    const resolvedIndex = pickConvexQueryIndex({ accessIndex, callerIndex });
     expect(accessIndex !== undefined && resolvedIndex?.name === accessIndex.name).toBe(false);
     warnSpy.mockRestore();
   });

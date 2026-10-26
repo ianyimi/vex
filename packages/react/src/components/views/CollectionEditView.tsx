@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import {
-  CONSTRAINT_COMPARATORS,
+  valuesEqual,
   CRUD_ACTIONS,
   DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
   DRAFT_ACTIONS,
@@ -423,7 +423,7 @@ function CollectionEditForm(
   const formValues = useStore(form.store, (state) => state.values);
   const matchesPublished =
     !!publishedDocument &&
-    CONSTRAINT_COMPARATORS.eq(
+    valuesEqual(
       formValues,
       pickReadableValues(
         getFieldsDefaultValues({ fields: collection.fields, document: publishedDocument }),

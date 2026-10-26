@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CONSTRAINT_COMPARATORS } from "@vexcms/core";
+import { valuesEqual } from "@vexcms/core";
 import type { AnyFormApi } from "../components/form/AppFormContext";
 import { changedValues } from "../components/form/changedValues";
 
@@ -57,12 +57,12 @@ export function useResetWhenSaved(props: {
     if (!pending) return;
     const caughtUp = Object.entries(pending.changes).every(
       ([key, saved]) =>
-        CONSTRAINT_COMPARATORS.eq(live?.[key], saved) ||
-        !CONSTRAINT_COMPARATORS.eq(live?.[key], pending.before?.[key]),
+        valuesEqual(live?.[key], saved) ||
+        !valuesEqual(live?.[key], pending.before?.[key]),
     );
     if (!caughtUp) return;
     pendingRef.current = null;
-    if (CONSTRAINT_COMPARATORS.eq(changedValues(form), pending.changes)) {
+    if (valuesEqual(changedValues(form), pending.changes)) {
       form.reset();
     }
   }

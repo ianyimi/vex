@@ -78,8 +78,9 @@ export interface NumberFieldAdminConfig<
  */
 export interface NumberFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /** Admin UI configuration for this field. */
   admin?: NumberFieldAdminInput<TCollectionSlug>;
   /**

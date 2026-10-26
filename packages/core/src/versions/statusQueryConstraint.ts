@@ -1,21 +1,16 @@
 import type { VexConfig } from "../config";
-import { ADMIN_FIELDS, getDataFields } from "../fields";
-import {
-  accessConstraintsToFilter,
-  type AccessFilterFn,
-  composeRanges,
-  createIndexConstraintBuilder,
-  type IndexRangeFn,
-  type QueryIndex,
-  readIndexConstraints,
-} from "../access";
+import { resolveCollectionIndexes } from "../collections/resolveCollectionIndexes";
+import { queryConstraintsToConvexFilter } from "../access/compileQueryConstraints";
+import { composeConvexQueryRanges } from "../access/pickConvexQueryIndex";
+import type { ConvexQueryFilterFn, ConvexQueryIndexRangeFn, ConvexQueryIndex } from "../access/convexTypes";
+import { createQueryIndexConstraintBuilder, readQueryIndexConstraints } from "../access";
 import { VERSION_STATUSES } from "./constants";
 
 /**
  * Decides whether a query against `collection` must be narrowed to
  * published-only rows.
  *
- * Purely a data-integrity question — see {@link composeStatusConstraint} for
+ * Purely a data-integrity question — see {@link composeStatusQueryConstraint} for
  * why the narrowing it drives runs independently of `access.bypass`. `false`
  * for a non-versioned collection (nothing to narrow), for a caller
  * explicitly requesting drafts, or when `config` wasn't supplied.
@@ -41,13 +36,10 @@ export function requiresPublishedOnly(props: {
 
 /**
  * Looks up the `draftStatus` a project declared on one of `collection`'s
- * indexes, by the SAME name `pickQueryIndex` resolved — a collection-level
- * `indexes[]` entry first (compound indexes can only be declared there or
- * via several fields sharing one `field.index` name), then a field's own
- * `index`, then a relationship field's auto `by_<fieldKey>` — mirroring
- * `collectionConfigToVexSchema`'s own lookup order (`collections/validator.ts`).
+ * indexes. Reads the index `resolveCollectionIndexes` resolved under that
+ * name, so the precedence matches the schema.
  *
- * `defineCollection` already rejects a `draftStatus`/`indexDraftStatus`
+ * `defineCollection` already rejects a `draftStatus`/`index.draftStatus`
  * declared without `versions.drafts: true` (`collections/config.ts`), so
  * finding one here always means the collection is genuinely versioned —
  * this function does not re-check `versions.drafts` itself.
@@ -62,24 +54,14 @@ function resolveIndexDraftStatus(props: {
 }): true | "both" | undefined {
   const collection = props.config?.collections.find((c) => c.slug === props.collection);
   if (!collection) return undefined;
-
-  const declaredIndex = collection.indexes?.find((i) => i.name === props.indexName);
-  if (declaredIndex) return declaredIndex.draftStatus;
-
-  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: collection.fields }))) {
-    if (!field) continue;
-    const fieldIndexName =
-      field.index ?? (field.type === ADMIN_FIELDS.relationship.type ? `by_${fieldKey}` : undefined);
-    if (fieldIndexName === props.indexName) return field.indexDraftStatus;
-  }
-  return undefined;
+  return resolveCollectionIndexes({ collection }).find((index) => index.name === props.indexName)?.draftStatus;
 }
 
 /**
  * Physical name of a `draftStatus` index's `vex_status`-prefixed twin.
  * Deterministic — any caller holding `indexName` can derive it without a
- * lookup — and never a selectable `IndexNameFor` member: `collections/
- * indexFields.ts` never emits it, identical treatment to the system `by_
+ * lookup — and never a selectable `IndexNameFor` member: `resolveCollectionIndexes`
+ * never emits it, identical treatment to the system `by_
  * status`/`by_published` indexes.
  * @param indexName the name of the convex index
  * @returns new indexName with the draftStatus
@@ -94,7 +76,7 @@ const warnedMissingDraftStatusIndex = new Set<string>();
 /**
  * Warns once per (collection, index) pair that a published-only read fell
  * back to `.filter()` because the winning index declares no `draftStatus`.
- * Dev-only, modeled on `pickQueryIndex`'s `warnDisplacedAccessIndex`.
+ * Dev-only, modeled on `pickConvexQueryIndex`'s `warnDisplacedAccessIndex`.
  * @internal
  */
 function warnMissingDraftStatusIndex(props: { collection: string; indexName: string }): void {
@@ -135,7 +117,7 @@ function warnFilteredDraftStatusIndex(props: { collection: string; indexName: st
 
 /**
  * Folds the framework's published/draft status composition onto whatever
- * `resolveAccessIndex` / `pickQueryIndex` / `resolveAccessConstraint`
+ * `resolveQueryIndex` / `pickConvexQueryIndex` / `resolveQueryConstraint`
  * already resolved for the caller's RBAC rule, honoring Convex's
  * one-`withIndex`-per-query limit AND, when the winning index declares a
  * `draftStatus` (Step 13's per-index config), the one-physical-field-order
@@ -147,7 +129,7 @@ function warnFilteredDraftStatusIndex(props: { collection: string; indexName: st
  * `undefined` in that case) — hiding non-published rows on a versioned
  * collection is data integrity (design-review.md §3.1), not authorization,
  * so it has no dependency on `access.bypass` at all. MUST run AFTER
- * `pickQueryIndex` — every branch reads `props.resolvedIndex.name` to look
+ * `pickConvexQueryIndex` — every branch reads `props.resolvedIndex.name` to look
  * up THAT index's own `draftStatus`, never the collection's in the
  * abstract.
  *
@@ -160,7 +142,7 @@ function warnFilteredDraftStatusIndex(props: { collection: string; indexName: st
  *    `vex_status === "published"` into `.filter()`. Warns once when an
  *    index WAS chosen but declares no draftStatus.
  * 2. Published-only, winning index HAS a draftStatus — rides the SAME
- *    (prefixed) physical index for free via `composeRanges`. No `.filter()`.
+ *    (prefixed) physical index for free via `composeConvexQueryRanges`. No `.filter()`.
  * 3. `drafts: true`, winning index has `draftStatus: "both"` — the
  *    unprefixed physical index already exists untouched; no-op.
  * 4. `drafts: true`, winning index has `draftStatus: true` — no unprefixed
@@ -171,22 +153,22 @@ function warnFilteredDraftStatusIndex(props: { collection: string; indexName: st
  * @param props.config - The resolved `VexConfig`.
  * @param props.collection - The collection slug being queried.
  * @param props.drafts - The caller's `drafts` arg.
- * @param props.resolvedIndex - `pickQueryIndex({ accessIndex, callerIndex
+ * @param props.resolvedIndex - `pickConvexQueryIndex({ accessIndex, callerIndex
  *   })`'s output, computed BEFORE this function runs.
- * @param props.accessFilter - The RBAC filter `resolveAccessConstraint`
+ * @param props.accessFilter - The RBAC filter `resolveQueryConstraint`
  *   already resolved for `resolvedIndex` as arbitrated (the SAME
  *   `indexAlreadyApplied` the caller already used).
  * @returns The index to apply and the filter to apply.
  */
-export function composeStatusConstraint(props: {
+export function composeStatusQueryConstraint(props: {
   config?: VexConfig;
   collection: string;
   drafts?: boolean;
-  resolvedIndex: QueryIndex | undefined;
-  accessFilter: AccessFilterFn | undefined;
+  resolvedIndex: ConvexQueryIndex | undefined;
+  accessFilter: ConvexQueryFilterFn | undefined;
 }): {
-  resolvedIndex: QueryIndex | undefined;
-  accessFilter: AccessFilterFn | undefined;
+  resolvedIndex: ConvexQueryIndex | undefined;
+  accessFilter: ConvexQueryFilterFn | undefined;
 } {
   const publishedOnly = requiresPublishedOnly({
     config: props.config,
@@ -200,7 +182,7 @@ export function composeStatusConstraint(props: {
         indexName: props.resolvedIndex.name,
       })
     : undefined;
-  const publishedRange: IndexRangeFn = (q) => q.eq("vex_status", VERSION_STATUSES.published.key);
+  const publishedRange: ConvexQueryIndexRangeFn = (q) => q.eq("vex_status", VERSION_STATUSES.published.key);
 
   if (publishedOnly) {
     if (draftStatus === undefined) {
@@ -214,7 +196,7 @@ export function composeStatusConstraint(props: {
         collection: props.collection,
         indexName: props.resolvedIndex.name,
       });
-      const statusFilter: AccessFilterFn = (q) =>
+      const statusFilter: ConvexQueryFilterFn = (q) =>
         q.eq(q.field("vex_status"), VERSION_STATUSES.published.key);
       return {
         resolvedIndex: props.resolvedIndex,
@@ -230,7 +212,7 @@ export function composeStatusConstraint(props: {
     return {
       resolvedIndex: {
         name: physicalName,
-        range: composeRanges({ first: publishedRange, second: props.resolvedIndex!.range }),
+        range: composeConvexQueryRanges({ first: publishedRange, second: props.resolvedIndex!.range }),
       },
       accessFilter: props.accessFilter,
     };
@@ -270,10 +252,10 @@ export function composeStatusConstraint(props: {
  * @param range - The range to convert; `undefined` = unconstrained.
  * @returns A filter thunk, or `undefined` when the range constrains nothing.
  */
-function rangeToFilter(range: IndexRangeFn | undefined): AccessFilterFn | undefined {
+function rangeToFilter(range: ConvexQueryIndexRangeFn | undefined): ConvexQueryFilterFn | undefined {
   if (!range) return undefined;
-  const recorded = range(createIndexConstraintBuilder() as never);
-  const constraints = readIndexConstraints(recorded as never);
+  const recorded = range(createQueryIndexConstraintBuilder() as never);
+  const constraints = readQueryIndexConstraints(recorded as never);
   if (constraints.length === 0) return undefined;
-  return (q) => accessConstraintsToFilter({ constraints, q });
+  return (q) => queryConstraintsToConvexFilter({ constraints, q });
 }

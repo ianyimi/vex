@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type {
-  AccessIndexConstraint,
+  QueryIndexConstraint,
   ConstraintBuilder,
   ConstraintResult,
   DeclaredDoc,
-} from "./constraintTypes";
+} from "./queryConstraintTypes";
 
 type PagesDoc = {
   authorId: string;
@@ -115,9 +115,9 @@ describe("ConstraintBuilder — rejects illegal chains", () => {
   });
 });
 
-describe("AccessIndexConstraint / IndexOp", () => {
+describe("QueryIndexConstraint / IndexOp", () => {
   it("accepts a record shaped from a real op literal and the field's own value type", () => {
-    const constraint: AccessIndexConstraint<"authorId", PagesDoc> = {
+    const constraint: QueryIndexConstraint<"authorId", PagesDoc> = {
       field: "authorId",
       op: "eq",
       value: "u1",

@@ -49,6 +49,7 @@ export type StatsBlock = {
   heading?: string
   subheading?: string
   items: {
+    id?: string
     /**
      * Free text, not a number — "0", "12" and "~30s" all render. Any unit belongs in
      * the string.
@@ -66,6 +67,7 @@ export type FeaturesBlock = {
   heading: string
   subheading?: string
   features: {
+    id?: string
     title: string
     description: string
     /**
@@ -82,6 +84,7 @@ export type CodeShowcaseBlock = {
   heading: string
   subheading?: string
   panes: {
+    id?: string
     /**
      * Shown uppercase in the chrome bar.
      */
@@ -106,6 +109,7 @@ export type SplitBlock = {
   heading: string
   body: string
   bullets?: {
+    id?: string
     /**
      * Lucide icon name
      */
@@ -127,6 +131,7 @@ export type HowItWorksBlock = {
   heading: string
   subheading?: string
   steps: {
+    id?: string
     /**
      * Lucide icon name
      */
@@ -143,6 +148,7 @@ export type RoadmapBlock = {
   heading: string
   subheading?: string
   items: {
+    id?: string
     feature: string
     description?: string
     status: ("shipped" | "in-progress" | "planned" | "exploring" | "future")[]
@@ -156,10 +162,7 @@ export type FaqBlock = {
   heading: string
   subheading?: string
   supportLink?: string
-  items: {
-    question: string
-    answer: string
-  }[]
+  items: { id?: string; question: string; answer: string }[]
 }
 
 export type CtaBlock = {
@@ -168,10 +171,7 @@ export type CtaBlock = {
   id: string
   heading: string
   subheading?: string
-  actions?: {
-    label: string
-    href: string
-  }[]
+  actions?: { id?: string; label: string; href: string }[]
 }
 
 export type PageBlock =
@@ -211,11 +211,9 @@ export type HeaderBlock = {
   logoText?: string
   logoImage?: Id<"images">[]
   logoHref?: string
-  menuItems?: {
-    label: string
-    href: string
-  }[]
+  menuItems?: { id?: string; label: string; href: string }[]
   actionButtons?: {
+    id?: string
     label: string
     href: string
     variant?: ("default" | "outline" | "ghost")[]
@@ -235,11 +233,9 @@ export type FooterBlock = {
   logoText?: string
   logoImage?: Id<"images">[]
   copyright?: string
-  links?: {
-    label: string
-    href: string
-  }[]
+  links?: { id?: string; label: string; href: string }[]
   socialLinks?: {
+    id?: string
     platform: string
     href: string
     /**
@@ -554,22 +550,22 @@ declare module "@vexcms/core" {
         text: "title" | "slug" | "metaTitle" | "metaDescription"
         blocks: "blocks"
         upload: "ogImage"
-        number: "updatedAt"
+        date: "updatedAt"
       }
       headers: {
         text: "name"
         blocks: "content"
-        number: "updatedAt"
+        date: "updatedAt"
       }
       footers: {
         text: "name"
         blocks: "content"
-        number: "updatedAt"
+        date: "updatedAt"
       }
       themes: {
         text: "name" | "fontFamily" | "radius"
         group: "light" | "dark"
-        number: "updatedAt"
+        date: "updatedAt"
       }
       session: {
         date: "expiresAt" | "createdAt" | "updatedAt"
@@ -617,8 +613,9 @@ declare module "@vexcms/core" {
       }
       images: {
         text: "filename" | "alt" | "mimeType" | "storageId" | "src"
-        number: "size" | "width" | "height" | "updatedAt"
+        number: "size" | "width" | "height"
         checkbox: "deleted"
+        date: "updatedAt"
       }
     }
     GlobalsFieldTypeMap: {

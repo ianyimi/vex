@@ -22,7 +22,6 @@
 - Assessed-but-deferred features live in `.agent/docs/product/backlog.md`
 - Fix scripts/vercel-build-check.mjs: since / prerenders via a live vex.query, the placeholder NEXT_PUBLIC_CONVEX_URL makes the pristine build fail on every run (pre-existing at a180967). Pass through a real dev URL when present, or make HomePage degrade when Convex is unreachable
 - F follow-up — spec 2026-09-18-lifecycle-hooks-validation step 8: write `scripts/verify-hooks-wiring.mjs`, add a `createVexMutations` assertion to `scripts/verify-scaffold.mjs`, and write `apps/docs/src/content/docs/guides/lifecycle-hooks.mdx` (apps/test + base-nextjs template wiring, and the marketing-site slug validator, are done)
-- B3 — Backend-neutral query args (spec 2026-10-21-backend-neutral-query-args) — before 0.1.0 tag
 
 ## Recently Done
 - 4. E — Live preview — shipped `b5263dc`, 2026-09-20 (spec 2026-09-18-live-preview; ADR-012, with a dual `postMessage` + `BroadcastChannel` transport and a cookie-gated public route)
@@ -45,3 +44,4 @@
 - **F — Lifecycle hooks & validation**: collection `beforeChange`/`beforeDelete` (inline, may reject a write) and `afterChange`/`afterDelete` (via convex-helpers triggers), typed hook/validator authoring factories, async field `validate()` with `ctx`, server-enforced min/max independent of `required` across all fields (ADR-010, ADR-011); wired into `apps/www`, `apps/test`, and the `base-nextjs`/`marketing-site` templates — the lifecycle-hooks guide and two verify-script assertions remain (see Inbox)
 - **Discord show-and-tell readiness (spec 2026-09-13-discord-post-readiness)** — 8 steps: bulk-selection bar, un-export migrate stubs, admin mobile pass 375/390/768/1024, www mobile pass, mirror into create-vexcms templates, OG + social cards [dev], quickstart walk [dev], verification gate
 - Consume @vexcms/react from source in dev (removes the tsup watch loop; see backlog)
+- B3 — Backend-neutral query args (spec 2026-10-21-backend-neutral-query-args) — before 0.1.0 tag

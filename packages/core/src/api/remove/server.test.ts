@@ -240,7 +240,7 @@ describe("remove (server) — access enforcement", () => {
         permissions: {
           contributor: {
             posts: {
-              delete: { constraints: ({ q }) => q.filter((f) => f.eq("featured", false)) },
+              delete: { where: ({ q }) => q.eq("featured", false) },
             },
           },
         },
@@ -279,7 +279,7 @@ describe("remove (server) — access enforcement", () => {
           contributor: {
             posts: {
               delete: {
-                constraints: ({ q }) => q.filter((f) => f.eq("featured", false)),
+                where: ({ q }) => q.eq("featured", false),
                 filter: ({ data }: { data: { title?: string } }) => data?.title === "Approved",
               },
             },
@@ -320,7 +320,7 @@ describe("remove (server) — access enforcement", () => {
     });
   });
 
-  test("a constraints callback short-circuiting to a boolean gates on the caller alone, ignoring the doc", async () => {
+  test("a withIndex/where callback short-circuiting to a boolean gates on the caller alone, ignoring the doc", async () => {
     const config = {
       ...fixtureConfig,
       access: defineAccess({
@@ -332,7 +332,7 @@ describe("remove (server) — access enforcement", () => {
           contributor: {
             posts: {
               delete: {
-                constraints: (props) => {
+                where: (props) => {
                   const user = props.user as { _id?: string };
                   return user._id === "u1";
                 },

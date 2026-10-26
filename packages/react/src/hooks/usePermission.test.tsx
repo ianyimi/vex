@@ -73,29 +73,27 @@ const access = defineAccess({
     constraintIndexOnly: {
       posts: {
         read: {
-          constraints: ({ q }) => q.withIndex("by_status", (ix) => ix.eq("status", "published")),
+          withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") },
         },
       },
     },
     constraintFilterOnly: {
       posts: {
-        read: { constraints: ({ q }) => q.filter((f) => f.neq("status", "draft")) },
+        read: { where: ({ q }) => q.neq("status", "draft") },
       },
     },
     constraintBoth: {
       posts: {
         read: {
-          constraints: ({ q }) =>
-            q
-              .withIndex("by_status", (ix) => ix.eq("status", "published"))
-              .filter((f) => f.neq("title", "Hidden")),
+          withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") },
+          where: ({ q }) => q.neq("title", "Hidden"),
         },
       },
     },
     // Short-circuits to a flat boolean — the constraint chain is never built,
     // so this must be immune to both `data` and `scope`.
-    constraintBoolTrue: { posts: { read: { constraints: () => true } } },
-    constraintBoolFalse: { posts: { read: { constraints: () => false } } },
+    constraintBoolTrue: { posts: { read: { where: () => true } } },
+    constraintBoolFalse: { posts: { read: { where: () => false } } },
     eqBuilder: {
       posts: {
         read: indexedEqCheck({
@@ -368,7 +366,7 @@ describe("usePermission — constraint-object checks", () => {
     });
   });
 
-  describe("a constraints callback that short-circuits to a boolean", () => {
+  describe("a withIndex/where callback that short-circuits to a boolean", () => {
     it("resolves true with no data (the boolean returns before data is ever inspected)", () => {
       const { result } = renderHook(() => usePermission({ resource: "posts", action: "read" } as never), {
         wrapper: Providers(access, { user: asUser("constraintBoolTrue") }),
@@ -437,9 +435,9 @@ describe("usePermission — builder-produced checks resolve client-side (bidirec
   });
 
   // Regression pin (DD 43; see also `buildChecks.test.ts`): `indexedOwnerCheck`
-  // on a relationship field never resolves `true` client-side, because its
-  // recorded `eq` value is a freshly allocated `[user._id]` array compared with
-  // `===`. Left asserting the CORRECT (allow) answer on purpose.
+  // on a relationship field builds its equality value as a freshly allocated
+  // `[user._id]` array. It resolves `true` client-side because the recorded `eq`
+  // is compared with `valuesEqual` (content equality), not `===`.
   it("indexedOwnerCheck allows a document the user owns, client-side", () => {
     const { result } = renderHook(
       () => usePermission({ resource: "posts", action: "read", data: { author: ["u1"] } } as never),

@@ -1,37 +1,31 @@
 import type { GenericDocument } from "convex/server";
 import { PERMISSION_MODES, WILDCARD_KEY } from "./constants";
 import { resolveActionCheck } from "./hasPermission";
-import type { AccessConditionResult } from "./constraintTypes";
-import { createAccessQueryBuilder, readAccessCondition } from "./createAccessQueryBuilder";
+import { evaluateQueryConstraint } from "./evaluateQueryConstraint";
+import type { QueryConstraint } from "./evaluateQueryConstraint";
 import { createUserReadSentinel } from "./userReadSentinel";
-import type { AccessCondition } from "./createAccessQueryBuilder";
 import {
-  accessConstraintsToFilter,
-  accessConstraintsToIndexRange,
-  accessFilterTreeToFilter,
-} from "./compileConstraints";
-import type {
-  AccessFilterFn,
-  PermissionCheck,
-  QueryIndex,
-  SubjectEntry,
-  VexAccessConfig,
-} from "./types";
+  queryConstraintsToConvexFilter,
+  queryConstraintsToConvexIndexRange,
+  queryFilterTreeToConvexFilter,
+} from "./compileQueryConstraints";
+import type { ConvexQueryFilterFn, ConvexQueryIndex } from "./convexTypes";
+import type { PermissionCheck, SubjectEntry, VexAccessConfig } from "./types";
 
 /**
  * How one role's rule bears on whether a query may be narrowed.
  *
- * - `deny` — the role refuses this action, statically or by its constraints
- *   callback returning `false`. It contributes nothing and is skipped.
+ * - `deny` — the role refuses this action, statically or by its `withIndex` /
+ *   `where` callback returning `false`. It contributes nothing and is skipped.
  * - `unrestricted` — the role allows the action outright, statically or by its
  *   callback returning `true`. Narrowing would hide rows it permits, so nothing
  *   may be applied.
  * - `opaque` — the role allows conditionally through a bare callback (or, until
  *   Step 14, a field-mode object). Which rows it permits is unknowable before
  *   reading them, so again nothing may be applied.
- * - `recorded` — the role's constraints callback ran and recorded something. The
- *   recording says which compile targets are available; it does NOT by itself
- *   mean an index was chosen.
+ * - `conditional` — the role's `withIndex` / `where` ran and recorded something.
+ *   The recording says which compile targets are available; it does NOT by
+ *   itself mean an index was chosen.
  *
  * @internal
  */
@@ -39,32 +33,33 @@ type RoleContribution =
   | { kind: "deny" }
   | { kind: "unrestricted" }
   | { kind: "opaque" }
-  | { kind: "conditional"; condition: AccessCondition<GenericDocument> };
+  | { kind: "conditional"; condition: QueryConstraint<GenericDocument> };
 
 /**
- * True when a resolved check is the constraint object form rather than a boolean,
+ * True when a resolved check is the narrowing object form rather than a boolean,
  * a bare callback, or (until Step 14) a field-mode object.
  *
- * Distinguished by the presence of `constraints`. Note this is the ONLY thing a
- * type predicate can settle here: whether the rule turns out to be *indexed* is a
- * RUNTIME outcome of invoking the callback, since every check now has the same
- * `{ constraints, filter? }` shape and the index is chosen inside it by calling
- * `q.withIndex(…)`. That is why classification below runs the callback rather than
- * inspecting the object further.
+ * Distinguished by the presence of `withIndex` or `where`. Note this is the ONLY
+ * thing a type predicate can settle here: whether the rule turns out to be
+ * *indexed* is a RUNTIME outcome of invoking its callbacks, via
+ * {@link evaluateQueryConstraint}. That is why classification below runs the
+ * callbacks rather than inspecting the object further.
  *
  * @param check - The resolved check for one role + action.
- * @returns `true` when `check` carries a `constraints` callback.
+ * @returns `true` when `check` carries `withIndex` or `where`.
  * @internal
  */
 function isConstrainedCheck(
   check: PermissionCheck,
-): check is Extract<PermissionCheck, { constraints: unknown }> {
-  return typeof check === "object" && check !== null && "constraints" in check;
+): check is Extract<PermissionCheck, { withIndex?: unknown; where?: unknown }> {
+  return (
+    typeof check === "object" && check !== null && ("withIndex" in check || "where" in check)
+  );
 }
 
 /**
- * Classifies one role's rule for a resource + action, running its constraints
- * callback when it has one.
+ * Classifies one role's rule for a resource + action, running its `withIndex` /
+ * `where` callbacks when it has them.
  *
  * Mirrors `hasPermission`'s resolution order exactly — subject boolean shorthand,
  * then the explicit action key or action-level wildcard via
@@ -123,39 +118,40 @@ function classifyRole(props: {
   const { user, wasRead: userWasRead } = createUserReadSentinel<Record<string, unknown>>(
     props.user,
   );
-  const outcome: boolean | AccessConditionResult = check.constraints({
-    user,
-    q: createAccessQueryBuilder(),
-    ...(props.access.orgCollectionSlug !== undefined
-      ? { organization: props.organization }
-      : {}),
-  } as unknown as Parameters<typeof check.constraints>[0]);
+  const outcome = evaluateQueryConstraint({
+    check,
+    callerProps: {
+      user,
+      ...(props.access.orgCollectionSlug !== undefined
+        ? { organization: props.organization }
+        : {}),
+    },
+  });
 
   // The rule asked who the caller is and there is no answer — deny, matching
   // `hasPermission`'s per-document verdict for the same rule and caller.
   if (userWasRead()) return { kind: "deny" };
 
-  // The callback may short-circuit to a flat allow/deny instead of returning a
-  // condition — a rule reading `({ user, q }) => user.isAdmin || q.filter(…)` is the
-  // common case. Classifying on the OUTCOME is strictly more precise than
+  // The callbacks may short-circuit to a flat allow/deny instead of returning a
+  // condition — a rule reading `where: ({ user, q }) => user.isAdmin || q.eq(…)` is
+  // the common case. Classifying on the OUTCOME is strictly more precise than
   // classifying on the declaration: a rule that resolves to `true` for this caller
   // is genuinely unrestricted, and one that resolves to `false` genuinely denies.
   if (outcome === true) return { kind: "unrestricted" };
   if (outcome === false) return { kind: "deny" };
 
-  const condition = readAccessCondition<GenericDocument>(outcome);
-  // A condition this module cannot read did not come from `q` — treat it as
-  // describing nothing rather than assuming it describes everything.
-  if (condition === undefined) return { kind: "opaque" };
+  // An outcome this evaluator cannot read did not come from `withIndex` / `where`
+  // — treat it as describing nothing rather than assuming it describes everything.
+  if (outcome === undefined) return { kind: "opaque" };
 
-  return { kind: "conditional", condition };
+  return { kind: "conditional", condition: outcome };
 }
 
 /**
  * Selects the single recording that safely narrows one query, or `undefined` when
  * no sound narrowing exists.
  *
- * Shared by {@link resolveAccessIndex} and {@link resolveAccessConstraint} — both
+ * Shared by {@link resolveQueryIndex} and {@link resolveQueryConstraint} — both
  * need the identical safety rule, and a divergence between them would be a silent
  * permission difference between `find`'s indexed path and its displaced/search
  * paths. Narrowing is only sound when exactly one contributing role records
@@ -177,7 +173,7 @@ function selectSingleCondition(props: {
   organization?: Record<string, unknown>;
   resource: string;
   action: string;
-}): AccessCondition<GenericDocument> | undefined {
+}): QueryConstraint<GenericDocument> | undefined {
   const { access } = props;
 
   const rawRoles = props.user ? props.user[access.userRolesField] : [];
@@ -195,7 +191,7 @@ function selectSingleCondition(props: {
   // narrow, so narrowing is moot.
   if (knownRoles.length === 0) return undefined;
 
-  const candidates: AccessCondition<GenericDocument>[] = [];
+  const candidates: QueryConstraint<GenericDocument>[] = [];
   for (const role of knownRoles) {
     const contribution = classifyRole({
       access,
@@ -231,8 +227,8 @@ function selectSingleCondition(props: {
  * (scan) rather than to a guess.
  *
  * Returns `undefined` when the single contributing rule used the FLAT algebra
- * rather than calling `q.withIndex(…)`: there is a describable constraint, but no
- * index to push it into. {@link resolveAccessConstraint} is the export that can
+ * rather than declaring `withIndex`: there is a describable constraint, but no
+ * index to push it into. {@link resolveQueryConstraint} is the export that can
  * still use it.
  *
  * @param props - Input props.
@@ -252,13 +248,13 @@ function selectSingleCondition(props: {
  *
  * @example
  * ```ts
- * const index = resolveAccessIndex({
+ * const index = resolveQueryIndex({
  *   access, user, resource: "pages", action: CRUD_ACTIONS.read,
  * });
  * // → { name: "by_author", range: (q) => q.eq("authorId", "u1") }
  * ```
  */
-export function resolveAccessIndex<
+export function resolveQueryIndex<
   TSubjects extends Record<string, SubjectEntry> = Record<string, SubjectEntry>,
 >(props: {
   access?: VexAccessConfig<TSubjects>;
@@ -266,7 +262,7 @@ export function resolveAccessIndex<
   organization?: Record<string, unknown>;
   resource: string;
   action: string;
-}): QueryIndex | undefined {
+}): ConvexQueryIndex | undefined {
   const access = props.access as VexAccessConfig | undefined;
   if (!access || !access.enabled) return undefined;
 
@@ -282,14 +278,14 @@ export function resolveAccessIndex<
 
   return {
     name: condition.index.name,
-    range: accessConstraintsToIndexRange({ constraints: condition.index.constraints }),
+    range: queryConstraintsToConvexIndexRange({ constraints: condition.index.constraints }),
   };
 }
 
 /**
  * Resolves an access rule to a `.filter()` expression, if any.
  *
- * The sibling of {@link resolveAccessIndex}, for query shapes with no `withIndex`
+ * The sibling of {@link resolveQueryIndex}, for query shapes with no `withIndex`
  * slot to claim (`search`) or where the caller's own index already claimed it
  * (`find`'s displaced branch). Both share {@link selectSingleCondition}, so they
  * cannot disagree about which rule applies.
@@ -313,7 +309,7 @@ export function resolveAccessIndex<
  * @returns A thunk taking the query's own `FilterBuilder`, or `undefined` when
  *   nothing is left to exclude.
  */
-export function resolveAccessConstraint<
+export function resolveQueryConstraint<
   TSubjects extends Record<string, SubjectEntry> = Record<string, SubjectEntry>,
 >(props: {
   access?: VexAccessConfig<TSubjects>;
@@ -322,7 +318,7 @@ export function resolveAccessConstraint<
   resource: string;
   action: string;
   indexAlreadyApplied?: boolean;
-}): AccessFilterFn | undefined {
+}): ConvexQueryFilterFn | undefined {
   const access = props.access as VexAccessConfig | undefined;
   if (!access || !access.enabled) return undefined;
 
@@ -335,7 +331,7 @@ export function resolveAccessConstraint<
   });
   if (condition === undefined) return undefined;
 
-  const { index, filter } = condition;
+  const { index, where } = condition;
 
   // Two reasons to omit the index half: an index with no constraints is an
   // ordering-only opt-in and excludes nothing, and a caller that already pushed the
@@ -347,18 +343,18 @@ export function resolveAccessConstraint<
   // `.withIndex(name, range).filter(expr)`, which is Convex's own shape. Compiling
   // only one would silently discard half the rule, so when both are present they are
   // `and`-ed into a single expression.
-  if (indexConstrains && filter !== undefined) {
+  if (indexConstrains && where !== undefined) {
     return (q) =>
       q.and(
-        accessConstraintsToFilter({ constraints: index.constraints, q }),
-        accessFilterTreeToFilter({ node: filter, q }),
+        queryConstraintsToConvexFilter({ constraints: index.constraints, q }),
+        queryFilterTreeToConvexFilter({ node: where, q }),
       );
   }
   if (indexConstrains) {
-    return (q) => accessConstraintsToFilter({ constraints: index.constraints, q });
+    return (q) => queryConstraintsToConvexFilter({ constraints: index.constraints, q });
   }
-  if (filter !== undefined) {
-    return (q) => accessFilterTreeToFilter({ node: filter, q });
+  if (where !== undefined) {
+    return (q) => queryFilterTreeToConvexFilter({ node: where, q });
   }
   // Recorded nothing that excludes rows.
   return undefined;

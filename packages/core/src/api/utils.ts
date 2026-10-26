@@ -1,4 +1,4 @@
-import { type GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
+import { type GenericDataModel, GenericMutationCtx, GenericQueryCtx, type GenericDocument } from "convex/server";
 import { type GenericId } from "convex/values";
 import { type VexConfig } from "../config";
 import { type CollectionSlug } from "../types";
@@ -8,7 +8,10 @@ import {
   type CustomActionsInput,
   DRAFT_ACTIONS,
   hasPermission,
+  isFieldAllowed,
   PERMISSION_SCOPES,
+  resolveFieldPermissions,
+  stripDeniedFields,
   VexAccessConfig,
 } from "../access";
 import { AccessCallOptions, type VexApiAuth } from "./types";
@@ -278,26 +281,52 @@ export function stampUpdatedAt<TData>(props: {
 }
 
 /**
- * Structural equality for plain JSON-shaped values (Convex documents contain
- * no `Date`/`Map`/`Set`), used to detect which fields a `beforeChange` hook
- * actually changed rather than merely returned under a new reference.
+ * The per-document read pass `find` and `search` share: `hasPermission`, then the
+ * caller's field permissions, then stripping denied fields.
  *
- * @param a - The first value to compare.
- * @param b - The second value to compare.
- * @returns `true` if `a` and `b` are structurally equal, `false` otherwise.
+ * A document is dropped, not stripped, when the caller's `where` referenced a field
+ * this caller may not read on it: a match on a hidden field would reveal the
+ * field's value through which rows came back (for example, "which posts have
+ * `salary > 100000`").
+ *
+ * @param props - Input props.
+ * @param props.docs - Documents as fetched.
+ * @param props.access - From `resolveReadCall` / `resolveAccessCall`; `undefined` when
+ *   access is bypassed or unconfigured, which allows everything.
+ * @param props.auth - The caller.
+ * @param props.resource - Subject slug.
+ * @param props.action - Read action being checked.
+ * @param props.whereFields - Field names the caller's `where` referenced, system fields
+ *   excluded; `[]` when there is no caller `where` or access is not enforced.
+ * @returns The readable documents, with denied fields removed.
  */
-export function deepEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (typeof a !== "object" || a === null || typeof b !== "object" || b === null) return false;
-
-  if (Array.isArray(a) || Array.isArray(b)) {
-    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item, i) => deepEqual(item, b[i]));
+export function readableDocuments<TDoc extends GenericDocument>(props: {
+  docs: readonly TDoc[];
+  access: VexAccessConfig | undefined;
+  auth: VexApiAuth | undefined;
+  resource: string;
+  action: string;
+  whereFields: readonly string[];
+}): TDoc[] {
+  const user = props.auth?.user ?? null;
+  const organization = props.auth?.organization;
+  const readable: TDoc[] = [];
+  for (const doc of props.docs) {
+    if (!hasPermission({ access: props.access, resource: props.resource, action: props.action, data: doc, user, organization })) {
+      continue;
+    }
+    const fieldPermissions = resolveFieldPermissions({
+      access: props.access,
+      user,
+      organization,
+      resource: props.resource,
+      action: props.action,
+      data: doc,
+    });
+    if (props.whereFields.some((field) => !isFieldAllowed(fieldPermissions, field))) continue;
+    readable.push(stripDeniedFields(doc, fieldPermissions));
   }
-
-  const aKeys = Object.keys(a as Record<string, unknown>);
-  const bKeys = Object.keys(b as Record<string, unknown>);
-  return (
-    aKeys.length === bKeys.length &&
-    aKeys.every((key) => deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]))
-  );
+  return readable;
 }
+
+

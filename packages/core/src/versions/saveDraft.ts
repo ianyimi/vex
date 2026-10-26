@@ -3,7 +3,8 @@ import { ConvexError } from "convex/values";
 
 import type { VexConfig } from "../config";
 import type { AccessCallOptions, VexApiAuth } from "../api/types";
-import { CONSTRAINT_COMPARATORS, DRAFT_ACTIONS } from "../access";
+import { DRAFT_ACTIONS } from "../access";
+import { valuesEqual } from "../utils/valuesEqual";
 import { prepareEdit } from "../api/prepareEdit";
 import type { CollectionOrGlobal } from "../types/utils";
 import { VERSION_STATUSES } from "./constants";
@@ -71,7 +72,7 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
       const alreadySnapshotted = existing.some(
         (row) =>
           row.status === VERSION_STATUSES.published.key &&
-          CONSTRAINT_COMPARATORS.eq(row.snapshot, publishedFields),
+          valuesEqual(row.snapshot, publishedFields),
       );
       if (!alreadySnapshotted) {
         await createVersion({

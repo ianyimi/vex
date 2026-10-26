@@ -1,9 +1,9 @@
 import type {
-  AccessIndexConstraint,
+  QueryIndexConstraint,
   ConstraintBuilder,
   ConstraintResult,
   IndexOp,
-} from "./constraintTypes";
+} from "./queryConstraintTypes";
 
 /**
  * Key the accumulated constraint list is carried on. A symbol so it cannot collide
@@ -13,12 +13,12 @@ const CONSTRAINTS = Symbol("vex.access.indexConstraints");
 
 /** The runtime shape behind a positional chain: methods, plus its own accumulation. */
 type IndexChainNode<TDoc> = Record<IndexOp, (field: string, value: unknown) => unknown> & {
-  [CONSTRAINTS]: readonly AccessIndexConstraint<string, TDoc>[];
+  [CONSTRAINTS]: readonly QueryIndexConstraint<string, TDoc>[];
 };
 
 /**
- * Creates a positional constraint builder — the `ix` a rule receives inside
- * `q.withIndex(name, (ix) => …)`.
+ * Creates a positional constraint builder — the `ix` a rule's `withIndex.range`
+ * receives.
  *
  * **Pure.** Every method returns a NEW builder carrying the accumulated list; there
  * is no shared array and no caller-owned sink. That is what makes "only the value
@@ -36,7 +36,7 @@ type IndexChainNode<TDoc> = Record<IndexOp, (field: string, value: unknown) => u
  * @typeParam TDoc - The document shape constraint values are typed from.
  * @returns A builder positioned at field 0, with nothing accumulated.
  */
-export function createIndexConstraintBuilder<
+export function createQueryIndexConstraintBuilder<
   TFields extends readonly string[],
   TDoc,
 >(): ConstraintBuilder<TFields, TDoc> {
@@ -49,12 +49,12 @@ export function createIndexConstraintBuilder<
    * @param constraints - Everything accumulated so far, in call order.
    * @returns A node exposing all five operators, each extending the list.
    */
-  function node(constraints: readonly AccessIndexConstraint<string, TDoc>[]): IndexChainNode<TDoc> {
+  function node(constraints: readonly QueryIndexConstraint<string, TDoc>[]): IndexChainNode<TDoc> {
     /**
      * Appends one constraint and returns the next node.
      *
      * The cast erases per-field narrowing the runtime cannot re-derive:
-     * `AccessIndexConstraint`'s `value` is `TField extends keyof TDoc ? … : never`,
+     * `QueryIndexConstraint`'s `value` is `TField extends keyof TDoc ? … : never`,
      * a call-site typing device, while these parameters are `string`/`unknown`.
      *
      * @param op - The method's own name, matching {@link IndexOp} exactly.
@@ -65,7 +65,7 @@ export function createIndexConstraintBuilder<
     const extend = (op: IndexOp, field: string, value: unknown): IndexChainNode<TDoc> =>
       node([
         ...constraints,
-        { field, op, value } as AccessIndexConstraint<string, TDoc>,
+        { field, op, value } as QueryIndexConstraint<string, TDoc>,
       ]);
 
     return {
@@ -88,20 +88,20 @@ export function createIndexConstraintBuilder<
  *
  * The counterpart to the cast above: `ConstraintResult` is nominal and carries no
  * public shape, so only this module can get the list back out. Called by
- * `createAccessQueryBuilder` on whatever the range callback returned — which is why
+ * `recordIndexSelection` on whatever the range callback returned — which is why
  * a discarded chain contributes nothing.
  *
  * @typeParam TDoc - The document shape constraint values are typed from.
  * @param result - The value a range callback returned.
  * @returns Its accumulated constraints, in call order. `[]` when `result` did not
  *   come from this module — unreachable through the types, and treated as "no
- *   constraints" rather than throwing, since `validateAccessConstraints` owns
+ *   constraints" rather than throwing, since `validateQueryIndexConstraints` owns
  *   diagnosing a rule that reached past them.
  * @internal
  */
-export function readIndexConstraints<TDoc>(
+export function readQueryIndexConstraints<TDoc>(
   result: ConstraintResult,
-): readonly AccessIndexConstraint<string, TDoc>[] {
+): readonly QueryIndexConstraint<string, TDoc>[] {
   const carried = (result as unknown as Partial<IndexChainNode<TDoc>>)[CONSTRAINTS];
   return carried ?? [];
 }

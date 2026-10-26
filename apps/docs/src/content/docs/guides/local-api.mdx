@@ -18,9 +18,9 @@ auth resolver.
 - When `config.access` is set, every call runs through `hasPermission` before it reads or
   writes anything — RBAC is enforced **inside** the Local API, not layered on top by your
   handler.
-- `read`/`readDrafts` rules written as `{ constraints }` on `defineAccess` compile directly
-  into the Convex query these functions issue: an indexed rule becomes `.withIndex(...)`, an
-  unindexed one becomes `.filter(...)` on the same query. See the
+- `read`/`readDrafts` rules written with `withIndex`/`where` on `defineAccess` compile
+  directly into the Convex query these functions issue: an indexed rule becomes
+  `.withIndex(...)`, an unindexed one becomes `.filter(...)` on the same query. See the
   [Access Control guide](/guides/access-control/) for the constraint forms.
 - `create`/`update`/`delete` authorize against the stored document — or, for `create`, the
   incoming payload, since there's no stored row yet — before the write executes.
@@ -56,7 +56,7 @@ import { query } from "./_generated/server";
 import { v } from "convex/values";
 import { find } from "./vexApi";
 
-// Plain list — defaults to 100 documents, insertion order.
+// Plain list — no `limit` (or `limit: 0`) returns every document, insertion order.
 export const listPosts = query({
   handler: (ctx) => find({ ctx, collection: "posts" }),
 });
@@ -85,9 +85,31 @@ export const paginatedPosts = query({
 });
 ```
 
-Query-chain options apply in order: `withIndex` → `order` → `filter` → `take`/pagination.
-Prefer `withIndex` over `filter` for anything performance-sensitive — `filter` scans every
+Query-chain options apply in order: `withIndex` → `order` → `where` → `take`/pagination.
+Prefer `withIndex` over `where` for anything performance-sensitive — `where` scans every
 document the index range (or full table, absent one) returns.
+
+```ts
+find({ ctx, collection: "posts", where: (q) => q.and(q.eq("featured", true), q.neq("slug", "draft")) })
+```
+
+`where` also accepts a plain object with the same shape the callback builds — for a
+filter that needs to be saved (a view) or put in a URL, which a function cannot be.
+Convert a builder call to this shape with `whereToNode`; validate an untrusted one with
+`validateWhereNode`.
+
+```ts
+find({ ctx, collection: "posts", where: { field: "featured", op: "eq", value: true } })
+```
+
+On the client, a callback is converted to the plain form before it is sent. `withIndex` is
+server-only.
+
+```ts
+import { find } from "@vexcms/react/client";
+
+useQuery(find({ collection: "posts", where: (q) => q.eq("featured", true) }));
+```
 
 ## Reading one document: `get`
 
@@ -248,7 +270,7 @@ function's default verb.
   Accepting either from a Convex `args` validator lets a caller pick an action no role
   declared — see the [Access Control guide](/guides/access-control/) for why that's a deny
   bypass.
-- **`withIndex` beats `filter`.** Both narrow the same query, but `filter` still scans every
+- **`withIndex` beats `where`.** Both narrow the same query, but `where` still scans every
   document in whatever range (or full table) it's given; reach for a declared index first.
 - **`update`'s `data` is a merge patch, not a replacement.** Fields you don't include are
   left untouched on the document — pass only what changed.
