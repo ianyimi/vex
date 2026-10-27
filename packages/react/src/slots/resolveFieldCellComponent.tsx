@@ -7,6 +7,7 @@ import type {
 } from "@vexcms/core";
 import type { ReactHKT } from "../adapter";
 import { fieldToCellComponent } from "../fields/registry";
+import { ComponentErrorBoundary } from "./ComponentErrorBoundary";
 
 /**
  * Composes the final Cell component for one field: built-in → root per-type `fields.<type>.Cell`
@@ -37,10 +38,14 @@ export function resolveFieldCellComponent(props: {
     ...(props.fieldOverrides ?? []),
   ];
   return chain.reduce<ComponentType<CellComponentProps<AdminDataField>>>(
-    (renderDefault, override) => {
+    (RenderDefault, override) => {
       const Override = override.component;
       function Composed(p: CellComponentProps<AdminDataField>) {
-        return <Override {...p} renderDefault={renderDefault} />;
+        return (
+          <ComponentErrorBoundary id={override.id} fallback={<RenderDefault {...p} />}>
+            <Override {...p} renderDefault={RenderDefault} />
+          </ComponentErrorBoundary>
+        );
       }
       Composed.displayName = `FieldCellOverride(${override.id})`;
       return Composed;

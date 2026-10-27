@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DEFAULT_LIVE_PREVIEW_PANEL_MIN_SIZE,
   livePreviewLayoutCookieName,
@@ -67,9 +67,21 @@ export function useLivePreviewPanelMinSize(): {
 }
 
 /**
- * Tracks whether the live-preview panel is open for one collection or
- * global, persisting the user's explicit choice in a cookie so a page refresh
- * reopens it instantly instead of flashing closed then open.
+ * Tracks whether the live-preview panel is open for one collection or global.
+ *
+ * Two kinds of change drive `isOpen`:
+ * - **Explicit** — the user clicks the header button or the ⋯ menu item
+ *   (`toggle`). Persisted in a cookie so a page refresh at desktop width
+ *   reopens it instantly instead of flashing closed then open, and clears
+ *   the "was auto-closed" memory below — any explicit choice sticks until
+ *   the user changes it again.
+ * - **Automatic** — crossing the mobile breakpoint (`props.isMobile`
+ *   flipping). Narrowing past it while open auto-closes the panel instead of
+ *   letting a desktop split panel render as a full-screen takeover, and
+ *   remembers that the close was automatic; widening back past it reopens
+ *   the panel ONLY if that memory is still set, i.e. the user has not
+ *   explicitly opened or closed it while narrow. Automatic transitions never
+ *   touch the cookie — only `toggle()` does.
  *
  * The cookie is READ server-side by `NextAdminPage` via
  * `readLivePreviewPanelCookie` from `@vexcms/core` — that helper cannot live in
@@ -80,27 +92,71 @@ export function useLivePreviewPanelMinSize(): {
  *   down from `NextAdminPage`.
  * @param props.enabled - Whether live preview is configured for this slug.
  *   When false the panel stays closed and a stale open cookie is reset to closed.
+ * @param props.isMobile - Whether the viewport is currently below the mobile
+ *   breakpoint (`useIsMobile()`). Consulted only to detect breakpoint
+ *   crossings between renders — the caller still decides what to render
+ *   (split panel vs. mobile overlay) at each width.
  * @returns `isOpen` and a `toggle` function that flips it and rewrites the cookie.
  */
 export function useLivePreviewPanelState(props: {
   slug: string;
   initialOpen: boolean;
   enabled: boolean;
+  isMobile: boolean;
 }): {
   isOpen: boolean;
   toggle: () => void;
 } {
   const [isOpen, setIsOpen] = useState(props.enabled && props.initialOpen);
+  // Mirrors `props.isMobile`, so a breakpoint crossing can be detected AND
+  // corrected DURING RENDER (React's "adjusting state when a prop changes"
+  // pattern — react.dev/learn/you-might-not-need-an-effect), rather than in a
+  // `useEffect` that fires one commit later. An effect-based correction would
+  // commit (and `LivePreviewMobileOverlay`'s `Sheet` would briefly mount)
+  // `isOpen: true` for one frame at the exact moment `isMobile` flips true,
+  // before the very next commit closed it again — confirmed in the browser:
+  // Base UI's `Dialog` reads that flash as a real open-then-close and plays
+  // its (invisible, but `pointer-events: auto`) exit transition over it,
+  // leaving a full-viewport click-blocking layer behind for its duration.
+  const [previousIsMobile, setPreviousIsMobile] = useState(props.isMobile);
+  // `true` only while the panel is closed SOLELY because narrowing past the
+  // mobile breakpoint auto-closed it — never because the user chose to close
+  // it. Consulted when the viewport widens back past the breakpoint; cleared
+  // by `toggle()` so any explicit open/close while narrow sticks. A ref, not
+  // state: it never needs to trigger a render on its own, only to be read the
+  // next time `isMobile` changes.
+  const autoClosedRef = useRef(false);
+
+  if (props.isMobile !== previousIsMobile) {
+    setPreviousIsMobile(props.isMobile);
+    if (props.isMobile) {
+      // Narrowed past the breakpoint: an open panel would otherwise render as
+      // a full-screen takeover — close it instead and remember the close was
+      // automatic, so widening back can restore it. No cookie write: this is
+      // not a user choice.
+      if (isOpen) {
+        autoClosedRef.current = true;
+        setIsOpen(false);
+      }
+    } else if (autoClosedRef.current) {
+      // Widened back past the breakpoint with nothing but an auto-close
+      // since — restore it. No cookie write, same reasoning.
+      autoClosedRef.current = false;
+      setIsOpen(true);
+    }
+  }
 
   useEffect(() => {
     if (props.enabled) return;
     setIsOpen(false);
+    autoClosedRef.current = false;
     if (readCookie(livePreviewPanelCookieName({ slug: props.slug })) === "1") {
       writeLivePreviewPanelCookie({ slug: props.slug, isOpen: false });
     }
   }, [props.enabled, props.slug]);
 
   const toggle = useCallback(() => {
+    autoClosedRef.current = false;
     setIsOpen((prev) => {
       const next = prev === false;
       writeLivePreviewPanelCookie({ slug: props.slug, isOpen: next });

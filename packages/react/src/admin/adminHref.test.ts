@@ -9,7 +9,7 @@ describe("adminHref", () => {
 
   it("builds a collection list URL", () => {
     expect(adminHref({ type: "collection", slug: "posts" }, "/admin")).toBe(
-      "/admin/posts",
+      "/admin/collections/posts",
     );
   });
 
@@ -19,27 +19,31 @@ describe("adminHref", () => {
     );
   });
 
+  it("builds the globals list URL", () => {
+    expect(adminHref({ type: "globals" }, "/admin")).toBe("/admin/globals");
+  });
+
   it("builds a document edit URL", () => {
     expect(
       adminHref({ type: "document", slug: "posts", id: "abc123" }, "/admin"),
-    ).toBe("/admin/posts/abc123");
+    ).toBe("/admin/collections/posts/abc123");
   });
 
   it("builds a create-modal URL, reusing MODALS.createDocument's own urlParam", () => {
     expect(adminHref({ type: "create", slug: "posts" }, "/admin")).toBe(
-      `/admin/posts?${MODALS.createDocument.urlParam}=true`,
+      `/admin/collections/posts?${MODALS.createDocument.urlParam}=true`,
     );
   });
 
   it("normalizes a basePath without a leading slash, matching addLeadingSlash", () => {
     expect(adminHref({ type: "collection", slug: "posts" }, "admin")).toBe(
-      "/admin/posts",
+      "/admin/collections/posts",
     );
   });
 
   it("supports a custom basePath", () => {
     expect(adminHref({ type: "collection", slug: "posts" }, "/cms")).toBe(
-      "/cms/posts",
+      "/cms/collections/posts",
     );
   });
 });

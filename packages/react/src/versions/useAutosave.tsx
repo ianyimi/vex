@@ -14,6 +14,17 @@ export interface UseAutosaveResult {
   lastSavedAt: number | null;
   /** The error from the most recent failed save, or `null`. */
   error: Error | null;
+  /**
+   * `true` whenever there is work not yet durably saved: a change still
+   * sitting in the debounce window (`status` is still `"idle"` or
+   * `"saved"` there — see {@link AutosaveStatus}), a save currently in
+   * flight (`status === "saving"`), or the last save attempt failed
+   * (`status === "error"`). `false` once a save succeeds AND the caller's
+   * `onSave` has reset its form to match, dropping `props.values` back to
+   * an empty diff (spec decision 5) — use this, not `status` alone, to decide
+   * whether navigating away would lose work.
+   */
+  hasUnsavedChanges: boolean;
 }
 
 /**
@@ -144,5 +155,18 @@ export function useAutosave<TValues extends Record<string, unknown>>(props: {
     return () => clearTimeout(timeoutId);
   }, [props.values, props.enabled, props.debounceMs, runSave]);
 
-  return { status, lastSavedAt, error };
+  // Mirrors the skip conditions in the effect above: a non-empty diff that
+  // doesn't yet match the last successful save is unsaved work, regardless
+  // of `status` (the debounce window keeps `status` at `"idle"`/`"saved"`).
+  // The empty-diff check matters right after a successful save: the
+  // caller's `onSave` resets its form so `props.values` drops to `{}`,
+  // which differs from the non-empty `lastSavedValuesRef.current` by
+  // `valuesEqual` but means "nothing unsaved", not "save `{}`".
+  const hasUnsavedChanges =
+    status === "saving" ||
+    status === "error" ||
+    (Object.keys(props.values).length > 0 &&
+      !valuesEqual(props.values, lastSavedValuesRef.current));
+
+  return { status, lastSavedAt, error, hasUnsavedChanges };
 }

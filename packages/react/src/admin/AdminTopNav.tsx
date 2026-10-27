@@ -101,7 +101,7 @@ export default function AdminTopNav(props: AdminLayoutProps) {
     // guard are needed here.
     crumbs.push({
       key: "globals",
-      href: adminHref({ type: "collection", slug: "globals" }, config.basePath),
+      href: adminHref({ type: "globals" }, config.basePath),
       label: "Globals",
     });
     if (activeGlobal) {

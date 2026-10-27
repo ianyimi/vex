@@ -34,6 +34,8 @@
 | 12 | **Paid tiers ship in price order: Pro → Agency → Enterprise** (2026-10-17) | Supersedes "SSO + audit first": co-editing (ENT-3) is now the first paid build |
 | 13 | **Enterprise cannot ship without its paperwork** (2026-10-17) — MSA, SLA, trust pack, invoicing are a spec of their own (ENT-P) | ENT-P gates the Enterprise tier |
 | 14 | **Plugin system first** (2026-10-21) — Track PL leads the post-0.1.0 order; admin slots are built into launch specs G / H / I | MW-4 and AD-7 fold into PL; first-party adapters and paid tiers ship as plugins |
+| 15 | **Paid tiers are not announced at launch** (2026-10-26) — public pages carry one line ("paid add-ons may come later, after the free roadmap; nothing free becomes paid") and name no tier or paid feature until one is close to shipping | Launch plan Q / R; each tier (and ENT-0) needs its own spec before any public mention |
+| 16 | **Community-funded until Agency / Enterprise ship** (2026-10-26) — sponsorship is the funding model through the free-tier roadmap; investor funding is being pursued, but the best case defers it. Reason: once paying customers land they take precedence, so free-tier bug-fix turnaround must already be funded and staffed (agent-assisted) before then, or the community sees service drop | Launch plan R frames sponsorship as funding the free tier; ENT-0 timing and support-load planning account for both queues |
 
 ### Why the form builder is not first
 

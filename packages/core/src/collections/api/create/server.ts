@@ -9,6 +9,7 @@ import { ConvexError } from "convex/values";
 
 import type { CollectionSlug } from "../../../types/generated";
 import type { GenericMutationServerParams } from "../types";
+import type { VexVersionStatus } from "../../../versions";
 import { CRUD_ACTIONS, DRAFT_ACTIONS, hasPermission } from "../../../access";
 import { stampUpdatedAt } from "../../../db/documents";
 import { createVersion, removeVexFields, VERSION_STATUSES } from "../../../versions";
@@ -36,6 +37,14 @@ export interface CreateServerArgs<
   data: Expand<
     BetterOmit<DocumentByName<DataModel, TableNamesInDataModel<DataModel>>, "_creationTime" | "_id">
   >;
+  /**
+   * Overrides `collection.versions.defaultStatus` for this one insert.
+   * Ignored for a collection that doesn't declare `versions.drafts`. The
+   * duplicate action (Step 6) passes `"draft"` here so a clone of a
+   * `defaultStatus: "published"` collection's document still lands as a
+   * draft (spec.md decision 9).
+   */
+  status?: VexVersionStatus;
 }
 
 /**
@@ -80,7 +89,7 @@ export async function create<
   const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: patch });
 
   if (collection.versions.drafts) {
-    const status = collection.versions.defaultStatus;
+    const status = args.status ?? collection.versions.defaultStatus;
     const insertData = {
       ...data,
       vex_status: status,

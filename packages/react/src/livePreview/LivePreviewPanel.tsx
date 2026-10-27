@@ -190,9 +190,9 @@ export function computeLivePreviewFrameGeometry(props: {
 
 /**
  * The live-preview surface rendered beside (desktop, inside a `ResizablePanel`)
- * or over (mobile, `isMobile`) a collection or global edit form. Renders an
- * iframe pointed at the resolved preview URL and syncs the form's values into
- * it via `useLivePreviewSync`.
+ * or inside `LivePreviewMobileOverlay`'s bottom sheet (mobile, `isMobile`) a
+ * collection or global edit form. Renders an iframe pointed at the resolved
+ * preview URL and syncs the form's values into it via `useLivePreviewSync`.
  *
  * The header's "Preview" link opens the same URL in a new tab. That tab is
  * reached over `BroadcastChannel` rather than `postMessage` — a
@@ -208,8 +208,10 @@ export function computeLivePreviewFrameGeometry(props: {
  *   `collection.admin.livePreview.breakpoints ?? config.admin.livePreview.breakpoints`,
  *   resolved by the caller. The toggle row is not rendered when `isMobile`.
  * @param props.form - The edit view's form instance, forwarded to `useLivePreviewSync`.
- * @param props.isMobile - Renders `fixed inset-0` full-screen with a close
- *   button instead of filling its parent. Requires `onClose`.
+ * @param props.isMobile - Hides the desktop-only breakpoint toggle row and
+ *   shows a close button in its place — set by `LivePreviewMobileOverlay`,
+ *   which supplies the surrounding `fixed`/overlay chrome (and its own
+ *   backdrop, focus trap, Esc-to-close, scroll lock). Requires `onClose`.
  * @param props.onClose - Required when `isMobile` — called by the close button.
  * @returns The preview surface: toolbar, breakpoint row, and scaled iframe.
  */
@@ -236,6 +238,12 @@ export function LivePreviewPanel(props: {
   const [loadedPreviewUrl, setLoadedPreviewUrl] = useState<string | null>(null);
   const isFrameLoading = loadedPreviewUrl !== props.previewUrl;
   const containerSize = useLivePreviewContainerSize(containerRef);
+  // Read after mount: `window` doesn't exist during the server render. `null` until known, so the
+  // iframe never mounts (and starts a nested load) before the check runs.
+  const [isInsideFrame, setIsInsideFrame] = useState<boolean | null>(null);
+  useEffect(() => {
+    setIsInsideFrame(window.self !== window.top);
+  }, []);
 
   useLivePreviewSync({
     form: props.form,
@@ -279,13 +287,7 @@ export function LivePreviewPanel(props: {
   }
 
   return (
-    <div
-      className={
-        props.isMobile
-          ? "fixed inset-0 z-50 flex flex-col bg-background"
-          : "@container/preview flex h-full flex-col"
-      }
-    >
+    <div className="@container/preview flex h-full flex-col">
       <div className="flex items-center justify-between gap-4 px-3 py-2 border-b border-border">
         <VexLink
           href={props.previewUrl}
@@ -383,33 +385,55 @@ export function LivePreviewPanel(props: {
           !props.isMobile && "overflow-hidden bg-muted/30",
         )}
       >
-        <div
-          style={{
-            position: "absolute",
-            left: geometry.left,
-            top: 0,
-            width: geometry.width,
-            height: geometry.height,
-            transform: `scale(${geometry.scale})`,
-            transformOrigin: "top left",
-          }}
-        >
-          <iframe
-            ref={iframeRef}
-            src={props.previewUrl}
-            className={cn("h-full w-full border-0", isFrameLoading && "invisible")}
-            title="Live preview"
-            onLoad={() => setLoadedPreviewUrl(props.previewUrl)}
-          />
-        </div>
-        {isFrameLoading && (
+        {isInsideFrame ? (
           <div
-            className="absolute inset-0 flex items-center justify-center gap-2 bg-muted/30"
-            role="status"
+            role="alert"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center"
           >
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Loading preview…</span>
+            <p className="text-sm font-medium text-destructive">
+              Live preview can't render inside another live preview.
+            </p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              This admin page is itself loaded in a live preview frame: the{" "}
+              <code>livePreview.url</code> for <code>{props.collectionSlug}</code> resolved to{" "}
+              <code className="break-all">{props.previewUrl}</code>, which renders the admin panel
+              again. Embedding it here would nest the admin inside itself. Point{" "}
+              <code>livePreview.url</code> at the page on your site that renders this document.
+            </p>
           </div>
+        ) : (
+          <>
+            {isInsideFrame === false && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: geometry.left,
+                  top: 0,
+                  width: geometry.width,
+                  height: geometry.height,
+                  transform: `scale(${geometry.scale})`,
+                  transformOrigin: "top left",
+                }}
+              >
+                <iframe
+                  ref={iframeRef}
+                  src={props.previewUrl}
+                  className={cn("h-full w-full border-0", isFrameLoading && "invisible")}
+                  title="Live preview"
+                  onLoad={() => setLoadedPreviewUrl(props.previewUrl)}
+                />
+              </div>
+            )}
+            {isFrameLoading && (
+              <div
+                className="absolute inset-0 flex items-center justify-center gap-2 bg-muted/30"
+                role="status"
+              >
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Loading preview…</span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

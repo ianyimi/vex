@@ -6,6 +6,7 @@ import type {
 } from "@vexcms/core";
 import type { ReactHKT } from "../adapter";
 import { fieldToFieldComponent } from "../fields/registry";
+import { ComponentErrorBoundary } from "./ComponentErrorBoundary";
 
 /**
  * Composes the final admin `Field` component for one field: built-in → root
@@ -32,10 +33,14 @@ export function resolveFieldComponent(props: {
     throw new Error(`Missing component for field type '${props.fieldType}'`);
   }
   const chain = [...(props.rootOverrides ?? []), ...(props.fieldOverrides ?? [])];
-  return chain.reduce<ComponentType<FieldComponentProps>>((renderDefault, override) => {
+  return chain.reduce<ComponentType<FieldComponentProps>>((RenderDefault, override) => {
     const Override = override.component;
     function Composed(p: FieldComponentProps) {
-      return <Override {...p} renderDefault={renderDefault} />;
+      return (
+        <ComponentErrorBoundary id={override.id} fallback={<RenderDefault {...p} />}>
+          <Override {...p} renderDefault={RenderDefault} />
+        </ComponentErrorBoundary>
+      );
     }
     Composed.displayName = `FieldOverride(${override.id})`;
     return Composed;

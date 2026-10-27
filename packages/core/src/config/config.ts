@@ -166,6 +166,24 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
             contributions: config?.admin?.components?.array?.itemActions ?? [],
           }),
         },
+        edit: {
+          header: {
+            actions: config?.admin?.components?.edit?.header?.actions ?? [],
+            before: config?.admin?.components?.edit?.header?.before ?? [],
+            after: config?.admin?.components?.edit?.header?.after ?? [],
+            overrides: config?.admin?.components?.edit?.header?.overrides ?? {},
+          },
+          beforeFields: config?.admin?.components?.edit?.beforeFields ?? [],
+          afterFields: config?.admin?.components?.edit?.afterFields ?? [],
+          sidebar: {
+            before: config?.admin?.components?.edit?.sidebar?.before ?? [],
+            after: config?.admin?.components?.edit?.sidebar?.after ?? [],
+          },
+          actionsMenu: {
+            items: config?.admin?.components?.edit?.actionsMenu?.items ?? [],
+            overrides: config?.admin?.components?.edit?.actionsMenu?.overrides ?? {},
+          },
+        },
       },
     },
     storage: {

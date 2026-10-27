@@ -102,7 +102,12 @@ export function AppForm(props: {
             onSubmit={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              props.form.handleSubmit();
+              // A rejected `handleSubmit()` (an `onSubmit` that rethrows after applying
+              // a server field error, e.g. `CreateDocumentForm`'s) already updated the
+              // form's own error state — `isSubmitSuccessful: false` is exactly what the
+              // `failedSubmitAttempt` effect above reacts to. This `.catch` only stops
+              // that rejection from surfacing as an unhandled promise rejection.
+              props.form.handleSubmit().catch(() => {});
             }}
           >
             {props.children}

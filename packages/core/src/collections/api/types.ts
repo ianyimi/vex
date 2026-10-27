@@ -17,6 +17,7 @@ import type {
   VexApiAuth,
 } from "../../db/types";
 import type { VexWhereNodeOf } from "../../access/queryConstraintTypes";
+import type { VexVersionStatus } from "../../versions/constants";
 
 // ── Generic args base types ─────────────────────────────────────────────────
 //
@@ -486,6 +487,11 @@ export interface VexCreateArgs {
   auth?: VexApiAuth;
   collection: string;
   data: Record<string, unknown>;
+  /**
+   * Overrides the collection's `versions.defaultStatus` for this insert.
+   * Ignored for a collection that doesn't declare `versions.drafts`.
+   */
+  status?: VexVersionStatus;
 }
 
 /** Args for `api.vex.update`. */

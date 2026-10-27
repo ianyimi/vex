@@ -3,12 +3,14 @@
 import { Component, type ReactNode } from "react";
 
 /**
- * Wraps one contribution so a throwing third-party component cannot take down the whole slot or
- * the surrounding form (S10). Renders an inline error naming the contribution's id instead of
- * propagating — editing other fields, or other contributions in the same slot, must stay possible.
+ * Wraps one contribution — or, since decision 17, one override layer — so a throwing component
+ * cannot take down the whole slot, override chain, or surrounding form (S10). Renders an inline
+ * error naming the id instead of propagating, optionally alongside `fallback` (the layer beneath
+ * a throwing override, per decision 17) — editing other fields, or other contributions/layers,
+ * must stay possible.
  */
 export class ComponentErrorBoundary extends Component<
-  { id: string; children: ReactNode },
+  { id: string; fallback?: ReactNode; children: ReactNode },
   { error: Error | undefined }
 > {
   state: { error: Error | undefined } = { error: undefined };
@@ -24,20 +26,23 @@ export class ComponentErrorBoundary extends Component<
   }
 
   /**
-   * Renders the fallback error message when a child threw, otherwise its children.
+   * Renders `fallback` (when given) plus an inline error naming `id` when a child threw,
+   * otherwise `this.props.children`.
    *
-   * @returns The fallback error message, or `this.props.children` when no error occurred.
+   * @returns The fallback content, or `this.props.children` when no error occurred.
    */
   render() {
     if (this.state.error) {
       return (
-        <div
-          role="alert"
-          className="rounded-sm border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive"
-        >
-          Component "{this.props.id}" failed to render:{" "}
-          {this.state.error.message}
-        </div>
+        <>
+          {this.props.fallback}
+          <div
+            role="alert"
+            className="rounded-sm border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive"
+          >
+            Component "{this.props.id}" failed to render: {this.state.error.message}
+          </div>
+        </>
       );
     }
     return this.props.children;

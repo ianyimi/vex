@@ -2,8 +2,9 @@ import { createElement } from "react";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { convexTest } from "convex-test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { defineAccess, text, type GlobalConfig } from "@vexcms/core";
+import { defineAccess, defineGlobal, text, type GlobalConfig } from "@vexcms/core";
 import type * as ConvexReactQuery from "@convex-dev/react-query";
+import type * as Documents from "../documents";
 import { GlobalEditView } from "./GlobalEditView";
 import { renderView, testClientConfig } from "../testing/harness/viewHarness";
 import schema, { testModules } from "../testing/convex/schema";
@@ -11,11 +12,23 @@ import { runViewSuite } from "../testing/viewSuite";
 
 runViewSuite({ only: ["GlobalEditView"] });
 
-const { convexMutationMock } = vi.hoisted(() => ({ convexMutationMock: vi.fn() }));
+const { convexMutationMock, headerCollapseMock } = vi.hoisted(() => ({
+  convexMutationMock: vi.fn(),
+  headerCollapseMock: vi.fn(() => ({ collapseDelete: false, collapsePreview: false, collapseCancel: false })),
+}));
 
 vi.mock("@convex-dev/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof ConvexReactQuery>();
   return { ...actual, useConvexMutation: () => convexMutationMock };
+});
+
+vi.mock("../documents", async (importOriginal) => {
+  const actual = await importOriginal<typeof Documents>();
+  return { ...actual, useHeaderActionsCollapse: headerCollapseMock };
+});
+
+beforeEach(() => {
+  headerCollapseMock.mockReturnValue({ collapseDelete: false, collapsePreview: false, collapseCancel: false });
 });
 
 describe("GlobalEditView — diff submit", () => {
@@ -251,27 +264,40 @@ describe("GlobalEditView — draft toolbar", () => {
     expect(utils.getByRole("button", { name: "Publish" })).toBeDisabled();
   });
 
-  it("enables Publish only while the loaded document is a draft", async () => {
+  it("shows an enabled Publish (min-w-[100px]) for a draft document, with no Unpublish rendered", async () => {
     const draft = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y", vex_status: "draft" };
     const utils = renderView(
       createElement(GlobalEditView, { global: versionedGlobal.slug, initialData: draft as never }),
       { convex: t, config: versionedConfig },
     );
-    expect(utils.getByRole("button", { name: "Publish" })).not.toBeDisabled();
-    utils.unmount();
+    const publish = utils.getByRole("button", { name: "Publish" });
+    expect(publish).not.toBeDisabled();
+    expect(publish.className).toContain("min-w-[100px]");
+    expect(utils.queryByRole("button", { name: "Unpublish" })).toBeNull();
+  });
 
-    const published = { ...draft, vex_status: "published" };
-    const again = renderView(
+  it("swaps to an enabled Unpublish (min-w-[100px]) for a clean published document, with no Publish rendered", async () => {
+    const published = {
+      _creationTime: 1,
+      _id: "g1",
+      siteName: "x",
+      tagline: "y",
+      vex_status: "published",
+    };
+    const utils = renderView(
       createElement(GlobalEditView, {
         global: versionedGlobal.slug,
         initialData: published as never,
       }),
       { convex: t, config: versionedConfig },
     );
-    expect(again.getByRole("button", { name: "Publish" })).toBeDisabled();
+    const unpublish = utils.getByRole("button", { name: "Unpublish" });
+    expect(unpublish).not.toBeDisabled();
+    expect(unpublish.className).toContain("min-w-[100px]");
+    expect(utils.queryByRole("button", { name: "Publish" })).toBeNull();
   });
 
-  it("enables Publish for a published global once edited, sending the edit as data without a separate saveDraft call", async () => {
+  it("swaps Unpublish out for an enabled Publish once a published global is edited, sending the edit as data in one mutation call", async () => {
     convexMutationMock.mockReset().mockResolvedValue("g1");
     const stored = {
       _creationTime: 1,
@@ -284,12 +310,14 @@ describe("GlobalEditView — draft toolbar", () => {
       createElement(GlobalEditView, { global: versionedGlobal.slug, initialData: stored as never }),
       { convex: t, config: versionedConfig },
     );
-    expect(utils.getByRole("button", { name: "Publish" })).toBeDisabled();
+    expect(utils.getByRole("button", { name: "Unpublish" })).toBeInTheDocument();
+    expect(utils.queryByRole("button", { name: "Publish" })).toBeNull();
 
     fireEvent.change(utils.container.querySelector("#siteName")!, {
       target: { value: "new name" },
     });
-    await waitFor(() => expect(utils.getByRole("button", { name: "Publish" })).toBeEnabled());
+    await waitFor(() => expect(utils.queryByRole("button", { name: "Unpublish" })).toBeNull());
+    expect(utils.getByRole("button", { name: "Publish" })).toBeEnabled();
 
     fireEvent.click(utils.getByRole("button", { name: "Publish" }));
 
@@ -334,7 +362,7 @@ describe("GlobalEditView — draft toolbar", () => {
     });
   });
 
-  it("disables Unpublish while the loaded document is a draft", async () => {
+  it("never renders Unpublish while the loaded document is a draft — Publish renders instead", async () => {
     const stored = {
       _creationTime: 1,
       _id: "g1",
@@ -350,7 +378,8 @@ describe("GlobalEditView — draft toolbar", () => {
       { convex: t, config: versionedConfig },
     );
 
-    expect(utils.getByRole("button", { name: "Unpublish" })).toBeDisabled();
+    expect(utils.queryByRole("button", { name: "Unpublish" })).toBeNull();
+    expect(utils.getByRole("button", { name: "Publish" })).toBeInTheDocument();
   });
 
   it("asks for confirmation, then calls versions.unpublish with the global's slug", async () => {
@@ -382,7 +411,7 @@ describe("GlobalEditView — draft toolbar", () => {
     expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({ global: versionedGlobal.slug });
   });
 
-  it("disables Unpublish while the form has unsaved changes, and re-enables it on Cancel", async () => {
+  it("swaps Unpublish out for Publish while the form has unsaved changes, and swaps back on Cancel", async () => {
     const stored = {
       _creationTime: 1,
       _id: "g1",
@@ -398,17 +427,67 @@ describe("GlobalEditView — draft toolbar", () => {
       { convex: t, config: versionedConfig },
     );
     expect(utils.getByRole("button", { name: "Unpublish" })).toBeEnabled();
+    expect(utils.queryByRole("button", { name: "Publish" })).toBeNull();
 
     fireEvent.change(utils.container.querySelector("#siteName")!, {
       target: { value: "unsaved" },
     });
-    await waitFor(() =>
-      expect(utils.getByRole("button", { name: "Unpublish" })).toBeDisabled(),
-    );
+    await waitFor(() => expect(utils.queryByRole("button", { name: "Unpublish" })).toBeNull());
+    expect(utils.getByRole("button", { name: "Publish" })).toBeEnabled();
 
     fireEvent.click(utils.getByRole("button", { name: "Cancel" }));
-    await waitFor(() =>
-      expect(utils.getByRole("button", { name: "Unpublish" })).toBeEnabled(),
+    await waitFor(() => expect(utils.getByRole("button", { name: "Unpublish" })).toBeEnabled());
+    expect(utils.queryByRole("button", { name: "Publish" })).toBeNull();
+  });
+});
+
+describe("GlobalEditView — responsive header collapse", () => {
+  const t = convexTest(schema, testModules);
+
+  const previewGlobal = defineGlobal({
+    slug: "settings",
+    label: "Settings",
+    fields: { siteName: text({ required: true }), tagline: text({ required: false }) },
+    admin: { livePreview: { url: () => "/" } },
+  });
+  const previewConfig = { ...testClientConfig, globals: [previewGlobal] } as never;
+
+  it("collapses vex.livePreview into the ⋯ menu when the header is measured narrow", async () => {
+    headerCollapseMock.mockReturnValue({ collapseDelete: false, collapsePreview: true, collapseCancel: false });
+    const stored = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y" };
+    const utils = renderView(
+      createElement(GlobalEditView, { global: previewGlobal.slug, initialData: stored as never }),
+      { convex: t, config: previewConfig },
     );
+
+    expect(utils.queryByRole("button", { name: "Preview" })).toBeNull();
+    fireEvent.click(utils.getByRole("button", { name: "More actions" }));
+    expect(await utils.findByRole("menuitem", { name: "Preview" })).toBeInTheDocument();
+    expect(utils.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
+  it("renders Preview inline (not through a ⋯ menu) when the header is not collapsed", async () => {
+    const stored = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y" };
+    const utils = renderView(
+      createElement(GlobalEditView, { global: previewGlobal.slug, initialData: stored as never }),
+      { convex: t, config: previewConfig },
+    );
+
+    expect(utils.getByRole("button", { name: "Preview" })).toBeInTheDocument();
+    expect(utils.queryByRole("button", { name: "More actions" })).not.toBeInTheDocument();
+  });
+
+  it("moves Cancel into the ⋯ menu when the header is measured narrower still; Save stays inline", async () => {
+    headerCollapseMock.mockReturnValue({ collapseDelete: false, collapsePreview: true, collapseCancel: true });
+    const stored = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y" };
+    const utils = renderView(
+      createElement(GlobalEditView, { global: previewGlobal.slug, initialData: stored as never }),
+      { convex: t, config: previewConfig },
+    );
+
+    expect(utils.queryByRole("button", { name: "Cancel" })).toBeNull();
+    expect(utils.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    fireEvent.click(utils.getByRole("button", { name: "More actions" }));
+    expect(await utils.findByRole("menuitem", { name: "Cancel" })).toBeInTheDocument();
   });
 });

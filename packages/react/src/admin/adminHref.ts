@@ -16,6 +16,7 @@ export type AdminHrefTarget =
   | { type: "dashboard" }
   | { type: "collection"; slug: string }
   | { type: "global"; slug: string }
+  | { type: "globals" }
   | { type: "document"; slug: string; id: string }
   | { type: "create"; slug: string };
 
@@ -28,13 +29,14 @@ export type AdminHrefTarget =
  * title links (Step 17 audit finding 7) — grep for `adminHref(` to confirm
  * no hand-built admin URL remains outside this file.
  *
- * URL shape is UNCHANGED from what every call site already produced —
- * `/{basePath}/{slug}`, `/{basePath}/globals/{slug}`,
- * `/{basePath}/{slug}/{id}`. Launch spec H moves collections to
- * `/admin/collections/<slug>`; once it lands, that change is a one-file edit
- * here (plus the route parser `NextAdminLayoutClient.tsx` reads pathname
- * segments from — a separate, pre-existing concern this function does not
- * touch) instead of a 30-site grep.
+ * Collection targets resolve under `/collections/` —
+ * `/{basePath}/collections/{slug}`, `/{basePath}/collections/{slug}/{id}` —
+ * and `/{basePath}/{slug}` 404s (launch spec H, no redirect). Global targets
+ * are unchanged: `/{basePath}/globals/{slug}`. The route parser
+ * `NextAdminPage.tsx` reads these same two first-segment shapes
+ * (`collections/<slug>[/<id>]`, `globals/<slug>`) and `notFound()`s on
+ * anything else — a separate, pre-existing concern this function does not
+ * touch.
  *
  * @param target - What the link points at.
  * @param basePath - The project's configured `VexClientConfig.basePath`
@@ -45,10 +47,10 @@ export type AdminHrefTarget =
  * @example
  * ```ts
  * adminHref({ type: "dashboard" }, "/admin");                          // "/admin"
- * adminHref({ type: "collection", slug: "posts" }, "/admin");          // "/admin/posts"
+ * adminHref({ type: "collection", slug: "posts" }, "/admin");          // "/admin/collections/posts"
  * adminHref({ type: "global", slug: "siteSettings" }, "/admin");       // "/admin/globals/siteSettings"
- * adminHref({ type: "document", slug: "posts", id: "abc" }, "/admin"); // "/admin/posts/abc"
- * adminHref({ type: "create", slug: "posts" }, "/admin");              // "/admin/posts?createNew=true"
+ * adminHref({ type: "document", slug: "posts", id: "abc" }, "/admin"); // "/admin/collections/posts/abc"
+ * adminHref({ type: "create", slug: "posts" }, "/admin");              // "/admin/collections/posts?createNew=true"
  * ```
  */
 export function adminHref(target: AdminHrefTarget, basePath: string): string {
@@ -57,12 +59,14 @@ export function adminHref(target: AdminHrefTarget, basePath: string): string {
     case "dashboard":
       return root;
     case "collection":
-      return `${root}/${target.slug}`;
+      return `${root}/collections/${target.slug}`;
     case "global":
       return `${root}/globals/${target.slug}`;
+    case "globals":
+      return `${root}/globals`;
     case "document":
-      return `${root}/${target.slug}/${target.id}`;
+      return `${root}/collections/${target.slug}/${target.id}`;
     case "create":
-      return `${root}/${target.slug}?${MODALS.createDocument.urlParam}=true`;
+      return `${root}/collections/${target.slug}?${MODALS.createDocument.urlParam}=true`;
   }
 }

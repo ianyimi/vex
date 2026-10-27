@@ -28,4 +28,17 @@ describe("ComponentErrorBoundary", () => {
     expect(alert).toHaveTextContent("boom");
     spy.mockRestore();
   });
+
+  it("renders fallback alongside the inline error when a child throws", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <ComponentErrorBoundary id="acme.broken" fallback={<span>beneath</span>}>
+        <Throws />
+      </ComponentErrorBoundary>,
+    );
+    expect(screen.getByText("beneath")).toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("acme.broken");
+    spy.mockRestore();
+  });
 });

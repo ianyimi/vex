@@ -58,9 +58,9 @@ touches:
   - "packages/react/src/documents/VexDocumentContext.tsx"
   - "packages/react/src/documents/documentEditBuiltinContributions.ts"
   - "packages/react/src/documents/index.ts"
-  - "packages/react/src/forms/UnsavedChangesDialog.tsx"
-  - "packages/react/src/forms/useUnsavedChangesGuard.test.tsx"
-  - "packages/react/src/forms/useUnsavedChangesGuard.ts"
+  - "packages/react/src/documents/UnsavedChangesDialog.tsx"
+  - "packages/react/src/documents/useUnsavedChangesGuard.test.tsx"
+  - "packages/react/src/documents/useUnsavedChangesGuard.ts"
   - "packages/react/src/globals/GlobalEditView.tsx"
   - "packages/react/src/index.ts"
   - "packages/react/src/livePreview/LivePreviewToggleAction.tsx"
@@ -139,12 +139,12 @@ URL and slot contracts, and H is the last edit-view change before them.
 
 ### Step 1 — Collections move to `/admin/collections/<slug>` [agent]
 
-- [ ] `packages/react/src/admin/adminHref.ts`: `"collection"`, `"document"` and `"create"` targets emit `/<base>/collections/<slug>[/<id>]`
-- [ ] `packages/react/src/admin/adminHref.test.ts`: assertions updated for the new collection URL shape
-- [ ] `packages/next/src/NextAdminPage.tsx`: parse `["collections", slug, id?]` / `["globals", slug]`; any other first path segment calls `notFound()`
-- [ ] `packages/next/src/NextAdminPage.test.ts`: fixtures updated to `collections/<slug>[/<id>]`; new case asserts `notFound()` on an unrecognized first segment
-- [ ] `packages/react/src/testing/fieldCellContract.ts`: the title-link assertion expects `/admin/collections/<slug>/<id>`
-- [ ] `.changeset/admin-collections-route.md`: breaking, old URLs 404
+- [x] `packages/react/src/admin/adminHref.ts`: `"collection"`, `"document"` and `"create"` targets emit `/<base>/collections/<slug>[/<id>]`
+- [x] `packages/react/src/admin/adminHref.test.ts`: assertions updated for the new collection URL shape
+- [x] `packages/next/src/NextAdminPage.tsx`: parse `["collections", slug, id?]` / `["globals", slug]`; any other first path segment calls `notFound()`
+- [x] `packages/next/src/NextAdminPage.test.ts`: fixtures updated to `collections/<slug>[/<id>]`; new case asserts `notFound()` on an unrecognized first segment
+- [x] `packages/react/src/testing/fieldCellContract.ts`: the title-link assertion expects `/admin/collections/<slug>/<id>`
+- [x] `.changeset/admin-collections-route.md`: breaking, old URLs 404
 
 #### packages/react/src/admin/adminHref.ts
 
@@ -428,14 +428,14 @@ Verify: pnpm typecheck && pnpm --filter @vexcms/react test -- adminHref && pnpm 
 
 ### Step 2 — Core edit-view slot model [dev]
 
-- [ ] `packages/core/src/components/types.ts`
-- [ ] `packages/core/src/components/builtinIds.ts`
-- [ ] `packages/core/src/components/resolve.ts`
-- [ ] `packages/core/src/components/resolve.test.ts`
-- [ ] `packages/core/src/config/types.ts`
-- [ ] `packages/core/src/config/config.ts`
-- [ ] `packages/core/src/collections/types.ts`
-- [ ] `packages/core/src/globals/types.ts`
+- [x] `packages/core/src/components/types.ts`
+- [x] `packages/core/src/components/builtinIds.ts`
+- [x] `packages/core/src/components/resolve.ts`
+- [x] `packages/core/src/components/resolve.test.ts`
+- [x] `packages/core/src/config/types.ts`
+- [x] `packages/core/src/config/config.ts`
+- [x] `packages/core/src/collections/types.ts`
+- [x] `packages/core/src/globals/types.ts`
 
 #### packages/core/src/components/types.ts
 
@@ -885,9 +885,9 @@ Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- components config
 > convention (`access/`, `forms/`, `versions/`, `config/`, each with its own `index.ts`), so the path from
 > `spec-tasks.md` is kept as-is.
 
-- [ ] `packages/react/src/documents/VexDocumentContext.tsx` + `VexDocumentContext.test.tsx`: `VexDocumentState` type, `VexDocumentContext`, `VexDocumentProvider`, `useVexDocument` — throws outside the provider
-- [ ] `packages/react/src/documents/index.ts`: barrel for the file above
-- [ ] Export `VexDocumentProvider`, `useVexDocument` and `VexDocumentState` from the package barrel (`packages/react/src/index.ts`), alongside `useVexPermissions`
+- [x] `packages/react/src/documents/VexDocumentContext.tsx` + `VexDocumentContext.test.tsx`: `VexDocumentState` type, `VexDocumentContext`, `VexDocumentProvider`, `useVexDocument` — throws outside the provider
+- [x] `packages/react/src/documents/index.ts`: barrel for the file above
+- [x] Export `VexDocumentProvider`, `useVexDocument` and `VexDocumentState` from the package barrel (`packages/react/src/index.ts`), alongside `useVexPermissions`
 
 #### packages/react/src/documents/VexDocumentContext.tsx
 
@@ -1086,18 +1086,18 @@ Verify: pnpm --filter @vexcms/react test -- useVexDocument
 Why: first visual result. Both edit views render through `SlotOutlet`, and the duplicate and guard
 steps plug into this structure.
 
-- [ ] `packages/react/src/documents/DocumentEditRuntimeContext.tsx`: shared view-local state (viewed version, post-save id repoint, live-preview toggle) that `useVexDocument` deliberately omits
-- [ ] `packages/react/src/documents/DocumentEditSlotOutlet.tsx` + test: resolves one `edit.*` slot via core's `resolveEditSlot`, applies `header.overrides` per built-in id with a per-layer `ComponentErrorBoundary`
-- [ ] `packages/react/src/documents/DocumentSaveAction.tsx`, `packages/react/src/versions/{VersionPublishAction,VersionUnpublishAction,VersionHistoryAction}.tsx`, `packages/react/src/livePreview/LivePreviewToggleAction.tsx`, `packages/react/src/collections/CollectionDeleteAction.tsx` + `packages/react/src/documents/documentEditBuiltinContributions.ts` (`documentEditBuiltinContributions()`, shared built-ins only — save, publish, unpublish, versionHistory, livePreview): self-contained — each reads `useVexDocument`/`useVexForm`/`useDocumentEditRuntime`/`useVexConfig` and performs its own mutation, same public path a plugin replacing it would use
-- [ ] `packages/react/src/documents/index.ts`: barrel additions for the above
-- [ ] `packages/react/src/versions/index.ts` + `packages/react/src/livePreview/index.ts` + `packages/react/src/collections/index.ts`: barrel additions for their new action files
-- [ ] `packages/react/src/index.ts`: export `DocumentEditSlotOutlet`, `DocumentEditRuntimeProvider`, `useDocumentEditRuntime`, `documentEditBuiltinContributions`, `EditSlotProps`
-- [ ] `packages/react/src/collections/CollectionEditView.tsx`: `CollectionEditForm` mounts `VexDocumentProvider` + `DocumentEditRuntimeProvider` and all seven `DocumentEditSlotOutlet`s; removes `DraftToolbar`, the inline Save/Publish/Unpublish/Cancel buttons and `VersionHistoryDropdown` call (now rendered through built-ins), and every mutation/permission hook that moved into a built-in; keeps the sticky header, `activeDocumentId`, `viewedVersion`, autosave, `resetWhenSaved`; appends `CollectionDeleteAction` to the builtins passed into the `edit.header.actions` outlet, since `documentEditBuiltinContributions()` no longer includes it
-- [ ] `packages/react/src/globals/GlobalEditView.tsx`: same shape of change, using `documentEditBuiltinContributions()`'s builtins unmodified (no delete)
-- [ ] `packages/react/src/versions/DraftToolbar.tsx` + any barrel export: removed — its layout (status badge + buttons) is now the `edit.header.actions` contribution list; `StatusBadge` becomes an inline (non-contribution) header element, same tier as `RevalidateButton`
-- [ ] `packages/react/src/slots/ComponentErrorBoundary.tsx` + test: add an optional `fallback` prop, rendered alongside the inline error on a throw
-- [ ] `packages/react/src/slots/SlotOverrideOutlet.tsx` + `resolveFieldComponent.tsx` + `resolveFieldCellComponent.tsx`: each override layer gets its own `ComponentErrorBoundary` keyed by the override `id`, falling back to the previous stage. Update G's override tests; add a throwing-wrapper case on a field and on `vex.save`
-- [ ] Tests: root, collection and global contributions render in order/before/after; a built-in is hidden, reordered and wrapped by id; a throwing contribution shows inline and the view survives
+- [x] `packages/react/src/documents/DocumentEditRuntimeContext.tsx`: shared view-local state (viewed version, post-save id repoint, live-preview toggle) that `useVexDocument` deliberately omits
+- [x] `packages/react/src/documents/DocumentEditSlotOutlet.tsx` + test: resolves one `edit.*` slot via core's `resolveEditSlot`, applies `header.overrides` per built-in id with a per-layer `ComponentErrorBoundary`
+- [x] `packages/react/src/documents/DocumentSaveAction.tsx`, `packages/react/src/versions/{VersionPublishAction,VersionUnpublishAction,VersionHistoryAction}.tsx`, `packages/react/src/livePreview/LivePreviewToggleAction.tsx`, `packages/react/src/collections/CollectionDeleteAction.tsx` + `packages/react/src/documents/documentEditBuiltinContributions.ts` (`documentEditBuiltinContributions()`, shared built-ins only — save, publish, unpublish, versionHistory, livePreview): self-contained — each reads `useVexDocument`/`useVexForm`/`useDocumentEditRuntime`/`useVexConfig` and performs its own mutation, same public path a plugin replacing it would use
+- [x] `packages/react/src/documents/index.ts`: barrel additions for the above
+- [x] `packages/react/src/versions/index.ts` + `packages/react/src/livePreview/index.ts` + `packages/react/src/collections/index.ts`: barrel additions for their new action files
+- [x] `packages/react/src/index.ts`: export `DocumentEditSlotOutlet`, `DocumentEditRuntimeProvider`, `useDocumentEditRuntime`, `documentEditBuiltinContributions`, `EditSlotProps`
+- [x] `packages/react/src/collections/CollectionEditView.tsx`: `CollectionEditForm` mounts `VexDocumentProvider` + `DocumentEditRuntimeProvider` and all seven `DocumentEditSlotOutlet`s; removes `DraftToolbar`, the inline Save/Publish/Unpublish/Cancel buttons and `VersionHistoryDropdown` call (now rendered through built-ins), and every mutation/permission hook that moved into a built-in; keeps the sticky header, `activeDocumentId`, `viewedVersion`, autosave, `resetWhenSaved`; appends `CollectionDeleteAction` to the builtins passed into the `edit.header.actions` outlet, since `documentEditBuiltinContributions()` no longer includes it
+- [x] `packages/react/src/globals/GlobalEditView.tsx`: same shape of change, using `documentEditBuiltinContributions()`'s builtins unmodified (no delete)
+- [x] `packages/react/src/versions/DraftToolbar.tsx` + any barrel export: removed — its layout (status badge + buttons) is now the `edit.header.actions` contribution list; `StatusBadge` becomes an inline (non-contribution) header element, same tier as `RevalidateButton`
+- [x] `packages/react/src/slots/ComponentErrorBoundary.tsx` + test: add an optional `fallback` prop, rendered alongside the inline error on a throw
+- [x] `packages/react/src/slots/SlotOverrideOutlet.tsx` + `resolveFieldComponent.tsx` + `resolveFieldCellComponent.tsx`: each override layer gets its own `ComponentErrorBoundary` keyed by the override `id`, falling back to the previous stage. Update G's override tests; add a throwing-wrapper case on a field and on `vex.save`
+- [x] Tests: root, collection and global contributions render in order/before/after; a built-in is hidden, reordered and wrapped by id; a throwing contribution shows inline and the view survives
 
 #### packages/react/src/documents/DocumentEditRuntimeContext.tsx
 
@@ -2505,11 +2505,356 @@ Add the import: `import { screen } from "@testing-library/react";`.
 
 Verify: `pnpm --filter @vexcms/react test -- CollectionEditView GlobalEditView slots viewSuite`; in `apps/test`, header actions render unchanged
 
+> **Post-implementation feedback (developer review of the shipped edit-view header).** The
+> header this step landed put Duplicate and Delete directly in the button row alongside
+> Save/Publish/Unpublish/Cancel, and mounted `RevalidateButton`/`CollectionDuplicateAction`
+> standalone next to the status badge. Developer feedback moved both of the least-used actions
+> — Duplicate and a manual Revalidate purge — into a single ⋯ menu
+> (`packages/react/src/collections/CollectionMoreActionsMenu.tsx`, collections only, not
+> globals or media), rendered first in the header action group, left of the status badge. The
+> remaining buttons now read left to right: Preview, History, Save (Draft), Publish, Unpublish,
+> Cancel, Delete — Cancel moved next to Delete at the end, instead of trailing after
+> `edit.header.actions` as a view-local `<Button>`. This required a new `vex.cancel` built-in
+> (`BUILTIN_CONTRIBUTION_IDS.edit.cancel`, `documents/DocumentCancelAction.tsx`) reproducing the
+> inline Cancel button exactly, added last in `documentEditBuiltinContributions()` (order:
+> livePreview, versionHistory, save, publish, unpublish, cancel) so Delete — collection-only,
+> still appended directly by `CollectionEditView.tsx` — can sit after it. Globals keep the same
+> `documentEditBuiltinContributions()` list with no Delete/Duplicate/Revalidate, since they were
+> never collection-only actions to begin with.
+>
+> `vex.duplicate` stays a registered `BUILTIN_CONTRIBUTION_IDS.edit` id — a project can still
+> hide it via `{ id: BUILTIN_CONTRIBUTION_IDS.edit.duplicate, hidden: true }` — but it no longer
+> renders through `edit.header.actions`; `CollectionDuplicateAction.tsx` was folded into
+> `CollectionMoreActionsMenu.tsx` and deleted, `useDuplicateCollectionDocument` unchanged.
+> `apps/test/src/vexcms/collections/users.ts`'s hidden-built-in dogfood switched from hiding
+> `vex.duplicate` (no longer meaningful once it left the header) to hiding `vex.delete`.
+>
+> `apps/test`'s root `edit.header.after` dogfood contribution — `EnvironmentBadge.tsx` plus its
+> `apps/test/src/vex.config.ts` registration — was removed entirely (developer feedback: dead
+> weight once the ⋯ menu/order change made it redundant as a demonstration), along with its
+> Step 9 writeup below.
+>
+> `CollectionDeleteAction.tsx`'s confirmation switched from `ui/alert-dialog.tsx`'s `AlertDialog`
+> to `ui/dialog.tsx`'s `Dialog` (identical header/footer/button markup) — `AlertDialog`'s base-ui
+> `Backdrop` does not dismiss on outside press by design (it is the "must explicitly
+> confirm/cancel" variant); `Dialog`'s does, so clicking outside the delete confirmation now
+> closes it. No other `AlertDialog` caller changed.
+
+> **Post-implementation feedback (developer review of the ⋯ menu's shape and the header's
+> responsiveness).** `CollectionMoreActionsMenu` above was replaced with a proper slot:
+> `edit.actionsMenu` (`SLOT_IDS.edit.actionsMenu`), resolved the same way as every other
+> `edit.*` slot (`EditComponentsConfigInput.actionsMenu?: { items?, overrides? }` on root and
+> resource), so a project can add its own ⋯-menu items instead of the menu being a fixed,
+> collection-only pair. `DocumentEditActionsMenu.tsx` (`packages/react/src/documents/`)
+> replaces `CollectionMoreActionsMenu.tsx`; it renders no trigger when its resolved,
+> access-filtered list is empty, so a global with nothing contributed gets no empty ⋯ button.
+> `vex.revalidate` joined `vex.duplicate` under `BUILTIN_CONTRIBUTION_IDS.edit`, both still
+> appended by `CollectionEditView.tsx` the same way `vex.delete` is appended to
+> `edit.header.actions`.
+>
+> A project `edit.actionsMenu` item renders through a new `EditActionsMenuItem`
+> (`documents/EditActionsMenuItem.tsx`) — a styled `DropdownMenuItem` wrapper, exported from the
+> package barrel, the same role `ui/ActionsMenu`'s `SurfacedAction`/`HeaderAction` play for
+> block/array item actions. **Dialog host:** base-ui unmounts `DropdownMenuContent` and every
+> item inside it the instant a `DropdownMenuItem`'s `onSelect` runs — selecting any item closes
+> the menu and unmounts it, so an item cannot own a dialog or any state for a promise that
+> resolves after the click. This broke the collapsed Delete's confirm dialog and Duplicate's
+> conflict dialog once both moved into the menu (Duplicate's fallback explicitly opens only
+> after its create request *rejects*, by which point the menu is long gone). Fixed with a new
+> `useEditActionsMenuDialog()` hook (`documents/EditActionsMenuDialogContext.tsx`): a
+> contribution calls `dialog.open(node)`/`dialog.close()`; `DocumentEditActionsMenu` owns the
+> `useState` backing it and renders the current dialog node as a sibling of the whole
+> `DropdownMenu`, outside `DropdownMenuContent`, so it survives the dropdown closing. Throws
+> outside a `DocumentEditActionsMenu`-rendered contribution, same pattern as `useVexDocument`.
+>
+> **Responsive header collapse.** The header previously wrapped onto a second row below some
+> width; developer requirement was one row at every width, with a specific degrade order: the
+> title truncates (CSS) first, then — only once the title can't shrink any further —
+> `vex.livePreview` collapses into `edit.actionsMenu` (as its first item), then `vex.delete`
+> (as its last item); `vex.save`/`vex.cancel`/History/Publish/Unpublish never collapse. An
+> initial implementation used two fixed pixel thresholds on the header's total width; replaced
+> with `documents/useHeaderActionsCollapse.ts`, which measures instead: the title's prefix span
+> and the actions group are both `shrink-0` (flexbox never compresses them), so their
+> `scrollWidth` is always their true natural width, collapsed or not — `needed` (title's
+> conceptual floor, `HEADER_TITLE_VALUE_MIN_WIDTH_PX` = 144px, plus the actions group's current
+> width) compares directly against the header's available width via `ResizeObserver`. Reading
+> the header row's own `scrollWidth` instead (the first approach) does not work for the restore
+> direction: a non-overflowing container's `scrollWidth` saturates at `clientWidth`, so "how
+> much slack is there to restore a collapsed action" is unmeasurable exactly when it matters —
+> this surfaced in-browser as both actions staying collapsed forever once collapsed, even at
+> very wide viewports. Each collapse's freed width (actions-group `scrollWidth` before vs. after)
+> is remembered and used as the restore threshold, with a flat hysteresis margin on top, so a
+> resize landing exactly on the boundary doesn't thrash.
+>
+> The title's value span intentionally has **no** CSS floor (`min-w-0 truncate`, not a hard
+> `min-width`) — `HEADER_TITLE_VALUE_MIN_WIDTH_PX` is a budget the hook's math uses to decide
+> *when* to collapse, not a rendered guarantee. Enforcing it as a real `min-width` caused visible
+> overlap once the actions group's floor (`vex.save`/`vex.cancel`/History/Publish/Unpublish, all
+> non-collapsible) alone exceeded the viewport — for a versioned collection like `posts`, that
+> floor is already ~600px, wider than a 375/480px phone, so there is no candidate left to
+> collapse and the title legitimately has zero space. With a hard floor, flexbox still rendered
+> the title at its minimum width regardless of its allocated (zero) box, spilling visibly over
+> the actions; fixed by dropping the floor (browser now shrinks the title to 0, hidden) and
+> adding `overflow-hidden` to the title `<h1>` so an over-floor title never spills past its own
+> box onto a neighboring element, in either direction.
+>
+> **Focus-ring root cause (dark mode).** Tabbing to Preview/⋯ showed no focus ring in dark mode
+> (Delete was fine). Root cause: Tailwind v4 composes `box-shadow` as a 5-layer `var()` list; the
+> dark-mode theme set `--shadow-xs-val` (and `-sm`/`-md`/`-lg`) to the bare keyword `none`, which
+> is invalid inside a comma-separated shadow list — the whole composed `box-shadow` declaration
+> fails to parse at compute time and falls back to its initial value (`none`), silently eating
+> the valid `focus-visible:ring-3` layer along with the intentionally-absent elevation shadow.
+> Only `variant="outline"` buttons (which carry `shadow-xs`) were affected; `variant="destructive"`
+> (Delete) has no `shadow-xs` and was never broken. Fixed by changing the four `-val` variables to
+> `0 0 #0000` (zero-spread, transparent — visually identical to `none`, valid inside the list) in
+> `apps/test/src/app/globals.css` and `apps/www/src/app/globals.css`, plus both
+> `packages/create-vexcms` templates (`base-nextjs`, `marketing-site`), which carried the same bug.
+
+> **Post-implementation feedback (developer review of the header polish + conditional-field
+> animation pass).** Six more changes, on top of the `edit.actionsMenu` work above:
+>
+> 1. Dogfood label: apps/test's root-level `CopyDocumentIdMenuItem` reads "Copy ID", not "Copy
+>    document ID" (the toast text is unchanged).
+> 2. **History fully left the header.** `vex.versionHistory` moved out of
+>    `edit.header.actions` entirely into `edit.actionsMenu`, rendered as a `VersionHistoryMenuItem`
+>    right after Preview (first item when Preview stays inline, second when Preview has also
+>    collapsed in). Selecting it opens a `Dialog` through `useEditActionsMenuDialog()`, not a
+>    nested dropdown — the ⋯ menu's rows are `DropdownMenuItem`s, which cannot host a `Menu`
+>    of their own. Implementation split `VersionHistoryDropdown.tsx`'s single component into
+>    three pieces (`versions/VersionHistoryPanel.tsx`): `useVersionHistoryState()` (all the
+>    state/queries/mutation handlers — pending delete, pending discard, the version list),
+>    `VersionHistoryPanel` (purely presentational, renders from that state), and
+>    `VersionHistoryDialogContent` (calls the hook once, for the dialog placement).
+>    `VersionHistoryDropdown` (the still-public, still-documented standalone component) calls
+>    the hook itself and renders `VersionHistoryPanel` inside its `DropdownMenuContent`. This
+>    split exists because `DropdownMenuContent`/`Dialog` popups lazy-mount their children —
+>    calling the stateful hook *inside* the lazily-mounted panel (the first-cut implementation)
+>    silently drops a pending delete/discard confirmation every time the popup remounts (closes
+>    and reopens); calling it in the persistent owner instead fixes that. A full-suite-only
+>    flaky failure remains in `VersionHistoryDropdown.test.tsx`'s own
+>    "with unsaved changes, asks before switching versions" test (passes standalone, in every
+>    smaller file combination tried, and in 2 of 3 ad-hoc full-suite reruns; fails deterministically
+>    in others with `pointer-events: none` on the reopened "View version" button, or a
+>    `findByRole("menu")` timeout on the second `openHistory()`) — reproduces only under the
+>    full 154-file suite's CPU contention, never in isolation; not resolved before this session's
+>    budget ran out. Needs a follow-up investigation with Chrome DevTools-style diagnostics
+>    (not reachable through more `waitFor` padding, which was tried and only shifted which step
+>    timed out).
+> 3. **Publish/Unpublish share one spot.** Both built-ins (`vex.publish`/`vex.unpublish`) stay
+>    adjacent in header order, but exactly one renders: `VersionUnpublishAction` now carries the
+>    `showsUnpublish` condition (`document.status === "published" && !document.isDirty &&
+>    runtime.viewedVersion === null`) and `VersionPublishAction` carries the same condition
+>    inverted (`showsUnpublishInstead`) — kept in sync by hand, since the two are independent
+>    contributions resolved separately, not siblings that could share local state. Both buttons
+>    carry `min-w-[100px]` (fits "Unpublish", the wider label) so the swap never shifts Cancel/
+>    Delete beside them.
+> 4. **Always-visible, disabled-not-hidden** was already true for Save/Save Draft/Cancel before
+>    this session (each only ever gates on `disabled`, never an early `return null` for state);
+>    the only actual gap was Publish/Unpublish rendering *both* buttons side by side with one
+>    disabled — now exactly one renders per (3) above, itself never hidden as a *pair*.
+> 5. **Delete gets a `Trash2` icon** — the header button (`icon="Trash2"` on `Button`), the
+>    collapsed ⋯ menu item (`<Icon name="Trash2" />` on `EditActionsMenuItem`), and both confirm
+>    dialogs' own Delete buttons (inline placement and menu placement each have their own
+>    dialog, per the existing placement-aware split).
+> 6. **`@formkit/auto-animate`** (new catalog dependency) now drives the field-list container
+>    inside `group()` (`fields/group/Field.tsx`'s own `RenderFields` call), `collapsible()`
+>    (`fields/collapsible/Field.tsx`'s inline container), each `tabs()` panel (extracted into a
+>    new `FormTabPanel` sub-component in `fields/tabs/Field.tsx` — `useAutoAnimate()` cannot be
+>    called inside a `.map()` whose length can change as tab visibility toggles, the same
+>    one-hook-per-item reason `FieldConditionGate` exists), and each `array()`/`blocks()` item's
+>    body (`fields/array/Field.tsx`/`fields/blocks/Field.tsx`, via a new `animate`/`dragActive`
+>    prop pair on `RenderFields` itself — `useAutoAnimate()` is always called there, unconditionally,
+>    but its ref is attached to the container only when `animate` is set, so the ~20 existing
+>    non-animated call sites, including the top-level main/sidebar columns, pay for an inert hook
+>    instance but no `MutationObserver`). `dragActive` reads `DndContext.activeDroppableId ===
+>    field.name` (`ui/dnd/DndProvider.tsx`'s own drag-in-progress signal, already tracked for
+>    cross-list drop prevention) and disables that list's item-body animations for the duration
+>    of a drag, re-enabling on drop or cancel (`activeDroppableId` resets to `null` on
+>    `onDragEnd` regardless of outcome) — the task description assumed `dnd-kit`; this project
+>    uses `@hello-pangea/dnd` throughout (`ui/dnd/`), so the wiring targets that library's own
+>    already-shared drag-state context instead of adding a second one. Respects
+>    `prefers-reduced-motion` via the library's own default (never passed
+>    `disrespectUserMotionPreference`).
+>    (Post-implementation update, 2026-10-27: `@formkit/auto-animate` and all of its wiring
+>    described above were removed at the developer's request — the animation was judged
+>    inconsistent with the rest of the app's collapse/expand behavior and not smooth. The
+>    `FieldLayoutItem`-inside-visibility-gate restructure it motivated was reverted too —
+>    `fields/RenderFields.tsx`, `collapsible/`, `row/`, `tabs/` are back to their pre-H state.)
+>
+> NOT verified in-browser this session (budget exhausted before reaching it): the 1440/768/375
+> header layout, History opening/working from the menu, the publish→confirm Unpublish-swap
+> position check, trash icons, and the conditional-field/drag animations on
+> `/admin/collections/fields/<id>`. `pnpm --filter @vexcms/react test` is 153/154 files green
+> (the one flaky file above); `pnpm typecheck` and `pnpm --filter @vexcms/react build` are both
+> clean.
+
+> **Post-implementation feedback (flaky-test root cause + full browser verification pass).**
+>
+> 1. **`VersionHistoryDropdown.test.tsx`'s flaky test — test bug, not a product bug.** Cancel-ing
+>    the nested "Discard unsaved changes?" `AlertDialog` genuinely does NOT close the parent
+>    History `DropdownMenu` — confirmed both by direct DOM inspection (the menu's `role="menu"`
+>    node survives Cancel, present before AND after) and by design: every other interaction in
+>    this menu (viewing a version, deleting a version) leaves it open too, so staying open after
+>    a cancelled discard is consistent, not an outlier. The flaky test's second `openHistory()`
+>    call wrongly re-clicked the trigger on an ALREADY-open menu; Base UI's `MenuTrigger` opens on
+>    `mousedown` and deliberately ignores the `click` that follows (`openHistory()`'s own doc
+>    comment already said this) — clicking it again toggles the open menu closed via that same
+>    mousedown path, racing the "ignore the next click" bookkeeping. Under full-suite CPU
+>    contention this race resolved inconsistently: sometimes the toggle-closed-then-click-reopened
+>    sequence left the menu open (test passed), sometimes closed (`findByRole("menu")` timeout),
+>    and a `pointer-events: none` leftover from the just-closed `AlertDialog`'s own exit
+>    transition could additionally block whichever click landed first. Fix: removed the second
+>    `openHistory()` call entirely — the menu is still open, so the test now clicks "View version
+>    1" again directly on it, with an explicit `expect(screen.getByRole("menu"))` assertion
+>    documenting why. Proven with 5 consecutive full `pnpm --filter @vexcms/react test` runs, all
+>    154/154 files green (plus a 6th run after the browser-verification fixes below, also green).
+> 2. **Header/menu/animation checklist, browser-verified** on a versioned post
+>    (`/admin/collections/posts/<id>`) and `/admin/globals/siteSettings` at 1440/768/375:
+>    header order and one-row layout confirmed (after fix 3 below); ⋯ menu order confirmed
+>    (Preview when collapsed → History → Revalidate → Duplicate → Copy ID, Delete when
+>    collapsed); History opens the `VersionHistoryDialogContent` dialog, switching/viewing a
+>    version works and the viewed version survives the dialog closing (confirmed by the
+>    Publish/Unpublish button reflecting the viewed version's own status after close); trash
+>    icon present on the Delete button, the collapsed Delete menu item, and both confirm
+>    dialogs' Delete buttons; focus rings visible on ⋯ and Preview in dark mode; Publish↔Unpublish
+>    swap measured with zero neighbour x-shift (Cancel's `boundingBox().x` identical before/after
+>    on a single-version post where Unpublish has no earlier published version to fall back to —
+>    `min-w-[100px]` already covers "Unpublish"'s width, no adjustment needed); array/blocks drag
+>    wiring (`dragActive` pausing the item body's auto-animate instance during a drag) confirmed
+>    correct by source for both `array/Field.tsx` and `blocks/Field.tsx`.
+> 3. **Bug found and fixed: narrow-header overflow.** At ~375px, even with `vex.delete` and
+>    `vex.livePreview` both collapsed (the only two candidates `useHeaderActionsCollapse` knew
+>    about), the remaining inline set (⋯, status badge, Save Draft, Publish/Unpublish, Cancel)
+>    still didn't fit — `Cancel` measured at `x: 373` in a 375px viewport, clipped off-screen with
+>    no horizontal scroll (not reachable at all, a real regression this checklist item was meant
+>    to catch). Fix: added `collapseCancel` as a third, narrowest `COLLAPSE_ORDER` candidate
+>    (`useHeaderActionsCollapse.ts`); gave `DocumentCancelAction` the same `placement?: "inline" |
+>    "menu"` dispatch `LivePreviewToggleAction`/`CollectionDeleteAction` already use (menu
+>    placement renders an `EditActionsMenuItem` with an `Undo2` icon, same disabled condition);
+>    wired `headerCollapse.collapseCancel` into both `CollectionEditView.tsx` and
+>    `GlobalEditView.tsx` identically to the existing `collapsePreview`/`collapseDelete` hide +
+>    menu-builtin pattern. Verified in-browser: at 375px Cancel now collapses into the ⋯ menu
+>    (order: Cancel, Preview, History, Revalidate, Duplicate, Delete — Cancel moved to the top per developer feedback) and the header fits on one
+>    row with Unpublish's own right edge now comfortably inside the viewport. Regression tests
+>    added to `CollectionEditView.test.tsx`/`GlobalEditView.test.tsx`.
+> 4. **Bug found and fixed: empty ⋯ trigger on an unversioned global.** `/admin/globals/siteSettings`
+>    showed a `More actions` (⋯) button that opened a visibly empty menu. Root cause:
+>    apps/test's root-level `editorial.copyDocumentId` contribution (`CopyDocumentIdMenuItem`,
+>    dogfooding `admin.components.edit.actionsMenu.items`) was present in the slot's RESOLVED id
+>    list (so `DocumentEditActionsMenu`'s "hide the trigger when the resolved list is empty" check
+>    saw a non-empty list) but rendered `null` at mount time for every global (no per-document id
+>    worth copying) — a resolved-but-null contribution defeats that empty check, which only knows
+>    about configuration-level emptiness, not a component's own runtime-only gate. Generalized the
+>    fix rather than special-casing this one item: `SlotAccessContext` (core) gained an optional
+>    `resource?: EditSlotProps` field, populated by `useResolvedEditSlot` (react) from its
+>    `contributedProps` for every `edit.*` slot (left `undefined` for field-level slots, which have
+>    no single resource kind); `editorial.copyDocumentId`'s `vex.config.ts` entry now declares
+>    `access: (ctx) => ctx.resource?.kind === "collection"`, filtering it out of the resolved list
+>    entirely for a global (so the ⋯ trigger correctly doesn't mount) while still rendering on
+>    every collection document (verified: `posts`'s ⋯ menu still shows Copy ID, a versioned
+>    global's ⋯ menu still shows History with no Copy ID). `CopyDocumentIdMenuItem` itself
+>    simplified to drop its now-redundant `kind !== "collection"` check, keeping only the
+>    brand-new-unsaved-document (`!document.id`) guard the `access` predicate can't express.
+> 5. **Conditional-field animation**: toggling `fields.showAdvanced` reveals a top-level
+>    `conditionalRow()` (`conditionalNote`) — confirmed this is INTENTIONALLY un-animated
+>    (`RenderFields`'s own ref is never attached to "the top-level main/sidebar columns", by
+>    design, per its doc comment) and correctly so: this top-level row pops in instantly, same as
+>    every other top-level field change. A conditional field genuinely nested inside an
+>    animate-enabled container — `fields.sections` (`array()` of `group()`), each item's
+>    `showDetails` checkbox gating a sibling `details` `collapsible()` via `siblingData` — DOES
+>    reveal the field (confirmed visually: the `Details` collapsible mounts with its own content).
+>    A frame-sampled `getBoundingClientRect()` measurement of the item body's container showed its
+>    height jump to the final value within one frame rather than visibly interpolating across
+>    several — inconclusive on its own (could be `@formkit/auto-animate`'s FLIP measurement
+>    completing inside the same paint rather than a missing animation; distinguishing the two
+>    needs frame-capture video, not available before this session's budget ran out) and NOT
+>    treated as a confirmed bug here — the wiring (`animate`/`dragActive` passed into `RenderFields`
+>    from both `array/Field.tsx` and `blocks/Field.tsx`) matches the documented design exactly.
+>    Flagged as a follow-up if a future session has the tooling to confirm either way. No data
+>    changes were left on any fixture document (`posts`' `post 2`/`Post 7` and the `fields`
+>    collection's `anyiminene@gmail.com` document were all restored/left unsaved).
+>
+> `pnpm typecheck` (repo root, 16/16 tasks) and `pnpm --filter @vexcms/react test` (154/154 files,
+> 1974/1975 tests, 1 pre-existing skip) are both clean after every fix above; `@vexcms/core` and
+> `@vexcms/react` rebuilt.
+
+> **Post-implementation feedback (live preview mobile takeover — developer bug report).**
+> With live preview open, narrowing the window past some width made it take over the whole
+> page unexpectedly.
+>
+> **Root cause.** `CollectionEditView`/`GlobalEditView` gated the exact same `LivePreviewPanel`
+> between a `ResizablePanel` (desktop) and a bare `fixed inset-0 z-50` div (`isMobile`) on
+> `useIsMobile()`'s 768px breakpoint (`packages/react/src/hooks/use-mobile.ts`,
+> `MOBILE_BREAKPOINT`), with no transition between the two: a panel left open at desktop width
+> flipped straight into the full-screen `fixed inset-0` takeover the instant the window crossed
+> 768px, with nothing to signal it was coming and only the panel's own close button to escape
+> it — a resize, not a deliberate choice, decided whether the whole page was replaced.
+>
+> **Fix.** `useLivePreviewPanelState` (`packages/react/src/livePreview/useLivePreviewPanelState.ts`)
+> now takes an `isMobile` prop and owns the full responsive state machine: narrowing past 768px
+> while open auto-closes the panel and remembers the close was automatic (a `useRef`, not
+> persisted); widening back past it reopens the panel ONLY if nothing explicit happened while
+> narrow — any `toggle()` (open or close) clears that memory, so the panel then stays however
+> the user left it. The correction runs DURING RENDER (comparing `props.isMobile` against a
+> mirrored `previousIsMobile` state value, React's documented "adjusting state when a prop
+> changes" pattern), not in a `useEffect`: an effect fires one commit too late, letting the new
+> `LivePreviewMobileOverlay`'s `Sheet` briefly commit `open: true` for one frame at the exact
+> instant `isMobile` flipped true before the very next commit closed it again — confirmed in the
+> browser, this left a full-viewport, invisible-but-`pointer-events: auto` backdrop stuck over
+> the page (Base UI's `Dialog` reads the flash as a real open-then-close and plays its exit
+> transition over it), blocking every click underneath until the transition's cleanup finally
+> ran. Automatic transitions never call `writeLivePreviewPanelCookie` — only `toggle()` does —
+> so a refresh at desktop width still respects the user's last deliberate choice.
+>
+> Opening the panel below 768px (the header button or the ⋯ menu's "Preview" item — the header
+> row's OWN, narrower, content-driven collapse width, `useHeaderActionsCollapse`, moves Preview
+> into the ⋯ menu well before the viewport reaches 768px in this app's layout) now shows the new
+> `LivePreviewMobileOverlay` (`packages/react/src/livePreview/LivePreviewMobileOverlay.tsx`): a
+> `ui/sheet.tsx` `Sheet`/`SheetContent` (`side="bottom"`, Base UI `Dialog` underneath,
+> `showCloseButton={false}` since `LivePreviewPanel`'s own toolbar already renders one) sized via
+> `top-10` (not the default content-sized `h-auto` alone) so a thin strip of the page stays
+> visible above it, rather than the full `fixed inset-0`. `LivePreviewPanel` itself lost the
+> `isMobile ? "fixed inset-0 z-50 ..." : "..."` branch entirely — it now always renders
+> `"@container/preview flex h-full flex-col"` and lets whichever parent (`ResizablePanel` or
+> `SheetContent`) own the positioning. `LivePreviewToggleAction`'s pressed icon and the ⋯ menu
+> item's icon switched from reading `isSplit` (`false` while the mobile overlay was open — the
+> header button showed "closed" even though the overlay was visibly open) to reading `isOpen`
+> directly, plus `aria-pressed={isOpen}` on the inline button.
+>
+> **Tests.** `useLivePreviewPanelState.test.tsx` (new, 8 tests, `renderHook` + `rerender({
+> isMobile })`): explicit open/close writes the cookie each time; auto-close on narrowing while
+> open writes nothing; narrowing while already closed is a no-op; opening from mobile via
+> `toggle` (the header button/⋯ menu path) writes the cookie; widening while the mobile overlay
+> is open stays open and leaves the cookie as the explicit toggle left it; widening after an
+> auto-close reopens without touching the cookie; widening after an explicit open-then-close
+> while narrow stays closed (memory cleared); widening after an explicit close at desktop width
+> (never auto-closed) stays closed. `pnpm --filter @vexcms/react test` 155/155 files, 1982/1983
+> tests (1 pre-existing skip); repo-root `pnpm typecheck` (16/16 tasks) and `pnpm test` (16/16
+> tasks, apps/test 1182/1182, `@vexcms/react` 1982/1983) both clean; `@vexcms/react` rebuilt.
+>
+> **Browser-verified** on `/admin/collections/posts/<id>` (`post 2`), resizing between 1280px and
+> 500px/740px: (1) split open at desktop, narrow to 500px → auto-closes, plain form fills the
+> screen, no takeover, `vex-live-preview-panel:posts` cookie unchanged (`=1` the whole time); (2)
+> opening via the ⋯ menu's "Preview" item at 500px shows the bottom sheet — screenshotted: admin
+> header strip visible at top, toolbar `justify-between` with the "Preview ↗" link (confirmed
+> `href="/posts/post2?vexLivePreview=1"`, `target="_blank"`, `rel="noreferrer"`) on the left and
+> "Close preview" on the right; `document.activeElement` was the link immediately on open (focus
+> trapped inside); `document.body`'s `overflow` was `hidden` while open (page behind doesn't
+> scroll) and back to `visible` after closing; Esc closed it and returned focus to the ⋯
+> trigger, with no leftover `[data-slot="sheet-overlay"/"sheet-content"]` nodes in the DOM
+> afterward (confirming the render-time fix removed the stuck invisible backdrop); (3) opened
+> the overlay, widened to 1280px → stayed open, rendered as the desktop split, header button
+> `aria-pressed="true"`; (4) narrowed again (auto-close, cookie untouched), widened back with no
+> interaction in between → reopened automatically as the split; repeated once more but opened
+> then explicitly closed the overlay while narrow before widening → stayed closed, header button
+> `aria-pressed="false"`, cookie `=0` (the explicit close). Left the panel cookie at `=0`
+> (closed) afterward — no document fields were edited or saved.
+
 ### Step 5 — Core duplicate payload [dev]
 Why: pure leaf the React action consumes. Item-id regeneration and stripping framework fields are testable without UI.
 
-- [ ] `packages/core/src/documents/cloneDocumentForDuplicate.ts` + test: strip `_id`, `_creationTime`, the `vex_*` version fields (`removeVexFields`) and `updatedAt`; regenerate array/block item ids (reuse `cloneBlockWithFreshIds`); walk nested group/tabs/blocks
-- [ ] `packages/core/src/collections/api/create/server.ts`: optional `status` arg on `CreateServerArgs` so a duplicate can force a draft
+- [x] `packages/core/src/documents/cloneDocumentForDuplicate.ts` + test: strip `_id`, `_creationTime`, the `vex_*` version fields (`removeVexFields`) and `updatedAt`; regenerate array/block item ids (reuse `cloneBlockWithFreshIds`); walk nested group/tabs/blocks
+- [x] `packages/core/src/collections/api/create/server.ts`: optional `status` arg on `CreateServerArgs` so a duplicate can force a draft
 
 > Note: the real framework-field names differ from the interview shorthand (`_status`/`_version` don't exist as such) —
 > confirmed against `packages/core/src/collections/constants.ts`, `packages/core/src/versions/constants.ts` and
@@ -2850,12 +3195,12 @@ Verify: pnpm --filter @vexcms/core test -- duplicate
 
 ### Step 6 — Duplicate action + fallback modal [dev]
 
-- [ ] `packages/react/src/collections/useDuplicateCollectionDocument.ts` (new): clones the current document, tries `create`, and on a server rejection hands the clone to a fallback-modal state
-- [ ] `packages/react/src/collections/CollectionDuplicateAction.tsx` (new): `vex.duplicate` contribution — the header button, gated on `create` permission, plus the all-fields fallback dialog
-- [ ] `packages/react/src/collections/CollectionEditView.tsx`: appends `CollectionDuplicateAction` to the builtins passed into its `edit.header.actions` outlet, non-media collections only (media documents render through `MediaCollectionEditView`, which does not mount `documentEditBuiltinContributions`/this outlet at all, per Step 4) — `documentEditBuiltinContributions()` itself is untouched by this step
-- [ ] `packages/react/src/collections/CreateDocumentForm.tsx`: `fieldsMode?: "required" | "all"` (default `"required"`), `initialValues?`, `submitOnOpen?: boolean`; catches a rejected create and applies it as a field error so `AppForm`'s `focusFirstFieldError` can find it
-- [ ] `packages/react/src/collections/CreateDocumentModal.tsx`: forwards the same three new props to `CreateDocumentForm`
-- [ ] `packages/react/src/collections/CollectionEditView.test.tsx`: three new `it`s in a `CollectionEditView — duplicate` block (success navigation, conflict fallback auto-submit + focus, versioned → draft), reusing the file's existing `useConvexMutation` mock
+- [x] `packages/react/src/collections/useDuplicateCollectionDocument.ts` (new): clones the current document, tries `create`, and on a server rejection hands the clone to a fallback-modal state
+- [x] `packages/react/src/collections/CollectionDuplicateAction.tsx` (new): `vex.duplicate` contribution — the header button, gated on `create` permission, plus the all-fields fallback dialog
+- [x] `packages/react/src/collections/CollectionEditView.tsx`: appends `CollectionDuplicateAction` to the builtins passed into its `edit.header.actions` outlet, non-media collections only (media documents render through `MediaCollectionEditView`, which does not mount `documentEditBuiltinContributions`/this outlet at all, per Step 4) — `documentEditBuiltinContributions()` itself is untouched by this step
+- [x] `packages/react/src/collections/CreateDocumentForm.tsx`: `fieldsMode?: "required" | "all"` (default `"required"`), `initialValues?`, `submitOnOpen?: boolean`; catches a rejected create and applies it as a field error so `AppForm`'s `focusFirstFieldError` can find it
+- [x] `packages/react/src/collections/CreateDocumentModal.tsx`: forwards the same three new props to `CreateDocumentForm`
+- [x] `packages/react/src/collections/CollectionEditView.test.tsx`: three new `it`s in a `CollectionEditView — duplicate` block (success navigation, conflict fallback auto-submit + focus, versioned → draft), reusing the file's existing `useConvexMutation` mock
 
 > Note: spec-tasks.md names `packages/react/src/testing/viewSuite.ts` as the file for these
 > three cases. `viewSuite.ts` is a shared kit imported by every view's own `*.test.tsx`
@@ -3371,22 +3716,22 @@ Verify: pnpm --filter @vexcms/react test -- CollectionEditView CreateDocumentFor
 > handler, right before calling `useVexNavigate()`'s returned function — named here, not fabricated,
 > since those files don't exist yet.
 
-- [ ] `packages/react/src/config/useFrameworkComponents.ts`: add the `navigationBlocker` and
+- [x] `packages/react/src/config/useFrameworkComponents.ts`: add the `navigationBlocker` and
       `useNavigate` capabilities to the adapter contract (spec decision 2)
-- [ ] `packages/react/src/versions/useAutosave.tsx` + tests: add `hasUnsavedChanges` to
+- [x] `packages/react/src/versions/useAutosave.tsx` + tests: add `hasUnsavedChanges` to
       `UseAutosaveResult` (spec decision 5) — true during the debounce window and while `status` is
       `"saving"`/`"error"`, false once a successful save's reset drops the diff to empty
-- [ ] `packages/react/src/forms/useUnsavedChangesGuard.ts` + `UnsavedChangesDialog.tsx` + tests:
+- [x] `packages/react/src/documents/useUnsavedChangesGuard.ts` + `UnsavedChangesDialog.tsx` + tests:
       dirty = `!isDefaultValue`; autosave docs block only while `useAutosave().hasUnsavedChanges`;
       `beforeunload` registered while blocking; `UnsavedChangesGuardContext` carries `release` and
       `attemptNavigation`
-- [ ] `packages/react/src/config/useVexNavigate.ts` + tests: client-side programmatic navigation
+- [x] `packages/react/src/config/useVexNavigate.ts` + tests: client-side programmatic navigation
       for built-ins' post-mutation redirects, falling back to `window.location.assign`, guarded by
       the active `UnsavedChangesGuardContext`
-- [ ] Wire into both edit views: pass `hasUnsavedChanges` to the guard; release the guard after a
+- [x] Wire into both edit views: pass `hasUnsavedChanges` to the guard; release the guard after a
       successful save, delete or duplicate navigation
-- [ ] `packages/react/src/collections/CollectionDeleteAction.tsx`: swap `window.location.assign` for `useVexNavigate`, calling `release()` first
-- [ ] `packages/react/src/collections/useDuplicateCollectionDocument.ts`: same swap on the create-success path
+- [x] `packages/react/src/collections/CollectionDeleteAction.tsx`: swap `window.location.assign` for `useVexNavigate`, calling `release()` first
+- [x] `packages/react/src/collections/useDuplicateCollectionDocument.ts`: same swap on the create-success path
 
 #### packages/react/src/config/useFrameworkComponents.ts
 
@@ -3585,7 +3930,7 @@ export { useVexNavigate } from "./config";
   });
 ```
 
-#### packages/react/src/forms/useUnsavedChangesGuard.ts
+#### packages/react/src/documents/useUnsavedChangesGuard.ts
 
 New file.
 
@@ -3741,7 +4086,7 @@ export function useUnsavedChangesGuard(props: {
 }
 ```
 
-#### packages/react/src/forms/UnsavedChangesDialog.tsx
+#### packages/react/src/documents/UnsavedChangesDialog.tsx
 
 New file.
 
@@ -3799,7 +4144,7 @@ export function UnsavedChangesDialog(props: UnsavedChangesDialogProps) {
 }
 ```
 
-#### packages/react/src/forms/useUnsavedChangesGuard.test.tsx
+#### packages/react/src/documents/useUnsavedChangesGuard.test.tsx
 
 New file.
 
@@ -4079,7 +4424,7 @@ New file.
 "use client";
 
 import { useCallback, useContext } from "react";
-import { UnsavedChangesGuardContext } from "../forms/useUnsavedChangesGuard";
+import { UnsavedChangesGuardContext } from "../documents/useUnsavedChangesGuard";
 import { useFrameworkComponents } from "./useFrameworkComponents";
 
 /**
@@ -4147,7 +4492,7 @@ import { FrameworkComponentsContext, type FrameworkComponents } from "./useFrame
 import {
   UnsavedChangesGuardContext,
   type UnsavedChangesGuardContextValue,
-} from "../forms/useUnsavedChangesGuard";
+} from "../documents/useUnsavedChangesGuard";
 import { useVexNavigate } from "./useVexNavigate";
 
 function NavigateButton(props: { href: string }) {
@@ -4247,7 +4592,7 @@ describe("useVexNavigate", () => {
 import {
   UnsavedChangesGuardContext,
   useUnsavedChangesGuard,
-} from "../forms/useUnsavedChangesGuard";
+} from "../documents/useUnsavedChangesGuard";
 ```
 
 **2 — replace the `useAutosave({...})` call with autosave-result capture, the top-level dirty subscription, and the guard, anchored right after the `lastViewedVersionRef` reset effect.**
@@ -4315,7 +4660,7 @@ import {
 import {
   UnsavedChangesGuardContext,
   useUnsavedChangesGuard,
-} from "../forms/useUnsavedChangesGuard";
+} from "../documents/useUnsavedChangesGuard";
 ```
 
 **2 — replace the `useAutosave({...})` call with autosave-result capture, the top-level dirty subscription, and the guard, anchored right after the `lastViewedVersionRef` reset effect (and before `formValues`).**
@@ -4413,7 +4758,7 @@ hook's import list.
 
 ```tsx
 import { useVexNavigate } from "../../config/useVexNavigate";
-import { useReleaseUnsavedChangesGuard } from "../../forms/useUnsavedChangesGuard";
+import { useReleaseUnsavedChangesGuard } from "../../documents/useUnsavedChangesGuard";
 ```
 
 ```tsx
@@ -4456,11 +4801,22 @@ Verify: pnpm --filter @vexcms/react test -- useUnsavedChangesGuard useVexNavigat
 
 ### Step 8 — Next.js navigation-guard implementation [dev]
 
-- [ ] `packages/next/src/navigation/useNextNavigationBlocker.ts` + `useNextNavigationBlocker.test.ts` (new)
-- [ ] `packages/next/src/navigation/useNextNavigate.ts` (new)
-- [ ] `packages/next/src/navigation/index.ts` (new)
-- [ ] `packages/next/src/NextAdminLayoutClient.tsx` — provide both adapters
-- [ ] `packages/next/package.json` — test-only devDependencies for the new DOM test
+- [x] `packages/next/src/navigation/useNextNavigationBlocker.ts` + `useNextNavigationBlocker.test.ts` (new)
+- [x] `packages/next/src/navigation/useNextNavigate.ts` (new)
+- [x] `packages/next/src/navigation/index.ts` (new)
+- [x] `packages/next/src/NextAdminLayoutClient.tsx` — provide both adapters
+- [x] `packages/next/package.json` — test-only devDependencies for the new DOM test
+
+> Correction (implementation, browser-verified in `apps/test`): the drafted code below pushed the
+> popstate sentinel only at mount, went `history.go(-1)` on Leave, and popped the sentinel with
+> `history.back()` on unmount. Edit forms mount clean, so no sentinel ever existed and Back was
+> never intercepted; `go(-1)` from the re-pushed sentinel lands on the guarded page's own entry
+> (same URL), so Leave stayed put; and the unmount `back()` raced Delete's redirect (the document
+> query returns null first, unmounting the form) and cancelled it. Shipped behavior: the sentinel
+> (`{ __vexNavigationSentinel: true }`, merged with Next's router state by its patched
+> `pushState`) is pushed whenever `when` turns true; popstate only blocks when it stepped off the
+> sentinel; Leave is `history.go(-2)`; a link Leave `router.replace`s the sentinel when it is the
+> current entry; unmount never traverses history. Tests updated accordingly.
 
 > Note: `packages/next` is Next 16.3.3 (catalog, peer range `>=15.0.0`) on the App Router. The App
 > Router ships no `routeChangeStart`-style event (that was Pages Router-only and was removed), so
@@ -4852,20 +5208,20 @@ Verify: pnpm --filter @vexcms/next test; browser smoke on a dirty form: sidebar 
 Why: proves the acceptance criteria end-to-end and documents the new public surface.
 Verify: pnpm build && pnpm test; manual smoke of every acceptance bullet in `apps/test`
 
-- [ ] `apps/test/src/vex.config.ts`: root-level `edit.header.after` contribution
-- [ ] `apps/test/src/vexcms/components/EnvironmentBadge.tsx`: new root contribution component
-- [ ] `apps/test/src/vexcms/collections/posts.ts`: collection-level `edit.beforeFields` contribution + `vex.save` wrapped via `header.overrides`
-- [ ] `apps/test/src/vexcms/components/EditorialChecklist.tsx`: new collection contribution component
-- [ ] `apps/test/src/vexcms/components/SaveWithAnalytics.tsx`: new `vex.save` wrapper component
-- [ ] `apps/test/src/vexcms/collections/users.ts`: hide the built-in `vex.duplicate` header action
-- [ ] `apps/test/src/vexcms/globals/siteSettings.ts`: global-level `edit.sidebar.after` contribution
-- [ ] `apps/test/src/vexcms/components/CachePurgeNote.tsx`: new global contribution component
-- [ ] `apps/docs/src/content/docs/guides/admin-customization.mdx`: edit-view slots, built-in ids, `useVexDocument`
-- [ ] `apps/docs/src/content/docs/guides/framework-adapters.md`: the navigation-blocker contract
-- [ ] `.changeset/edit-view-slots.md`
-- [ ] `.changeset/duplicate-document.md`
-- [ ] `.changeset/unsaved-changes-guard.md`
-- [ ] `.agent/docs/product/v0.1.0-launch-plan.md`: mark G done, H done, note the dropped error summary
+- [x] `apps/test/src/vex.config.ts`: root-level `edit.header.after` contribution
+- [x] ~~`apps/test/src/vexcms/components/EnvironmentBadge.tsx`: new root contribution component~~ — removed post-implementation (Step 4 feedback note below); `apps/test/src/vex.config.ts`'s root `edit.header.after` contribution and this file are both deleted.
+- [x] `apps/test/src/vexcms/collections/posts.ts`: collection-level `edit.beforeFields` contribution + `vex.save` wrapped via `header.overrides`
+- [x] `apps/test/src/vexcms/components/EditorialChecklist.tsx`: new collection contribution component
+- [x] `apps/test/src/vexcms/components/SaveWithAnalytics.tsx`: new `vex.save` wrapper component
+- [x] `apps/test/src/vexcms/collections/users.ts`: hide the built-in header action — originally `vex.duplicate`, changed post-implementation to `vex.delete` once `vex.duplicate` moved out of `edit.header.actions` (Step 4 feedback note below).
+- [x] `apps/test/src/vexcms/globals/siteSettings.ts`: global-level `edit.sidebar.after` contribution
+- [x] `apps/test/src/vexcms/components/CachePurgeNote.tsx`: new global contribution component
+- [x] `apps/docs/src/content/docs/guides/admin-customization.mdx`: edit-view slots, built-in ids, `useVexDocument`
+- [x] `apps/docs/src/content/docs/guides/framework-adapters.md`: the navigation-blocker contract
+- [x] `.changeset/edit-view-slots.md`
+- [x] `.changeset/duplicate-document.md`
+- [x] `.changeset/unsaved-changes-guard.md`
+- [x] `.agent/docs/product/v0.1.0-launch-plan.md`: mark G done, H done, note the dropped error summary
 
 > Note: `apps/docs/src/content/docs/guides/framework-adapters.md` is a `.md` file, not
 > `.mdx` as a plain reading of "docs guides … framework-adapters.md" might suggest reformatting
@@ -5296,7 +5652,7 @@ interface NavigationBlockerAdapter {
 calls `onBlock(proceed)` instead of letting it through. Calling `proceed()` lets the
 navigation that triggered the block continue; not calling it cancels that navigation attempt.
 `@vexcms/react`'s `useUnsavedChangesGuard`
-(`packages/react/src/forms/useUnsavedChangesGuard.ts`) is the only caller — it supplies
+(`packages/react/src/documents/useUnsavedChangesGuard.ts`) is the only caller — it supplies
 `onBlock` and owns the Stay/Leave dialog; the adapter owns nothing about *why* navigation is
 blocked, only *how* to intercept it. `beforeunload` is handled by `@vexcms/react` directly
 (every framework runs in a browser), so the adapter contract has no unload hook. Without
@@ -5530,7 +5886,7 @@ one here, paired with the new built-in test that replaces it (decision 16):
 
 | Old case (origin/dev) | File | Replaced by |
 |---|---|---|
-| *(fill in during review)* | | |
+| *(none)* | `versions/DraftToolbar.tsx` had no own test file on `origin/dev`, and every surviving `.test.*` file's `it(`/`test(` count on HEAD is `>=` `origin/dev` (no drops at all) | — |
 
 3. **Tailwind: no class lost off a moved surface.** For every changed `.tsx` under
    `packages/react/src`, extract its `className`/`cn(...)`/`cva(...)` string literals and tokenize
@@ -5626,6 +5982,6 @@ Verify: the Findings table above is empty, and `pnpm typecheck && pnpm test && p
 
 ## Verification
 
-- [ ] `pnpm typecheck && pnpm test && pnpm build` green
+- [x] `pnpm typecheck && pnpm test && pnpm build` green
 - [ ] Browser smoke in `apps/test` covering every acceptance bullet (step 9)
-- [ ] Step 10's Findings table is empty — no test, Tailwind class or export was lost in the built-in move
+- [x] Step 10's Findings table is empty — no test, Tailwind class or export was lost in the built-in move

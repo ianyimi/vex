@@ -22,7 +22,12 @@ import { parseAsBoolean, useQueryState } from "nuqs";
  *   when `collection` does not resolve against the current config.
  * @throws Never — resolution failure renders `null` instead of throwing.
  */
-export function CreateDocumentModal(props: { collection: CollectionSlug }) {
+export function CreateDocumentModal(props: {
+  collection: CollectionSlug;
+  fieldsMode?: "required" | "all";
+  initialValues?: Record<string, unknown>;
+  submitOnOpen?: boolean;
+}) {
   const config = useVexConfig();
   const collection = config.collections.find(
     (c) => c.slug === props.collection,
@@ -55,6 +60,9 @@ export function CreateDocumentModal(props: { collection: CollectionSlug }) {
         </DialogHeader>
         <CreateDocumentForm
           collection={collection}
+          fieldsMode={props.fieldsMode}
+          initialValues={props.initialValues}
+          submitOnOpen={props.submitOnOpen}
           onCreated={() => setOpen(null)}
           onCancel={() => setOpen(null)}
           onSubmittingChange={setIsSubmitting}

@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ComponentType } from "react";
 import { SlotOverrideOutlet } from "./SlotOverrideOutlet";
 
@@ -66,5 +66,54 @@ describe("SlotOverrideOutlet", () => {
       />,
     );
     expect(order).toEqual(["b", "a"]);
+  });
+
+  it("falls back to the stage beneath a throwing override, with an inline error naming it", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    function Throws(): never {
+      throw new Error("boom");
+    }
+    render(
+      <SlotOverrideOutlet
+        slotId="field.label"
+        overrides={[{ id: "acme.broken", component: Throws }]}
+        defaultComponent={Default}
+        props={{ label: "x" }}
+      />,
+    );
+    expect(screen.getByTestId("default")).toHaveTextContent("x");
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("acme.broken");
+    expect(alert).toHaveTextContent("boom");
+    spy.mockRestore();
+  });
+
+  it("clears the inline error and renders the default on re-render without the throwing override", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    function Throws(): never {
+      throw new Error("boom");
+    }
+    const { rerender } = render(
+      <SlotOverrideOutlet
+        slotId="field.label"
+        overrides={[{ id: "acme.broken", component: Throws }]}
+        defaultComponent={Default}
+        props={{ label: "x" }}
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("acme.broken");
+
+    rerender(
+      <SlotOverrideOutlet
+        slotId="field.label"
+        overrides={undefined}
+        defaultComponent={Default}
+        props={{ label: "x" }}
+      />,
+    );
+
+    expect(screen.getByTestId("default")).toHaveTextContent("x");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    spy.mockRestore();
   });
 });

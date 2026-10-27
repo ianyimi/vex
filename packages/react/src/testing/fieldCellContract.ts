@@ -212,7 +212,7 @@ export function runFieldCellContractSuite<TField extends AdminDataField, TValue>
       const { container } = renderCell({ value: fixture.valid, isTitleField: true, id: TITLE_ROW_ID });
       const link = container.querySelector("a");
       expect(link).not.toBeNull();
-      expect(link?.getAttribute("href")).toBe(`/admin/${collection.slug}/${TITLE_ROW_ID}`);
+      expect(link?.getAttribute("href")).toBe(`/admin/collections/${collection.slug}/${TITLE_ROW_ID}`);
     });
 
     if (truncates !== false) {

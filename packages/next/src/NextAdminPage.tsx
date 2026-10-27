@@ -20,6 +20,7 @@ import {
 } from "@vexcms/react";
 import { fetchQuery } from "convex/nextjs";
 import { cookies } from "next/headers";
+import { notFound } from "next/navigation";
 
 /**
  * Resolves a `{ server }` preview URL for first paint.
@@ -97,22 +98,26 @@ export async function NextAdminPage(props: {
   token?: string;
 }) {
   const { path = [] } = await props.params;
-  const [collectionSlug, documentId] = path;
+  const [section, collectionSlug, documentId] = path;
   const cookieStore = await cookies();
 
-  if (!collectionSlug) {
+  if (path.length === 0) {
     return <DashboardView />;
   }
 
-  if (collectionSlug === "globals") {
-    if (!documentId) {
+  if (section !== "collections" && section !== "globals") {
+    notFound();
+  }
+
+  if (section === "globals") {
+    if (!collectionSlug) {
       return <GlobalsListView />;
     }
-    const globalConfig = props.config.globals.find((g) => g.slug === documentId);
+    const globalConfig = props.config.globals.find((g) => g.slug === collectionSlug);
     if (!globalConfig) {
       return (
         <div>
-          <p className="text-muted-foreground p-6">Global &quot;{documentId}&quot; not found.</p>
+          <p className="text-muted-foreground p-6">Global &quot;{collectionSlug}&quot; not found.</p>
           <p>TODO: add not found view</p>
         </div>
       );
@@ -157,6 +162,10 @@ export async function NextAdminPage(props: {
         }
       />
     );
+  }
+
+  if (!collectionSlug) {
+    notFound();
   }
 
   const collection = props.config.collections.find((c) => c.slug === collectionSlug);

@@ -6,6 +6,7 @@ import type { VexConfig } from "../../../config";
 import type { AccessCallOptions, VexApiAuth } from "../../../db/types";
 import { DRAFT_ACTIONS } from "../../../access";
 import { getVersion } from "../../model";
+import type { VexVersionStatus } from "../../constants";
 import { assertVersionsAccess, resolveHistoryTarget } from "../history/server";
 
 /**
@@ -34,7 +35,7 @@ export interface VersionSnapshotResult {
   /** The stripped document content at this version. */
   snapshot: Record<string, unknown>;
   /** Lifecycle state this version was recorded at. */
-  status: "draft" | "published";
+  status: VexVersionStatus;
 }
 
 /**

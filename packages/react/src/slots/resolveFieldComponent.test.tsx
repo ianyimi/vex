@@ -1,6 +1,6 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { useForm } from "@tanstack/react-form";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ComponentType } from "react";
 import {
   defineCollection,
@@ -76,5 +76,27 @@ describe("resolveFieldComponent", () => {
         fieldOverrides: undefined,
       }),
     ).toThrow(/Missing component/);
+  });
+
+  it("falls back to the previous stage when a field override throws, with an inline error naming it", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const Component = resolveFieldComponent({
+      fieldType: "text",
+      rootOverrides: undefined,
+      fieldOverrides: [
+        {
+          id: "acme.fieldThrows",
+          component: (): never => {
+            throw new Error("boom");
+          },
+        },
+      ],
+    });
+    const { container } = renderInForm(<Component {...baseProps} />);
+    expect(container.querySelector("input")).toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("acme.fieldThrows");
+    expect(alert).toHaveTextContent("boom");
+    spy.mockRestore();
   });
 });

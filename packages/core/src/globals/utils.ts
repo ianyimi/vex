@@ -3,6 +3,8 @@
  * surface (`get`, `find`, `upsert`) and `db/triggers.ts`.
  */
 
+import type { VexVersionStatus } from "../versions/constants";
+
 /**
  * Flattens a raw `vex_globals` DB row into the API-facing flat document.
  * Lifts `data` fields to root, renames `slug` → `_slug`.
@@ -25,7 +27,7 @@ export function flattenGlobalRow(row: Record<string, unknown>): Record<string, u
     data: Record<string, unknown>;
     _id: string;
     _creationTime: number;
-    vex_status?: "draft" | "published";
+    vex_status?: VexVersionStatus;
     vex_publishedAt?: number;
     vex_publishedId?: string;
   };

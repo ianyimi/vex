@@ -61,6 +61,7 @@
   "devDependencies": {
     "@edge-runtime/vm": "catalog:",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "convex": "catalog:",

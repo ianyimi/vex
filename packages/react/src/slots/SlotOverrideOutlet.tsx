@@ -29,21 +29,25 @@ export function SlotOverrideOutlet<TProps extends {}>(props: {
     overrides: props.overrides ?? [],
   });
 
-  const Composed = resolved.reduce<ComponentType<TProps>>(
-    (renderDefault, override) => {
-      const Override = override.component;
-      function Composed(p: TProps) {
-        return <Override {...p} renderDefault={renderDefault} />;
-      }
-      Composed.displayName = `SlotOverride(${override.id})`;
-      return Composed;
-    },
-    props.defaultComponent,
-  );
-
-  return (
+  const DefaultComponent = props.defaultComponent;
+  const Base: ComponentType<TProps> = (p) => (
     <ComponentErrorBoundary id={props.slotId}>
-      <Composed {...props.props} />
+      <DefaultComponent {...p} />
     </ComponentErrorBoundary>
   );
+
+  const Composed = resolved.reduce<ComponentType<TProps>>((RenderDefault, override) => {
+    const Override = override.component;
+    function Composed(p: TProps) {
+      return (
+        <ComponentErrorBoundary id={override.id} fallback={<RenderDefault {...p} />}>
+          <Override {...p} renderDefault={RenderDefault} />
+        </ComponentErrorBoundary>
+      );
+    }
+    Composed.displayName = `SlotOverride(${override.id})`;
+    return Composed;
+  }, Base);
+
+  return <Composed {...props.props} />;
 }

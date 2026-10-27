@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, DialogFooter } from "../ui";
 import { getDataFields, type CollectionConfig, vexConvexApi } from "@vexcms/core";
 import { AppForm } from "../forms";
 import { RenderFields } from "../fields/RenderFields";
 import { useFieldsForm } from "../fields/useFieldsForm";
 import { useVexMutation } from "../hooks";
+import { applyVexFieldErrors } from "../utils/errors";
 
 /**
  * Props for {@link CreateDocumentForm}.
@@ -25,6 +26,25 @@ export interface CreateDocumentFormProps {
    * before this form was extracted.
    */
   onSubmittingChange?: (isSubmitting: boolean) => void;
+  /**
+   * Which fields to render. `"required"` (default) is the quick-create form's
+   * existing behavior. `"all"` is the duplicate fallback's all-fields mode
+   * (decision 7) — every field the caller can read, not just the required ones.
+   */
+  fieldsMode?: "required" | "all";
+  /**
+   * Pre-fills the form's default values, overlaid on the fields' own declared
+   * defaults — the same `document` overlay `useFieldsForm` already applies in
+   * edit mode. The duplicate fallback passes the clone here.
+   */
+  initialValues?: Record<string, unknown>;
+  /**
+   * Submits once, on mount, instead of waiting for a user click — the
+   * duplicate fallback's "submits immediately" behavior (decision 7). Ignored
+   * on every later render; a dialog that stays open across a failed
+   * `submitOnOpen` attempt waits for the user from then on.
+   */
+  submitOnOpen?: boolean;
 }
 
 /**
@@ -46,6 +66,9 @@ export function CreateDocumentForm({
   onCreated,
   onCancel,
   onSubmittingChange,
+  fieldsMode = "required",
+  initialValues,
+  submitOnOpen = false,
 }: CreateDocumentFormProps) {
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,17 +88,29 @@ export function CreateDocumentForm({
     errorToast: { message: `Failed to create ${collection.labels.singular}` },
   });
 
-  const fieldKeys = Object.entries(getDataFields({ fields: collection.fields }))
-    .filter(([, fieldDef]) => fieldDef.required)
-    .map(([fieldKey]) => fieldKey);
+  const dataFields = getDataFields({ fields: collection.fields });
+  const fieldKeys =
+    fieldsMode === "all"
+      ? Object.keys(dataFields)
+      : Object.entries(dataFields)
+          .filter(([, fieldDef]) => fieldDef.required)
+          .map(([fieldKey]) => fieldKey);
 
   const form = useFieldsForm({
     fields: collection.fields,
+    document: initialValues,
     readableFieldKeys: fieldKeys,
     onSubmit: async ({ value }) => {
       let id: string;
       try {
         id = await mutateAsync({ collection: collection.slug, data: value });
+      } catch (error) {
+        applyVexFieldErrors(form, error);
+        // Rethrown (not swallowed): TanStack's own `_handleSubmit` catches this,
+        // sets `isSubmitSuccessful: false`, and re-throws — which is what
+        // `AppForm`'s `failedSubmitAttempt` effect needs to run `focusFirstFieldError`
+        // and land the user on the field `applyVexFieldErrors` just marked invalid.
+        throw error;
       } finally {
         endSubmit();
       }
@@ -83,6 +118,16 @@ export function CreateDocumentForm({
     },
     onSubmitInvalid: endSubmit,
   });
+
+  const submitOnOpenRef = useRef(submitOnOpen);
+  useEffect(() => {
+    if (!submitOnOpenRef.current) return;
+    submitOnOpenRef.current = false;
+    // Same as `AppForm`'s own submit handler: a rejection here already updated the
+    // form's error state via this file's own `onSubmit` catch block above — this
+    // `.catch` only prevents an unhandled promise rejection.
+    form.handleSubmit().catch(() => {});
+  }, [form]);
 
   return (
     <div

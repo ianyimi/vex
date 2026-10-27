@@ -245,7 +245,7 @@ The admin panel contains internal navigation links. Rather than hardcoding `<a>`
 
 ```tsx
 // Renders NextLink, RouterLink, etc. — falls back to <a> if nothing is configured
-<VexLink href="/admin/posts">Posts</VexLink>
+<VexLink href="/admin/collections/posts">Posts</VexLink>
 ```
 
 When building a framework adapter, inject your router's link component via `AdminLayout`'s `components` prop. `AdminLayout` puts it into context; `VexLink` and `VexImage` everywhere in the tree pick it up automatically.
@@ -331,7 +331,7 @@ export function NextAdminLayout(props: { children: ReactNode }) {
   const pathname = usePathname();
   // Derive active collection slug from pathname for sidebar highlighting
   const segments = pathname.split("/").filter(Boolean);
-  const activeSlug = segments[1]; // "posts" from "/admin/posts"
+  const activeSlug = segments[2]; // "posts" from "/admin/collections/posts"
 
   return (
     <AdminLayout
@@ -364,6 +364,73 @@ through the layout component.
 ```
 
 ---
+
+## Step 9 — Implement the navigation-blocker and navigate capabilities (both optional)
+
+`@vexcms/react` defines an unsaved-changes navigation guard framework-neutrally and asks the
+adapter for two independent, optional capabilities: intercepting in-app navigation
+(`navigationBlocker`) and performing a post-mutation programmatic navigation
+(`useNavigate`). An adapter that skips both still works — `beforeunload` still prompts on tab
+close / hard reload, but in-app navigation and a built-in's post-mutation redirect are
+unguarded.
+
+```ts
+interface NavigationBlockerAdapter {
+  useBlocker(props: {
+    when: boolean;
+    onBlock: (proceed: () => void) => void;
+  }): void;
+}
+```
+
+`useBlocker` is a hook: while `when` is `true`, the adapter intercepts in-app navigation and
+calls `onBlock(proceed)` instead of letting it through. Calling `proceed()` lets the
+navigation that triggered the block continue; not calling it cancels that navigation attempt.
+`@vexcms/react`'s `useUnsavedChangesGuard`
+(`packages/react/src/documents/useUnsavedChangesGuard.ts`) is the only caller — it supplies
+`onBlock` and owns the Stay/Leave dialog; the adapter owns nothing about *why* navigation is
+blocked, only *how* to intercept it. `beforeunload` is handled by `@vexcms/react` directly
+(every framework runs in a browser), so the adapter contract has no unload hook. Without
+`navigationBlocker`, in-app navigation is unguarded but `beforeunload` still works.
+
+There is no `pushState`/`replaceState` patching, and no patching of a framework router's own
+`push`/`replace`, in this contract. `@vexcms/next`'s implementation
+(`useNextNavigationBlocker`, `packages/next/src/navigation/`) intercepts only the two surfaces
+that fire BEFORE a route change commits: same-origin anchor clicks, in the capture phase
+(skipping modifier-key clicks, clicks on an anchor with a `target`, and clicks on a
+cross-origin or same-page-hash `href`), and browser back/forward, via a same-URL `popstate`
+sentinel pushed on mount that lets the hook catch and correct the first back-press. Next
+itself calls `pushState` only AFTER the new route has already committed (from
+`HistoryUpdater`'s `useInsertionEffect`), and patches `pushState`/`replaceState` itself — by
+the time either fires, the outgoing page is already unmounted, so intercepting there is too
+late to prevent anything. A raw `<button onClick={() => router.push(...)}>` or any other
+programmatic navigation is therefore invisible to `navigationBlocker` by design.
+
+```ts
+useNavigate?: () => (href: string) => void;
+```
+
+`useNavigate` closes that gap a different way: it is consumed only by `@vexcms/react`'s
+`useVexNavigate()`, the supported path for programmatic navigation inside the admin — used by
+built-ins for a post-mutation redirect (after delete, after a duplicate's create resolves).
+`useVexNavigate` consults the same blocking state as `navigationBlocker` itself before calling
+through, so every built-in that navigates after a mutation stays guarded without
+`navigationBlocker`'s involvement. Everything clickable keeps using `VexLink`/`Link`, covered
+by `navigationBlocker` above — a raw framework `router.push` called from third-party code is
+NOT guarded, only `useVexNavigate` is. Omitting `useNavigate` falls back to
+`window.location.assign`, a full page navigation.
+
+Provide both capabilities through the same framework-components mechanism as `Link`/`Image`
+(Step 6, above) — `@vexcms/next` supplies `navigationBlocker: { useBlocker:
+useNextNavigationBlocker }` and `useNavigate: useNextNavigate` (wrapping `useRouter().push`
+from `next/navigation`) from `NextAdminLayoutClient.tsx`, mounted once above the admin route
+tree alongside `Link`/`Image`.
+
+**For non-React or server-rendered frameworks:** implement `useBlocker` against your router's
+own navigation-interception primitive, and `useNavigate` against its programmatic-navigation
+API. A framework with no client-side router (full page loads only) has no in-app navigation to
+intercept and no programmatic navigation to wrap — omit both; `beforeunload` alone still
+covers it, since that is handled outside the adapter.
 
 ## Wiring it into an app
 

@@ -1307,7 +1307,11 @@ declare module "@vexcms/core" {
       }
     }
     IndexFieldsBySlug: {
-      pages: { by_slug: readonly ["slug"]; by_themes: readonly ["themes"] }
+      pages: {
+        by_slug_title: readonly ["slug", "title"]
+        by_slug: readonly ["slug"]
+        by_themes: readonly ["themes"]
+      }
       user: { by_email: readonly ["email"] }
       headers: { by_name: readonly ["name"] }
       footers: { by_name: readonly ["name"] }

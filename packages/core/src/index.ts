@@ -49,7 +49,7 @@ export * from "./framework";
 export * from "./errors";
 export type { VexWhere, VexWhereNode } from "./db/queryArgs";
 export { validateWhereNode, whereToNode } from "./db/queryArgs";
-export * from "./documents/types";
+export * from "./documents";
 export * from "./collections/api/types";
 export * from "./globals/api/types";
 export * from "./versions/api/types";

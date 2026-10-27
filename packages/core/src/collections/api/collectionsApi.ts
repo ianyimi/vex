@@ -10,6 +10,7 @@ import {
 import { GenericId, v } from "convex/values";
 import type { VexConfig } from "../../config";
 import type { CollectionSlug } from "../../types/generated";
+import { VERSION_STATUS_SCHEMA } from "../../versions/schema";
 import type { VexApiAuth } from "../../db/types";
 import { resolveLivePreviewUrlServer } from "../../livePreview/api/resolve/server";
 import { resolveGetAuth } from "../../server";
@@ -229,6 +230,7 @@ export function collectionsApi<
       args: {
         collection: v.string(),
         data: v.any(),
+        status: v.optional(VERSION_STATUS_SCHEMA),
       },
       returns: v.string(),
       handler: async (ctx, args) => {
@@ -239,6 +241,7 @@ export function collectionsApi<
           config,
           collection: args.collection as CollectionSlug,
           data: args.data,
+          status: args.status,
         });
       },
     }),

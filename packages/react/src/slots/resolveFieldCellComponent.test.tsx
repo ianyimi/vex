@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
 import {
   defineCollection,
   text,
@@ -66,5 +67,26 @@ describe("resolveFieldCellComponent", () => {
         fieldOverrides: undefined,
       }),
     ).toThrow(/Missing component/);
+  });
+
+  it("falls back to the previous stage when a cell override throws, with an inline error naming it", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const Component = resolveFieldCellComponent({
+      fieldType: "text",
+      rootOverrides: undefined,
+      fieldOverrides: [
+        {
+          id: "acme.cellThrows",
+          component: (): never => {
+            throw new Error("boom");
+          },
+        },
+      ],
+    });
+    renderWithVexProviders(<Component {...baseProps} />);
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("acme.cellThrows");
+    expect(alert).toHaveTextContent("boom");
+    spy.mockRestore();
   });
 });

@@ -2,7 +2,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { DRAFT_ACTIONS, vexConvexApi, type VersionSummary } from "@vexcms/core";
-import { VersionHistoryDropdown, type VersionHistoryTarget } from "./VersionHistoryDropdown";
+import { VersionHistoryDropdown } from "./VersionHistoryDropdown";
+import type { VersionHistoryTarget } from "./VersionHistoryPanel";
 import type * as AccessModule from "../access";
 import type * as ConvexReactQueryModule from "@convex-dev/react-query";
 import type * as TanstackQueryModule from "@tanstack/react-query";
@@ -276,6 +277,7 @@ describe("VersionHistoryDropdown", () => {
         version: 1,
       }),
     );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
   });
 
   it("tags the published version and the active draft as Active", async () => {
@@ -305,7 +307,15 @@ describe("VersionHistoryDropdown", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(onViewVersion).not.toHaveBeenCalled();
 
-    await openHistory();
+    // Cancel dismisses only the nested confirm dialog — Base UI never auto-closes an ancestor
+    // Menu just because a popup it contains (the AlertDialog) was dismissed, the same way
+    // viewing/deleting a version never closes this menu either. The dropdown is still open:
+    // re-clicking its own "View version 1" row (not re-opening via the trigger, which would
+    // toggle an already-open menu CLOSED and was the actual cause of this test's full-suite-only
+    // flakiness — Base UI opens on `mousedown` and ignores the immediately-following `click`,
+    // so toggling an open menu via the trigger races that ignore-window) exercises the same row
+    // a second time.
+    expect(screen.getByRole("menu")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "View version 1" }));
     dialog = screen.getByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Discard changes" }));

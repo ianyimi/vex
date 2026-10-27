@@ -111,7 +111,19 @@ export { SlotOutlet, SlotOverrideOutlet } from "./slots";
 export type { SlotOverrideProps } from "./slots";
 export { useVexPermissions } from "./access";
 export { useVexForm } from "./forms";
+export { VexDocumentProvider, useVexDocument } from "./documents";
+export type { VexDocumentState } from "./documents";
 export { SLOT_IDS, BUILTIN_CONTRIBUTION_IDS } from "@vexcms/core";
+export {
+  DocumentEditSlotOutlet,
+  DocumentEditRuntimeProvider,
+  useDocumentEditRuntime,
+  documentEditBuiltinContributions,
+  useEditActionsMenuDialog,
+  EditActionsMenuItem,
+} from "./documents";
+export type { DocumentEditRuntimeState, EditActionsMenuDialogState, EditActionsMenuItemProps } from "./documents";
+export type { EditSlotProps, EditSlotConfigInput } from "@vexcms/core";
 export type {
   ComponentContributionInput,
   ComponentOverrideInput,
@@ -140,6 +152,8 @@ export {
   useVexAccess,
   useStorageAdapterMap,
 } from "./config";
+export type { NavigationBlockerAdapter } from "./config";
+export { useVexNavigate } from "./config";
 export { useVexAuth } from "./auth";
 
 // Hooks

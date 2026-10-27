@@ -222,4 +222,57 @@ describe("useAutosave", () => {
 
     expect(onSave).toHaveBeenCalledTimes(1);
   });
+
+  it("hasUnsavedChanges is true during the debounce window, before status ever reaches saving", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const { rerender, result } = renderHook(
+      ({ values }) => useAutosave({ values, onSave, debounceMs: 1000 }),
+      { initialProps: { values: { title: "A" } } },
+    );
+
+    rerender({ values: { title: "B" } });
+    await act(async () => {
+      vi.advanceTimersByTime(999);
+    });
+
+    expect(result.current.status).toBe("idle");
+    expect(result.current.hasUnsavedChanges).toBe(true);
+  });
+
+  it("hasUnsavedChanges is false once a successful save's reset drops the diff to empty", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const { rerender, result } = renderHook(
+      ({ values }) => useAutosave({ values, onSave, debounceMs: 1000 }),
+      { initialProps: { values: { title: "A" } as Record<string, unknown> } },
+    );
+
+    rerender({ values: { title: "B" } });
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await flushPromises();
+    });
+    expect(result.current.status).toBe("saved");
+
+    // The edit view resets its form after the save: the diff drops to `{}`.
+    rerender({ values: {} });
+
+    expect(result.current.hasUnsavedChanges).toBe(false);
+  });
+
+  it("hasUnsavedChanges stays true after a failed save", async () => {
+    const onSave = vi.fn().mockRejectedValueOnce(new Error("boom"));
+    const { rerender, result } = renderHook(
+      ({ values }) => useAutosave({ values, onSave, debounceMs: 1000 }),
+      { initialProps: { values: { title: "A" } } },
+    );
+
+    rerender({ values: { title: "B" } });
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
+
+    expect(result.current.status).toBe("error");
+    expect(result.current.hasUnsavedChanges).toBe(true);
+  });
 });

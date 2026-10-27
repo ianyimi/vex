@@ -4,9 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { NextAdminPage } from "./NextAdminPage";
 
-const { fetchQueryMock } = vi.hoisted(() => ({ fetchQueryMock: vi.fn() }));
+const { fetchQueryMock, notFoundMock } = vi.hoisted(() => ({
+  fetchQueryMock: vi.fn(),
+  notFoundMock: vi.fn(() => {
+    throw new Error("NEXT_NOT_FOUND");
+  }),
+}));
 
 vi.mock("convex/nextjs", () => ({ fetchQuery: fetchQueryMock }));
+vi.mock("next/navigation", () => ({ notFound: notFoundMock }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
 }));
@@ -65,28 +71,50 @@ describe("NextAdminPage — prefetch args match the view's client query", () => 
 
   it("list page of a versioned collection prefetches with drafts: true (CollectionListView)", async () => {
     fetchQueryMock.mockResolvedValue({ page: [], isDone: true, continueCursor: "" });
-    await render(["posts"]);
+    await render(["collections", "posts"]);
     expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({ collection: "posts", drafts: true, depth: 1 });
   });
 
   it("list page of a non-versioned collection prefetches without drafts", async () => {
     fetchQueryMock.mockResolvedValue({ page: [], isDone: true, continueCursor: "" });
-    await render(["pages"]);
+    await render(["collections", "pages"]);
     expect(prefetchArgs(vexConvexApi.findPaginated)?.drafts).toBeUndefined();
   });
 
   it("edit page of a versioned collection prefetches with drafts: true (CollectionEditView)", async () => {
-    await render(["posts", "doc1"]);
+    await render(["collections", "posts", "doc1"]);
     expect(prefetchArgs(vexConvexApi.get)).toEqual({ id: "doc1", collection: "posts", drafts: true });
   });
 
   it("edit page of a non-versioned collection prefetches with drafts: false (CollectionEditView sends versions.drafts)", async () => {
-    await render(["pages", "doc1"]);
+    await render(["collections", "pages", "doc1"]);
     expect(prefetchArgs(vexConvexApi.get)).toEqual({ id: "doc1", collection: "pages", drafts: false });
   });
 
   it("edit page of a versioned global prefetches with drafts: true (GlobalEditView)", async () => {
     await render(["globals", "banner"]);
     expect(prefetchArgs(vexConvexApi.globals.get)).toEqual({ slug: "banner", drafts: true });
+  });
+});
+
+describe("NextAdminPage — unrecognized first path segment", () => {
+  beforeEach(() => {
+    notFoundMock.mockClear();
+    fetchQueryMock.mockReset().mockResolvedValue(null);
+  });
+
+  it("calls notFound() for a bare collection slug (old /admin/<slug> shape)", async () => {
+    await expect(render(["posts"])).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(notFoundMock).toHaveBeenCalledOnce();
+  });
+
+  it("calls notFound() for collections/ with no slug", async () => {
+    await expect(render(["collections"])).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(notFoundMock).toHaveBeenCalledOnce();
+  });
+
+  it("calls notFound() for an unknown first segment", async () => {
+    await expect(render(["nonsense", "posts"])).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(notFoundMock).toHaveBeenCalledOnce();
   });
 });

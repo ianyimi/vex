@@ -1,5 +1,5 @@
 import type { AdminField } from "../fields";
-import type { ApplyComponent, ComponentHKT } from "../components/types";
+import type { ApplyComponent, ComponentHKT, EditComponentsConfigInput } from "../components/types";
 import type { GlobalSlug } from "../types/generated";
 import type { IconName } from "../utils";
 import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";
@@ -55,6 +55,8 @@ export interface GlobalAdminConfigInput<
    */
   components?: {
     preview?: ApplyComponent<TComponent, { slug: string }>;
+    /** Global-level `edit.*` slot contributions and built-in overrides (decision 11/14) — merged with the project-wide config of the same shape by `resolveEditSlot` at render time. */
+    edit?: EditComponentsConfigInput<TComponent>;
   };
   /**
    * Draft and versioning config for this global. Enabling `drafts` adds
@@ -105,6 +107,8 @@ export interface GlobalAdminConfig<
   /** Custom preview component. */
   components: {
     preview?: ApplyComponent<TComponent, { slug: string }>;
+    /** Global-level `edit.*` slot contributions and built-in overrides, passed through unresolved — mirrors `AdminCollectionConfig.components.edit`. */
+    edit?: EditComponentsConfigInput<TComponent>;
   };
 }
 

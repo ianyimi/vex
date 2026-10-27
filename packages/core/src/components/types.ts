@@ -64,13 +64,32 @@ export const SLOT_IDS = {
     /** Additive contributions rendered per array item's action row. Built-ins: step 15 (duplicate/move/remove). */
     itemActions: "array.item.actions",
   },
+  edit: {
+    /** Additive contributions in an edit view's header action bar. Built-ins: save, publish, unpublish, delete, version history, live preview, cancel (decisions 11/13; `duplicate` moved to `actionsMenu` per the Step 4 post-implementation note). */
+    headerActions: "edit.header.actions",
+    /** Additive contributions rendered before an edit view's header. No built-ins. */
+    headerBefore: "edit.header.before",
+    /** Additive contributions rendered after an edit view's header. No built-ins. */
+    headerAfter: "edit.header.after",
+    /** Additive contributions rendered before an edit view's field list. No built-ins. */
+    beforeFields: "edit.beforeFields",
+    /** Additive contributions rendered after an edit view's field list. No built-ins. */
+    afterFields: "edit.afterFields",
+    /** Additive contributions rendered before an edit view's sidebar content. No built-ins. */
+    sidebarBefore: "edit.sidebar.before",
+    /** Additive contributions rendered after an edit view's sidebar content. No built-ins. */
+    sidebarAfter: "edit.sidebar.after",
+    /** Additive contributions in an edit view's ⋯ actions menu, rendered in a dropdown left of the header action group. Built-ins: revalidate, duplicate. */
+    actionsMenu: "edit.actionsMenu",
+  },
 } as const;
 
 /** Union of every flat slot id {@link SLOT_IDS} declares. */
 export type SlotId =
   | (typeof SLOT_IDS.field)[keyof typeof SLOT_IDS.field]
   | (typeof SLOT_IDS.blocks)[keyof typeof SLOT_IDS.blocks]
-  | (typeof SLOT_IDS.array)[keyof typeof SLOT_IDS.array];
+  | (typeof SLOT_IDS.array)[keyof typeof SLOT_IDS.array]
+  | (typeof SLOT_IDS.edit)[keyof typeof SLOT_IDS.edit];
 
 /**
  * Context passed to a contribution's `access` predicate — a thin RBAC checker bound to the
@@ -81,6 +100,17 @@ export type SlotId =
 export interface SlotAccessContext {
   /** `true` when the current user may perform `action` on `resource` (collection/global slug, or a `customResources` key). */
   hasPermission: (resource: string, action: string) => boolean;
+  /**
+   * Which collection/global document this render is for — populated only for `edit.*` slots
+   * (`edit.header.*`/`edit.actionsMenu`, whose contributions already receive this same shape as
+   * {@link EditSlotProps}), `undefined` for field-level slots (`beforeInput`/`afterInput`,
+   * `blocks.*.actions`, `array.item.actions`), which have no single resource kind to report.
+   * Lets a contribution that only makes sense for one kind (e.g. a collection document's own id,
+   * meaningless for a global singleton) declare that declaratively instead of rendering `null`
+   * at mount time — the latter leaves its id in the resolved list, which defeats
+   * `DocumentEditActionsMenu`'s "no contribution survived filtering → no empty ⋯ trigger" check.
+   */
+  resource?: EditSlotProps;
 }
 
 /** A pure predicate deciding whether a contribution mounts at all (S11). */
@@ -165,6 +195,93 @@ export type ResolvedComponentOverride<
   TComponent extends ComponentHKT,
   TProps,
 > = ComponentOverrideInput<TComponent, TProps>;
+
+/**
+ * Props every `edit.*` slot's resolved component receives (decisions 11/12) — which
+ * collection or global the mounted edit view is showing.
+ */
+export interface EditSlotProps {
+  /** Whether the edit view belongs to a collection document or a global's singleton document. */
+  kind: "collection" | "global";
+  /** Collection or global slug. */
+  slug: string;
+}
+
+/**
+ * One `edit.*` slot's raw, unresolved configuration at ONE level (root or collection/global) —
+ * the additive contribution list plus the built-in-wrapping override map (decision 15). This is
+ * {@link resolveEditSlot}'s `root`/`resource` param shape; `@vexcms/core`'s `defineConfig`,
+ * `defineCollection` and `defineGlobal` pass their stored config through UNRESOLVED (decision
+ * 14's root→resource merge happens per flat slot id, in `resolveEditSlot`, since built-in
+ * contributions are framework- and `kind`-specific and core has neither).
+ *
+ * @typeParam TComponent - The framework's `ComponentHKT`.
+ */
+export interface EditSlotConfigInput<TComponent extends ComponentHKT = ComponentHKT> {
+  /** This level's additive contributions for the slot. */
+  contributions?: ComponentContributionInput<TComponent, EditSlotProps>[];
+  /** This level's override chains, keyed by the built-in id each chain wraps (decision 15/16). */
+  overrides?: Record<string, ComponentOverrideInput<TComponent, EditSlotProps>[]>;
+}
+
+/**
+ * The `edit.*` slot config one collection, one global, or the project root declares — grouped
+ * by UI region to match {@link SLOT_IDS.edit} (decision 11). `header.overrides` wraps a built-in
+ * from `header.actions` by id (decision 15); `beforeFields`/`afterFields`/`sidebar.*` carry no
+ * built-ins, so they have no override map. `actionsMenu.overrides` wraps a built-in from
+ * `actionsMenu.items` (`vex.revalidate`/`vex.duplicate`) the same way. A renderer calls
+ * {@link resolveEditSlot} once PER FLAT slot id, passing the matching array (plus
+ * `header.overrides` only for `SLOT_IDS.edit.headerActions`, `actionsMenu.overrides` only for
+ * `SLOT_IDS.edit.actionsMenu`) as `root`/`resource`.
+ *
+ * @typeParam TComponent - The framework's `ComponentHKT`.
+ */
+export interface EditComponentsConfigInput<TComponent extends ComponentHKT = ComponentHKT> {
+  header?: {
+    actions?: ComponentContributionInput<TComponent, EditSlotProps>[];
+    before?: ComponentContributionInput<TComponent, EditSlotProps>[];
+    after?: ComponentContributionInput<TComponent, EditSlotProps>[];
+    overrides?: Record<string, ComponentOverrideInput<TComponent, EditSlotProps>[]>;
+  };
+  beforeFields?: ComponentContributionInput<TComponent, EditSlotProps>[];
+  afterFields?: ComponentContributionInput<TComponent, EditSlotProps>[];
+  sidebar?: {
+    before?: ComponentContributionInput<TComponent, EditSlotProps>[];
+    after?: ComponentContributionInput<TComponent, EditSlotProps>[];
+  };
+  /** The edit view's ⋯ actions menu (decision: Step 4 post-implementation note) — built-ins `vex.revalidate`/`vex.duplicate`. */
+  actionsMenu?: {
+    items?: ComponentContributionInput<TComponent, EditSlotProps>[];
+    overrides?: Record<string, ComponentOverrideInput<TComponent, EditSlotProps>[]>;
+  };
+}
+
+/**
+ * Root-level `edit.*` slot config after `defineConfig()` applies defaults — every array and the
+ * override map always present. Collection/global-level config ({@link EditComponentsConfigInput})
+ * is NOT defaulted this way; `resolveEditSlot` owns those defaults at render time, mirroring how
+ * `AdminCollectionConfig.livePreview` is passed through unresolved.
+ *
+ * @typeParam TComponent - The framework's `ComponentHKT`.
+ */
+export interface EditComponentsConfig<TComponent extends ComponentHKT = ComponentHKT> {
+  header: {
+    actions: ComponentContributionInput<TComponent, EditSlotProps>[];
+    before: ComponentContributionInput<TComponent, EditSlotProps>[];
+    after: ComponentContributionInput<TComponent, EditSlotProps>[];
+    overrides: Record<string, ComponentOverrideInput<TComponent, EditSlotProps>[]>;
+  };
+  beforeFields: ComponentContributionInput<TComponent, EditSlotProps>[];
+  afterFields: ComponentContributionInput<TComponent, EditSlotProps>[];
+  sidebar: {
+    before: ComponentContributionInput<TComponent, EditSlotProps>[];
+    after: ComponentContributionInput<TComponent, EditSlotProps>[];
+  };
+  actionsMenu: {
+    items: ComponentContributionInput<TComponent, EditSlotProps>[];
+    overrides: Record<string, ComponentOverrideInput<TComponent, EditSlotProps>[]>;
+  };
+}
 
 /**
  * Thrown when a slot's config cannot be resolved — a genuine duplicate id (two real
