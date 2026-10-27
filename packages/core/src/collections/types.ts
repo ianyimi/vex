@@ -1,8 +1,8 @@
 import { AdminField, DataFieldSlug } from "../fields";
 import { ConvexSystemField, CollectionSystemField } from "./constants";
-import type { ComponentHKT } from "../fields";
+import type { ComponentHKT, EditComponentsConfigInput } from "../components/types";
 import type { CollectionSlug } from "../types/generated";
-import { TDocument } from "../api/convex";
+import { TDocument } from "../documents/types";
 import { IconName } from "../utils";
 import type { CollectionHooks, CollectionHooksInput } from "./hooks";
 import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";
@@ -160,7 +160,7 @@ export interface CollectionTableConfig {
  */
 export interface AdminCollectionConfigInput<
   TFieldSlug extends string = ConvexSystemField,
-  _TComponent extends ComponentHKT = ComponentHKT,
+  TComponent extends ComponentHKT = ComponentHKT,
   TCollectionSlug extends CollectionSlug = CollectionSlug,
 > {
   /**
@@ -188,6 +188,10 @@ export interface AdminCollectionConfigInput<
    * disable live preview for this collection.
    */
   livePreview?: AdminLivePreviewConfigInput<Partial<DocumentByCollectionSlug<TCollectionSlug>>>;
+  /** Collection-level `edit.*` slot contributions and built-in overrides (decision 11/14) — merged with the project-wide config of the same shape by `resolveEditSlot` at render time. */
+  components?: {
+    edit?: EditComponentsConfigInput<TComponent>;
+  };
 }
 
 /**
@@ -197,7 +201,7 @@ export interface AdminCollectionConfigInput<
  */
 export interface AdminCollectionConfig<
   TFieldSlug extends string = ConvexSystemField,
-  _TComponent extends ComponentHKT = ComponentHKT,
+  TComponent extends ComponentHKT = ComponentHKT,
   TCollectionSlug extends CollectionSlug = CollectionSlug,
 > {
   /** The field used as the document's human-readable title in the admin panel. */
@@ -209,6 +213,10 @@ export interface AdminCollectionConfig<
   table: CollectionTableConfig;
   /** Resolved live preview config. `undefined` when the collection omits it. */
   livePreview?: AdminLivePreviewConfig<Partial<DocumentByCollectionSlug<TCollectionSlug>>>;
+  /** Collection-level `edit.*` slot contributions and built-in overrides, passed through unresolved — `resolveEditSlot` applies every default when assembling one flat slot id at render time. */
+  components?: {
+    edit?: EditComponentsConfigInput<TComponent>;
+  };
 }
 
 /**
@@ -278,7 +286,7 @@ export interface CollectionConfigInput<
     fields: NoInfer<DataFieldSlug<TFields>>[];
     /**
      * Also narrow this index on `vex_status` for draft/publish status
-     * composition (Step 13, `versions/statusConstraint.ts`). Only valid
+     * composition (Step 13, `versions/statusQueryConstraint.ts`). Only valid
      * when this collection declares `versions.drafts: true` —
      * `defineCollection` throws otherwise for a dynamically-assembled
      * config; a literal `{ drafts: false }` (or omitted) config fails to

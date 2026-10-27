@@ -61,9 +61,10 @@ import type { VexResourceSlug } from "../../types/generated";
  */
 export function array<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TArrayType extends ArrayType = string,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
->(options: ArrayFieldInput<TCollectionSlug, TArrayType, TFieldMeta>): ArrayField<TCollectionSlug, TArrayType, TFieldMeta> {
+>(options: ArrayFieldInput<TCollectionSlug, TFieldKey, TArrayType, TFieldMeta>): ArrayField<TCollectionSlug, TArrayType, TFieldMeta> {
   const itemsField = options.items;
   if (
     itemsField.type === ADMIN_FIELDS.group.type &&

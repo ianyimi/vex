@@ -41,8 +41,9 @@ import { BaseFieldMeta } from "../types";
  */
 export interface JsonFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values.
@@ -56,7 +57,7 @@ export interface JsonFieldInput<
  * Resolved configuration for a `json()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<JsonField>` and `CellComponentProps<JsonField>`
+ * `fieldDef` in `FieldComponentProps<JsonField>` and `CellComponentProps<JsonField>`
  * is this type.
  *
  * @see {@link JsonFieldInput} for the user-facing input type

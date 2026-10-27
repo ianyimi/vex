@@ -20,7 +20,13 @@ harness_model_role: slow
 2. **Explore** — check `.agent/dependencies/registry.md`; read dep source when relevant. For
    high-care projects read `docs/standards/naming-conventions.md` FIRST — before writing any
    code in the spec — then `anti-patterns.md`, `preferences.md`, then the domain files from
-   `harness context`. Note existing patterns to mirror.
+   `harness context`. **Find the closest existing systems** to the feature (same domain, same
+   UI pattern, same data path, e.g. the edit view for a list view, or an existing provider/slot/
+   prefetch path). Read them, and record in the spec's Design Decisions which ones the design
+   mirrors and every deliberate deviation with its reason. Verified existing code is the
+   default source of truth; deviate only when it doesn't fit, and say so for developer review.
+   For frontend work, plan the zero-layout-shift path (what the server prefetches, which state
+   lives in cookies or the URL) per `standards/frontend/layout-stability.md`.
 3. **Edge cases** — present design questions, edge cases, scope check. Confirm in/out of scope.
    Renaming/removing anything that exists? Load `.agent/skills/shared-references/cascade-checks.md`.
 4. **Build order** — load `references/build-order.md`; order task groups by its rules.

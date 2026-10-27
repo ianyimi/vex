@@ -103,14 +103,27 @@ export { reactAdapter } from "./adapter";
 export type { ReactHKT, ReactAdapter } from "./adapter";
 
 // Field components
-export { TextFieldInput, TextFieldCell, EmailFieldInput, EmailFieldCell, TextareaFieldInput, TextareaFieldCell } from "./components/fields";
-export { JsonFieldInput, JsonFieldCell } from "./components/fields";
+export { TextFieldAdmin, TextFieldCell, EmailFieldAdmin, EmailFieldCell, TextareaFieldAdmin, TextareaFieldCell } from "./fields";
+export { JsonFieldAdmin, JsonFieldCell, UrlFieldAdmin, UrlFieldCell, NumberFieldAdmin, NumberFieldCell, CheckboxFieldAdmin, CheckboxFieldCell, SelectFieldAdmin, SelectFieldCell, DateFieldAdmin, DateFieldCell, ColorFieldAdmin, ColorFieldCell, ArrayFieldAdmin, ArrayFieldCell, BlocksFieldAdmin, BlocksFieldCell, GroupFieldAdmin, GroupFieldCell, RelationshipFieldAdmin, RelationshipFieldCell, UploadFieldAdmin, UploadFieldCell, RichTextFieldAdmin, RichTextFieldCell } from "./fields";
 
 // Admin extension points (slots) — experimental, S13
-export { SlotOutlet, SlotOverrideOutlet } from "./components/slots";
-export type { SlotOverrideProps } from "./components/slots";
-export { useVexPermissions, useVexForm } from "./hooks";
+export { SlotOutlet, SlotOverrideOutlet } from "./slots";
+export type { SlotOverrideProps } from "./slots";
+export { useVexPermissions } from "./access";
+export { useVexForm } from "./forms";
+export { VexDocumentProvider, useVexDocument } from "./documents";
+export type { VexDocumentState } from "./documents";
 export { SLOT_IDS, BUILTIN_CONTRIBUTION_IDS } from "@vexcms/core";
+export {
+  DocumentEditSlotOutlet,
+  DocumentEditRuntimeProvider,
+  useDocumentEditRuntime,
+  documentEditBuiltinContributions,
+  useEditActionsMenuDialog,
+  EditActionsMenuItem,
+} from "./documents";
+export type { DocumentEditRuntimeState, EditActionsMenuDialogState, EditActionsMenuItemProps } from "./documents";
+export type { EditSlotProps, EditSlotConfigInput } from "@vexcms/core";
 export type {
   ComponentContributionInput,
   ComponentOverrideInput,
@@ -119,27 +132,17 @@ export type {
   SlotAccessPredicate,
 } from "@vexcms/core";
 
-export {
-  // Layout components
-  AdminLayout,
-  AppSidebar,
-  // View components
-  DashboardView,
-  CollectionListView,
-  MediaCollectionListView,
-  MediaCollectionEditView,
-  CollectionEditView,
-  GlobalEditView,
-  GlobalsListView,
-  UnauthorizedView,
-} from "./components";
+// Form entry — re-exported from its own module so `@vexcms/react` users who
+// only need `useAppForm`/`AppForm` are not forced to a second import; the
+// app form's full surface is `@vexcms/react/form`.
+export { useAppForm, AppForm } from "./forms";
+export type { FieldControlProps, FieldComponentProps } from "@vexcms/core";
 
-export type {
-  AdminUser,
-  AdminLayoutProps,
-  AppSidebarProps,
-  UnauthorizedViewProps,
-} from "./components";
+export { AdminLayout, AppSidebar, DashboardView, UnauthorizedView } from "./admin";
+export type { AdminUser, AdminLayoutProps, AppSidebarProps, UnauthorizedViewProps } from "./admin";
+export { CollectionListView, CollectionEditView } from "./collections";
+export { MediaCollectionListView, MediaCollectionEditView } from "./media";
+export { GlobalEditView, GlobalsListView } from "./globals";
 
 // Context
 export {
@@ -148,82 +151,85 @@ export {
   useVexConfig,
   useVexAccess,
   useStorageAdapterMap,
-  useVexAuth,
-} from "./context";
+} from "./config";
+export type { NavigationBlockerAdapter } from "./config";
+export { useVexNavigate } from "./config";
+export { useVexAuth } from "./auth";
 
 // Hooks
+export { ModalSurfaceProvider, useModalSurface } from "./modals";
+export { useCanAccessAdminPanel } from "./access";
 export {
-  ModalSurfaceProvider,
-  useCanAccessAdminPanel,
-  useModalSurface,
   usePaginatedQuery,
   type UsePaginatedQueryProps,
   type UsePaginatedQueryReturn,
-  usePermission,
 } from "./hooks";
+export { usePermission } from "./access";
 
 // Utilities
-export { cn } from "./styles/utils";
-export { Icon } from "./components/Icon";
-export { adminHref } from "./utils/adminHref";
-export type { AdminHrefTarget } from "./utils/adminHref";
-export type { IconProps, IconName } from "./components/Icon";
-export { RenderBlocks } from "./components/RenderBlocks";
+export { cn } from "./utils/cn";
+export { Icon } from "./ui/Icon";
+export { adminHref } from "./admin/adminHref";
+export type { AdminHrefTarget } from "./admin/adminHref";
+export type { IconProps, IconName } from "./ui/Icon";
+export { RenderBlocks } from "./fields/blocks/RenderBlocks";
 export type {
   BlockComponentProps,
   BlockComponents,
   RenderableBlock,
   RenderBlocksProps,
-} from "./components/RenderBlocks";
+} from "./fields/blocks/RenderBlocks";
 
 // Live preview
 export {
   LivePreviewPanel,
   resolveLivePreviewUrl,
-} from "./components/livePreview/LivePreviewPanel";
-export type { LivePreviewFrameGeometry } from "./components/livePreview/LivePreviewPanel";
+} from "./livePreview/LivePreviewPanel";
+export type { LivePreviewFrameGeometry } from "./livePreview/LivePreviewPanel";
 export {
   LivePreviewProvider,
   useLivePreview,
   useLivePreviewDocumentQuery,
   useLivePreviewQuery,
-} from "./context/LivePreviewContext";
+} from "./livePreview/LivePreviewContext";
 export type {
   LivePreviewDocumentQueryResult,
   LivePreviewQueryResult,
-} from "./context/LivePreviewContext";
+} from "./livePreview/LivePreviewContext";
 export {
   useLivePreviewPanelMinSize,
   useLivePreviewPanelState,
-} from "./hooks/useLivePreviewPanelState";
-export { useLivePreviewServerUrl } from "./hooks/useLivePreviewServerUrl";
-export { useLivePreviewSync } from "./hooks/useLivePreviewSync";
+} from "./livePreview/useLivePreviewPanelState";
+export { useLivePreviewServerUrl } from "./livePreview/useLivePreviewServerUrl";
+export { useLivePreviewSync } from "./livePreview/useLivePreviewSync";
 
 // shadcn UI primitives
-export * from "./components/ui";
+export * from "./ui";
 
 /**
  * Relationship field input type with the React component slot bound.
  *
- * Identical to `@vexcms/core`'s `RelationshipFieldInput<TCollectionSlug>` except
- * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TCollectionSlug>>`
- * instead of an opaque `ApplyComponent<ComponentHKT, _>`.
+ * Identical to `@vexcms/core`'s `RelationshipFieldInput` except
+ * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TTargetSlug>>`.
  */
 export type RelationshipFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> = CoreRelationshipFieldInput<VexResourceSlug, TFieldMeta, TCollectionSlug, ReactHKT>;
+  TTargetSlug extends CollectionSlug = CollectionSlug,
+> = CoreRelationshipFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, TTargetSlug, ReactHKT>;
 
 /**
  * Resolved relationship field type with the React component slot bound.
  *
- * Identical to `@vexcms/core`'s `RelationshipField<TCollectionSlug>` except
- * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TCollectionSlug>>`.
+ * Identical to `@vexcms/core`'s `RelationshipField` except
+ * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TTargetSlug>>`.
  */
 export type RelationshipField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> = CoreRelationshipField<VexResourceSlug, TFieldMeta, TCollectionSlug, ReactHKT>;
+  TTargetSlug extends CollectionSlug = CollectionSlug,
+> = CoreRelationshipField<TCollectionSlug, TFieldMeta, TTargetSlug, ReactHKT>;
 
 /**
  * Collection admin configuration input with the React component slot bound.
@@ -275,22 +281,22 @@ export type VexEditorAdapter = CoreVexEditorAdapter<ReactHKT>;
 /**
  * Defines a relationship field with React-typed component slots.
  *
- * Drop-in replacement for `@vexcms/core`'s `relationship` — same behaviour,
- * but `options.admin.components.preview` is typed as a React `ComponentType`.
+ * Drop-in replacement for `@vexcms/core`'s `relationship`, with the same generics
+ * minus the component slot: `relationship<"articles", "author">({ … })` types
+ * `index.additionalFields`, `admin.condition` and `validate()` against `articles`.
  *
  * @param options - Relationship field configuration.
  * @returns The resolved relationship field definition.
  */
 export function relationship<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
   TTargetSlug extends CollectionSlug = CollectionSlug,
 >(
-  options: RelationshipFieldInput<TFieldMeta, TTargetSlug>,
-): RelationshipField<TFieldMeta, TTargetSlug> {
-  // Core's own parameter order is `<resource slug, meta, target slug, component>`;
-  // this wrapper only ever binds the component slot, so the resource slug stays
-  // at its default.
-  return coreRelationship<VexResourceSlug, TFieldMeta, TTargetSlug, ReactHKT>(options);
+  options: RelationshipFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, TTargetSlug>,
+): RelationshipField<TCollectionSlug, TFieldMeta, TTargetSlug> {
+  return coreRelationship<TCollectionSlug, TFieldKey, TFieldMeta, TTargetSlug, ReactHKT>(options);
 }
 
 /**

@@ -46,8 +46,9 @@ import type { EmailFieldInput, EmailField } from "./types";
  */
 export function email<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
->(options?: EmailFieldInput<TCollectionSlug, TFieldMeta>): EmailField<TCollectionSlug, TFieldMeta> {
+>(options?: EmailFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>): EmailField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.email.type,
     interfaceType: ADMIN_FIELDS.email.interfaceType,

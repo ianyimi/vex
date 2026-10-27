@@ -84,14 +84,11 @@ const siteSettings = defineGlobal({
 });
 
 /**
- * Named unsafe views of the `q`/`ix` builders — for tests that deliberately
- * probe a rule which "reached past its types" (a wrong index name, a field
- * the builder's type would reject). Cast to these, once, into a named const
- * at each call site rather than inline into a member access.
+ * Named unsafe view of the `ix` builder — for tests that deliberately probe
+ * a rule which "reached past its types" (a field the builder's type would
+ * reject). Cast to this, once, into a named const at each call site rather
+ * than inline into a member access.
  */
-interface UnsafeIndexBuilder {
-  withIndex: (name: string, range: (ix: unknown) => unknown) => unknown;
-}
 interface UnsafeConstraintChain {
   eq: (field: string, value: unknown) => unknown;
 }
@@ -392,7 +389,7 @@ describe("defineAccess — constrained action-level wildcard", () => {
             contributor: {
               posts: {
                 "*": {
-                  constraints: ({ q }) => q.filter((f) => f.eq("title", "x")),
+                  where: ({ q }) => q.eq("title", "x"),
                 },
               },
             },
@@ -414,7 +411,7 @@ describe("defineAccess — constrained action-level wildcard", () => {
             contributor: {
               posts: {
                 "*": {
-                  constraints: () => {
+                  where: () => {
                     throw new Error("boom");
                   },
                 },
@@ -428,7 +425,7 @@ describe("defineAccess — constrained action-level wildcard", () => {
 });
 
 describe("defineAccess — constraint validation wiring (module load)", () => {
-  it("validates the index half even when the rule also chains .filter() — both halves are independent", () => {
+  it("validates the index half even when the rule also carries a where — both halves are independent", () => {
     expect(() =>
       loadAccess(() =>
         defineAccess({
@@ -440,12 +437,11 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
             contributor: {
               articles: {
                 read: {
-                  constraints: ({ q }) =>
-                    q
-                      .withIndex("by_title" as never, (ix) =>
-                        ix.eq("title" as never, "x" as never),
-                      )
-                      .filter((f) => f.eq("title" as never, "x" as never)),
+                  withIndex: {
+                    name: "by_title" as never,
+                    range: (ix) => ix.eq("title" as never, "x" as never),
+                  },
+                  where: ({ q }) => q.eq("title" as never, "x" as never),
                 },
               },
             },
@@ -455,7 +451,7 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
     ).not.toThrow();
   });
 
-  it("throws for a bad index half even though the same rule also chains a valid .filter()", () => {
+  it("throws for a bad index half even though the same rule also carries a valid where", () => {
     expect(() =>
       loadAccess(() =>
         defineAccess({
@@ -467,16 +463,14 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
             contributor: {
               articles: {
                 read: {
-                  constraints: ({ q }) =>
-                    q
-                      .withIndex(
-                        "by_title" as never,
-                        ((ix: unknown) => {
-                          const unsafeIx = ix as UnsafeConstraintChain;
-                          return unsafeIx.eq("nonexistentField", "x");
-                        }) as never,
-                      )
-                      .filter((f) => f.eq("title" as never, "x" as never)),
+                  withIndex: {
+                    name: "by_title" as never,
+                    range: ((ix: unknown) => {
+                      const unsafeIx = ix as UnsafeConstraintChain;
+                      return unsafeIx.eq("nonexistentField", "x");
+                    }) as never,
+                  },
+                  where: ({ q }) => q.eq("title" as never, "x" as never),
                 },
               },
             },
@@ -486,7 +480,7 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
     ).toThrow(/nonexistentField.*not an in-order prefix of index "by_title"/s);
   });
 
-  it("a constraints callback that returns `true` short-circuits with nothing to validate", () => {
+  it("a where callback that returns `true` short-circuits with nothing to validate", () => {
     expect(() =>
       loadAccess(() =>
         defineAccess({
@@ -495,14 +489,14 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
           userCollectionSlug: "users",
           userRolesField: "roles",
           permissions: {
-            contributor: { articles: { read: { constraints: () => true } } },
+            contributor: { articles: { read: { where: () => true } } },
           },
         }),
       ),
     ).not.toThrow();
   });
 
-  it("a constraints callback that returns `false` short-circuits with nothing to validate", () => {
+  it("a where callback that returns `false` short-circuits with nothing to validate", () => {
     expect(() =>
       loadAccess(() =>
         defineAccess({
@@ -511,14 +505,14 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
           userCollectionSlug: "users",
           userRolesField: "roles",
           permissions: {
-            contributor: { articles: { read: { constraints: () => false } } },
+            contributor: { articles: { read: { where: () => false } } },
           },
         }),
       ),
     ).not.toThrow();
   });
 
-  it("surfaces a throwing constraints callback on an explicit (non-wildcard) action as a config error naming role, resource, and action", () => {
+  it("surfaces a throwing where callback on an explicit (non-wildcard) action as a config error naming role, resource, and action", () => {
     expect(() =>
       loadAccess(() =>
         defineAccess({
@@ -530,7 +524,7 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
             contributor: {
               articles: {
                 read: {
-                  constraints: () => {
+                  where: () => {
                     throw new Error("boom");
                   },
                 },
@@ -540,17 +534,17 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
         }),
       ),
     ).toThrow(
-      'role "contributor" on articles.read: the constraints callback threw',
+      'role "contributor" on articles.read: the withIndex/where callback threw',
     );
   });
 
-  it("q.withIndex is reachable — and still validated — from a non-query action's constraints callback at module-load time; DD 14's gating is compile-time only", () => {
-    // `AccessPredicateBuilder` (the TYPE a non-query action's `q` gets) has no
-    // `withIndex`. But `defineAccess` resolves every rule's callback with the
-    // SAME `createAccessQueryBuilder()` regardless of the action it guards —
-    // config.ts's validation loop never branches on QUERY_ACTIONS — so at
-    // RUNTIME `withIndex` is present and fully functional even on `create`.
-    // The cast below is exactly what "reached past its types" looks like.
+  it("withIndex is reachable — and still validated — on a non-query action's rule at module-load time; DD 14's gating is compile-time only", () => {
+    // `AnyActionPermissionCheck` (the TYPE a non-query action's rule gets) has no
+    // `withIndex` — DD 14 types it out entirely, not just the builder. But
+    // `defineAccess`'s validation loop only checks `"withIndex" in check || "where" in
+    // check`, never branching on QUERY_ACTIONS — so at RUNTIME a `withIndex` placed on
+    // `create` is resolved and validated exactly like one on `read`. The
+    // `@ts-expect-error` below is exactly what "reached past its types" looks like.
     expect(() =>
       loadAccess(() =>
         defineAccess({
@@ -562,13 +556,12 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
             contributor: {
               articles: {
                 create: {
-                  constraints: ((props: { q: unknown }) => {
-                    const unsafeQ = props.q as UnsafeIndexBuilder;
-                    return unsafeQ.withIndex("by_title", (ix) => {
-                      const unsafeIx = ix as UnsafeConstraintChain;
-                      return unsafeIx.eq("title", "x");
-                    });
-                  }) as never,
+                  // @ts-expect-error — a mutation action has no query to narrow, so "withIndex" is never
+                  withIndex: {
+                    name: "by_title",
+                    range: (ix: { eq: (field: string, value: unknown) => unknown }) =>
+                      ix.eq("title", "x"),
+                  },
                 },
               },
             },
@@ -582,8 +575,8 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
     // `articles` declares exactly one index, "by_title" -> ["title"]. This
     // rule constrains "title" (a real indexed field) but names a completely
     // different, undeclared index. `defineAccess` never reads
-    // `condition.index.name` when calling `validateAccessConstraints`
-    // (config.ts), and `validateAccessConstraints` itself only ever inspects
+    // `condition.index.name` when calling `validateQueryIndexConstraints`
+    // (config.ts), and `validateQueryIndexConstraints` itself only ever inspects
     // the FIELD tuples in `indexFields`, never the map's keys — so a
     // misspelled or entirely fictitious index name is silently accepted as
     // long as some real declared index happens to share its field order. The
@@ -599,16 +592,13 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
             contributor: {
               articles: {
                 read: {
-                  constraints: ({ q }) => {
-                    const unsafeQ = q as UnsafeIndexBuilder;
-                    return unsafeQ.withIndex(
-                      "this_index_does_not_exist",
-                      (ix) => {
-                        const unsafeIx = ix as UnsafeConstraintChain;
-                        return unsafeIx.eq("title", "x");
-                      },
-                    ) as never;
-                  },
+                  withIndex: {
+                    name: "this_index_does_not_exist",
+                    range: (ix: unknown) => {
+                      const unsafeIx = ix as UnsafeConstraintChain;
+                      return unsafeIx.eq("title", "x");
+                    },
+                  } as never,
                 },
               },
             },
@@ -619,7 +609,7 @@ describe("defineAccess — constraint validation wiring (module load)", () => {
   });
 });
 
-describe("defineAccess — a constraints callback must return a recorded condition, not an arbitrary value", () => {
+describe("defineAccess — a where callback must return a recorded condition, not an arbitrary value", () => {
   it("rejects a bare object masquerading as a condition, rather than reading it as 'excludes nothing'", () => {
     expect(() =>
       loadAccess(() =>
@@ -630,7 +620,7 @@ describe("defineAccess — a constraints callback must return a recorded conditi
           userRolesField: "roles",
           permissions: {
             contributor: {
-              articles: { read: { constraints: (() => ({})) as never } },
+              articles: { read: { where: (() => ({})) as never } },
             },
           },
         }),
@@ -638,7 +628,7 @@ describe("defineAccess — a constraints callback must return a recorded conditi
     ).toThrow(VexAccessConfigError);
   });
 
-  it("rejects a constraints callback that returns undefined, with a config error not a bare TypeError", () => {
+  it("rejects a where callback that returns undefined, with a config error not a bare TypeError", () => {
     expect(() =>
       loadAccess(() =>
         defineAccess({
@@ -648,7 +638,7 @@ describe("defineAccess — a constraints callback must return a recorded conditi
           userRolesField: "roles",
           permissions: {
             contributor: {
-              articles: { read: { constraints: (() => undefined) as never } },
+              articles: { read: { where: (() => undefined) as never } },
             },
           },
         }),
@@ -656,7 +646,7 @@ describe("defineAccess — a constraints callback must return a recorded conditi
     ).toThrow(VexAccessConfigError);
   });
 
-  it("rejects a constraints callback that returns a primitive", () => {
+  it("rejects a where callback that returns a primitive", () => {
     expect(() =>
       loadAccess(() =>
         defineAccess({
@@ -666,7 +656,7 @@ describe("defineAccess — a constraints callback must return a recorded conditi
           userRolesField: "roles",
           permissions: {
             contributor: {
-              articles: { read: { constraints: (() => 42) as never } },
+              articles: { read: { where: (() => 42) as never } },
             },
           },
         }),
@@ -681,7 +671,7 @@ describe("defineAccess — role-level wildcard shape is enforced only by TypeScr
     // key; since `"*"` never matches a real resource slug
     // (`resourcesBySlug.get("*")` is `undefined`), the loop's
     // `if (resource === undefined) continue` skips it unconditionally — even
-    // a throwing constraints callback placed here would not be caught. Only
+    // a throwing `withIndex` / `where` callback placed here would not be caught. Only
     // `RolePermissions`'s type ("Role-level wildcard: … Boolean only",
     // types.ts) stops this at authoring time.
     expect(() =>
@@ -822,10 +812,10 @@ describe("defineAccess — globals as resources", () => {
             contributor: {
               siteSettings: {
                 read: {
-                  constraints: ({ q }) =>
-                    q.withIndex("by_support_email" as never, (ix) =>
-                      ix.eq("supportEmail" as never, "x" as never),
-                    ),
+                  withIndex: {
+                    name: "by_support_email" as never,
+                    range: (ix) => ix.eq("supportEmail" as never, "x" as never),
+                  },
                 },
               },
             },
@@ -847,13 +837,13 @@ describe("defineAccess — globals as resources", () => {
             contributor: {
               siteSettings: {
                 read: {
-                  constraints: ({ q }) => {
-                    const unsafeQ = q as UnsafeIndexBuilder;
-                    return unsafeQ.withIndex("by_support_email", (ix) => {
+                  withIndex: {
+                    name: "by_support_email",
+                    range: (ix: unknown) => {
                       const unsafeIx = ix as UnsafeConstraintChain;
                       return unsafeIx.eq("nonexistentField", "x");
-                    }) as never;
-                  },
+                    },
+                  } as never,
                 },
               },
             },

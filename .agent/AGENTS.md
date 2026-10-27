@@ -17,6 +17,10 @@ Sessions → session-log/.
 **Advisor active?** (OMP harness-keeper) Focus on the developer's problem; act on the
 advisor's harness change-sets instead of self-tracking requirement shifts mid-task.
 **Subagents:** honor `manifest.json#models` — dynamic selection = cheapest adequate tier.
+**Zero layout shift (frontend).** First paint must match the settled UI: SSR the data and
+state that decide layout, reserve space for async content. See `standards/frontend/layout-stability.md`.
+**Mirror existing systems.** Before designing anything, find the closest existing system in the
+repo and follow how it is built; deviate only with a stated reason the developer reviews.
 
 ## Pointers
 

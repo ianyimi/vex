@@ -1,0 +1,384 @@
+---
+title: Naming Conventions
+description: Why VexCMS names things the way it does, and what harness struct --check enforces.
+---
+
+## Identifiers
+
+### Hooks
+
+`useXxx` (`useCollectionForm`, `usePaginatedQuery`). A context with a
+companion hook lives as ONE file in `hooks/` named after the hook
+(`hooks/useFrameworkComponents.ts`) rather than splitting a `XxxContext.ts` +
+`useXxx.ts` pair — the point of the hook is to hide the context from
+callers, so the file that defines it should be the only file that needs to.
+
+### Event handlers
+
+`onXxx` for props (`onSubmit`, `onSelectionChange`); `handleXxx` for internal
+functions (`handleBulkDelete`). This distinguishes "a prop a parent can pass"
+from "a function this component owns" at a glance, without opening the file.
+
+### Booleans
+
+`isXxx` for state (`isMounted`, `isPending`, `isMobile`), `hasXxx` for
+possession (`hasDraft`). Config flags may be bare nouns per the
+Convex/Payload convention this project follows (`required`, `hidden`) — a
+config object reads as a sentence ("required: true"), not as a question.
+
+### Components
+
+PascalCase, with descriptive suffixes: `XxxView` (admin views), `XxxModal`,
+`XxxProvider`, `XxxLayout`. Adapter prefixes: `Next*` for `@vexcms/next`
+(`NextAdminPage`), `Vex*` reserved for framework-agnostic APIs shipped from
+core/react. The prefix tells you which layer you're looking at before you
+read the import.
+
+### Types
+
+Plain `Xxx` for resolved shapes, `XxxInput` for user-facing input variants
+(`VexConfigInput` → `VexConfig`, `TypesConfigInput` → `TypesConfig`). Never
+`IXxx`, `XxxType`, `XxxT` — the resolved/input split is the only type-name
+axis this codebase encodes; inventing a second one (Hungarian prefixes,
+generic-looking suffixes) just adds noise.
+
+### Constants
+
+Exported constants are SCREAMING_SNAKE (`ADMIN_FIELDS`); file-local constants
+are camelCase. Export-visibility is the signal, not a second naming scheme.
+
+### Field types
+
+Named for the UI widget, never the data type — `checkbox()` not
+`boolean()`, `select()` not `string()`. A field's name is what a
+non-technical editor sees in the admin panel's mental model, not what Convex
+stores it as.
+
+### Convex functions
+
+Mutation payload arg is `data` (never `fields`); collection param is
+`collection:` (never `slug:`). Factory-registered API functions use bare
+operation names matching their factory export (`find`, `get`, `create`,
+`update`, `remove`, `globals`, `publish`, `saveDraft`) — no `adminXxx`
+prefix, since the factory itself (`collectionsApi`, `globalsApi`, …) is
+already the namespace.
+
+### Name by code area, then thing
+
+An identifier's prefix says which part of the codebase it belongs to,
+because different areas share paradigms and so share nouns —
+`BaseFormFieldProps` (the app form), not `BaseFieldProps` or
+`BaseKitFieldProps`. Never invent an umbrella word the code doesn't use: no
+"kit", "frame", "toolkit", "layer". The exported form is the **app form**
+(`useAppForm`, `AppForm`, `@vexcms/react/form`) — that's the one name for it
+everywhere, in code and in these docs.
+
+## File / folder rules
+
+These are the machine-checked rules in
+[`.agent/docs/standards/naming-conventions.md`](https://github.com/ianyimi/vex/blob/rebuild/.agent/docs/standards/naming-conventions.md)'s
+`rules:` block — `harness struct --check` fails the build on any filename
+outside its scope's pattern. Grouped here by the package/app family they
+apply to; each rule id below matches that file's `id:` field exactly.
+
+### `@vexcms/core`
+
+#### core-field-module
+
+Each core field directory (lowercase widget name, under `fields/*/`)
+contains `config.ts`, `types.ts`, `validator.ts`, `inputSchema.ts`,
+`index.ts`, with colocated `.test.ts` files. One file per role, never a
+`<widget>Config.ts` that repeats the folder name.
+
+- **OK:** `text/config.ts`, `upload/validator.test.ts`
+- **Not OK:** `text/textConfig.ts`, `upload/validator.spec.ts`
+
+#### api-operation-split
+
+Each domain's `api/` folder (`collections/api/`, `globals/api/`,
+`versions/api/`, `media/api/`) holds one `<op>/server.ts` (+
+`server.test.ts`) per operation, a `<domain>Api.ts` factory named after its
+export, and an `index.ts` that only re-exports. A `types.ts` holds arg/result
+types shared across that domain's operations.
+
+- **OK:** `collections/api/find/server.ts`, `media/api/mediaApi.ts`
+- **Not OK:** `collections/api/find.server.ts`, `media/api/queries.ts`
+
+#### non-component-camel
+
+Non-component TypeScript files in `packages/core/src/**` and
+`packages/cli/src/**` are camelCase (or an established lowercase name like
+`constants.ts`).
+
+- **OK:** `interfaceGen.ts`, `generateVexTypes.ts`, `baseTypes.ts`
+- **Not OK:** `InterfaceGen.ts`, `interface_gen.ts`
+
+### `@vexcms/react`
+
+#### react-components-pascal
+
+React component files are PascalCase named after their default export, in
+`packages/react/src/*/*.tsx` (outside `ui/`, `fields/`, `forms/`),
+`packages/next/src/**/*.tsx`, and `packages/richtext-plate/src/**/*.tsx`.
+`create*` factories and `resolve*` component resolvers (functions that
+*return* a `ComponentType`, composing an override chain, rather than being
+one) keep their camelCase names — they're factories, not components.
+
+- **OK:** `AdminLayout.tsx`, `MediaPicker.tsx`, `resolveFieldComponent.tsx`
+- **Not OK:** `admin-layout.tsx`, `collectionListView.tsx`
+
+#### shadcn-ui-kebab
+
+`packages/react/src/ui/**` keeps shadcn-generated primitives in their
+generated kebab-case (`button.tsx`, `alert-dialog.tsx`), since regenerating
+them via the shadcn CLI would otherwise clash with a renamed file.
+Hand-written additions to `ui/` may be PascalCase (`ThemeProvider.tsx`,
+`data-table/DataTable.tsx`).
+
+- **OK:** `button.tsx`, `ThemeProvider.tsx`
+- **Not OK:** `Button.tsx`
+
+#### hooks-camel-use
+
+Hook files in `packages/react/src/hooks/**` are camelCase named after the
+exported hook; shadcn-generated hooks (`use-mobile.ts`) keep kebab-case.
+
+- **OK:** `useCollectionForm.ts`, `use-mobile.ts`
+- **Not OK:** `collection-form-hook.ts`, `UseCollectionForm.ts`
+
+#### react-field-module
+
+Each react field directory (`packages/react/src/fields/*/**`) mirrors the
+core field name and contains `Field.tsx`, `Cell.tsx`, `columnDef.tsx` (+
+`index.ts` barrel), plus `testFixture.ts` exporting that field's
+`FieldFixture` and any field-specific test helper. Complex fields (date,
+color, json, upload, relationship, richtext) may also hold a `utils.ts` of
+field-local helpers and PascalCase helper widget components
+(`EmptyInput`/`FilledInput`/`RelationshipPicker`); layout fields (`tabs`,
+`row`, `collapsible`, `ui`) hold `Field.tsx` (+ `Field.test.tsx`) only — no
+`Cell`/`columnDef`, since they never appear in list views. A field type owns
+everything about itself in one folder; `fields/index.ts`/`testing/` only
+aggregate.
+
+- **OK:** `text/Cell.tsx`, `upload/FilledInput.tsx`, `text/testFixture.ts`
+- **Not OK:** `text/TextCell.tsx`, `upload/input.tsx`
+
+#### react-app-form
+
+The exported app form (`@vexcms/react/form`, `packages/react/src/forms/**`)
+is named after each field it exports (`TextField.tsx`, `ArrayField.tsx`,
+`BlocksField.tsx`), plus the fixed roles `formContext.ts`, `useAppForm.ts`,
+`AppForm.tsx`, `FormFieldLayout.tsx`, `types.ts`. These files read
+`useFieldContext()`/`useFormContext()` and plain props only — never
+`fieldDef`, `VexConfigContext`, or permissions; that wiring belongs in
+`fields/<type>/Field.tsx`. `BlocksField`'s `cloneBlock` prop is
+intentionally optional — callers that omit it simply don't get a per-item
+duplicate action.
+
+- **OK:** `forms/TextField.tsx`, `forms/useAppForm.ts`
+- **Not OK:** `forms/Input.tsx`, a `forms/TextField.tsx` that imports `VexConfigContext`
+
+#### react-testing-kit-camel
+
+The exported testing kit (`packages/react/src/testing/**`,
+`@vexcms/react/testing`) is camelCase — it ships as plain functions, not
+components, even where a file contains JSX. Per-field-type fixture DATA does
+not live here; it lives in each field's own `fields/<type>/testFixture.ts`.
+
+- **OK:** `fieldInputContract.ts`, `harness/accessFixtures.ts`
+- **Not OK:** `FieldInputContract.ts`, `fixtures/text.ts`
+
+#### react-context-suffix
+
+React Context definition files (`packages/react/src/**/*Context.*`, and the
+host-app/template equivalents below) are PascalCase with a `Context` suffix;
+a context with a companion hook lives instead as one `hooks/useXxx.ts` file.
+
+- **OK:** `VexConfigContext.ts`
+- **Not OK:** `app-form-context.ts`, `AppForm.ts` (missing suffix)
+
+#### react-feature-folders
+
+The top level of `packages/react/src/*` is a **closed** set of domain folders
+mirroring `core/src/`: `access/`, `admin/`, `auth/`, `client/`,
+`collections/`, `config/`, `documents/`, `fields/`, `forms/`, `globals/`,
+`hooks/`, `livePreview/`, `media/`, `modals/`, `revalidate/`, `slots/`,
+`testing/`, `ui/`, `utils/`, `versions/`, plus `adapter.ts` and `index.ts`.
+A new top-level folder is only for a new domain that `core/src/` also has.
+Never name one after a UI surface, view, or feature (`list/`, `edit/`,
+`data/`, `views/`, `filters/`, `actions/`).
+
+Where code goes:
+
+- **One domain's view** → that domain folder, with a domain/view name prefix
+  (`collections/CollectionListToolbar.tsx`).
+- **Shared by several domains' views** → the existing domain that owns the
+  shared concept. For example, code shared by the collection and global edit
+  views goes in `documents/`. If no domain fits, ask.
+- **Hooks** → stay in their domain (`access/usePermission.ts`). `hooks/` holds
+  only generic hooks reused across domains (`usePaginatedQuery`, `useVexList`).
+- **Generic UI primitives** with no domain knowledge → `ui/`
+  (`ui/data-table/DataTableColumnsMenu.tsx`).
+
+Inside a domain folder, files stay flat. The only subfolders are `api/`
+(`server.ts`/`client.ts` per operation) and `fields/<type>/`. When a folder
+grows crowded, the developer splits it into the conventional `components/`,
+`hooks/`, `context/` subfolders; agents never split folders themselves or
+invent ad-hoc subfolders.
+
+- **OK:** `collections/CollectionListToolbar.tsx`, `hooks/useVexList.ts`, `ui/data-table/DataTableColumnsMenu.tsx`, `fields/text/Field.tsx`
+- **Not OK:** `list/ListToolbar.tsx`, `edit/SaveAction.tsx`, `data/useVexList.ts`, `collections/filters/FilterBuilder.tsx`, `hooks/usePermission.ts`
+
+#### core-domain-folders
+
+The top level of `packages/core/src/*` is a closed set of domain folders plus
+camelCase root modules. A sub-feature of an existing domain never gets its own
+folder. Saved views live in `collections/types.ts` and
+`collections/api/saveView/server.ts`, not in `views/`.
+
+- **OK:** `collections/resolveSort.ts`, `collections/api/saveView/server.ts`
+- **Not OK:** `views/types.ts`, `edit/duplicate.ts`
+
+### Tests, scripts, docs (all packages)
+
+#### tests-colocated
+
+Tests are colocated next to the unit under test with a `.test.ts(x)` suffix
+— no `__tests__` dirs, no `.spec` suffix.
+
+- **OK:** `validator.test.ts`
+- **Not OK:** `__tests__/validator.ts`, `validator.spec.ts`
+
+#### script-files
+
+Build/utility scripts (`scripts/**`) are kebab-case `.mjs` (node) or `.sh`
+(shell).
+
+- **OK:** `scripts/vex-dev.mjs`
+- **Not OK:** `scripts/vexDev.mjs`
+
+#### docs-content-kebab
+
+Hand-written docs content files (`apps/docs/src/content/docs/*.md(x)`,
+`guides/**`, `fields/**`) are kebab-case. The `api/` subtree is
+TypeDoc-generated (symbol-named) and exempt.
+
+- **OK:** `guides/custom-storage-adapter.mdx`
+- **Not OK:** `docs/CustomStorageAdapter.mdx`
+
+### `@vexcms/next`
+
+#### next-adapter-layout
+
+`packages/next/src/*` is a framework adapter, not a domain package — its
+root holds the primary `Next*.tsx` components plus `index.ts`, and
+capability folders (`cache/`, `seo/`, `testing/`) group by what they do
+rather than mirroring core/react's domain structure.
+
+- **OK:** `NextAdminPage.tsx`, `cache/index.ts`
+- **Not OK:** `admin/NextAdminPage.tsx` (no restructure needed)
+
+### `@vexcms/cli`
+
+#### cli-command-verbs
+
+CLI command files (`packages/cli/src/commands/**`) are camelCase verbs
+naming the action.
+
+- **OK:** `commands/dev.ts`, `commands/deploy.ts`
+- **Not OK:** `commands/dev-server.ts`, `commands/StartDev.ts`
+
+### Host apps (`apps/test`, `apps/www`) + `create-vexcms` templates
+
+These rules apply identically to `apps/test`, `apps/www`, and both
+`packages/create-vexcms/templates/*` — the templates are hand-maintained
+copies of the apps, so their conventions match exactly.
+
+#### convex-resource-files
+
+Convex function files (`apps/test/convex/*.ts`, `convex/auth/**`,
+`convex/vex/**`) are camelCase resource/action nouns.
+
+- **OK:** `convex/media.ts`, `convex/auth/db.ts`
+- **Not OK:** `convex/media-operations.ts`, `convex/GetMedia.ts`
+
+#### auth-file-roles
+
+Host-app `auth/` files use fixed role names separating client/server/util/
+config concerns. RBAC adds `access` (the `defineAccess` matrix),
+`hasPermission` (the app-side check wrapper), and `plugins` (the better-auth
+plugin list). `schema` is the client-safe half of the auth options — model
+names, additional fields, the plugin descriptor map — imported by BOTH
+`options.ts` and `vex.config.ts` so they can't drift; it must stay free of
+server imports. A role may carry a `<role>.typecheck.ts` sibling — a pure
+compile-time assertion file `tsc` enforces, pinning generated/registry-derived
+types (e.g. `access.typecheck.ts` pins slug-aware action unions).
+
+- **OK:** `auth/client.tsx`, `auth/access.ts`, `auth/plugins.ts`
+- **Not OK:** `auth/client-auth.tsx`, `auth/AuthClient.tsx`
+
+#### vexcms-resource-defs
+
+Collection definitions (`apps/test/src/vexcms/collections/**`) are camelCase
+resource names — no PascalCase, no type suffixes.
+
+- **OK:** `collections/pages.ts`, `collections/siteSettings.ts`
+- **Not OK:** `collections/PageCollection.ts`
+
+#### vexcms-block-module
+
+Each block (`apps/test/src/vexcms/blocks/*/**`) is a PascalCase directory
+(named for the block, matching its `blockType` literal in title case)
+holding `config.ts` (the `defineBlock()` call) and `index.tsx` (the
+renderer); `blocks/config.ts`/`blocks/index.ts` at the top level only
+aggregate.
+
+- **OK:** `blocks/LogoCloud/config.ts`, `blocks/LogoCloud/index.tsx`
+- **Not OK:** `blocks/logo-cloud.ts`
+
+#### host-app-components-pascal
+
+Host-app `components/` root (`apps/test`, `apps/www`, both templates) is
+PascalCase components named after their default export (mirrors
+`react-components-pascal`); `ui/` keeps the shadcn exception below,
+`providers/` keeps its fixed roles, and `motion-primitives/`
+(marketing-site-derived apps only) is a feature subfolder of plain PascalCase
+widgets.
+
+- **OK:** `components/BrandMark.tsx`, `components/motion-primitives/AnimatedGroup.tsx`
+- **Not OK:** `components/component-example.tsx`, `components/motion-primitives/animated-group.tsx`
+
+#### host-app-ui-kebab
+
+Host-app `components/ui/` mirrors `shadcn-ui-kebab` — generated primitives
+keep kebab-case, hand-written additions may be PascalCase.
+
+- **OK:** `ui/button.tsx`, `ui/field.tsx`
+- **Not OK:** `ui/Button.tsx`
+
+#### host-app-providers-fixed-roles
+
+Host-app `components/providers/` is a fixed-role folder, like `auth/` — one
+file per provider concern (client-only context providers, server-rendered
+wrappers, auth session provider, Convex client provider), composed in
+`app/layout.tsx`. Not a dumping ground for arbitrary components.
+
+- **OK:** `providers/client.tsx`, `providers/convex.tsx`
+- **Not OK:** `providers/Providers.tsx`, `providers/AppProviders.tsx`
+
+#### host-app-lib-camel
+
+Host-app `lib/` holds camelCase utility functions and hooks (`useXxx.ts` for
+hooks, `camelCase.ts` for utilities) — no feature-folder restructure; each
+file is a self-contained concern.
+
+- **OK:** `lib/resolvePagePath.ts`, `lib/useSitePreviewMode.ts`
+- **Not OK:** `lib/ResolvePagePath.ts`, `lib/resolve-page-path.ts`
+
+---
+
+The machine-checked source of truth is
+[`.agent/docs/standards/naming-conventions.md`](https://github.com/ianyimi/vex/blob/rebuild/.agent/docs/standards/naming-conventions.md);
+`harness struct --check` enforces it on every file in the repo. This page
+explains the reasoning behind each rule — that file is what actually fails a
+build.

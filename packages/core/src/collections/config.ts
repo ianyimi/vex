@@ -1,12 +1,14 @@
 import pluralize from "pluralize-esm";
 
-import { ADMIN_FIELDS, AdminField, CollectionFieldMeta, ComponentHKT, date, getDataFields } from "../fields";
+import { AdminField, CollectionFieldMeta, date, getDataFields } from "../fields";
+import { ComponentHKT } from "../components/types";
 import { CollectionSlug } from "../types";
 import { toTitleCase } from "../utils";
 import { COLLECTION_SYSTEM_FIELDS, CollectionSystemField } from "./constants";
 import { AdminCollectionConfig, CollectionConfig, CollectionConfigInput } from "./types";
 import type { CollectionHooks } from "./hooks";
 import { slugToPascalCase } from "./utils";
+import { resolveCollectionIndexes } from "./resolveCollectionIndexes";
 import {
   DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   VERSION_STATUSES,
@@ -133,7 +135,7 @@ export function defineCollection<
   getDataFields({ fields: input.fields });
 
   // Runtime guard: `draftStatus` (collection-level `indexes[]` and
-  // field-level `indexDraftStatus`) requires `versions.drafts: true`. The
+  // field-level `index.draftStatus`) requires `versions.drafts: true`. The
   // type-level `TDrafts extends true ? ... : never` branch on
   // `CollectionConfigInput.indexes[].draftStatus` only protects a literal
   // config object — a JS caller, or a dynamically-assembled `indexes`
@@ -147,23 +149,11 @@ export function defineCollection<
       );
     }
     const fieldOffender = Object.entries(getDataFields({ fields: input.fields })).find(
-      ([, field]) => field.indexDraftStatus !== undefined,
+      ([, field]) => typeof field.index === "object" && field.index.draftStatus !== undefined,
     );
     if (fieldOffender) {
       throw new Error(
-        `defineCollection: field "${fieldOffender[0]}" on collection "${input.slug}" declares indexDraftStatus but versions.drafts is not true.`,
-      );
-    }
-  }
-
-  // A field's `indexDraftStatus` narrows an index that must actually
-  // exist — either the field's own `index`, or a relationship field's auto
-  // `by_<fieldKey>`. Catches a typo'd `indexDraftStatus` on a field with
-  // neither, which would otherwise silently do nothing.
-  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: input.fields }))) {
-    if (field.indexDraftStatus !== undefined && !field.index && field.type !== ADMIN_FIELDS.relationship.type) {
-      throw new Error(
-        `defineCollection: field "${fieldKey}" on collection "${input.slug}" declares indexDraftStatus with no index to narrow — set "index", or this must be a relationship field (which auto-indexes).`,
+        `defineCollection: field "${fieldOffender[0]}" on collection "${input.slug}" declares index.draftStatus but versions.drafts is not true.`,
       );
     }
   }
@@ -204,6 +194,12 @@ export function defineCollection<
           time: { timePicker: { hour: true, minute: true, second: true } },
         }) as AdminField<TFieldMeta>,
       };
+
+  // Index declarations are checked here, at definition time, against the
+  // fields record the collection actually stores — including the injected
+  // `updatedAt`, so `additionalFields: ["updatedAt"]` resolves. The result is
+  // recomputed where it is used.
+  resolveCollectionIndexes({ collection: { ...input, fields: fieldsWithTimestamp } });
 
   // Runs the injected field through the same `collectionSlug` meta-stamping as
   // every other field.

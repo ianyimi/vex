@@ -45,13 +45,11 @@ import {
  * @returns Frozen `VexAccessConfig` carrying the `SubjectMap` phantom for inference.
  * @throws {VexAccessConfigError} When `userCollectionSlug` or `userRolesField` is
  *   empty, when a `customResources` key collides with a resource slug, or when a
- *   `customResources` entry declares an empty `actions` array. Also when a rule's
- *   recorded constraints are not an in-order prefix of a declared index or violate
- *   Convex's operator rule (see `validateAccessConstraints`), and when a
- *   `constraints` callback throws while being recorded — every rule's callback runs
- *   once here, at module load, so a rule that reached past its types surfaces as a
- *   config error naming the role, resource and action rather than as a bare
- *   `TypeError` from whichever method was missing.
+ *   `customResources` entry declares an empty `actions` array. A rule's `withIndex`
+ *   is validated against its resource's declared indexes separately, by
+ *   `validateAccessConfig` (`access/validateAccessConfig.ts`), called from
+ *   `defineConfig` once the full resource set (including the merged user
+ *   collection) is known.
  * @example
  * ```ts
  * export const access = defineAccess({

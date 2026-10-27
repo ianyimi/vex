@@ -45,8 +45,9 @@ import type { ColorFormat } from "./formats";
  */
 export interface ColorFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * Does not affect existing database values.
@@ -87,7 +88,7 @@ export interface ColorFieldInput<
  * Resolved configuration for a `color()` field, after all defaults are applied.
  *
  * This is the type framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<ColorField>` and
+ * `fieldDef` in `FieldComponentProps<ColorField>` and
  * `CellComponentProps<ColorField>` is this type.
  *
  * @see {@link ColorFieldInput} for the user-facing input type

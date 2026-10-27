@@ -22,22 +22,25 @@ const posts = defineCollection({
   },
 });
 
-/** Stub `q` whose `withIndex` INVOKES the range, so the recorded call is observable. */
+/** Stub index builder whose `eq` is observable. */
 function stubQuery() {
   const eq = vi.fn((field: string, value: unknown) => ({ field, value }));
-  const withIndex = vi.fn((name: string, range: (ix: unknown) => unknown) => ({
-    name,
-    range: range({ eq }),
-  }));
-  return { eq, q: { withIndex }, withIndex };
+  return { eq, ix: { eq } };
 }
 
-/** Unwraps the object form of a check, which is all the read builders produce. */
-function constraintsOf(check: unknown) {
-  if (typeof check !== "object" || check === null || !("constraints" in check)) {
-    throw new Error("expected the constraints object form");
+/**
+ * Resolves a check's `withIndex` half to its `{ name, range }` descriptor,
+ * invoking the callback form with `props` when present.
+ */
+function withIndexOf(check: unknown, props: { user: { _id: string } }) {
+  if (typeof check !== "object" || check === null || !("withIndex" in check)) {
+    throw new Error("expected a withIndex property");
   }
-  return (check as { constraints: (p: Record<string, unknown>) => unknown }).constraints;
+  const { withIndex } = check;
+  if (typeof withIndex === "function") {
+    return withIndex(props) as { name: string; range: (ix: { eq: unknown }) => unknown };
+  }
+  return withIndex as { name: string; range: (ix: { eq: unknown }) => unknown };
 }
 
 /** Unwraps the callback form, which is all the mutation builder produces. */
@@ -49,11 +52,12 @@ function predicateOf(check: unknown) {
 describe("indexedEqCheck", () => {
   it("pushes the comparison into the field's declared index", () => {
     const check = indexedEqCheck({ field: "slug" as never, resource: posts, value: "keep" as never });
-    const { eq, q, withIndex } = stubQuery();
-    constraintsOf(check)({ q, user: { _id: "u1" } });
+    const { eq, ix } = stubQuery();
+    const { name, range } = withIndexOf(check, { user: { _id: "u1" } });
+    range(ix);
 
     // The index NAME is recovered from the field's config, not passed by the caller.
-    expect(withIndex.mock.calls[0]?.[0]).toBe("by_slug");
+    expect(name).toBe("by_slug");
     expect(eq).toHaveBeenCalledWith("slug", "keep");
   });
 
@@ -71,17 +75,19 @@ describe("indexedOwnerCheck", () => {
     // Relationship fields generate `Id<slug>[]` regardless of `hasMany`, so an equality
     // range has to compare the array, not the bare id.
     const check = indexedOwnerCheck({ field: "author" as never, resource: posts });
-    const { eq, q, withIndex } = stubQuery();
-    constraintsOf(check)({ q, user: { _id: "u1" } });
+    const { eq, ix } = stubQuery();
+    const { name, range } = withIndexOf(check, { user: { _id: "u1" } });
+    range(ix);
 
-    expect(withIndex.mock.calls[0]?.[0]).toBe("by_author");
+    expect(name).toBe("by_author");
     expect(eq).toHaveBeenCalledWith("author", ["u1"]);
   });
 
   it("compares the id directly for a non-relationship field", () => {
     const check = indexedOwnerCheck({ field: "slug" as never, resource: posts });
-    const { eq, q } = stubQuery();
-    constraintsOf(check)({ q, user: { _id: "u1" } });
+    const { eq, ix } = stubQuery();
+    const { range } = withIndexOf(check, { user: { _id: "u1" } });
+    range(ix);
 
     expect(eq).toHaveBeenCalledWith("slug", "u1");
   });
@@ -92,8 +98,8 @@ describe("indexedOwnerCheck", () => {
     const check = indexedOwnerCheck({ field: "slug" as never, resource: posts });
     const first = stubQuery();
     const second = stubQuery();
-    constraintsOf(check)({ q: first.q, user: { _id: "u1" } });
-    constraintsOf(check)({ q: second.q, user: { _id: "u2" } });
+    withIndexOf(check, { user: { _id: "u1" } }).range(first.ix);
+    withIndexOf(check, { user: { _id: "u2" } }).range(second.ix);
 
     expect(first.eq).toHaveBeenCalledWith("slug", "u1");
     expect(second.eq).toHaveBeenCalledWith("slug", "u2");
@@ -206,12 +212,11 @@ describe("builder output resolved by hasPermission against a document", () => {
     // Regression pin (DD 43): `indexedOwnerCheck` builds its equality
     // value as a freshly allocated `[user._id]` array (buildChecks.ts) for a
     // relationship field. The client-side interpreter compares recorded
-    // constraints with `===` (`CONSTRAINT_COMPARATORS.eq` in
-    // compileConstraints.ts), which is never `true` for two distinct array
-    // instances even when their contents match. This assertion is the CORRECT
-    // expected behaviour — it mirrors `ownerPredicateCheck`'s `.includes`
-    // semantics for the identical field two tests below — and is left failing
-    // on purpose rather than weakened.
+    // constraints with `valuesEqual` (`QUERY_INDEX_CONSTRAINT_COMPARATORS.eq` in
+    // compileQueryConstraints.ts), which is content equality, not `===` — so this
+    // passes despite the two array instances being distinct objects. It mirrors
+    // `ownerPredicateCheck`'s `.includes` semantics for the identical field two
+    // tests below.
     it("allows a document the user owns", () => {
       expect(
         hasPermission({

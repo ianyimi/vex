@@ -65,6 +65,22 @@ export const access = defineAccess({
       pages: { "*": false, read: true },
       themes: { "*": false, read: true },
       images: { "*": false, read: true },
+      articles: {
+        read: {
+          withIndex: { name: "by_status", range: (q) => q.eq("status", ["published"]) },
+        },
+      },
+      fields: {
+        read: {
+          withIndex: ({ user }) => ({
+            name: "by_relatedUser",
+            range: (q) => q.eq("relatedUser", [user._id]),
+          }),
+          where: ({ user, q }) => q.eq("contactEmail", user.email),
+          filter: ({ data: field }) => (field.bio ?? "").length <= 200,
+        },
+        "*": false,
+      },
       siteSettings: {
         "*": false,
         read: () => ({ adminTheme: true, ogImage: true, name: true, description: true }),
@@ -148,7 +164,10 @@ export const access = defineAccess({
       user: {
         "*": false,
         read: {
-          constraints: ({ user, q }) => q.withIndex("by_email", (fq) => fq.eq("email", user.email)),
+          withIndex: ({ user }) => ({
+            name: "by_email",
+            range: (ix) => ix.eq("email", user.email),
+          }),
         },
       },
       articles: {
@@ -182,13 +201,13 @@ export const access = defineAccess({
       images: {
         "*": false,
         read: {
-          constraints: ({ q }) => q.filter((fq) => fq.gt("size", 50000)),
+          where: ({ q }) => q.gt("size", 50000),
           filter({ data: image }) {
             return image.mimeType.includes("image");
           },
         },
         update: {
-          constraints: ({ q }) => q.filter((fq) => fq.gt("size", 50000)),
+          where: ({ q }) => q.gt("size", 50000),
         },
       },
       edit: {

@@ -5,15 +5,12 @@
 export * from "./types";
 
 // ============================================================================
-// MEDIA API MUTATIONS
+// MEDIA API OPERATIONS
 // ============================================================================
 
-export * from "./mutations";
+export { getUrl } from "./getUrl/server";
+export { generateUploadUrl } from "./generateUploadUrl/server";
+export { createMediaDocument } from "./createMediaDocument/server";
+export { deleteMedia } from "./deleteMedia/server";
 
-// ============================================================================
-// MEDIA API QUERIES
-// ============================================================================
-
-export * from "./queries";
-
-export * from "./server";
+export { mediaApi } from "./mediaApi";

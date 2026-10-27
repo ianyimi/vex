@@ -239,39 +239,47 @@ featuredImage: upload({ to: "images", label: "Featured Image" }),
 
 ### Access Control (RBAC)
 
-Type-safe, role-based permissions per document via `defineAccess`. Write rules as `{ constraints }` builders — they compile **into the Convex query itself** (an indexed range when you use a declared index) instead of reading rows into JS and discarding what fails a check:
+Type-safe, role-based permissions per document via `defineAccess`. Write rules with `withIndex`/`where` — they compile **into the Convex query itself** instead of reading rows into JS and discarding what fails a check. `withIndex` narrows through a declared index (an equality or range on the index's leading fields); `where` is the predicate for everything an index range can't express — an `or` across fields, a `neq`, a condition on a field no index leads with:
 
 ```typescript
 import { defineAccess, WILDCARD_KEY } from "@vexcms/core";
 
 export const access = defineAccess({
   roles: ["admin", "user"],
-  resources: [posts, users],
+  resources: [posts, comments, users],
   userCollectionSlug: "users",
   userRolesField: "roles",
   permissions: {
     admin: { [WILDCARD_KEY]: true },
     user: {
       posts: {
-        // Authors see their own posts — compiled to an indexed range
-        // (`by_author` is generated automatically for every relationship field).
+        // Published posts plus the caller's own drafts. An `or` across two fields
+        // is not one index range, so it is a `where`.
         read: {
-          constraints: ({ user, q }) =>
-            q.withIndex("by_author", (ix) => ix.eq("author", user._id)),
+          where: ({ user, q }) => q.or(q.eq("status", "published"), q.eq("author", user._id)),
         },
         create: true,
-        // Mutations authorize one document — same shape, compiled to a predicate.
+        // A mutation authorizes one already-loaded document: there is no query to
+        // narrow, so `withIndex` is unavailable and `where` is checked against it.
         update: {
-          constraints: ({ user, q }) => q.filter((f) => f.eq("author", user._id)),
+          where: ({ user, q }) => q.and(q.eq("author", user._id), q.neq("status", "archived")),
         },
         delete: false,
+      },
+      comments: {
+        // Own comments through the `by_author` index generated for every relationship
+        // field; a `neq` is not an index range, so `where` filters within it.
+        read: {
+          withIndex: ({ user }) => ({ name: "by_author", range: (ix) => ix.eq("author", user._id) }),
+          where: { field: "hidden", op: "neq", value: true },
+        },
       },
     },
   },
 });
 ```
 
-Need a check that field comparisons can't express — an array `includes`, a string operation? Add a `filter` callback beside `constraints`; it runs per document after the query narrows. Bare callback rules (`update: ({ user, data }) => …`) remain as the fallback for fully imperative checks.
+Need a check that field comparisons can't express — an array `includes`, a string operation? Add a `filter` callback beside `withIndex` / `where`; it runs per document after the query narrows. Bare callback rules (`update: ({ user, data }) => …`) remain as the fallback for fully imperative checks.
 
 `anonRole` names the role a caller with **zero** roles resolves to — a genuinely unauthenticated visitor. It is how a public, read-only admin panel works: grant the anon role read permissions plus admin-panel access and nothing else. Check permissions at runtime with `hasPermission` (or better, the one-file wrapper shown in the access-control guide):
 

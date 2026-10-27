@@ -45,9 +45,10 @@ import type { TextareaFieldInput, TextareaField } from "./types";
  */
 export function textarea<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 >(
-  options?: TextareaFieldInput<TCollectionSlug, TFieldMeta>,
+  options?: TextareaFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): TextareaField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.textarea.type,

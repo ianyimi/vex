@@ -16,27 +16,21 @@ import type { ConvexTestInstance } from "./convex/bridge";
 import { renderWithVexProviders, testCollection } from "./harness/accessFixtures";
 import { renderView, testClientConfig, wrapWithViewProviders } from "./harness/viewHarness";
 import { runRbacStateSuite } from "./rbacState";
-import { ThemeProvider } from "../components/ui/ThemeProvider";
-import { SidebarProvider } from "../components/ui/sidebar";
+import { ThemeProvider } from "../ui/ThemeProvider";
+import { SidebarProvider } from "../ui/sidebar";
 import {
   FrameworkComponentsContext,
   useFrameworkComponents,
   type FrameworkComponents,
   type VexLinkProps,
-} from "../hooks/useFrameworkComponents";
-import { AdminLayout } from "../components/AdminLayout";
-import { AppSidebar } from "../components/AdminSidebar";
-import AdminTopNav from "../components/AdminTopNav";
-import {
-  CollectionListView,
-  CollectionEditView,
-  GlobalEditView,
-  GlobalsListView,
-  DashboardView,
-  UnauthorizedView,
-  MediaCollectionListView,
-  MediaCollectionEditView,
-} from "../components/views";
+} from "../config/useFrameworkComponents";
+import { AdminLayout } from "../admin/AdminLayout";
+import { AppSidebar } from "../admin/AdminSidebar";
+import AdminTopNav from "../admin/AdminTopNav";
+import { CollectionListView, CollectionEditView } from "../collections";
+import { GlobalEditView, GlobalsListView } from "../globals";
+import { DashboardView, UnauthorizedView } from "../admin";
+import { MediaCollectionListView, MediaCollectionEditView } from "../media";
 
 /**
  * One entry per `runRbacStateSuite` default scenario name, resolved for a given
@@ -385,7 +379,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         }),
         { convex: t, access: createMapAccess, auth: { user: asUser("mapCreator") } },
       );
-      const newLink = utils.container.querySelector('a[href="/admin/posts?createNew=true"]');
+      const newLink = utils.container.querySelector('a[href="/admin/collections/posts?createNew=true"]');
       expect(newLink).not.toHaveAttribute("aria-disabled");
     });
 
@@ -400,7 +394,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         ),
       assert: (utils, scenario) => {
         const expected = MATRIX_POSTS[scenario.name as keyof RbacMatrix];
-        const newLink = utils.container.querySelector('a[href="/admin/posts?createNew=true"]');
+        const newLink = utils.container.querySelector('a[href="/admin/collections/posts?createNew=true"]');
         expect(newLink).not.toBeNull();
         if (expected) {
           expect(newLink).not.toHaveAttribute("aria-disabled");
@@ -735,11 +729,12 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
         } else {
           expect(statusInput).toBeDisabled();
         }
-        const revalidateButton = utils.getByRole("button", { name: "Revalidate" });
+        fireEvent.click(utils.getByRole("button", { name: "More actions" }));
+        const revalidateItem = utils.getByRole("menuitem", { name: "Revalidate" });
         if (expected) {
-          expect(revalidateButton).not.toBeDisabled();
+          expect(revalidateItem).not.toHaveAttribute("aria-disabled", "true");
         } else {
-          expect(revalidateButton).toBeDisabled();
+          expect(revalidateItem).toHaveAttribute("aria-disabled", "true");
         }
         // isDefaultValue dominance (see doc comment above): Save/Cancel start disabled on
         // every scenario, including "allowed" — this is NOT canEdit's doing.
@@ -1204,7 +1199,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
         }),
         { convex: t, access: createMapAccess, auth: { user: asUser("mapCreator") } },
       );
-      const uploadLink = utils.container.querySelector('a[href="/admin/images?upload=true"]');
+      const uploadLink = utils.container.querySelector('a[href="/admin/collections/images?upload=true"]');
       expect(uploadLink).not.toHaveAttribute("aria-disabled");
     });
 
@@ -1220,7 +1215,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
       assert: (utils, scenario) => {
         const expected = MATRIX_UNDECLARED[scenario.name as keyof RbacMatrix];
         expect(utils.getByText("2 items")).toBeInTheDocument();
-        const uploadLink = utils.container.querySelector('a[href="/admin/images?upload=true"]');
+        const uploadLink = utils.container.querySelector('a[href="/admin/collections/images?upload=true"]');
         expect(uploadLink).not.toBeNull();
         if (expected) {
           expect(uploadLink).not.toHaveAttribute("aria-disabled");
@@ -1536,9 +1531,9 @@ function describeAdminSidebar(options: { access?: VexAccessConfig }): void {
       render: () => mount(),
       assert: (utils, scenario) => {
         const name = scenario.name as keyof RbacMatrix;
-        const postsLink = utils.container.querySelector('a[href="/admin/posts"]');
+        const postsLink = utils.container.querySelector('a[href="/admin/collections/posts"]');
         const settingsLink = utils.container.querySelector('a[href="/admin/globals/settings"]');
-        const imagesLink = utils.container.querySelector('a[href="/admin/images"]');
+        const imagesLink = utils.container.querySelector('a[href="/admin/collections/images"]');
         // Unlike `DashboardView`'s heading (always rendered, only its visibility toggles),
         // `AppSidebar` maps the FILTERED array directly — with exactly one collection/global/
         // media collection in `testClientConfig`, a denied permission means that array is
@@ -1650,13 +1645,13 @@ function describeAdminLayout(options: { access?: VexAccessConfig }): void {
         { convex: t },
       );
       // Scoped to `[data-slot="sidebar-menu-button"]`: AdminTopNav's breadcrumb ALSO renders
-      // an `<a href="/admin/posts">` (unrelated to `isActive`), so an unscoped href selector
+      // an `<a href="/admin/collections/posts">` (unrelated to `isActive`), so an unscoped href selector
       // is ambiguous the moment the sidebar entry itself is ever absent.
       const postsLink = utils.container.querySelector(
-        'a[data-slot="sidebar-menu-button"][href="/admin/posts"]',
+        'a[data-slot="sidebar-menu-button"][href="/admin/collections/posts"]',
       );
       const imagesLink = utils.container.querySelector(
-        'a[data-slot="sidebar-menu-button"][href="/admin/images"]',
+        'a[data-slot="sidebar-menu-button"][href="/admin/collections/images"]',
       );
       expect(postsLink).toHaveAttribute("data-active");
       expect(imagesLink).not.toHaveAttribute("data-active");
@@ -1691,7 +1686,7 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
       // the title-cased slug itself.
       expect(utils.getByText("Posts")).toBeInTheDocument();
       expect(utils.container.querySelector('a[href="/admin"]')).not.toBeNull();
-      expect(utils.container.querySelector('a[href="/admin/posts"]')).not.toBeNull();
+      expect(utils.container.querySelector('a[href="/admin/collections/posts"]')).not.toBeNull();
     });
 
     it('resolves a globals route through the "skip" sentinel with no document fetch', () => {

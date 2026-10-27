@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { describe, it } from "vitest";
 import type { RenderResult } from "@testing-library/react";
 import type { VexAccessConfig, VexClientConfig } from "@vexcms/core";
-import { usePermission } from "../hooks/usePermission";
+import { usePermission } from "../access/usePermission";
 import { renderWithVexProviders, testAccess, testCollection, testUsers } from "./harness/accessFixtures";
 
 /** One RBAC scenario to render and assert: a name, the access config to provide, and the caller. */

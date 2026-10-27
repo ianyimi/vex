@@ -21,6 +21,20 @@ page being previewed is the same page a visitor gets; only the data is overlaid.
    with the current values immediately, so a duplicated tab catches up without waiting
    for the next keystroke.
 
+On a narrow admin viewport — below the 768px mobile breakpoint, distinct from the
+simulated-width `breakpoints` toggle described below, which only applies to the
+desktop split — the split panel doesn't fit beside the form. Narrowing the browser
+past that breakpoint while the panel is open **auto-closes** it instead of rendering
+as a full-screen takeover, and remembers the close was automatic; widening back past
+the breakpoint reopens it, unless you explicitly opened or closed it while narrow
+(which clears that memory and the panel stays however you left it). Opening the panel
+below the breakpoint — the header button or the ⋯ menu's "Preview" item — instead
+shows it as a bottom sheet that slides up and covers the screen except a thin strip of
+the page at the top; Esc, a tap outside, or its own close button all dismiss it. None
+of these width-driven transitions touch the `vex-live-preview-panel:<slug>` cookie —
+only an explicit toggle does, so a refresh at desktop width always respects your last
+deliberate choice.
+
 Both panel preferences — open/closed (`vex-live-preview-panel:<slug>`) and the handle
 position (`vex-live-preview-layout:<slug>`) — persist in cookies rather than
 localStorage, scoped per collection or global. The admin page reads them on the server,

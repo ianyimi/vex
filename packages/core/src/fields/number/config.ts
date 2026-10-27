@@ -51,9 +51,10 @@ import type { NumberFieldInput, NumberField } from "./types";
  */
 export function number<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
 >(
-  options?: NumberFieldInput<TCollectionSlug, TFieldMeta>,
+  options?: NumberFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): NumberField<TCollectionSlug, TFieldMeta> {
   const min = resolveFieldLimit({
     limit: options?.min,

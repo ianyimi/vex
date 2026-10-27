@@ -46,10 +46,17 @@ export * from "./versions";
 
 export * from "./utils";
 export * from "./framework";
-export * from "./api/convex";
-export * from "./api/types";
-export type { GetGlobalReturn } from "./api/globals/get.server";
-export type { VersionSnapshotResult } from "./api/versions/getVersionSnapshot.server";
+export * from "./errors";
+export type { VexWhere, VexWhereNode } from "./db/queryArgs";
+export { validateWhereNode, whereToNode } from "./db/queryArgs";
+export * from "./documents";
+export * from "./collections/api/types";
+export * from "./globals/api/types";
+export * from "./versions/api/types";
+export * from "./db/types";
+export { vexConvexApi } from "./vexConvexApi";
+export type { GetGlobalReturn } from "./globals/api";
+export type { VersionSnapshotResult } from "./versions/api";
 
 // ============================================================================
 // CONFIG BUILDERS

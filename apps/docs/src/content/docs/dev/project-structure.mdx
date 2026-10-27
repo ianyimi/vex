@@ -1,0 +1,104 @@
+---
+title: Project Structure
+description: What a package, an app, and a template are in the VexCMS monorepo, and how they depend on each other.
+---
+
+VexCMS is a pnpm + Turborepo monorepo. Three kinds of directory live in it, and
+each means something specific.
+
+## Packages, apps, and templates
+
+A **package** (`packages/*`) is a published `@vexcms/*` npm package (or
+`create-vexcms`) — framework-agnostic library code with its own
+`package.json#exports` map, built with `tsup`, versioned with Changesets.
+Packages never read environment variables or assume a particular host
+framework; `@vexcms/next` is the one exception that is itself a framework
+adapter, not a host.
+
+An **app** (`apps/*`) is a real, deployed Next.js application that consumes
+the published package surface — `apps/test` (the dogfood/admin host used for
+day-to-day development, port **3020**) and `apps/docs` (this Astro +
+Starlight site, port 4321). Apps import `@vexcms/*` packages exactly the way
+a user's own app would; there is no special internal-only import path.
+
+A **template** (`packages/create-vexcms/templates/*`) is a scaffold a user's
+project is generated from by `pnpm create vexcms` — `base-nextjs` (minimal
+Next.js + auth + one collection) and `marketing-site` (the richer app
+mirrored from `apps/www`'s own source, including its full block library).
+Templates are hand-maintained copies kept in sync with the apps they're
+derived from, not generated — there is no extraction/codegen layer between
+an app and its template.
+
+## Dependency diagram
+
+```
+@vexcms/core
+      │
+      ▼
+@vexcms/react
+      │
+      ▼
+@vexcms/next  ──┐
+                │  (peers of core/react, not of each other)
+@vexcms/richtext-plate
+@vexcms/better-auth
+@vexcms/file-storage-convex
+
+@vexcms/cli  ───▶ scaffolds via create-vexcms
+
+apps/test, apps/www  ───▶ consume the published surface like any user app
+```
+
+- **`core` → `react`**: `@vexcms/react` is framework-agnostic admin UI built
+  on top of `@vexcms/core`'s schema/field/RBAC primitives. Core has zero
+  React/JSX imports (see `hkt-adapter-architecture.md`).
+- **`react` → `next`**: `@vexcms/next` is the Next.js adapter — it wraps
+  `@vexcms/react`'s admin panel in `NextAdminPage`/`NextAdminLayout` and adds
+  Next-specific cache/SEO helpers. It never flows back into `react` or
+  `core`.
+- **`richtext-plate` / `better-auth` / `file-storage-convex` as peers**: each
+  is an optional adapter a project opts into from `core`/`react` — a richtext
+  editor adapter, an auth adapter, and a file-storage adapter, respectively.
+  None of the three import each other.
+- **`cli` scaffolds `create-vexcms`**: `@vexcms/cli` ships the `vex` dev/
+  build/generate commands a scaffolded project runs; `create-vexcms` is the
+  separate `pnpm create vexcms` package that generates a new project (which
+  then depends on `@vexcms/cli` itself, not the other way around).
+- **`apps/test` and `apps/www` consume the published surface** the same way
+  a user's app would — through package `exports` entries, never through
+  relative imports into a package's `src/`.
+
+## Entry points
+
+Every package's public surface is its `package.json#exports` map — each key
+is one import specifier, and each one exists because it serves a different
+runtime boundary (server-only code, client-only code, styles, test helpers).
+
+| Package | Entry | What it's for |
+|---|---|---|
+| `@vexcms/core` | `.` | Field builders, `defineConfig`/`defineCollection`/`defineGlobal`/`defineAccess`, type-generation utilities — imported by both server and client code. |
+| | `./server` | Server-only Convex query/mutation API (`vexServerApi`, `createVexCallbackApi`, `vexConvexApi`) — imported from Convex function files only. |
+| | `./internal` | Internal-only helpers shared across `@vexcms/*` packages; not part of the public contract. |
+| `@vexcms/react` | `.` | Admin UI components, hooks, and the React-typed config builders re-exported from core. |
+| | `./client` | Client-safe query/mutation API (`find`/`get`/`search`/`create`/`update`/`remove` factories) wired to TanStack Query. |
+| | `./form` | The exported **app form** (`useAppForm`, `AppForm`, `FormFieldLayout`, the leaf `*Field` components) — the public, framework-only form layer a project can build custom UI on, independent of the admin panel. |
+| | `./styles` | The admin UI's Tailwind stylesheet. |
+| | `./testing` | Shared test suites/fixtures (`fieldInputContract`, `mediaSuite`, …) packages and apps reuse to test their own field/component overrides. |
+| `@vexcms/next` | `.` | Re-exports of core/react config builders, sized for a single Next.js import. |
+| | `./server` | `NextAdminPage` — the async server component rendering the whole admin panel. |
+| | `./client` | `NextAdminLayout`/`NextAdminLayoutClient` — the client-side layout wrapper. |
+| | `./cache` | Server-only `createVexServerClient`/`createVexRevalidateRoute` for server actions and ISR routes. |
+| | `./seo` | Server-only `vexStaticParams`/`vexMetadata`/`createVexSitemap`/`createVexRobots`. |
+| | `./testing` | Next-specific test utilities. |
+| `@vexcms/better-auth` | `.` | `betterAuthAdapter`, Convex DB wiring (`authDbApi`, `createBetterAuthAdapter`), `createGetAuth` — server-only, reads secrets. |
+| | `./client` | `betterAuthCollections` — the schema-descriptor resolver `vex.config.ts` uses to derive auth collections browser-safely. |
+| `@vexcms/file-storage-convex` | `.` | `convexFileStorage` adapter + `defineMediaCollection` — server-side storage wiring. |
+| | `./client` | Client-safe upload helpers only. |
+| `@vexcms/richtext-plate` | `.` | `plateEditor()` editor-adapter factory, the `RichText` render component, shared element types; also serves a `convex` condition pointing at `./dist/server.js` for Convex bundler builds. |
+| | `./editor` | The interactive `PlateEditorField` + plugin/feature setup for the admin panel. |
+| | `./render` | `RichText` + `getStaticComponents` for building a custom static renderer. |
+| `@vexcms/cli` | `.` | The `vex` CLI binary (`dev`/`deploy`/`generate`). |
+| `create-vexcms` | `.` | The `pnpm create vexcms` scaffolder binary — not a library import. |
+
+See [Package Layout](/dev/package-layout/) for what lives inside each
+package's `src/`.

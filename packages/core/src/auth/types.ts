@@ -1,5 +1,6 @@
 import { CollectionConfig } from "../collections";
-import { AdminField, ComponentHKT } from "../fields";
+import { AdminField } from "../fields";
+import { ComponentHKT } from "../components/types";
 import { CollectionSlug } from "../types";
 
 /**

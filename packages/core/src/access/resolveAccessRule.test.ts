@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { defineCollection, text } from "../index";
 import { WILDCARD_KEY } from "./constants";
 import { defineAccess } from "./config";
-import { resolveAccessConstraint, resolveAccessIndex } from "./resolveAccessRule";
-import type { AccessConditionResult } from "./constraintTypes";
-import type { AccessFilterFn, IndexRangeFn } from "./types";
+import { resolveQueryConstraint, resolveQueryIndex } from "./resolveAccessRule";
+import type { ConvexQueryFilterFn, ConvexQueryIndexRangeFn } from "./convexTypes";
+import type { ConstraintResult } from "./queryConstraintTypes";
 
 // Core tests run with an unaugmented GeneratedVexTypes registry, so callback
 // `data`/`user` params are the wide pre-generation fallback — the `typeof`/`in`
@@ -13,9 +13,10 @@ import type { AccessFilterFn, IndexRangeFn } from "./types";
 
 const pages = defineCollection({
   slug: "pages",
-  // Both fields declare real indexes: `defineAccess` validates every recorded
-  // constraint set against the resource's DECLARED indexes, so a fixture naming an
-  // index that does not exist would fail at config time for the wrong reason.
+  // Both fields declare real indexes, matching what `vex generate` would emit —
+  // config-time index validation (`validateAccessConfig`, run from `defineConfig`)
+  // is not exercised here, but the fixture still names a real index so it reads
+  // like production config.
   fields: {
     title: text({ required: true }),
     authorId: text({ index: "by_author" }),
@@ -31,9 +32,9 @@ const users = defineCollection({
 const asUser = (roles: string | string[], _id = "u1") => ({ _id, roles });
 
 /**
- * Mirrors the design doc's §9.0 setup, migrated to the chained API: `contributor`
- * reads only its own rows by calling `q.withIndex("by_author")`; `editor` is
- * unrestricted; `reviewer`'s rule is a bare callback and records nothing, so it is
+ * Mirrors the design doc's §9.0 setup, migrated to the `withIndex`/`where` API:
+ * `contributor` reads only its own rows via `withIndex: { name: "by_author", range: … }`;
+ * `editor` is unrestricted; `reviewer`'s rule is a bare callback and records nothing, so it is
  * unindexable; `auditor` is restrictive AND indexed, but names a DIFFERENT index
  * (`by_status`) — the "two differing indexed roles" case; `anon` resolves through the
  * fallback role and is itself indexed.
@@ -55,15 +56,16 @@ const access = defineAccess({
   contributor: {
     pages: {
       read: {
-        constraints: ({ user, q }) =>
-          q.withIndex("by_author", (ix) =>
+        withIndex: ({ user }) => ({
+          name: "by_author",
+          range: (ix) =>
             ix.eq(
               "authorId",
               typeof user === "object" && user !== null && "_id" in user
                 ? user._id
                 : undefined,
             ),
-          ),
+        }),
         filter: ({ data, user }: { data: unknown; user: unknown }) =>
           typeof data === "object" &&
           data !== null &&
@@ -76,13 +78,13 @@ const access = defineAccess({
       },
     },
   },
-  // A constraints callback that resolves to a flat allow for this caller. It
+  // A `where` callback that resolves to a flat allow for this caller. It
   // recorded nothing, so there is nothing to narrow BY — and narrowing anyway would
   // hide rows the role permits.
   escalating: {
     pages: {
       read: {
-        constraints: () => true,
+        where: () => true,
       },
     },
   },
@@ -91,7 +93,7 @@ const access = defineAccess({
   selfDenying: {
     pages: {
       read: {
-        constraints: () => false,
+        where: () => false,
       },
     },
   },
@@ -106,7 +108,7 @@ const access = defineAccess({
   auditor: {
     pages: {
       read: {
-        constraints: ({ q }) => q.withIndex("by_status", (ix) => ix.eq("status", "published")),
+        withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") },
         filter: ({ data }: { data: unknown }) =>
           typeof data === "object" && data !== null && "status" in data
             ? data.status === "published"
@@ -117,7 +119,7 @@ const access = defineAccess({
   anon: {
     pages: {
       read: {
-        constraints: ({ q }) => q.withIndex("by_status", (ix) => ix.eq("status", "published")),
+        withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") },
         filter: ({ data }: { data: unknown }) =>
           typeof data === "object" && data !== null && "status" in data
             ? data.status === "published"
@@ -135,10 +137,10 @@ const access = defineAccess({
  */
 const disabledAccess = { ...access, enabled: false };
 
-describe("resolveAccessIndex — access absent or disabled", () => {
+describe("resolveQueryIndex — access absent or disabled", () => {
   it("returns undefined when access is not configured", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access: undefined,
         user: asUser("contributor"),
         resource: "pages",
@@ -149,7 +151,7 @@ describe("resolveAccessIndex — access absent or disabled", () => {
 
   it("returns undefined when access.enabled is false", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access: disabledAccess,
         user: asUser("contributor"),
         resource: "pages",
@@ -159,10 +161,10 @@ describe("resolveAccessIndex — access absent or disabled", () => {
   });
 });
 
-describe("resolveAccessIndex — single restrictive role", () => {
+describe("resolveQueryIndex — single restrictive role", () => {
   it("resolves the indexed role's withIndex", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access,
         user: asUser("contributor"),
         resource: "pages",
@@ -172,7 +174,7 @@ describe("resolveAccessIndex — single restrictive role", () => {
   });
 
   it("binds range to the caller's user id", () => {
-    const resolved = resolveAccessIndex({
+    const resolved = resolveQueryIndex({
       access,
       user: asUser("contributor", "dana"),
       resource: "pages",
@@ -186,10 +188,10 @@ describe("resolveAccessIndex — single restrictive role", () => {
   });
 });
 
-describe("resolveAccessIndex — unrestricted role", () => {
+describe("resolveQueryIndex — unrestricted role", () => {
   it("admin's role-level wildcard is unrestricted ⇒ no index", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access,
         user: asUser("admin"),
         resource: "pages",
@@ -199,10 +201,10 @@ describe("resolveAccessIndex — unrestricted role", () => {
   });
 });
 
-describe("resolveAccessIndex — restrictive + permissive ⇒ no index", () => {
+describe("resolveQueryIndex — restrictive + permissive ⇒ no index", () => {
   it("editor's unrestricted grant removes contributor's index", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access,
         user: asUser(["contributor", "editor"]),
         resource: "pages",
@@ -212,10 +214,10 @@ describe("resolveAccessIndex — restrictive + permissive ⇒ no index", () => {
   });
 });
 
-describe("resolveAccessIndex — two differing restrictive roles ⇒ no index", () => {
+describe("resolveQueryIndex — two differing restrictive roles ⇒ no index", () => {
   it("an un-indexable callback role forces scanning even alongside an indexed role", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access,
         user: asUser(["contributor", "reviewer"]),
         resource: "pages",
@@ -226,7 +228,7 @@ describe("resolveAccessIndex — two differing restrictive roles ⇒ no index", 
 
   it("two indexed roles naming different indexes cannot both apply — one range per query", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access,
         user: asUser(["contributor", "auditor"]),
         resource: "pages",
@@ -236,10 +238,10 @@ describe("resolveAccessIndex — two differing restrictive roles ⇒ no index", 
   });
 });
 
-describe("resolveAccessIndex — anon via anonRole", () => {
+describe("resolveQueryIndex — anon via anonRole", () => {
   it("a sessionless caller resolves through access.anonRole", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access,
         user: null,
         resource: "pages",
@@ -249,7 +251,7 @@ describe("resolveAccessIndex — anon via anonRole", () => {
   });
 });
 
-describe("resolveAccessIndex/resolveAccessConstraint — a caller-scoped rule reached with no caller", () => {
+describe("resolveQueryIndex/resolveQueryConstraint — a caller-scoped rule reached with no caller", () => {
   // `contributor`'s rule keys its index to `user._id` (see the fixture above). A
   // config that (mis)assigns `anonRole: "contributor"` reaches that rule for a
   // sessionless caller — exactly the shape `createUserReadSentinel` guards: the
@@ -258,9 +260,9 @@ describe("resolveAccessIndex/resolveAccessConstraint — a caller-scoped rule re
   // and would silently widen the query instead of narrowing it.
   const misconfigured = { ...access, anonRole: "contributor" };
 
-  it("resolveAccessIndex returns undefined instead of an index keyed on undefined", () => {
+  it("resolveQueryIndex returns undefined instead of an index keyed on undefined", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access: misconfigured,
         user: null,
         resource: "pages",
@@ -269,9 +271,9 @@ describe("resolveAccessIndex/resolveAccessConstraint — a caller-scoped rule re
     ).toBeUndefined();
   });
 
-  it("resolveAccessConstraint returns undefined for the same caller and rule", () => {
+  it("resolveQueryConstraint returns undefined for the same caller and rule", () => {
     expect(
-      resolveAccessConstraint({
+      resolveQueryConstraint({
         access: misconfigured,
         user: null,
         resource: "pages",
@@ -281,10 +283,10 @@ describe("resolveAccessIndex/resolveAccessConstraint — a caller-scoped rule re
   });
 });
 
-describe("resolveAccessIndex — a constraints callback that short-circuits", () => {
+describe("resolveQueryIndex — a withIndex callback that short-circuits", () => {
   it("returns undefined when the callback resolves to true — an unrestricted caller must not be narrowed", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access,
         user: asUser("escalating"),
         resource: "pages",
@@ -295,7 +297,7 @@ describe("resolveAccessIndex — a constraints callback that short-circuits", ()
 
   it("does not let a true-resolving role ride along with an indexed one", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access,
         user: asUser(["contributor", "escalating"]),
         resource: "pages",
@@ -306,7 +308,7 @@ describe("resolveAccessIndex — a constraints callback that short-circuits", ()
 
   it("skips a false-resolving role entirely, leaving another role's index intact", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access,
         user: asUser(["contributor", "selfDenying"]),
         resource: "pages",
@@ -317,7 +319,7 @@ describe("resolveAccessIndex — a constraints callback that short-circuits", ()
 
   it("returns undefined when the only role resolves to false — nothing is readable to narrow", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access,
         user: asUser("selfDenying"),
         resource: "pages",
@@ -327,7 +329,7 @@ describe("resolveAccessIndex — a constraints callback that short-circuits", ()
   });
 });
 
-describe("resolveAccessConstraint — action-level wildcard", () => {
+describe("resolveQueryConstraint — action-level wildcard", () => {
   const wildcardAccess = defineAccess({
     roles: ["contributor"] as const,
     resources: [pages, users],
@@ -336,16 +338,16 @@ describe("resolveAccessConstraint — action-level wildcard", () => {
     permissions: {
       contributor: {
         pages: {
-          // A wildcard's `q` is an AccessPredicateBuilder, so `filter` is its only
-          // form — there is no `withIndex` to reach for.
-          "*": { constraints: ({ q }) => q.filter((f) => f.eq("status", "published")) },
+          // A wildcard rule's `where` only gets a `FilterConstraintBuilder`, so `where` is
+          // its only form — there is no `withIndex` to reach for.
+          "*": { where: ({ q }) => q.eq("status", "published") },
         },
       },
     },
   });
 
   it("a wildcard constraint narrows an action it covers", () => {
-    const filter = resolveAccessConstraint({
+    const filter = resolveQueryConstraint({
       access: wildcardAccess,
       user: asUser("contributor"),
       resource: "pages",
@@ -356,7 +358,7 @@ describe("resolveAccessConstraint — action-level wildcard", () => {
 
   it("contributes no index — a wildcard cannot name one", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access: wildcardAccess,
         user: asUser("contributor"),
         resource: "pages",
@@ -374,7 +376,7 @@ describe("resolveAccessConstraint — action-level wildcard", () => {
       permissions: {
         contributor: {
           pages: {
-            "*": { constraints: ({ q }) => q.filter((f) => f.eq("status", "published")) },
+            "*": { where: ({ q }) => q.eq("status", "published") },
             read: true,
           },
         },
@@ -383,7 +385,7 @@ describe("resolveAccessConstraint — action-level wildcard", () => {
     // `read: true` is unrestricted, so nothing may narrow it — the wildcard's
     // constraint must not leak into an action that declared itself openly.
     expect(
-      resolveAccessConstraint({
+      resolveQueryConstraint({
         access: explicitWins,
         user: asUser("contributor"),
         resource: "pages",
@@ -393,10 +395,10 @@ describe("resolveAccessConstraint — action-level wildcard", () => {
   });
 });
 
-describe("resolveAccessConstraint — a constraints callback that short-circuits to a boolean", () => {
+describe("resolveQueryConstraint — a withIndex / where callback that short-circuits to a boolean", () => {
   it("returns undefined for a role whose callback resolves to true — unrestricted, nothing to narrow by", () => {
     expect(
-      resolveAccessConstraint({
+      resolveQueryConstraint({
         access,
         user: asUser("escalating"),
         resource: "pages",
@@ -407,7 +409,7 @@ describe("resolveAccessConstraint — a constraints callback that short-circuits
 
   it("returns undefined for a role whose callback resolves to false — denied, nothing to narrow FOR", () => {
     expect(
-      resolveAccessConstraint({
+      resolveQueryConstraint({
         access,
         user: asUser("selfDenying"),
         resource: "pages",
@@ -417,11 +419,11 @@ describe("resolveAccessConstraint — a constraints callback that short-circuits
   });
 });
 
-describe("resolveAccessConstraint — index-only, filter-only, and both halves", () => {
-  /** Records which `FilterBuilder` methods `resolveAccessConstraint`'s returned
+describe("resolveQueryConstraint — index-only, filter-only, and both halves", () => {
+  /** Records which `FilterBuilder` methods `resolveQueryConstraint`'s returned
    * thunk invokes, in order — proves exactly which half(s) of a condition compiled,
    * not just that SOME function came back. */
-  function recordingQ(): { q: Parameters<AccessFilterFn>[0]; calls: string[] } {
+  function recordingQ(): { q: Parameters<ConvexQueryFilterFn>[0]; calls: string[] } {
     const calls: string[] = [];
     const raw: Record<string, (...args: unknown[]) => unknown> = {
       field: (...args: unknown[]) => ({ __field: args[0] as string }),
@@ -432,11 +434,11 @@ describe("resolveAccessConstraint — index-only, filter-only, and both halves",
         return { __expr: op, args };
       };
     }
-    return { q: raw as unknown as Parameters<AccessFilterFn>[0], calls };
+    return { q: raw as unknown as Parameters<ConvexQueryFilterFn>[0], calls };
   }
 
   it("compiles ONLY the index half when the condition carries no separate filter (contributor)", () => {
-    const filterFn = resolveAccessConstraint({
+    const filterFn = resolveQueryConstraint({
       access,
       user: asUser("contributor", "dana"),
       resource: "pages",
@@ -444,7 +446,7 @@ describe("resolveAccessConstraint — index-only, filter-only, and both halves",
     });
     const { q, calls } = recordingQ();
     filterFn?.(q);
-    // Single index constraint: `accessConstraintsToFilter` returns it unwrapped, no
+    // Single index constraint: `queryConstraintsToConvexFilter` returns it unwrapped, no
     // `and()`, and no filter-tree op ever runs.
     expect(calls).toEqual(["eq"]);
   });
@@ -458,12 +460,12 @@ describe("resolveAccessConstraint — index-only, filter-only, and both halves",
       permissions: {
         contributor: {
           pages: {
-            "*": { constraints: ({ q }) => q.filter((f) => f.eq("status", "published")) },
+            "*": { where: ({ q }) => q.eq("status", "published") },
           },
         },
       },
     });
-    const filterFn = resolveAccessConstraint({
+    const filterFn = resolveQueryConstraint({
       access: filterOnlyAccess,
       user: asUser("contributor"),
       resource: "pages",
@@ -484,23 +486,23 @@ describe("resolveAccessConstraint — index-only, filter-only, and both halves",
         contributor: {
           pages: {
             read: {
-              constraints: ({ user, q }) =>
-                q
-                  .withIndex("by_author", (ix) =>
-                    ix.eq(
-                      "authorId",
-                      typeof user === "object" && user !== null && "_id" in user
-                        ? user._id
-                        : undefined,
-                    ),
-                  )
-                  .filter((f) => f.neq("status", "archived")),
+              withIndex: ({ user }) => ({
+                name: "by_author",
+                range: (ix) =>
+                  ix.eq(
+                    "authorId",
+                    typeof user === "object" && user !== null && "_id" in user
+                      ? user._id
+                      : undefined,
+                  ),
+              }),
+              where: ({ q }) => q.neq("status", "archived"),
             },
           },
         },
       },
     });
-    const filterFn = resolveAccessConstraint({
+    const filterFn = resolveQueryConstraint({
       access: bothHalvesAccess,
       user: asUser("contributor", "dana"),
       resource: "pages",
@@ -514,7 +516,7 @@ describe("resolveAccessConstraint — index-only, filter-only, and both halves",
   });
 });
 
-describe("resolveAccessConstraint — an index with an empty range excludes nothing", () => {
+describe("resolveQueryConstraint — an index with an empty range excludes nothing", () => {
   const orderingOnlyAccess = defineAccess({
     roles: ["contributor"] as const,
     resources: [pages, users],
@@ -524,18 +526,18 @@ describe("resolveAccessConstraint — an index with an empty range excludes noth
       contributor: {
         pages: {
           // Calls `withIndex` for ORDERING only — no `eq`/bound ever applied, so the
-          // recorded range is empty. Per `AccessQueryBuilder.withIndex`'s own
+          // recorded range is empty. Per `AccessIndexSelection`'s own
           // contract this still opts INTO the index (unlike Convex's optional
           // range), but records no constraint: "an index with no constraints is an
-          // ordering-only opt-in and excludes nothing" (resolveAccessConstraint.ts).
-          read: { constraints: ({ q }) => q.withIndex("by_author", (ix) => ix) },
+          // ordering-only opt-in and excludes nothing" (resolveQueryConstraint.ts).
+          read: { withIndex: { name: "by_author", range: (ix) => ix } },
         },
       },
     },
   });
 
-  it("resolveAccessIndex still resolves the index, for ordering, with a no-op range", () => {
-    const resolved = resolveAccessIndex({
+  it("resolveQueryIndex still resolves the index, for ordering, with a no-op range", () => {
+    const resolved = resolveQueryIndex({
       access: orderingOnlyAccess,
       user: asUser("contributor"),
       resource: "pages",
@@ -545,14 +547,14 @@ describe("resolveAccessConstraint — an index with an empty range excludes noth
     const calls: unknown[][] = [];
     const rangeBuilder = {
       eq: (...args: unknown[]) => (calls.push(args), rangeBuilder),
-    } as unknown as Parameters<IndexRangeFn>[0];
+    } as unknown as Parameters<ConvexQueryIndexRangeFn>[0];
     expect(resolved?.range?.(rangeBuilder)).toBe(rangeBuilder);
     expect(calls).toEqual([]);
   });
 
-  it("resolveAccessConstraint returns undefined — an empty range excludes nothing to check per document", () => {
+  it("resolveQueryConstraint returns undefined — an empty range excludes nothing to check per document", () => {
     expect(
-      resolveAccessConstraint({
+      resolveQueryConstraint({
         access: orderingOnlyAccess,
         user: asUser("contributor"),
         resource: "pages",
@@ -580,12 +582,14 @@ function buildUnvalidatedAccess(
   return config as ReturnType<typeof defineAccess>;
 }
 
-describe("resolveAccessConstraint / resolveAccessIndex — a condition the module cannot read", () => {
-  // A `constraints` callback may resolve to something other than `true`, `false`,
-  // or a value built through `q` — e.g. a stray object smuggled past a cast.
+describe("resolveQueryConstraint / resolveQueryIndex — a condition the module cannot read", () => {
+  // A `withIndex` / `where` callback may resolve to something other than `true`,
+  // `false`, or a value built through the supplied builder — e.g. a stray object
+  // smuggled past a cast.
   //
-  // `defineAccess` now REJECTS this shape at config time, so the fixture is built as
-  // a plain object and cast rather than passed through it. That is deliberate: the
+  // `validateAccessConfig` (run from `defineConfig`) now REJECTS this shape at
+  // config time, so the fixture is built as a plain object and cast rather than
+  // passed through `defineAccess` and `defineConfig`. That is deliberate: the
   // resolve-time safety must hold independently of the config-time gate, because a
   // config can reach the resolver without it (a cast, a future dynamic/DB-backed
   // permission source). Defence in depth — the gate stops authors, this stops
@@ -599,16 +603,17 @@ describe("resolveAccessConstraint / resolveAccessIndex — a condition the modul
       ghost: {
         pages: {
           read: {
-            constraints: (): boolean | AccessConditionResult =>
-              ({ notARealCondition: true }) as unknown as AccessConditionResult,
+            where: (): boolean | ConstraintResult =>
+              ({ notARealCondition: true }) as unknown as ConstraintResult,
           },
         },
       },
       contributor: {
         pages: {
           read: {
-            constraints: ({ user, q }) =>
-              q.withIndex("by_author", (ix) =>
+            withIndex: ({ user }) => ({
+              name: "by_author",
+              range: (ix) =>
                 ix.eq(
                   "authorId",
                   // Cast: the bypass helper's parameter uses `defineAccess`'s DEFAULT
@@ -619,16 +624,16 @@ describe("resolveAccessConstraint / resolveAccessIndex — a condition the modul
                     ? user._id
                     : undefined) as never,
                 ),
-              ),
+            }),
           },
         },
       },
     },
   });
 
-  it("resolveAccessIndex returns undefined rather than treating an unreadable condition as unrestricted", () => {
+  it("resolveQueryIndex returns undefined rather than treating an unreadable condition as unrestricted", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access: unreadableAccess,
         user: asUser("ghost"),
         resource: "pages",
@@ -637,9 +642,9 @@ describe("resolveAccessConstraint / resolveAccessIndex — a condition the modul
     ).toBeUndefined();
   });
 
-  it("resolveAccessConstraint returns undefined for the same role — no fabricated filter", () => {
+  it("resolveQueryConstraint returns undefined for the same role — no fabricated filter", () => {
     expect(
-      resolveAccessConstraint({
+      resolveQueryConstraint({
         access: unreadableAccess,
         user: asUser("ghost"),
         resource: "pages",
@@ -650,7 +655,7 @@ describe("resolveAccessConstraint / resolveAccessIndex — a condition the modul
 
   it("an unreadable role suppresses another role's index, exactly like a genuinely unrestricted one would", () => {
     expect(
-      resolveAccessIndex({
+      resolveQueryIndex({
         access: unreadableAccess,
         user: asUser(["ghost", "contributor"]),
         resource: "pages",
@@ -660,7 +665,7 @@ describe("resolveAccessConstraint / resolveAccessIndex — a condition the modul
   });
 });
 
-describe("resolveAccessConstraint — indexAlreadyApplied", () => {
+describe("resolveQueryConstraint — indexAlreadyApplied", () => {
   const bothHalvesAccess = defineAccess({
     roles: ["contributor"] as const,
     resources: [pages, users],
@@ -670,24 +675,24 @@ describe("resolveAccessConstraint — indexAlreadyApplied", () => {
       contributor: {
         pages: {
           read: {
-            constraints: ({ user, q }) =>
-              q
-                .withIndex("by_author", (ix) =>
-                  ix.eq(
-                    "authorId",
-                    typeof user === "object" && user !== null && "_id" in user
-                      ? user._id
-                      : undefined,
-                  ),
-                )
-                .filter((f) => f.neq("status", "archived")),
+            withIndex: ({ user }) => ({
+              name: "by_author",
+              range: (ix) =>
+                ix.eq(
+                  "authorId",
+                  typeof user === "object" && user !== null && "_id" in user
+                    ? user._id
+                    : undefined,
+                ),
+            }),
+            where: ({ q }) => q.neq("status", "archived"),
           },
         },
       },
     },
   });
 
-  function recordingQ(): { q: Parameters<AccessFilterFn>[0]; calls: string[] } {
+  function recordingQ(): { q: Parameters<ConvexQueryFilterFn>[0]; calls: string[] } {
     const calls: string[] = [];
     const raw: Record<string, (...args: unknown[]) => unknown> = {
       field: (...args: unknown[]) => ({ __field: args[0] as string }),
@@ -698,11 +703,11 @@ describe("resolveAccessConstraint — indexAlreadyApplied", () => {
         return { __expr: op, args };
       };
     }
-    return { q: raw as unknown as Parameters<AccessFilterFn>[0], calls };
+    return { q: raw as unknown as Parameters<ConvexQueryFilterFn>[0], calls };
   }
 
   it("false — the index half is DOWNGRADED to a filter and ANDed with the filter half", () => {
-    const filterFn = resolveAccessConstraint({
+    const filterFn = resolveQueryConstraint({
       access: bothHalvesAccess,
       user: asUser("contributor", "dana"),
       resource: "pages",
@@ -715,7 +720,7 @@ describe("resolveAccessConstraint — indexAlreadyApplied", () => {
   });
 
   it("true — the index half is OMITTED; only the filter half remains", () => {
-    const filterFn = resolveAccessConstraint({
+    const filterFn = resolveQueryConstraint({
       access: bothHalvesAccess,
       user: asUser("contributor", "dana"),
       resource: "pages",
@@ -732,7 +737,7 @@ describe("resolveAccessConstraint — indexAlreadyApplied", () => {
     // The outer `contributor` fixture's condition carries no `.filter()` half —
     // once its index is marked already-applied, nothing is left to compile.
     expect(
-      resolveAccessConstraint({
+      resolveQueryConstraint({
         access,
         user: asUser("contributor", "dana"),
         resource: "pages",

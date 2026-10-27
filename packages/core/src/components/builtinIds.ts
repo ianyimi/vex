@@ -27,4 +27,15 @@ export const BUILTIN_CONTRIBUTION_IDS = {
     moveDown: "vex.array.moveDown",
     remove: "vex.array.remove",
   },
+  edit: {
+    save: "vex.save",
+    publish: "vex.publish",
+    unpublish: "vex.unpublish",
+    delete: "vex.delete",
+    duplicate: "vex.duplicate",
+    revalidate: "vex.revalidate",
+    versionHistory: "vex.versionHistory",
+    livePreview: "vex.livePreview",
+    cancel: "vex.cancel",
+  },
 } as const;

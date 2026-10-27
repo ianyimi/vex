@@ -36,11 +36,11 @@ function buildAccessWithPosts(permissions: VexAccessConfig["permissions"]): VexA
 }
 
 /**
- * The slice of the constraint builder these tests use. The hand-assembled
+ * The slice of the predicate builder these tests use. The hand-assembled
  * configs above bypass `defineAccess`, so `q` arrives untyped.
  */
-type AccessQueryBuilderLike = {
-  filter: (build: (f: { eq: (field: string, value: unknown) => unknown }) => unknown) => unknown;
+type AccessWhereBuilderLike = {
+  eq: (field: string, value: unknown) => unknown;
 };
 
 const CALL = { resource: "posts", action: "update" } as const;
@@ -159,13 +159,12 @@ describe("resolveFieldPermissions", () => {
     expect(isFieldAllowed(published, "price")).toBe(false);
   });
 
-  it("resolves a map returned from `filter` beside `constraints`", () => {
+  it("resolves a map returned from `filter` beside `where`", () => {
     const access = buildAccess({
       editor: {
         posts: {
           update: {
-            constraints: ({ q }: { q: AccessQueryBuilderLike }) =>
-              q.filter((f) => f.eq("status", "draft")),
+            where: ({ q }: { q: AccessWhereBuilderLike }) => q.eq("status", "draft"),
             filter: () => ({ "*": false, title: true }),
           },
         },
@@ -186,8 +185,7 @@ describe("resolveFieldPermissions", () => {
       editor: {
         posts: {
           update: {
-            constraints: ({ q }: { q: AccessQueryBuilderLike }) =>
-              q.filter((f) => f.eq("status", "draft")),
+            where: ({ q }: { q: AccessWhereBuilderLike }) => q.eq("status", "draft"),
             filter: () => ({ "*": true }),
           },
         },

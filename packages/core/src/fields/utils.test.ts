@@ -11,10 +11,10 @@ import {
   resolveFieldLimit,
   resolveRowWidths,
 } from "./utils";
-import { tabs } from "./ui/tabs/config";
-import { collapsible } from "./ui/collapsible/config";
-import { row } from "./ui/row/config";
-import { ui } from "./ui/ui/config";
+import { tabs } from "./tabs/config";
+import { collapsible } from "./collapsible/config";
+import { row } from "./row/config";
+import { ui } from "./ui/config";
 import { group } from "./group/config";
 import { array } from "./array/config";
 import { blocks, defineBlock } from "./blocks/config";
@@ -69,6 +69,7 @@ describe("resolveFieldComponents", () => {
     const resolved = resolveFieldComponents({});
     expect(resolved).toEqual({
       Input: [],
+      Field: [],
       Cell: [],
       Label: [],
       Description: [],
@@ -180,7 +181,6 @@ describe("getFieldsInputSchema — admin.condition (data-aware schema)", () => {
   });
 });
 
-
 describe("isFieldConditionMet", () => {
   const siblingData = {};
 
@@ -189,7 +189,15 @@ describe("isFieldConditionMet", () => {
   });
 
   it("evaluates the condition function against data", () => {
-    const field = text({ admin: { condition: ({ data }) => typeof data === "object" && data !== null && "published" in data && data.published === true } });
+    const field = text({
+      admin: {
+        condition: ({ data }) =>
+          typeof data === "object" &&
+          data !== null &&
+          "published" in data &&
+          data.published === true,
+      },
+    });
     expect(isFieldConditionMet({ field, data: { published: true }, siblingData })).toBe(true);
     expect(isFieldConditionMet({ field, data: { published: false }, siblingData })).toBe(false);
   });
@@ -351,7 +359,13 @@ describe("getDataFields", () => {
           {
             label: "Content",
             fields: { title: text() },
-            admin: { condition: ({ data }) => typeof data === "object" && data !== null && "published" in data && data.published === true },
+            admin: {
+              condition: ({ data }) =>
+                typeof data === "object" &&
+                data !== null &&
+                "published" in data &&
+                data.published === true,
+            },
           },
         ],
       }),
@@ -393,7 +407,6 @@ describe("getDataFields", () => {
     };
     expect(() => getDataFields({ fields })).toThrow('getDataFields(): duplicate field key "seo"');
   });
-
 
   it("throws on a duplicate flattened key between a hoisted field and a sibling inside a tab nested inside a row", () => {
     const fields = {
@@ -447,7 +460,7 @@ describe("getDataFields", () => {
           }),
         },
       }),
-  ).toThrow('getDataFields(): duplicate field key "value"');
+    ).toThrow('getDataFields(): duplicate field key "value"');
   });
 });
 
@@ -478,7 +491,9 @@ describe("getUIFieldsWithCell", () => {
                 fields: {
                   details: collapsible({
                     label: "Details",
-                    fields: { wordCount: ui({ admin: { components: { Field: () => null, Cell } } }) },
+                    fields: {
+                      wordCount: ui({ admin: { components: { Field: () => null, Cell } } }),
+                    },
                   }),
                 },
               }),
@@ -495,7 +510,11 @@ describe("getUIFieldsWithCell", () => {
     const fields = {
       info: tabs({
         tabs: [
-          { label: "SEO", name: "seo", fields: { wordCount: ui({ admin: { components: { Field: () => null, Cell } } }) } },
+          {
+            label: "SEO",
+            name: "seo",
+            fields: { wordCount: ui({ admin: { components: { Field: () => null, Cell } } }) },
+          },
         ],
       }),
     };

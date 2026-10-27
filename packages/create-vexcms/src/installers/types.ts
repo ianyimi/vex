@@ -39,16 +39,35 @@ export interface OAuthProvider {
   clientIdVar: string
   /** Name of the environment variable holding the OAuth client secret. */
   clientSecretVar: string
-  /** Better Auth social-provider configuration inserted into the generated `convex/auth/options.ts`. */
-  betterAuthConfig: string
+  /** Whether this provider is listed among the popular providers in CLI prompts. */
+  popular?: boolean
+  /** Better Auth configuration snippets inserted into the generated auth files. */
+  betterAuthConfig: {
+    /** Import statement the social provider needs (empty when none). */
+    import: string
+    /** Provider literal passed to `authClient.signIn.social`, e.g. `'"google"'`. */
+    clientSideProvider: string
+    /** Social-provider config entry inserted into `convex/auth/options.ts`. */
+    socialProvider: string
+    /** OAuth scopes requested by default. */
+    scopes: string[]
+  }
   /** Environment variables this provider needs, used to populate `.env.example`. */
   env: EnvVariable[]
-  /** Link to the provider's OAuth app setup documentation. */
-  docs: string
+  /** Documentation links for the provider's OAuth app setup and Better Auth integration. */
+  docs: {
+    provider: string
+    betterAuth: string
+  }
   /** Whether this provider needs additional manual configuration beyond the client id/secret. */
   requiresExtraConfig: boolean
-  /** README section content added when this provider is selected. */
-  readme: string
+  /** Notes describing the extra configuration, when `requiresExtraConfig` is true. */
+  extraConfigNotes?: string
+  /** README section added when this provider is selected. */
+  readme: {
+    title: string
+    content: string
+  }
 }
 
 /**

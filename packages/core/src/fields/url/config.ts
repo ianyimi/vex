@@ -52,9 +52,10 @@ import type { UrlFieldInput, UrlField } from "./types";
  */
 export function url<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 >(
-  options?: UrlFieldInput<TCollectionSlug, TFieldMeta>,
+  options?: UrlFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): UrlField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.url.type,

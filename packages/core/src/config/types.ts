@@ -7,10 +7,13 @@ import { GlobalConfig } from "../globals";
 import { VexAccessConfig } from "../access";
 import { VexRoutesConfig } from "../routes";
 import { LivePreviewConfig, LivePreviewConfigInput } from "../livePreview";
-import { ComponentHKT, DataFieldType } from "../fields";
+import { DataFieldType } from "../fields";
 import type {
   ComponentContributionInput,
   ComponentOverrideInput,
+  ComponentHKT,
+  EditComponentsConfig,
+  EditComponentsConfigInput,
 } from "../components/types";
 import { VexEditorAdapter } from "../editor";
 import type { FieldMaskInput, MaskableFieldType } from "../fields/mask";
@@ -53,6 +56,7 @@ export interface AdminComponentsInput {
   fields?: {
     [K in DataFieldType]?: {
       Input?: ComponentOverrideInput<ComponentHKT, unknown>[];
+      Field?: ComponentOverrideInput<ComponentHKT, unknown>[];
       Cell?: ComponentOverrideInput<ComponentHKT, unknown>[];
     };
   };
@@ -65,6 +69,8 @@ export interface AdminComponentsInput {
   array?: {
     itemActions?: ComponentContributionInput<ComponentHKT, unknown>[];
   };
+  /** `edit.*` slot defaults, project-wide (decision 11) — merged with each collection/global's own config by `resolveEditSlot` at render time. */
+  edit?: EditComponentsConfigInput<ComponentHKT>;
 }
 
 /**
@@ -143,6 +149,7 @@ export interface AdminConfig {
     fields: {
       [K in DataFieldType]?: {
         Input: ComponentOverrideInput<ComponentHKT, unknown>[];
+        Field: ComponentOverrideInput<ComponentHKT, unknown>[];
         Cell: ComponentOverrideInput<ComponentHKT, unknown>[];
       };
     };
@@ -151,6 +158,7 @@ export interface AdminConfig {
       headerActions: ComponentContributionInput<ComponentHKT, unknown>[];
     };
     array: { itemActions: ComponentContributionInput<ComponentHKT, unknown>[] };
+    edit: EditComponentsConfig<ComponentHKT>;
   };
 }
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef, useImperativeHandle, forwardRef } from "react";
 import type { Value } from "platejs";
 import { Plate, PlateContent, createPlateEditor, useEditorRef } from "platejs/react";
-import { CONSTRAINT_COMPARATORS, type VexEditorComponentProps, type RichTextDocument } from "@vexcms/core";
+import { valuesEqual, type VexEditorComponentProps, type RichTextDocument } from "@vexcms/core";
 import type { VexEditorFeature } from "./features/types";
 import { createPluginsFromFeatures } from "./plugins/createPlugins";
 import { Toolbar } from "./components/Toolbar";
@@ -164,7 +164,7 @@ export function PlateEditorField({
     // autosave) must not reset the editor — that would move the cursor mid-typing.
     // Key-order-insensitive: Convex returns object keys sorted, Plate keeps
     // insertion order.
-    if (CONSTRAINT_COMPARATORS.eq(next, editor.children)) return;
+    if (valuesEqual(next, editor.children)) return;
     // RichTextDocument's index-signature nodes are structurally Plate's
     // `Value`, but the index signatures keep TS from unifying the two.
     editor.tf.setValue(next as unknown as Value);
@@ -183,7 +183,7 @@ export function PlateEditorField({
       // onValueChange (Slate flushes changes asynchronously, so a "currently
       // applying" flag would already be cleared). Re-emitting it would mark
       // the field dirty and autosave it, ping-ponging with the form.
-      if (CONSTRAINT_COMPARATORS.eq(next, lastEmittedRef.current)) return;
+      if (valuesEqual(next, lastEmittedRef.current)) return;
       lastEmittedRef.current = next;
       onChange(next);
     },

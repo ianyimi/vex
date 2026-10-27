@@ -1,0 +1,126 @@
+---
+title: Adding a Field Type
+description: How a new field type's core half and react half are wired together, worked from the text field.
+---
+
+A field type is defined in two halves that never import each other directly
+— core defines its shape/validation/schema, react defines its admin UI — and
+are wired together only through two registries: core's `ADMIN_FIELDS` /
+`AdminField` union, and react's `reactAdapter.fields` map.
+
+The worked example below copies `fields/text/` — the simplest data field.
+
+## The core half — `packages/core/src/fields/<type>/`
+
+Copy an existing field folder and edit its five files:
+
+1. **`types.ts`** — `<Type>FieldInput extends BaseFieldInput` (everything
+   optional, what a project author writes in `defineCollection`) and
+   `<Type>Field extends BaseField` (resolved — every default applied,
+   `required`, `label`, `admin`, etc. always present). Both carry `readonly
+   type`.
+2. **`config.ts`** — `function <type>(options?): <Type>Field`. Applies
+   defaults via nested spread merge; see `date/config.ts` for the canonical
+   deep-merge shape when a field has nested options
+   (`time: { ...defaults, ...options?.time }`).
+3. **`validator.ts`** — `<type>FieldToValidator({ field }): string`, wrapped
+   with `applyBaseValidators()` (adds `v.optional()` when the field isn't
+   required). Returns a Convex validator source string, e.g. `"v.string()"`.
+4. **`inputSchema.ts`** — `<type>FieldToInputSchema({ field }): ZodType`,
+   wrapped with `applyBaseInputSchemaMeta()`. Returns the Zod schema the
+   admin form and the server mutation both validate against.
+5. **`index.ts`** — barrel: `export * from "./config"` /
+   `"./types"` / `"./validator"` / `"./inputSchema"`.
+
+Then three shared registrations, all required for the new type to compile
+and be reachable:
+
+- **`fields/constants.ts`** — add an `ADMIN_FIELDS` entry: `{ type,
+  interfaceType, validator, defaultValue, kind: "data" }` (`kind: "ui"` for a
+  non-data layout field like `tabs`/`row`).
+- **`fields/types.ts`** — add `<Type>Field` to the `AdminField` union.
+- **`fields/validators/index.ts`** and **`fields/inputSchemas/index.ts`** —
+  add a `case ADMIN_FIELDS.<type>.type:` arm to each exhaustive switch,
+  calling the field's own `<type>FieldToValidator`/`<type>FieldToInputSchema`.
+  TypeScript's exhaustiveness check on the `AdminField` union is what catches
+  a forgotten arm.
+
+Finally, `fields/index.ts` gets `export * from "./<type>"`.
+
+## The react half — `packages/react/src/fields/<type>/`
+
+Copy an existing react field folder (`Field.tsx`/`Cell.tsx`/
+`columnDef.tsx`/`testFixture.ts`/`index.ts`):
+
+1. **`Field.tsx`** — exports `<Type>FieldAdmin(props: FieldComponentProps<...>)`.
+   Builds the control(s) for the field, resolves the `admin.components.Input`
+   override chain via `useFieldControlOverride()`, then renders the matching
+   `forms/` leaf component (`TextField`, or a new one under `forms/` — see
+   below) wrapped in `<AdminFieldBinding>`, passing `renderControl` through.
+2. **`Cell.tsx`** — exports `<Type>FieldCell(props: CellComponentProps<...>)`
+   for the collection list-view table.
+3. **`columnDef.tsx`** — exports `<type>FieldToColumnDef(...)`, the TanStack
+   Table column factory that wires `<Type>FieldCell` into a `ColumnDef`.
+4. **`testFixture.ts`** — exports a `FieldFixture` (fieldType, a configured
+   `fieldDef`, and `valid`/`invalid`/`empty` values) used by the shared
+   `@vexcms/react/testing` contract suites.
+5. **`index.ts`** — barrel re-exporting the three components.
+
+If the field needs new list/layout mechanics (not just a different control),
+add the app form component first under `forms/` — see the
+[`react-app-form` rule](/dev/naming-conventions/#react-app-form). Otherwise
+map the new `fieldDef` directly onto an existing `forms/` leaf's props
+(most data fields with a single scalar control do this — see
+`forms/TextField.tsx` for the pattern: it reads `useFieldContext()` +
+`useFormContext()` only, resolves `isFieldShowingError`/`fieldDescribedBy`,
+and renders through `FormFieldLayout`).
+
+Then register in **`packages/react/src/adapter.ts`**: import the new
+`<Type>FieldAdmin`/`<Type>FieldCell` pair and add
+`[ADMIN_FIELDS.<type>.type]: { field: <Type>FieldAdmin, cell: <Type>FieldCell }`
+to `buildReactAdapter()`'s `fields` map — `reactAdapter.fields` (consumed by
+`fields/registry.ts`'s `fieldToFieldComponent`/`fieldToCellComponent`) is the
+one source of truth both the collection edit view and the list view read
+from.
+
+## The two override slots
+
+Both halves exist because of the two independent extension points a project
+can hook into without forking a component (see [Admin
+Customization](/guides/admin-customization/)):
+
+- **`admin.components.Input`** — control-only override. The admin
+  `Field.tsx` resolves this chain via `useFieldControlOverride()` and passes
+  the result as `renderControl` into the `forms/` leaf; each stage receives
+  `FieldControlProps` (`id`, `value`, `onChange`, `onBlur`, `readOnly`,
+  `invalid`, `describedBy`) and the previous stage's `renderDefault`.
+- **`admin.components.Field`** — whole-field override, resolved one level up
+  (before `Field.tsx` itself renders), receiving `FieldComponentProps`
+  (`name`, `fieldDef`, `readOnly`, `collection`, `renderDefault`).
+
+A new field type gets both for free by following the pattern above — neither
+slot needs type-specific wiring beyond registering in `reactAdapter.fields`.
+
+## Worked example
+
+`fields/text/` is the template every data field with a single scalar input
+was copied from (`email`, `url`, `number`, `textarea` all follow it
+directly); `fields/upload/` is the template for a field with an async
+side-effect and its own helper widgets (`EmptyInput`/`FilledInput`,
+`utils.ts`). Copy whichever is closer to the new field's shape.
+
+## Tests + verification
+
+Colocate `validator.test.ts` + `inputSchema.test.ts` next to the core files,
+and `Field.test.tsx`/`Cell.test.tsx`/`columnDef.test.ts` next to the react
+files. Most field types need no server-side test of their own — the shared
+`convex-test` setup used where one is needed is documented in
+`.agent/docs/standards/testing/convex-integration-testing.md`.
+
+```bash
+pnpm --filter @vexcms/core typecheck
+pnpm --filter @vexcms/react typecheck
+```
+
+then add the field to a collection in `apps/test` and render it in the
+create modal + list view.

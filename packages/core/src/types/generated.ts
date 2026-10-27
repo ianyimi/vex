@@ -1,6 +1,6 @@
 import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
 
-import { TDocument, VexDocument } from "../api/convex";
+import { TDocument, VexDocument } from "../documents/types";
 
 /**
  * Empty interface augmented by the generated `vex.types.ts` file.
@@ -198,7 +198,7 @@ export type CustomActionsBySlug = GeneratedVexTypes extends {
  * `readonly` tuple of field names in declaration order (`.index(name,
  * [...])` — search indexes excluded, since `withIndex` never targets
  * those). Field order is exactly what `ConstraintBuilder`
- * (`access/constraintTypes.ts`) narrows against, so this registry is the
+ * (`access/queryConstraintTypes.ts`) narrows against, so this registry is the
  * sole source of truth both the constraint builder and `IndexNameFor`
  * resolve through — no parallel name-union map (supersedes the old
  * `IndexesBySlug`).
@@ -234,7 +234,7 @@ export type IndexNameFor<S extends string> = S extends keyof IndexFieldsBySlug
 
 /**
  * The field tuple for one slug + index name, in declaration order — what
- * `ConstraintBuilder<TFields, TDoc>` (`access/constraintTypes.ts`) is
+ * `ConstraintBuilder<TFields, TDoc>` (`access/queryConstraintTypes.ts`) is
  * instantiated with.
  *
  * @typeParam S - Collection slug.

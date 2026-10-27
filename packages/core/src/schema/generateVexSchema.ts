@@ -1,6 +1,6 @@
 import type { VexClientConfig } from "../config/types";
 import { collectionConfigToVexSchema } from "../collections";
-import { versionFieldsToVexSchema } from "../versions/schema";
+import { VERSION_STATUS_SCHEMA_SOURCE, versionFieldsToVexSchema } from "../versions/schema";
 
 function fail(contents: string) {
   return { update: false, contents };
@@ -65,7 +65,7 @@ export function generateVexSchema(props: { config: VexClientConfig }): {
     "  collection: v.string(),",
     "  documentId: v.string(),",
     "  version: v.number(),",
-    '  status: v.union(v.literal("draft"), v.literal("published")),',
+    `  status: ${VERSION_STATUS_SCHEMA_SOURCE},`,
     "  snapshot: v.any(),",
     "  createdBy: v.optional(v.string()),",
     "  parentVersion: v.optional(v.number()),",

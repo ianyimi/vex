@@ -72,6 +72,25 @@ describe("defineCollection — updatedAt injection", () => {
     // a reserved-key error from the first call's injection.
     expect(defineCollection({ slug: "pages", fields }).fields.updatedAt).toBeDefined();
   });
+
+  it("lets a field's compound index list the injected updatedAt", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { slug: text({ index: { name: "by_slug_updatedAt", additionalFields: ["updatedAt"] } }) },
+      }),
+    ).not.toThrow();
+  });
+
+  it("still rejects updatedAt in additionalFields when timestamps: false", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        timestamps: false,
+        fields: { slug: text({ index: { name: "by_slug_updatedAt", additionalFields: ["updatedAt"] } }) },
+      }),
+    ).toThrow(/updatedAt/);
+  });
 });
 
 describe("defineCollection — versions defaults", () => {
@@ -308,23 +327,13 @@ describe("defineCollection — draftStatus validation", () => {
     ).toThrow(/draftStatus/);
   });
 
-  it("throws when a field's indexDraftStatus is set without versions.drafts: true", () => {
+  it("throws when a field's index.draftStatus is set without versions.drafts: true", () => {
     expect(() =>
       defineCollection({
         slug: "posts",
-        fields: { slug: text({ required: true, index: "by_slug", indexDraftStatus: true }) },
+        fields: { slug: text({ required: true, index: { name: "by_slug", draftStatus: true } }) },
       }),
-    ).toThrow(/declares indexDraftStatus but versions\.drafts is not true/);
-  });
-
-  it("throws when indexDraftStatus is set on a field with no index and no relationship auto-index", () => {
-    expect(() =>
-      defineCollection({
-        slug: "posts",
-        fields: { title: text({ required: true, indexDraftStatus: true }) },
-        versions: { drafts: true },
-      }),
-    ).toThrow(/no index to narrow/);
+    ).toThrow(/declares index\.draftStatus but versions\.drafts is not true/);
   });
 
   it("allows draftStatus on a collection-level index when versions.drafts: true", () => {
@@ -337,12 +346,12 @@ describe("defineCollection — draftStatus validation", () => {
     expect(posts.indexes?.[0]).toMatchObject({ name: "by_title", draftStatus: "both" });
   });
 
-  it("allows indexDraftStatus on a field's own index when versions.drafts: true", () => {
+  it("allows index.draftStatus on a field's own index when versions.drafts: true", () => {
     const posts = defineCollection({
       slug: "posts",
-      fields: { slug: text({ required: true, index: "by_slug", indexDraftStatus: true }) },
+      fields: { slug: text({ required: true, index: { name: "by_slug", draftStatus: true } }) },
       versions: { drafts: true },
     });
-    expect(posts.fields.slug?.indexDraftStatus).toBe(true);
+    expect(posts.fields.slug?.index).toEqual({ name: "by_slug", draftStatus: true });
   });
 });

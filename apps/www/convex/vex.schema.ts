@@ -48,7 +48,12 @@ export const pages = defineTable({
           heading: v.optional(v.string()),
           subheading: v.optional(v.string()),
           items: v.array(
-            v.object({ value: v.string(), label: v.string(), description: v.optional(v.string()) })
+            v.object({
+              id: v.optional(v.string()),
+              value: v.string(),
+              label: v.string(),
+              description: v.optional(v.string()),
+            })
           ),
         }),
         v.object({
@@ -58,7 +63,12 @@ export const pages = defineTable({
           heading: v.string(),
           subheading: v.optional(v.string()),
           features: v.array(
-            v.object({ title: v.string(), description: v.string(), icon: v.optional(v.string()) })
+            v.object({
+              id: v.optional(v.string()),
+              title: v.string(),
+              description: v.string(),
+              icon: v.optional(v.string()),
+            })
           ),
         }),
         v.object({
@@ -69,6 +79,7 @@ export const pages = defineTable({
           subheading: v.optional(v.string()),
           panes: v.array(
             v.object({
+              id: v.optional(v.string()),
               label: v.string(),
               filename: v.optional(v.string()),
               language: v.optional(
@@ -90,7 +101,13 @@ export const pages = defineTable({
           heading: v.string(),
           body: v.string(),
           bullets: v.optional(
-            v.array(v.object({ icon: v.optional(v.string()), text: v.string() }))
+            v.array(
+              v.object({
+                id: v.optional(v.string()),
+                icon: v.optional(v.string()),
+                text: v.string(),
+              })
+            )
           ),
           media: v.optional(
             v.array(v.union(v.literal("code"), v.literal("image"), v.literal("none")))
@@ -112,7 +129,12 @@ export const pages = defineTable({
           heading: v.string(),
           subheading: v.optional(v.string()),
           steps: v.array(
-            v.object({ icon: v.optional(v.string()), title: v.string(), description: v.string() })
+            v.object({
+              id: v.optional(v.string()),
+              icon: v.optional(v.string()),
+              title: v.string(),
+              description: v.string(),
+            })
           ),
         }),
         v.object({
@@ -123,6 +145,7 @@ export const pages = defineTable({
           subheading: v.optional(v.string()),
           items: v.array(
             v.object({
+              id: v.optional(v.string()),
               feature: v.string(),
               description: v.optional(v.string()),
               status: v.array(
@@ -144,7 +167,9 @@ export const pages = defineTable({
           heading: v.string(),
           subheading: v.optional(v.string()),
           supportLink: v.optional(v.string()),
-          items: v.array(v.object({ question: v.string(), answer: v.string() })),
+          items: v.array(
+            v.object({ id: v.optional(v.string()), question: v.string(), answer: v.string() })
+          ),
         }),
         v.object({
           blockType: v.literal("cta"),
@@ -152,7 +177,9 @@ export const pages = defineTable({
           id: v.string(),
           heading: v.string(),
           subheading: v.optional(v.string()),
-          actions: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
+          actions: v.optional(
+            v.array(v.object({ id: v.optional(v.string()), label: v.string(), href: v.string() }))
+          ),
         })
       )
     )
@@ -164,6 +191,7 @@ export const pages = defineTable({
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   vex_publishedAt: v.optional(v.number()),
   vex_publishedId: v.optional(v.id("pages")),
+  vex_activeVersion: v.optional(v.number()),
 })
   .index("by_slug", ["slug"])
   .index("by_status", ["vex_status"])
@@ -180,10 +208,13 @@ export const headers = defineTable({
         logoText: v.optional(v.string()),
         logoImage: v.optional(v.array(v.id("images"))),
         logoHref: v.optional(v.string()),
-        menuItems: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
+        menuItems: v.optional(
+          v.array(v.object({ id: v.optional(v.string()), label: v.string(), href: v.string() }))
+        ),
         actionButtons: v.optional(
           v.array(
             v.object({
+              id: v.optional(v.string()),
               label: v.string(),
               href: v.string(),
               variant: v.optional(
@@ -209,10 +240,17 @@ export const footers = defineTable({
         logoText: v.optional(v.string()),
         logoImage: v.optional(v.array(v.id("images"))),
         copyright: v.optional(v.string()),
-        links: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
+        links: v.optional(
+          v.array(v.object({ id: v.optional(v.string()), label: v.string(), href: v.string() }))
+        ),
         socialLinks: v.optional(
           v.array(
-            v.object({ platform: v.string(), href: v.string(), icon: v.optional(v.string()) })
+            v.object({
+              id: v.optional(v.string()),
+              platform: v.string(),
+              href: v.string(),
+              icon: v.optional(v.string()),
+            })
           )
         ),
       })

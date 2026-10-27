@@ -1,7 +1,7 @@
-import type { ComponentHKT, ApplyComponent } from "../fields/baseTypes";
+import type { ComponentHKT, ApplyComponent } from "../components/types";
 import type { RichTextDocument } from "../fields/richtext/types";
 import type { MediaCollectionSlug } from "../types/generated";
-import type { VexMediaDocument } from "../api/convex";
+import type { VexMediaDocument } from "../media";
 
 /**
  * Props the react Input passes to a richtext editor adapter's

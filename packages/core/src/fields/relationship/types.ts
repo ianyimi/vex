@@ -1,9 +1,7 @@
 import { ADMIN_FIELDS } from "../constants";
 import {
-  ApplyComponent,
   BaseField,
   BaseFieldInput,
-  ComponentHKT,
   FieldAdminConfig,
   FieldAdminConfigInput,
   FieldLimit,
@@ -11,6 +9,7 @@ import {
   FieldSlotComponentsInput,
   FieldValidateProps,
 } from "../baseTypes";
+import { ApplyComponent, ComponentHKT } from "../../components/types";
 import { CollectionSlug , VexResourceSlug } from "../../types/generated";
 import { RelationshipPreviewProps } from "../../collections";
 
@@ -103,10 +102,11 @@ export interface RelationshipFieldAdminConfig<
  */
 export interface RelationshipFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /** Target collection reference. The slug must match a registered collection in `defineConfig`. */
   collection: {
     /** The slug of the collection this field links to. Must be a registered collection slug. */

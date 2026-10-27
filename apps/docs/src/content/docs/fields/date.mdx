@@ -26,7 +26,7 @@ hour, minute, and second selectors.
 | `time.timePicker.hour` | `boolean` | `true` | Show the hour selector in the time picker. |
 | `time.timePicker.minute` | `boolean` | `true` | Show the minute selector in the time picker. |
 | `time.timePicker.second` | `boolean` | `false` | Show the seconds selector in the time picker. |
-| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `index` | `string \| { name, additionalFields?, draftStatus? }` | — | Convex index name, or the object form for a [compound index](/fields/text/#compound-indexes). |
 | `description` | `string` | — | Helper text shown below the field input. |
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
 | `admin.readOnly` | `boolean` | `false` | Renders the picker as non-interactive. |

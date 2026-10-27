@@ -2,8 +2,8 @@ import { convexTest } from "convex-test";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { describe, expect, test } from "vitest";
 
-import * as _generatedApi from "../api/test/convex/_generated/api";
-import schema from "../api/test/convex/schema";
+import * as _generatedApi from "../db/test/convex/_generated/api";
+import schema from "../db/test/convex/schema";
 import { assertUniqueAmongPublished } from "./assertUniqueAmongPublished";
 
 const modules: Record<string, () => Promise<unknown>> = {
@@ -26,7 +26,7 @@ describe("assertUniqueAmongPublished", () => {
           // caller (a field's `validate()`) already has that fixed type;
           // this test's `ctx` is convex-test's own generic model, so the
           // same `as never` this repo's other fixed-ctx tests already use
-          // (see `resolveUrl.server.test.ts`, `callbackApi.test.ts`).
+          // (see `livePreview/api/resolve/server.test.ts`, `callbackApi.test.ts`).
           ctx: ctx as never,
           collection: "posts",
           indexName: "by_slug",

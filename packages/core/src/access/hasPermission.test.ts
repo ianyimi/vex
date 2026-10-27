@@ -1016,7 +1016,7 @@ describe("hasPermission — anonRole fallback", () => {
 /**
  * Constraints-only fixture: a query-shaped `read` rule declared purely as
  * `{ constraints }`, no `filter` — proves `hasPermission` derives the
- * per-document check from the SAME declaration `resolveAccessIndex` compiles
+ * per-document check from the SAME declaration `resolveQueryIndex` compiles
  * to a range from (design invariant: one condition, two consumers).
  */
 const constraintsOnlyAccess = defineAccess({
@@ -1028,7 +1028,7 @@ const constraintsOnlyAccess = defineAccess({
     contributor: {
       articles: {
         read: {
-          constraints: ({ q }) => q.withIndex("by_status", (iq) => iq.eq("status", "published")),
+          withIndex: { name: "by_status", range: (iq) => iq.eq("status", "published") },
         },
       },
     },
@@ -1186,14 +1186,14 @@ const scopeMatrixAccess = defineAccess({
     constraintsOnly: {
       articles: {
         read: {
-          constraints: ({ q }) => q.withIndex("by_status", (iq) => iq.eq("status", "published")),
+          withIndex: { name: "by_status", range: (iq) => iq.eq("status", "published") },
         },
       },
     },
     constraintsWithFilter: {
       articles: {
         read: {
-          constraints: ({ q }) => q.withIndex("by_status", (iq) => iq.eq("status", "published")),
+          withIndex: { name: "by_status", range: (iq) => iq.eq("status", "published") },
           filter: ({ data }) => (data as { slug?: string }).slug !== "hidden",
         },
       },
@@ -1339,7 +1339,7 @@ describe("hasPermission — scope × check-form matrix", () => {
     ).toBe(false);
   });
 
-  it("constraints + a separate top-level filter: no data still resolves via the outer scope, ignoring the filter half", () => {
+  it("withIndex + where + a separate top-level filter: no data still resolves via the outer scope, ignoring the filter half", () => {
     expect(
       hasPermission({
         access: scopeMatrixAccess,
@@ -1363,10 +1363,10 @@ describe("hasPermission — scope × check-form matrix", () => {
 
 /**
  * Deep constraint-object fixture: isolates the index-half, the filter-half
- * (both `q.withIndex(...).filter(...)` chained onto ONE condition, and `q.filter(...)`
+ * (both `withIndex` + `where` chained onto ONE condition, and `where` alone
  * with no index at all on a non-query-shaped action), a boolean short-circuit from
- * the `constraints` callback, and nested `and`/`or`/`not` per-document interpretation.
- * `create`/`update`/`delete` are NOT query-shaped (DD 14), so their `q` has no
+ * the `withIndex` / `where` callback, and nested `and`/`or`/`not` per-document interpretation.
+ * `create`/`update`/`delete` are NOT query-shaped (DD 14), so their rule has no
  * `withIndex` — only `read` gets the full query builder.
  */
 const constraintFormsAccess = defineAccess({
@@ -1385,10 +1385,8 @@ const constraintFormsAccess = defineAccess({
     indexPlusInlineFilter: {
       articles: {
         read: {
-          constraints: ({ q }) =>
-            q
-              .withIndex("by_status", (iq) => iq.eq("status", "published"))
-              .filter((f) => f.neq("slug", "hidden")),
+          withIndex: { name: "by_status", range: (iq) => iq.eq("status", "published") },
+          where: ({ q }) => q.neq("slug", "hidden"),
         },
       },
     },
@@ -1396,19 +1394,19 @@ const constraintFormsAccess = defineAccess({
     predicateOnly: {
       articles: {
         create: {
-          constraints: ({ q }) => q.filter((f) => f.eq("authorId", "u1")),
+          where: ({ q }) => q.eq("authorId", "u1"),
         },
       },
     },
-    // The constraints callback short-circuits to a flat boolean for one caller
+    // The `where` callback short-circuits to a flat boolean for one caller
     // shape and a predicate condition for another.
     booleanShortCircuit: {
       articles: {
         delete: {
-          constraints: ({ user, q }) => {
+          where: ({ user, q }) => {
             const caller = user as { isAdmin?: boolean };
             if (caller.isAdmin) return true;
-            return q.filter((f) => f.eq("status", "published"));
+            return q.eq("status", "published");
           },
         },
       },
@@ -1416,17 +1414,15 @@ const constraintFormsAccess = defineAccess({
     combinators: {
       articles: {
         update: {
-          constraints: ({ q }) =>
-            q.filter((f) =>
-              f.and(f.eq("status", "published"), f.or(f.eq("slug", "a"), f.eq("slug", "b"))),
-            ),
+          where: ({ q }) =>
+            q.and(q.eq("status", "published"), q.or(q.eq("slug", "a"), q.eq("slug", "b"))),
         },
       },
     },
     notCombinator: {
       articles: {
         update: {
-          constraints: ({ q }) => q.filter((f) => f.not(f.eq("status", "archived"))),
+          where: ({ q }) => q.not(q.eq("status", "archived")),
         },
       },
     },
@@ -1486,7 +1482,7 @@ describe("hasPermission — constraint-object forms: index half, filter half, bo
     ).toBe(false);
   });
 
-  it("a boolean short-circuit from the constraints callback bypasses scope entirely — never throws, never needs data", () => {
+  it("a boolean short-circuit from the where callback bypasses scope entirely — never throws, never needs data", () => {
     const admin = { _id: "u1", roles: "booleanShortCircuit", isAdmin: true };
     expect(() =>
       hasPermission({
@@ -1649,7 +1645,7 @@ describe("hasPermission — multi-role resolution edge cases", () => {
   });
 });
 
-/** Fixture: the constraints callback throws for a specific caller shape at
+/** Fixture: the `withIndex` callback throws for a specific caller shape at
  * REQUEST time, not at config time — config-time validation (`defineAccess`)
  * runs it with `user: {}`, which never sets `forceThrow`. */
 const throwingConstraintAccess = defineAccess({
@@ -1661,12 +1657,12 @@ const throwingConstraintAccess = defineAccess({
     contributor: {
       articles: {
         read: {
-          constraints: ({ user, q }) => {
+          withIndex: ({ user }) => {
             const caller = user as { forceThrow?: boolean };
             if (caller.forceThrow) {
-              throw new RangeError("boom from constraints callback");
+              throw new RangeError("boom from withIndex callback");
             }
-            return q.withIndex("by_status", (iq) => iq.eq("status", "published"));
+            return { name: "by_status", range: (iq) => iq.eq("status", "published") };
           },
         },
       },
@@ -1684,7 +1680,7 @@ describe("hasPermission — constrained check throwing at request time", () => {
         action: "read",
         data: { status: "published", slug: "x" } as never,
       }),
-    ).toThrow("boom from constraints callback");
+    ).toThrow("boom from withIndex callback");
   });
 
   it("does not throw for a caller that never trips the callback's own throw condition", () => {
@@ -2176,7 +2172,7 @@ describe("hasPermission — the retained allow posture", () => {
 /**
  * Production regression (vexcms.dev, 2026-09-02): the admin panel 500'd with
  * `TypeError: Cannot read properties of undefined (reading 'email')` thrown from
- * inside a `constraints` callback. `anonRole` resolves a sessionless caller to a
+ * inside a `where` callback. `anonRole` resolves a sessionless caller to a
  * real role, and that role's rule scoped rows to `user.email` — but no user
  * existed, and this call site passed `props.user` straight through.
  */
@@ -2199,14 +2195,14 @@ const anonConstraintAccess = defineAccess({
         [WILDCARD_KEY]: false,
         // Scoped to the caller — meaningless without one.
         read: {
-          constraints: ({ user, q }) => {
+          where: ({ user, q }) => {
             const caller = user as { email?: string };
-            return q.filter((fq) => fq.eq("email", caller.email));
+            return q.eq("email", caller.email);
           },
         },
         // Independent of the caller — the read-only `anonRole` case.
         update: {
-          constraints: ({ q }) => q.filter((fq) => fq.eq("status", "published")),
+          where: ({ q }) => q.eq("status", "published"),
         },
       },
     },

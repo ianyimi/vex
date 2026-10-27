@@ -2,8 +2,8 @@ import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "conv
 import type { GenericId } from "convex/values";
 
 import type { CollectionSlug } from "../types/generated";
-import { VERSION_SYSTEM_FIELDS } from "./constants";
-import { VexVersionDocument } from "../api/convex";
+import { VERSION_SYSTEM_FIELDS, type VexVersionStatus } from "./constants";
+import { VexVersionDocument } from "../documents/types";
 
 /** One immutable history row as stored in `vex_versions`. */
 export interface VexVersion {
@@ -12,7 +12,7 @@ export interface VexVersion {
   collection: string;
   documentId: string;
   version: number;
-  status: "draft" | "published";
+  status: VexVersionStatus;
   snapshot: unknown;
   createdBy?: string;
   parentVersion?: number;
@@ -56,7 +56,7 @@ export async function createVersion<DataModel extends GenericDataModel>(props: {
   ctx: GenericMutationCtx<DataModel>;
   collection: CollectionSlug;
   documentId: string;
-  status: "draft" | "published";
+  status: VexVersionStatus;
   snapshot: Record<string, unknown>;
   createdBy?: string;
   parentVersion?: number;

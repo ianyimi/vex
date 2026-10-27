@@ -256,10 +256,10 @@
   --chart-5: oklch(45%   0     0);
 
   /* Shadows — flat in dark; only overlays use --shadow-pop */
-  --shadow-xs-val:  none;
-  --shadow-sm-val:  none;
-  --shadow-md-val:  none;
-  --shadow-lg-val:  none;
+  --shadow-xs-val:  0 0 #0000;
+  --shadow-sm-val:  0 0 #0000;
+  --shadow-md-val:  0 0 #0000;
+  --shadow-lg-val:  0 0 #0000;
   --shadow-pop-val: 0 18px 40px rgba(0, 0, 0, 0.55),
                     0 1px 0 var(--border) inset;
 }

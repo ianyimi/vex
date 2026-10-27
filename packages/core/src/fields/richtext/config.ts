@@ -49,9 +49,10 @@ import type { RichTextFieldInput, RichTextField } from "./types";
  */
 export function richtext<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 >(
-  options?: RichTextFieldInput<TCollectionSlug, TFieldMeta>,
+  options?: RichTextFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): RichTextField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.richtext.type,

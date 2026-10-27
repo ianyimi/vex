@@ -25,6 +25,7 @@ import {
 
 import { TABLE_SLUG_FIELDS, TABLE_SLUG_IMAGES, TABLE_SLUG_USERS } from "~/db/constants";
 import { FieldsWordCountCell, FieldsWordCountField } from "~/vexcms/components/FieldsWordCount";
+import { FieldsTitleInputOverride } from "~/vexcms/components/FieldsTitleInput";
 
 /**
  * Nested block used inside `content` below — demonstrates a block whose own
@@ -182,12 +183,18 @@ export const fields = defineCollection({
       description: "Demonstrates json() — an arbitrary settings blob.",
     }),
 
-    // ── text() — min length plus a tuple max with a custom message.
+    // ── text() — min length plus a tuple max with a custom message. Also
+    // demonstrates admin.components.Input overriding the control in place.
     title: text({
       label: "Title",
       min: 3,
       max: [60, "Titles max out at 60 characters."],
       description: "Demonstrates text() with min and a tuple max.",
+      admin: {
+        components: {
+          Input: [{ id: "apps-test.title-input-override", component: FieldsTitleInputOverride }],
+        },
+      },
     }),
 
     // ── number() — tuple min and max, each with a custom message.

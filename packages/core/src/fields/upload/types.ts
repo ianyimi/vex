@@ -9,8 +9,9 @@ import { BaseFieldMeta } from "../types";
  */
 export interface UploadFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /**
    * The slug of the media collection that stores uploaded files for this field.
    *

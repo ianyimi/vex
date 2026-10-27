@@ -73,8 +73,9 @@ export interface EmailFieldAdminConfig<
  */
 export interface EmailFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /** Admin UI configuration for this field. */
   admin?: EmailFieldAdminInput<TCollectionSlug>;
   /**
@@ -101,7 +102,7 @@ export interface EmailFieldInput<
  * Resolved configuration for an `email()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<EmailField>` and `CellComponentProps<EmailField>`
+ * `fieldDef` in `FieldComponentProps<EmailField>` and `CellComponentProps<EmailField>`
  * is this type.
  *
  * @see {@link EmailFieldInput} for the user-facing input type

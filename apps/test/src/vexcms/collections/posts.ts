@@ -1,6 +1,8 @@
-import { defineCollection, relationship, richtext, text } from "@vexcms/core"
+import { BUILTIN_CONTRIBUTION_IDS, defineCollection, relationship, richtext, text } from "@vexcms/core"
 
 import { TABLE_SLUG_ARTICLES, TABLE_SLUG_FIELDS, TABLE_SLUG_IMAGES, TABLE_SLUG_POSTS } from "~/db/constants"
+import { EditorialChecklist } from "~/vexcms/components/EditorialChecklist";
+import { SaveWithAnalytics } from "~/vexcms/components/SaveWithAnalytics";
 
 /**
  * Draft/publish test surface for the versioning-drafts spec.
@@ -30,6 +32,18 @@ export const posts = defineCollection({
     livePreview: {
       url: (post) => {
         return `/posts/${post.slug}`;
+      },
+    },
+    components: {
+      edit: {
+        beforeFields: [{ id: "editorial.checklist", component: EditorialChecklist }],
+        header: {
+          overrides: {
+            [BUILTIN_CONTRIBUTION_IDS.edit.save]: [
+              { id: "editorial.saveAnalytics", component: SaveWithAnalytics },
+            ],
+          },
+        },
       },
     },
   },

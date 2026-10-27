@@ -14,8 +14,8 @@ available (advisory) on the client for UI gating.
 - `resources` lists the collections/globals contributing **subjects** to the matrix; each
   gets the CRUD actions (`create`, `read`, `update`, `delete`) automatically, plus draft
   actions when the resource declares `versions.drafts: true`.
-- `permissions` is `role → subject → check`. A check is `{ constraints, filter? }` (the
-  recommended default — see below), a plain callback, or a static `boolean`.
+- `permissions` is `role → subject → check`. A check is `{ withIndex?, where?, filter? }`
+  (the recommended default — see below), a plain callback, or a static `boolean`.
 - **Deny-by-default, with no config knob.** An undeclared role/subject/action combination
   always resolves to deny — there is no `defaultPermissionMode` input. An allow-everything
   posture is written explicitly as a role-level wildcard: `admin: { "*": true }`.
@@ -70,63 +70,108 @@ export default defineConfig({
 
 Three forms, in the order you should reach for them.
 
-### 1. `{ constraints, filter? }` — reach for this first
+### 1. `withIndex` / `where` — reach for this first
 
-Whenever a rule can be expressed as field comparisons, write it as `constraints`. The
-comparison rides directly into the Convex query the [Local API](/guides/local-api/) issues
-instead of pulling every row into JS and discarding what fails a check: on `read`/
-`readDrafts` it compiles to `.withIndex(...)` when the field is indexed, or `.filter(...)`
-on the query when it isn't; on `create`/`update`/`delete` — which authorize one document,
-not a range — it compiles to a per-document predicate. Either way the narrowing happens
+Whenever a rule can be expressed as field comparisons, write it as `withIndex` and/or
+`where`. The comparison rides directly into the Convex query the [Local API](/guides/local-api/)
+issues instead of pulling every row into JS and discarding what fails a check: on `read`/
+`readDrafts`, `withIndex` narrows through a declared index (Convex-specific, query actions
+only) — the same `{ name, range }` object `find` takes, or a function of the caller
+returning one — and `where` is the portable predicate, the same one `find` and `search`
+take; on `create`/`update`/`delete` — which authorize one document, not a range — only
+`where` applies, compiled to a per-document predicate. Either way the narrowing happens
 inside the database query the Local API runs, not as a second pass over already-fetched
-documents.
+documents. `filter` remains the per-document escape hatch for checks neither can express.
+Any combination works; `withIndex` alone (with a compound index if the rule spans two
+fields) and `withIndex` + `filter` are the usual shapes. Each property may return `true`
+(no restriction from this half) or `false` (deny); the static forms always narrow.
 
-Read, pushed through a declared index — `q` is positional and checks field order against
-the index at compile time:
-
-```ts
-posts: {
-  read: {
-    constraints: ({ user, q }) =>
-      q.withIndex("by_authorId", (ix) => ix.eq("authorId", user._id)),
-  },
-}
-```
-
-Read, unindexed — still compiles into the query's own `.filter()`, not a JS scan-and-discard:
+Read, pushed through a declared index — `ix` checks field order against the index at
+compile time:
 
 ```ts
 posts: {
   read: {
-    constraints: ({ q }) => q.filter((f) => f.eq("visibility", "public")),
+    withIndex: ({ user }) => ({ name: "by_authorId", range: (ix) => ix.eq("authorId", user._id) }),
   },
 }
 ```
 
-Mutations get the same `constraints` shape, minus `withIndex` — there's no query to narrow
-for a single document, so the callback's `q` exposes only `.filter()`:
+Read, pushed through a declared index with no caller-dependent range — the static object
+form:
+
+```ts
+posts: {
+  read: {
+    withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") },
+  },
+}
+```
+
+Read, where no index range can express the rule — an `or` across two fields is not one
+range, so it is a `where`. It still compiles into the query's own `.filter()`, not a JS
+scan-and-discard:
+
+```ts
+posts: {
+  read: {
+    where: ({ user, q }) => q.or(q.eq("visibility", "public"), q.eq("authorId", user._id)),
+  },
+}
+```
+
+Both together — `withIndex` narrows to the caller's rows, then `where` applies what the
+range can't (a `neq` is never an index range):
+
+```ts
+posts: {
+  read: {
+    withIndex: ({ user }) => ({ name: "by_authorId", range: (ix) => ix.eq("authorId", user._id) }),
+    where: ({ q }) => q.neq("status", "archived"),
+  },
+}
+```
+
+Mutations get the same `where` shape — there's no query to narrow for a single document, so
+only a per-document predicate applies:
 
 ```ts
 posts: {
   update: {
-    constraints: ({ user, q }) => q.filter((f) => f.eq("authorId", user._id)),
+    where: ({ user, q }) => q.eq("authorId", user._id),
   },
   delete: {
-    constraints: ({ user, q }) => q.filter((f) => f.eq("authorId", user._id)),
+    where: ({ user, q }) => q.eq("authorId", user._id),
+  },
+}
+```
+
+`where` additionally accepts a plain, JSON-serialisable node — the same filter as plain
+data, for a rule that needs to be loaded from config rather than written as a callback:
+
+```ts
+posts: {
+  read: {
+    where: {
+      or: [
+        { field: "visibility", op: "eq", value: "public" },
+        { field: "featured", op: "eq", value: true },
+      ],
+    },
   },
 }
 ```
 
 The outer object's `filter` property is a **separate, optional** per-document JS callback
-that augments `constraints` for whatever field comparisons can't express — quoting the
+that augments `withIndex`/`where` for whatever field comparisons can't express — quoting the
 type's own doc comment: "array membership, string operations, cross-table reads, all
 outside `FilterBuilder`'s surface, so they stay callbacks permanently." `filter` never
-substitutes for `constraints`; it only adds to it:
+substitutes for `withIndex`/`where`; it only adds to it:
 
 ```ts
 posts: {
   read: {
-    constraints: ({ q }) => q.filter((f) => f.gt("viewCount", 1000)),
+    withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") },
     filter: ({ data }) => data.tags.includes("featured"),
   },
 }
@@ -135,10 +180,10 @@ posts: {
 ### 2. A plain callback — the escape hatch
 
 Reach for a bare callback only when the rule genuinely can't be expressed as field
-comparisons — the cases `constraints`/`filter` can't reach, or a rule that needs to inspect
-`organization` or run arbitrary logic. `data` is the concrete document when the caller
-supplies one (edit views), or omitted for a quantified check (nav/list gating), in which
-case `scope` decides how to answer:
+comparisons — the cases `withIndex`/`where`/`filter` can't reach, or a rule that needs to
+inspect `organization` or run arbitrary logic. `data` is the concrete document when the
+caller supplies one (edit views), or omitted for a quantified check (nav/list gating), in
+which case `scope` decides how to answer:
 
 ```ts
 posts: {
@@ -164,7 +209,7 @@ permissions: {
 ## Field-level permissions
 
 Every check shape above resolves a whole document — a role can read or write `posts`, full
-stop. A filter callback (form 2 above, or the `filter` beside `constraints` in form 3) can
+stop. A filter callback (form 2 above, or the `filter` beside `withIndex`/`where` in form 1) can
 answer with a **field map** instead of a boolean, restricting the check to specific fields
 without any new config surface. `apps/www` uses exactly this to let an anonymous demo caller
 see most of a global's fields but change only one of them:
@@ -189,11 +234,12 @@ the resource entry, no second wiring point, no new `defineAccess` option.
 ### Why a map is only ever a callback's return value
 
 A field map is never written directly on an action — only returned from a callback, whether
-that callback is the bare form 2 spelling or `filter` beside `constraints` in form 3. That is
-what keeps it unambiguous: a document is free to declare fields named `constraints` or
-`filter`, because a value assigned directly to an action is always a check descriptor and a
-value a callback *returns* is always a field map. It is also why a map's values are plain
-booleans rather than nested checks — the callback already has `{ user, data, organization }`
+that callback is the bare form 2 spelling or `filter` beside `withIndex`/`where` in form 1.
+That is what keeps it unambiguous: a document is free to declare fields named `withIndex`,
+`where`, or `filter`, because a value assigned directly to an action is always a check
+descriptor and a value a callback *returns* is always a field map. It is also why a map's
+values are plain booleans rather than nested checks — the callback already has
+`{ user, data, organization }`
 in scope, so per-field logic is an ordinary boolean expression evaluated once, not a second
 permission system:
 
@@ -568,11 +614,11 @@ export const access = defineAccess({
 
 ## Gotchas
 
-- **`constraints` before `filter`, `filter` before a bare callback.** A field comparison
-  that a bare callback expresses as `({ data }) => data.visibility === "public"` reads every
-  matching row into JS just to throw most of them away; the same rule as `constraints`
-  compiles into the query itself. Reach for a callback only once `constraints`/`filter`
-  genuinely can't express the check.
+- **`withIndex`/`where` before `filter`, `filter` before a bare callback.** A field
+  comparison that a bare callback expresses as `({ data }) => data.visibility === "public"`
+  reads every matching row into JS just to throw most of them away; the same rule as
+  `withIndex`/`where` compiles into the query itself. Reach for a callback only once
+  `withIndex`/`where`/`filter` genuinely can't express the check.
 - **Deny-by-default has no override knob.** There is no `defaultPermissionMode` input field
   — express an allow-everything posture as a role-level `"*": true`, which is greppable
   per-role instead of an invisible global default.

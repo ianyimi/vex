@@ -1,6 +1,7 @@
+import { relationship as reactRelationship } from "@vexcms/react";
 import { tabs, text } from "@vexcms/core";
 
-import { TABLE_SLUG_FIELDS } from "~/db/constants";
+import { TABLE_SLUG_ARTICLES, TABLE_SLUG_FIELDS, TABLE_SLUG_USERS } from "~/db/constants";
 
 /**
  * Compile-time pin: a `tabs()` tab's `admin.condition` is typed against the
@@ -51,3 +52,17 @@ tabs<typeof TABLE_SLUG_FIELDS>({
     },
   ],
 });
+
+// ── field index: additionalFields is typed to the collection's other fields ──
+text<typeof TABLE_SLUG_ARTICLES, "slug">({ index: { name: "by_slug_status", additionalFields: ["status"] } });
+// @ts-expect-error — a field cannot list itself in its own index
+text<typeof TABLE_SLUG_ARTICLES, "slug">({ index: { name: "by_slug_x", additionalFields: ["slug"] } });
+// @ts-expect-error — `nope` is not a field of articles
+text<typeof TABLE_SLUG_ARTICLES, "slug">({ index: { name: "by_slug_x", additionalFields: ["nope"] } });
+// Without the generics, additionalFields is typed against the union of every
+// registered field key project-wide, not narrowed to one collection.
+text({ index: { name: "by_slug_x", additionalFields: ["slug"] } });
+
+// @ts-expect-error — `nope` is not a field of articles, through the React wrapper too
+reactRelationship<typeof TABLE_SLUG_ARTICLES, "authorId">({ collection: { slug: TABLE_SLUG_USERS }, index: { name: "by_author_x", additionalFields: ["nope"] } });
+

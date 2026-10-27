@@ -1,4 +1,3 @@
-import type { AccessConditionResult, AccessQueryBuilder } from "./constraintTypes";
 import type {
   AccessCheck,
   AccessDocFieldFor,
@@ -57,7 +56,8 @@ function indexNameFor<S extends string, F>(
   field: F & string,
 ): AccessIndexNameFor<S, F> {
   const declared = resource.fields[field]?.index;
-  if (declared) return declared as AccessIndexNameFor<S, F>;
+  const name = typeof declared === "string" ? declared : declared?.name;
+  if (name) return name as AccessIndexNameFor<S, F>;
   throw new Error(
     `[vexcms] "${field}" on "${resource.slug}" leads no declared index; ` +
       `an indexed access check cannot narrow on it.`,
@@ -97,8 +97,10 @@ export function indexedEqCheck<S extends string, F extends AccessIndexedFieldFor
 }): AccessCheck<S> {
   const index = indexNameFor(props.resource, props.field);
   return {
-    constraints: ({ q }: { q: AccessQueryBuilder<never, never> }): AccessConditionResult =>
-      q.withIndex(index, (ix) => (ix as unknown as RawRange).eq(props.field, props.value)),
+    withIndex: {
+      name: index,
+      range: (ix: never) => (ix as unknown as RawRange).eq(props.field, props.value),
+    },
   } as unknown as AccessCheck<S>;
 }
 
@@ -127,17 +129,11 @@ export function indexedOwnerCheck<S extends string, F extends AccessIndexedField
   const isRelationship =
     props.resource.fields[props.field]?.type === ADMIN_FIELDS.relationship.type;
   return {
-    constraints: ({
-      q,
-      user,
-    }: {
-      q: AccessQueryBuilder<never, never>;
-      user: AuthUserDocument;
-    }): AccessConditionResult => {
-      return q.withIndex(index, (ix) =>
+    withIndex: ({ user }: { user: AuthUserDocument }) => ({
+      name: index,
+      range: (ix: never) =>
         (ix as unknown as RawRange).eq(props.field, isRelationship ? [user._id] : user._id),
-      );
-    },
+    }),
   } as unknown as AccessCheck<S>;
 }
 

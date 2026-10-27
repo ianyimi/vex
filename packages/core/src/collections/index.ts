@@ -5,3 +5,4 @@ export * from "./utils";
 export * from "./validator";
 export * from "./interfaceGen";
 export * from "./hooks";
+export * from "./resolveCollectionIndexes";

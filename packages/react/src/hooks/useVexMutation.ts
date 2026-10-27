@@ -10,8 +10,8 @@ import {
 import type { DefaultFunctionArgs, FunctionReference } from "convex/server";
 import { type ExternalToast, toast } from "sonner";
 
-import { getVexErrorMessage } from "../lib/errors";
-import { useVexRevalidateConfig } from "../context/VexRevalidateContext";
+import { getVexErrorMessage } from "../utils/errors";
+import { useVexRevalidateConfig } from "../revalidate/VexRevalidateContext";
 
 /**
  * Props for {@link useVexMutation}.
@@ -33,10 +33,14 @@ export interface UseVexMutationProps<TArgs extends DefaultFunctionArgs, TResult>
   mutationFn: FunctionReference<"mutation", "public", TArgs, TResult>;
   /** Which write this is — echoed to the endpoint alongside `collection`. */
   operation: VexMutationOperation;
-  /** Config for sonner toast on error when this mutation is called. */
-  errorToast?: ExternalToast & {
-    message?: string | React.ReactNode;
-  };
+  /**
+   * Config for sonner toast on error when this mutation is called. `false`
+   * suppresses the toast entirely — for a caller that surfaces the error
+   * itself (e.g. a field-level error on a form the user is still looking
+   * at, or a fallback UI shown instead). Omitted/`undefined` falls back to
+   * a generic `"Request failed"` toast.
+   */
+  errorToast?: false | (ExternalToast & { message?: string | React.ReactNode });
 }
 
 /**
@@ -103,6 +107,7 @@ export function useVexMutation<TArgs extends DefaultFunctionArgs, TResult>(
   return useMutation<TResult, Error, TArgs>({
     mutationFn,
     onError: (error) => {
+      if (props.errorToast === false) return;
       if (props.errorToast) {
         const { message, description, position, ...data } = props.errorToast;
         toast.error(message ?? "Request failed", {

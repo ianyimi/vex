@@ -9,6 +9,9 @@ import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 
+import { useNextNavigationBlocker } from "./navigation/useNextNavigationBlocker";
+import { useNextNavigate } from "./navigation/useNextNavigate";
+
 /**
  * Client leaf for the Next.js admin layout.
  *
@@ -41,18 +44,25 @@ export function NextAdminLayoutClient(props: {
   user?: AdminUser;
 }) {
   const pathname = usePathname();
-  // pathname: "/admin", "/admin/posts", "/admin/posts/123"
-  // Split on "/" and take the segment after "admin"
-  const segments = pathname.split("/").filter(Boolean);
-  const activeSlug = segments[1]; // undefined on /admin, "posts" on /admin/posts
-  const activeDocID = segments[2];
+  // pathname: "/admin", "/admin/collections/posts[/<id>]", "/admin/globals[/<slug>]"
+  // Split on "/" and read the segments after "admin". Collections report their
+  // slug + document id; globals keep the "globals" section as the active slug
+  // and the global's slug as the doc id (the sidebar/top nav contract).
+  const [, section, slug, documentId] = pathname.split("/").filter(Boolean);
+  const activeSlug = section === "collections" ? slug : section;
+  const activeDocID = section === "collections" ? documentId : slug;
 
   return (
     <NuqsAdapter>
       <AdminLayout
         activeDocID={activeDocID}
         activeSlug={activeSlug}
-        components={{ Link: NextLink, Image: NextImage }}
+        components={{
+          Link: NextLink,
+          Image: NextImage,
+          navigationBlocker: { useBlocker: useNextNavigationBlocker },
+          useNavigate: useNextNavigate,
+        }}
         organization={props.organization}
         pathname={pathname}
         sidebarOpen={props.sidebarOpen}

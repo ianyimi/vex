@@ -10,14 +10,32 @@ pnpm add @vexcms/react@alpha
 
 ## Field Components
 
-`@vexcms/react` currently exports input/cell components for the `text` field type:
+`@vexcms/react` exports an admin component (`<Type>FieldAdmin`) and a list-view cell
+(`<Type>FieldCell`) for each data field type:
 
-| Component | Field Type |
+| Components | Field Type |
 |-----------|-----------|
-| `TextFieldInput` | `text` |
-| `TextFieldCell` | `text` |
+| `TextFieldAdmin` / `TextFieldCell` | `text` |
+| `EmailFieldAdmin` / `EmailFieldCell` | `email` |
+| `TextareaFieldAdmin` / `TextareaFieldCell` | `textarea` |
+| `JsonFieldAdmin` / `JsonFieldCell` | `json` |
+| `UrlFieldAdmin` / `UrlFieldCell` | `url` |
+| `NumberFieldAdmin` / `NumberFieldCell` | `number` |
+| `CheckboxFieldAdmin` / `CheckboxFieldCell` | `checkbox` |
+| `SelectFieldAdmin` / `SelectFieldCell` | `select` |
+| `DateFieldAdmin` / `DateFieldCell` | `date` |
+| `ColorFieldAdmin` / `ColorFieldCell` | `color` |
+| `ArrayFieldAdmin` / `ArrayFieldCell` | `array` |
+| `BlocksFieldAdmin` / `BlocksFieldCell` | `blocks` |
+| `GroupFieldAdmin` / `GroupFieldCell` | `group` |
+| `RelationshipFieldAdmin` / `RelationshipFieldCell` | `relationship` |
+| `UploadFieldAdmin` / `UploadFieldCell` | `upload` |
+| `RichTextFieldAdmin` / `RichTextFieldCell` | `richtext` |
 
-Input/cell components for the other field types (`url`, `number`, `checkbox`, `select`, `date`, `color`, `email`, `textarea`, `json`, `upload`, `relationship`, `group`, `array`, `blocks`, `richtext`, `tabs`, `collapsible`, `row`, `ui`) exist internally and power the built-in admin panel views (see below), but are not yet exported from the package root.
+Layout fields (`tabs`, `collapsible`, `row`, `ui`) render inside the built-in edit views and are
+not exported individually. The app form itself (`useAppForm`, `AppForm` and the per-type form
+field components) is the `@vexcms/react/form` entry; `useAppForm`/`AppForm` are also
+re-exported from the package root.
 
 ## Admin Panel Views
 

@@ -34,6 +34,11 @@
       "types": "./dist/client/index.d.ts",
       "import": "./dist/client/index.js"
     },
+    "./form": {
+      "source": "./src/forms/index.ts",
+      "types": "./dist/form/index.d.ts",
+      "import": "./dist/form/index.js"
+    },
     "./styles": "./styles.css",
     "./testing": {
       "source": "./src/testing/index.ts",

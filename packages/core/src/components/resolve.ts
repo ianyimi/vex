@@ -3,6 +3,8 @@ import {
   type ComponentContributionInput,
   type ComponentHKT,
   type ComponentOverrideInput,
+  type EditSlotConfigInput,
+  type EditSlotProps,
   type ResolvedComponentContribution,
   type ResolvedComponentOverride,
   type SlotId,
@@ -142,4 +144,71 @@ export function resolveComponentOverrides<
     seen.set(entry.id, index);
   });
   return [...overrides];
+}
+
+/**
+ * Resolves ONE flat `edit.*` slot id by merging built-ins, then the root-level config, then the
+ * collection/global-level config (decision 14 — G's existing root→resource merge model, reused
+ * for H's slots). Built-ins seed the additive list first so a project can hide one with
+ * `{ id: "vex.save", hidden: true }` at either level, and `order`/`before`/`after` reorder
+ * freely from there — only array position (among same-`order` entries) reflects the
+ * builtins-then-root-then-resource merge order.
+ *
+ * Override chains merge per built-in id: root's chain composes first (outermost, decision 15),
+ * the resource's chain's entries follow. Every resolved override key must name the id of a
+ * contribution that survived into the resolved `contributions` list — the renderer cannot wrap
+ * a built-in a hide directive already removed, or a plugin id that was never contributed here.
+ *
+ * @throws {VexComponentConfigError} From `resolveComponentContributions` on a genuine duplicate
+ *   contribution id; from `resolveComponentOverrides` on a duplicate override id within one
+ *   built-in's merged chain; or when an override key names an id absent from the resolved
+ *   `contributions` list (decision 16).
+ * @returns The slot's final ordered contributions, and its overrides keyed by built-in id.
+ */
+export function resolveEditSlot<TComponent extends ComponentHKT>(props: {
+  slotId: SlotId;
+  root?: EditSlotConfigInput<TComponent>;
+  resource?: EditSlotConfigInput<TComponent>;
+  builtins: ComponentContributionInput<TComponent, EditSlotProps>[];
+}): {
+  contributions: ResolvedComponentContribution<TComponent, EditSlotProps>[];
+  overrides: Record<string, ResolvedComponentOverride<TComponent, EditSlotProps>[]>;
+} {
+  const { slotId, root, resource, builtins } = props;
+
+  const mergedContributions = [
+    ...builtins,
+    ...(root?.contributions ?? []),
+    ...(resource?.contributions ?? []),
+  ];
+  const contributions = resolveComponentContributions<TComponent, EditSlotProps>({
+    slotId,
+    contributions: mergedContributions,
+  });
+  const contributionIds = new Set(contributions.map((c) => c.id));
+
+  const mergedOverrideKeys = new Set([
+    ...Object.keys(root?.overrides ?? {}),
+    ...Object.keys(resource?.overrides ?? {}),
+  ]);
+
+  const overrides: Record<string, ResolvedComponentOverride<TComponent, EditSlotProps>[]> = {};
+  for (const key of mergedOverrideKeys) {
+    const chain = [
+      ...(root?.overrides?.[key] ?? []),
+      ...(resource?.overrides?.[key] ?? []),
+    ];
+    const resolvedChain = resolveComponentOverrides<TComponent, EditSlotProps>({
+      slotId,
+      overrides: chain,
+    });
+    if (!contributionIds.has(key)) {
+      throw new VexComponentConfigError(
+        `Slot "${slotId}": override targets unknown contribution id "${key}" — it was hidden or never contributed.`,
+      );
+    }
+    overrides[key] = resolvedChain;
+  }
+
+  return { contributions, overrides };
 }

@@ -74,9 +74,10 @@ export type ArrayType = string | number | boolean | object;
  */
 export interface ArrayFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TArrayType extends ArrayType = string,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -96,7 +97,7 @@ export interface ArrayFieldInput<
  * Resolved configuration for an `array()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<ArrayField<ArrayType>>` and
+ * `fieldDef` in `FieldComponentProps<ArrayField<ArrayType>>` and
  * `CellComponentProps<ArrayField<ArrayType>>` is this type.
  *
  * @see {@link ArrayFieldInput} for the user-facing input type

@@ -30,6 +30,7 @@ describe("richtext", () => {
       placeholder: "",
       components: {
         Input: [],
+        Field: [],
         Cell: [],
         Label: [],
         Description: [],

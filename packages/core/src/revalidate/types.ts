@@ -1,4 +1,4 @@
-import type { VexDocument } from "../api/convex";
+import type { VexDocument } from "../documents/types";
 import type { CollectionSlug } from "../types";
 
 /**
