@@ -2,13 +2,14 @@
 version: 1
 rules:
   - id: std-frontend
-    when: ["**/*.css", "apps/test/src/**", "apps/test/src/app/globals.css", "packages/next/src/**", "packages/next/src/**/*.tsx", "packages/react/src/**", "packages/react/src/components/**", "packages/react/src/components/fields/*/columnDef.tsx", "packages/react/src/components/ui/data-table/**", "packages/react/src/components/views/**", "packages/react/src/fields/**", "packages/react/src/forms/**", "packages/react/src/styles/**"]
+    when: ["**/*.css", "apps/*/src/**/*.tsx", "apps/test/src/**", "apps/test/src/app/globals.css", "packages/create-vexcms/templates/*/src/**/*.tsx", "packages/next/src/**", "packages/next/src/**/*.tsx", "packages/react/src/**", "packages/react/src/**/*.tsx", "packages/react/src/components/**", "packages/react/src/components/fields/*/columnDef.tsx", "packages/react/src/components/ui/data-table/**", "packages/react/src/components/views/**", "packages/react/src/fields/**", "packages/react/src/forms/**", "packages/react/src/styles/**"]
     inject:
       - docs/standards/frontend/README.md
       - docs/standards/frontend/components-and-shadcn.md
       - docs/standards/frontend/css-and-tokens.md
       - docs/standards/frontend/data-fetching.md
       - docs/standards/frontend/forms.md
+      - docs/standards/frontend/layout-stability.md
       - docs/standards/frontend/tables.md
   - id: std-backend
     when: ["apps/test/convex/**", "apps/test/convex/auth/**", "apps/test/convex/vex/media.ts", "apps/test/src/auth/**", "apps/test/src/vex.config.ts", "packages/better-auth/src/**", "packages/cli/src/**", "packages/core/src/api/**", "packages/core/src/media/**", "packages/file-storage-convex/src/**"]

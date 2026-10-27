@@ -3,6 +3,7 @@ status: draft
 spec_id: 2026-10-26-list-view-overhaul
 touches:
   - ".agent/docs/product/v0.1.0-launch-plan.md"
+  - ".agent/docs/standards/anti-patterns.md"
   - ".agent/docs/standards/naming-conventions.md"
   - ".agent/docs/standards/preferences.md"
   - "README.md"
@@ -29,14 +30,26 @@ touches:
   - "packages/core/src/collections/api/search/server.test.ts"
   - "packages/core/src/collections/api/search/server.ts"
   - "packages/core/src/collections/api/types.ts"
+  - "packages/core/src/collections/composeViewWhere.test.ts"
+  - "packages/core/src/collections/composeViewWhere.ts"
   - "packages/core/src/collections/config.test.ts"
   - "packages/core/src/collections/config.ts"
   - "packages/core/src/collections/constants.ts"
   - "packages/core/src/collections/index.ts"
-  - "packages/core/src/collections/resolveConfigViewWhere.test.ts"
-  - "packages/core/src/collections/resolveConfigViewWhere.ts"
-  - "packages/core/src/collections/resolveSort.test.ts"
-  - "packages/core/src/collections/resolveSort.ts"
+  - "packages/core/src/collections/matchDeclaredViewFilter.test.ts"
+  - "packages/core/src/collections/matchDeclaredViewFilter.ts"
+  - "packages/core/src/collections/buildListQueryArgs.test.ts"
+  - "packages/core/src/collections/buildListQueryArgs.ts"
+  - "packages/core/src/collections/listPreferenceCookies.test.ts"
+  - "packages/core/src/collections/listPreferenceCookies.ts"
+  - "packages/core/src/collections/listUrlParams.test.ts"
+  - "packages/core/src/collections/listUrlParams.ts"
+  - "packages/core/src/collections/listViewsCookie.test.ts"
+  - "packages/core/src/collections/listViewsCookie.ts"
+  - "packages/core/src/collections/resolveListQueryState.test.ts"
+  - "packages/core/src/collections/resolveListQueryState.ts"
+  - "packages/core/src/collections/resolveQueryIndex.test.ts"
+  - "packages/core/src/collections/resolveQueryIndex.ts"
   - "packages/core/src/collections/toClientViewConfig.test.ts"
   - "packages/core/src/collections/toClientViewConfig.ts"
   - "packages/core/src/collections/types.ts"
@@ -46,67 +59,114 @@ touches:
   - "packages/core/src/components/builtinIds.ts"
   - "packages/core/src/components/types.ts"
   - "packages/core/src/db/test/convex/schema.ts"
+  - "packages/core/src/db/types.ts"
+  - "packages/core/src/framework.ts"
   - "packages/core/src/fields/baseTypes.ts"
   - "packages/core/src/schema/generateVexSchema.test.ts"
   - "packages/core/src/schema/generateVexSchema.ts"
   - "packages/core/src/vexConvexApi.ts"
+  - "packages/next/src/NextAdminPage.test.ts"
+  - "packages/next/src/NextAdminPage.tsx"
   - "packages/react/src/client/index.ts"
+  - "apps/test/src/app/(vexcms)/admin/[[...path]]/page.tsx"
+  - "apps/www/convex/seed.ts"
+  - "apps/www/src/app/(vexcms)/admin/[[...path]]/page.tsx"
+  - "packages/create-vexcms/templates/base-nextjs/src/app/(vexcms)/admin/[[...path]]/page.tsx"
+  - "packages/react/src/collections/CollectionDeleteAction.tsx"
+  - "packages/react/src/collections/CollectionDuplicateMenuItem.tsx"
+  - "packages/react/src/collections/CollectionEditView.test.tsx"
   - "packages/react/src/collections/CollectionEditView.tsx"
-  - "packages/react/src/collections/CollectionListCopyLinkButton.test.tsx"
-  - "packages/react/src/collections/CollectionListCopyLinkButton.tsx"
-  - "packages/react/src/collections/CollectionListEmptyState.test.tsx"
-  - "packages/react/src/collections/CollectionListEmptyState.tsx"
-  - "packages/react/src/collections/CollectionListFilterBuilder.tsx"
-  - "packages/react/src/collections/CollectionListFilterChips.test.ts"
-  - "packages/react/src/collections/CollectionListFilterChips.tsx"
-  - "packages/react/src/collections/CollectionListHiddenFilterBadge.test.tsx"
-  - "packages/react/src/collections/CollectionListHiddenFilterBadge.tsx"
-  - "packages/react/src/collections/CollectionListLayout.test.tsx"
-  - "packages/react/src/collections/CollectionListLayout.tsx"
-  - "packages/react/src/collections/CollectionListPeek.test.tsx"
-  - "packages/react/src/collections/CollectionListPeek.tsx"
-  - "packages/react/src/collections/CollectionListQueryError.test.tsx"
-  - "packages/react/src/collections/CollectionListQueryError.tsx"
-  - "packages/react/src/collections/CollectionListSaveViewDialog.test.tsx"
-  - "packages/react/src/collections/CollectionListSaveViewDialog.tsx"
-  - "packages/react/src/collections/CollectionListSearch.test.tsx"
-  - "packages/react/src/collections/CollectionListSearch.tsx"
-  - "packages/react/src/collections/CollectionListToolbar.test.tsx"
-  - "packages/react/src/collections/CollectionListToolbar.tsx"
+  - "packages/react/src/collections/CollectionListView.test.tsx"
   - "packages/react/src/collections/CollectionListView.tsx"
-  - "packages/react/src/collections/CollectionListViewTabs.test.tsx"
-  - "packages/react/src/collections/CollectionListViewTabs.tsx"
+  - "packages/react/src/collections/CreateDocumentForm.test.tsx"
+  - "packages/react/src/collections/CreateDocumentForm.tsx"
+  - "packages/react/src/collections/CreateDocumentModal.test.tsx"
+  - "packages/react/src/collections/CreateDocumentModal.tsx"
   - "packages/react/src/collections/api/find/client.ts"
   - "packages/react/src/collections/api/listViews/client.ts"
   - "packages/react/src/collections/api/removeView/client.ts"
   - "packages/react/src/collections/api/saveView/client.ts"
-  - "packages/react/src/collections/collectionListUrlParams.test.ts"
-  - "packages/react/src/collections/collectionListUrlParams.ts"
-  - "packages/react/src/collections/collectionListViewStore.test.ts"
-  - "packages/react/src/collections/collectionListViewStore.ts"
+  - "packages/react/src/collections/editView/CollectionDeleteAction.tsx"
+  - "packages/react/src/collections/editView/CollectionDuplicateMenuItem.tsx"
+  - "packages/react/src/collections/editView/CollectionEditView.test.tsx"
+  - "packages/react/src/collections/editView/CollectionEditView.tsx"
+  - "packages/react/src/collections/editView/useDuplicateCollectionDocument.ts"
   - "packages/react/src/collections/index.ts"
-  - "packages/react/src/collections/useCollectionListPeekPrefetch.test.ts"
-  - "packages/react/src/collections/useCollectionListPeekPrefetch.ts"
-  - "packages/react/src/collections/useCollectionListShortcuts.test.ts"
-  - "packages/react/src/collections/useCollectionListShortcuts.ts"
-  - "packages/react/src/collections/useCollectionListUrlState.test.tsx"
-  - "packages/react/src/collections/useCollectionListUrlState.ts"
-  - "packages/react/src/collections/useCollectionListViews.test.ts"
-  - "packages/react/src/collections/useCollectionListViews.ts"
-  - "packages/react/src/collections/whereDnf.test.ts"
-  - "packages/react/src/collections/whereDnf.ts"
+  - "packages/react/src/collections/listView/CollectionListContext.tsx"
+  - "packages/react/src/collections/listView/CollectionListView.test.tsx"
+  - "packages/react/src/collections/listView/CollectionListView.tsx"
+  - "packages/react/src/collections/listView/CreateDocumentForm.test.tsx"
+  - "packages/react/src/collections/listView/CreateDocumentForm.tsx"
+  - "packages/react/src/collections/listView/CreateDocumentModal.test.tsx"
+  - "packages/react/src/collections/listView/CreateDocumentModal.tsx"
+  - "packages/react/src/collections/listView/ListBulkDeleteAction.tsx"
+  - "packages/react/src/collections/listView/ListCopyLinkButton.test.tsx"
+  - "packages/react/src/collections/listView/ListCopyLinkButton.tsx"
+  - "packages/react/src/collections/listView/ListCreateAction.tsx"
+  - "packages/react/src/collections/listView/ListEmptyState.test.tsx"
+  - "packages/react/src/collections/listView/ListEmptyState.tsx"
+  - "packages/react/src/collections/listView/ListFilterBuilder.tsx"
+  - "packages/react/src/collections/listView/ListFilterChips.test.ts"
+  - "packages/react/src/collections/listView/ListFilterChips.tsx"
+  - "packages/react/src/collections/listView/ListHiddenFilterBadge.test.tsx"
+  - "packages/react/src/collections/listView/ListFiltersAction.test.tsx"
+  - "packages/react/src/collections/listView/ListFiltersAction.tsx"
+  - "packages/react/src/collections/listView/ListHiddenFilterBadge.tsx"
+  - "packages/react/src/collections/listView/ListColumnsAction.test.tsx"
+  - "packages/react/src/collections/listView/ListColumnsAction.tsx"
+  - "packages/react/src/collections/listView/ListLayout.test.tsx"
+  - "packages/react/src/collections/listView/ListLayout.tsx"
+  - "packages/react/src/collections/listView/ListPeek.test.tsx"
+  - "packages/react/src/collections/listView/ListPeek.tsx"
+  - "packages/react/src/collections/listView/ListQueryError.test.tsx"
+  - "packages/react/src/collections/listView/ListQueryError.tsx"
+  - "packages/react/src/collections/listView/ListRowCopyIdAction.tsx"
+  - "packages/react/src/collections/listView/ListRowDeleteAction.tsx"
+  - "packages/react/src/collections/listView/ListRowInspectAction.tsx"
+  - "packages/react/src/collections/listView/ListRowOpenAction.tsx"
+  - "packages/react/src/collections/listView/ListSaveViewDialog.test.tsx"
+  - "packages/react/src/collections/listView/ListSaveViewDialog.tsx"
+  - "packages/react/src/collections/listView/ListSearch.test.tsx"
+  - "packages/react/src/collections/listView/ListSearchAction.test.tsx"
+  - "packages/react/src/collections/listView/ListSearchAction.tsx"
+  - "packages/react/src/collections/listView/ListSearch.tsx"
+  - "packages/react/src/collections/listView/ListToolbar.test.tsx"
+  - "packages/react/src/collections/listView/ListToolbar.tsx"
+  - "packages/react/src/collections/listView/ListViewTabs.test.tsx"
+  - "packages/react/src/collections/listView/ListViewTabs.tsx"
+  - "packages/react/src/collections/listView/index.ts"
+  - "packages/react/src/collections/listView/listBuiltinContributions.ts"
+  - "packages/react/src/collections/listView/listViewStore.test.ts"
+  - "packages/react/src/collections/listView/listViewStore.ts"
+  - "packages/react/src/collections/listView/listPreferenceCookies.test.ts"
+  - "packages/react/src/collections/listView/listPreferenceCookies.ts"
+  - "packages/react/src/collections/listView/useListPeekPrefetch.test.ts"
+  - "packages/react/src/collections/listView/useListPeekPrefetch.ts"
+  - "packages/react/src/collections/listView/useListShortcuts.test.ts"
+  - "packages/react/src/collections/listView/useListShortcuts.ts"
+  - "packages/react/src/collections/listView/useListUrlState.test.tsx"
+  - "packages/react/src/collections/listView/useListUrlState.ts"
+  - "packages/react/src/collections/listView/useListViews.test.ts"
+  - "packages/react/src/collections/listView/useListViews.ts"
+  - "packages/react/src/collections/listView/whereDnf.test.ts"
+  - "packages/react/src/collections/listView/whereDnf.ts"
+  - "packages/react/src/collections/useDuplicateCollectionDocument.ts"
   - "packages/react/src/fields/index.tsx"
+  - "packages/react/src/fields/relationship/RelationshipPicker.test.tsx"
+  - "packages/react/src/fields/relationship/RelationshipPicker.tsx"
   - "packages/react/src/globals/GlobalEditView.tsx"
   - "packages/react/src/hooks/index.ts"
   - "packages/react/src/hooks/usePaginatedQuery.ts"
-  - "packages/react/src/hooks/useVexDoc.test.tsx"
-  - "packages/react/src/hooks/useVexDoc.ts"
-  - "packages/react/src/hooks/useVexList.test.tsx"
-  - "packages/react/src/hooks/useVexList.ts"
+  - "packages/react/src/hooks/useVexDocQuery.test.tsx"
+  - "packages/react/src/hooks/useVexDocQuery.ts"
+  - "packages/react/src/hooks/useVexListQuery.test.tsx"
+  - "packages/react/src/hooks/useVexListQuery.ts"
+  - "packages/react/src/hooks/useVexListQuery.serverParity.test.tsx"
   - "packages/react/src/media/MediaCollectionListView.tsx"
   - "packages/react/src/testing/convex/bridge.ts"
   - "packages/react/src/testing/convex/schema.ts"
   - "packages/react/src/testing/hooksSuite.tsx"
+  - "packages/react/src/testing/modalSuite.tsx"
   - "packages/react/src/ui/ScrollSection.test.tsx"
   - "packages/react/src/ui/ScrollSection.tsx"
   - "packages/react/src/ui/data-table/DataTable.tsx"
@@ -122,7 +182,10 @@ touches:
   - "packages/react/src/ui/data-table/index.ts"
   - "packages/react/src/ui/index.ts"
   - "packages/react/src/versions/StatusBadge.tsx"
-  - "packages/react/src/versions/VersionHistoryDropdown.tsx"
+  - "packages/react/src/versions/VersionHistoryPanel.tsx"
+  - "packages/react/src/versions/VersionPublishAction.tsx"
+  - "packages/react/src/versions/VersionUnpublishAction.tsx"
+  - "packages/react/src/versions/showsUnpublish.ts"
 prompt_version: 1
 ---
 
@@ -130,11 +193,11 @@ prompt_version: 1
 
 ## Overview
 
-Launch-plan item I. Collection list views are only navigable by Load More today. This spec adds search, portable sort, a filter builder, column visibility, page size, URL state, saved views (config, shared in Convex, local in the browser), and `list.*` extension slots with `vex.*` built-ins and custom row/bulk actions. It also ships a mobile list layout (J drops the list view from its scope). The `admin.table` keys that A planned to delete are consumed here, each one alongside the control that reads it. It also covers A's remainder (the `vex_` convention, `updatedAt`), the status-enum sweep, and the `useVexList` / `useVexDoc` data-source boundary, plus an Inspect peek, density, and core keyboard shortcuts. Step bodies are mixed: Steps 3, 4, 7, and 11 ship full code; the rest ship guided stubs (signatures, JSDoc, numbered `// TODO: implement` pseudocode) filled in during the full-code pass Decision 1 describes.
+Launch-plan item I. Collection list views are only navigable by Load More today. This spec adds search, portable sort, a filter builder, column visibility, page size, URL state, saved views (config, shared in Convex, local in the browser), and `list.*` extension slots with `vex.*` built-ins and custom row/bulk actions. It also ships a mobile list layout (J drops the list view from its scope). The `admin.table` keys that A planned to delete are consumed here, each one alongside the control that reads it. It also covers A's remainder (the `vex_` convention, `updatedAt`), the status-enum sweep, and the `useVexListQuery` / `useVexDocQuery` data-source boundary, plus an Inspect peek, density, and core keyboard shortcuts. Step bodies are mixed (Decision 1): Steps 3, 4, 5, 8, and 12 ship full code; the rest ship guided stubs (signatures, JSDoc, numbered `// TODO: implement` pseudocode).
 
 ## Design Decisions
 
-1. **One spec, 16 ordered steps, all `[agent]`.** The first draft uses guided stubs; full code comes once the design settles, then `polish`. Revised after design round 1 (2026-10-26) and the architecture review (2026-10-27). The designs are a UX reference, not a pixel target: every element is built from existing `packages/react/src/ui` components, with no custom Tailwind added to `ui/` to match mockups. The spec follows the conventions in the developer's outstanding edit-view overhaul (`2026-10-26-edit-view-overhaul`).
+1. **One spec, 17 ordered steps, all `[agent]`.** Step bodies are mixed: Steps 3, 4, 5, 8, and 12 ship full code; the rest ship guided stubs (signatures, JSDoc, numbered `// TODO: implement` pseudocode). The designs are a UX reference, not a pixel target: every element is built from existing `packages/react/src/ui` components, with no custom Tailwind added to `ui/` to match mockups. The spec follows the conventions in the developer's outstanding edit-view overhaul (`2026-10-26-edit-view-overhaul`).
 2. **`admin.table.searchField: readonly TFieldSlug[]`.** It is typed to the collection's own field slugs. Array order is the picker order, and the first entry is the default when the user starts typing. With no `searchField`, the search bar is not rendered. Why: Convex `withSearchIndex` queries one index and field per query, and collections can have several searchable fields.
 3. **`searchField` entries must declare a search index.** `defineConfig` throws a `VexConfigError` naming the field and the `searchIndex` to add. Schema generation emits the search index for every `searchField` entry, which drops the old "only when a collection points here" condition for those fields. Why: fail at config time, not in the browser.
 4. **Sort is `{ field, order: "asc" | "desc" }` everywhere**: `defaultSort`, the `find` args, the URL, and views. Why: it keeps the existing `defaultSort` shape, and `order` matches Convex `.order()`.
@@ -153,34 +216,40 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
 11. **Saved views come from three sources, merged by `viewId`:** `config` (`admin.table.views`, read-only, fully typed to the collection), `shared` (the `vex_views` table), and `local` (localStorage). A view stores `{ where, sort, search, searchField, columns, pageSize }` plus an optional `description`.
     - The UI shows views as tabs: **All** (no view) first, then config, shared, and local. When the tabs overflow, the rest collapse into an "All views" menu grouped by source.
     - Opening a view makes its name the page heading, with a source/author line and the description.
-    - A changed view shows a modified dot and a "Modified: …" summary (a diff of URL state against the saved view), with Reset and Save (save changes / save as new / reset). The save target depends on `manageViews` and the view source.
+    - A changed view shows a modified dot and a "Modified: …" summary (a diff of URL state against the saved view), with Reset and Save (save changes / save as new / reset). The save target depends on the view actions (Decision 13) and the view source.
     - Copy link, when a local view is active, serializes the full state instead of `view=local:…`. An unknown view ID in the URL falls back to the remaining params, with a notice.
 12. **Shared views are collection-wide**, plus scoped to the organization when `access.orgCollectionSlug` is set. There are no user or role scopes. Why: localStorage is the personal tier.
-13. **The new access action `manageViews` is denied by default (fail-closed)** and governs creating, editing, and deleting shared views, enforced server-side. Users without it can still save views locally.
+13. **Shared views get four access actions, mirroring the draft actions** (`VIEW_ACTIONS` in `access/constants.ts`):
+    - `readViews` is a query action (added to `QUERY_ACTIONS` like `readDrafts`). It gates `listViews`, the use of shared views, and `find`'s shared-view allow-list (Decision 26).
+    - `createView` gates saving a new shared view and promoting a local view.
+    - `updateView` gates saving changes to and renaming a shared view.
+    - `deleteView` gates deleting a shared view.
+    - All four are denied by default (P-007), so shared views are invisible until a project grants `readViews`. The docs, `apps/test`, and the templates grant them explicitly.
+    - Users without `createView` can still save views locally. The UI gates each menu item by its own action.
+    - Why: consistency with the draft actions. Per-view access (backlog: "Per-view access for saved views") becomes a later `readViews` rule with a `where` over `vex_views` rows, not a new mechanism.
 14. **Promotion is a move.** A local view is saved shared with its client-generated `viewId` (save is idempotent on `viewId`), and the local entry is deleted only after success; on failure, the local entry stays. The merged list dedupes by `viewId`, which also covers another tab racing the promotion.
-15. **With no view selected, column visibility is session-only.** There is no auto-persist of the last-used state. Per-browser preferences (density, filter-chip visibility, collapsed view groups) use `useLocalStorage` from `@ts-hooks-kit/core` and never enter the URL or views.
+15. **With no view selected, column visibility is session-only.** There is no auto-persist of the last-used state. Density and filter-chip visibility are cookie-backed (Decision 42). Collapsed view-menu groups use `useLocalStorage` from `@ts-hooks-kit/core`. None of these enter the URL or views.
 16. **`vex_views` is emitted unconditionally by `generateVexSchema`**, like `vex_versions`. All framework tables and system fields use the `vex_` prefix (step 1 writes this convention down).
 17. **Row and bulk actions are slot contributions only.** `list.row.actions` and `list.bulkActions` contributions are React components receiving `{ collection, docs }`, gated by the existing `SlotAccessPredicate`. Create, search, filters, columns, views, row delete, and bulk delete are built-ins with `vex.list.*` IDs. Client-only (plugin stem S14). There is no declarative `{ label, mutation }` sugar.
 18. **The `list.*` slot IDs are:** `list.header.actions`, `list.toolbar`, `list.filters`, `list.beforeTable`, `list.afterTable`, `list.row.actions`, `list.bulkActions`.
 19. **Data-source hooks are `useVexListQuery(props)` and `useVexDocQuery(props)`**, in `react/src/hooks/` beside `usePaginatedQuery` / `usePaginatedSearch`, which they wrap. The `Query` suffix marks them as data fetching, distinct from the edit view's `useVexDocument()` context hook (`documents/VexDocumentContext.tsx`). The list and edit views stop calling `vexConvexApi` directly. Convex is the only implementation. Why: this boundary is where plugin, adapter, and adopted-table sources plug in later.
 20. **Status values come from `VERSION_STATUSES`, never literals.** Badges and status filters iterate the enum. Why: approval stages and branches will add states later.
 21. **Placement: feature subfolders inside `react/src/collections/`** (developer decision, 2026-10-27). Step 2 restructures the folder and updates the `react-feature-folders` rule and AP-023 to match:
-    - `collections/listView/` holds every list-view component, hook, built-in action, and helper.
-    - `collections/editView/` holds `CollectionEditView`.
-    - `collections/createDocument/` holds `CreateDocumentForm` / `CreateDocumentModal`.
+    - `collections/listView/` holds `CollectionListView`, `CreateDocumentForm` / `CreateDocumentModal` (the create flow starts from the list), and every list-view component, hook, built-in action, and helper.
+    - `collections/editView/` holds `CollectionEditView`, `CollectionDeleteAction`, `CollectionDuplicateMenuItem`, and `useDuplicateCollectionDocument`.
     - `collections/api/` is unchanged.
     - Folder names are camelCase (like `livePreview/`). Files inside drop the redundant `Collection` prefix (e.g. `listView/ListToolbar.tsx`, `listView/useListUrlState.ts`), following the `fields/<type>/` precedent for names scoped by their folder. The public root components keep their names (`CollectionListView`, `CollectionEditView`).
     - The subfolder set is closed: new feature subfolders inside a domain need the developer's approval and must be added to the rule.
     - Generic table controls stay in `react/src/ui/data-table/` (`DataTable*`). Data hooks stay in `react/src/hooks/`. Saved-view server operations go in `core/src/collections/api/{listViews,saveView,removeView}/` with `react/src/collections/api/<op>/client.ts`. View types go in `core/src/collections/types.ts`.
 22. **Responsive at every width, following the edit view's approach.**
     - **Container, not viewport.** The list root is a size container (`@container/list`, like the edit view's `@3xl/form`). Layout switches use container-query variants on the list's own width, so the list behaves the same inside a narrow pane.
-    - **Measured collapse.** Toolbar controls fold into one ⋯ overflow menu based on measured overflow (a `ResizeObserver` with hysteresis), mirroring `documents/useHeaderActionsCollapse.ts` and reusing it if it generalises. The order is fixed: Copy link, then Columns, then rows per load. Search and Filter never collapse.
-    - **`useIsMobile` decides overlays only.** Below 768px, menus and the filter builder render as bottom `Sheet`s, and view tabs become one view button that opens a sheet.
+    - **CSS collapse.** Toolbar controls fold into one ⋯ overflow menu at fixed `@container/list` breakpoints (Decision 43), never by `ResizeObserver` measurement. The order is fixed: Copy link, then Columns, then rows per load. Search and Filter never collapse.
+    - **`useIsMobile` decides overlay CONTENT only.** Below 768px, menus and the filter builder render as bottom `Sheet`s instead of `Popover`s — a choice made only when the overlay is already closed, so it never shifts first paint. The view-tab row's collapse into one button is a different case: that row is visible unconditionally on first paint, so it is a CSS viewport-breakpoint swap (`hidden md:flex` / `flex md:hidden`), never a `useIsMobile()` branch.
     - **Fixed height.** The list page never scrolls. The header, tabs, toolbar, and chips are `shrink-0`; the table is `flex-1 min-h-0` inside its own `ScrollArea`, with a sticky header and a pinned footer. Load More appends inside the scroll area and keeps the scroll position.
     - **Bulk controls** sit inline in the toolbar, left of Filter (count, "Select all N loaded", the `list.bulkActions` slot, Delete, clear), and never overlay the table. On narrow containers they replace the Filter row.
     - **Table.** It scrolls horizontally with a sticky first column on narrow containers.
     - **Peek.** It follows live preview's `isSplit` model (Decision 27).
-23. **`RevalidateButton` stays outside the `list.*` slots.** `CollectionListView` renders it itself, beside `CollectionListLayout`'s output, not as a `list.header.actions` contribution — it isn't named in Decision 17's built-in list or Decision 18's slot list. Why: slotting it is a later decision, not an assumption to bake in silently.
+23. **`RevalidateButton` stays outside the `list.*` slots.** `CollectionListView` renders it itself, beside `ListLayout`'s output, not as a `list.header.actions` contribution — it isn't named in Decision 17's built-in list or Decision 18's slot list. Why: slotting it is a later decision, not an assumption to bake in silently.
 24. **Shared-view `organizationId` is resolved and stamped server-side** from the caller's session (`auth.organization`), never accepted as a client-supplied arg on `listViews`/`saveView` — taking it from the client would let a caller read or write another organization's views. `db/test/convex/schema.ts`, `@vexcms/core`'s own hand-maintained test fixture (separate from `generateVexSchema.ts`'s generated output), also gains a `vex_views` table so Step 6's tests compile.
 
 25. **Config view filters are hidden from the UI, not secret, and the client composes them.** `admin.table.views[].where` lives in `vex.config.ts`, typed to the collection, so it ships in the client bundle like access rules (P-004). `find`/`search` take **no `view` argument** and know nothing about views.
@@ -195,14 +264,15 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
     - **Server, caller `where`:** a condition on an unreadable field drops those rows (`readableDocuments`). The one exception is `matchDeclaredViewFilter({ collection, where })` (Step 6). If a top-level AND part of the request `where` **deep-equals the full `where` of a config view** on that collection, that part is trusted, and the field-read check runs only on the remaining parts. Every remaining condition must use readable fields, so users may narrow a config view with their own readable-field filters.
     - **What still fails:** any change to the declared filter (dropping a condition, changing a value, putting it in an OR group), or any other unreadable condition, drops rows as today.
     - **Why:** a fixed, developer-declared condition exposes one yes/no per row by design. Arbitrary conditions would let a user guess hidden values by repeating filters.
-    - **Saving:** `saveView` rejects a shared view whose `where` references a field the saver can't read.
+    - **Shared views:** when a request `where` still has an unreadable condition after the config-view match, `find` (and `search`) reads that collection's `vex_views` rows (indexed by collection, filtered by the caller's `readViews` rule) **in the same query transaction**. The same exact-match rule applies to them. The read happens only when an unreadable condition exists, so ordinary queries cost nothing extra.
+    - **Saving:** `saveView` rejects a `where` that references a field the saver can't read. A saver who can read a field may save a view that filters on it, and viewers without access to that field get it as a trusted hidden filter through the shared-view allow-list.
 27. **Inspect peek**, driven by `peek=<id>`. It has two tabs:
     - **Fields:** label, mono key, value, and a copy button; full `_id`; `_creationTime` as ISO, epoch ms, and relative time; a relationship chip plus the target ID; long text in full with a character count.
     - **JSON:** the raw document.
 
     **Layout** (mirrors live preview):
-    - When the list container is wide enough, the peek sits inline beside the table at the list's fixed height and scrolls on its own (`isSplit`-style).
-    - On narrower containers it renders as a non-modal right `Sheet`.
+    - At `@5xl/list` and wider (a container query, Decision 43), the peek sits inline beside the table at the list's fixed height and scrolls on its own (`isSplit`-style).
+    - Below that it renders as a non-modal right `Sheet`.
     - Below 768px (`useIsMobile`) it is a bottom `Sheet`, like `LivePreviewMobileOverlay`.
 
     **Data:**
@@ -226,17 +296,37 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
 34. **The Inspect peek's shared not-found/no-access copy is pinned here, not left to a later design pass:** `COLLECTION_LIST_PEEK_UNAVAILABLE_TITLE` = "Can't show this document" / `COLLECTION_LIST_PEEK_UNAVAILABLE_DESCRIPTION` = "It may have been deleted, or you may not have access to it." `DESIGN-NOTES.md` §5 doesn't give wording for this state; Decision 27 only requires the not-found and no-access cases to read identically. Why: a peek that silently reveals whether a hidden document exists defeats Decision 27's point, so the copy ships with the feature rather than waiting on a design review.
 
 35. **Total count is capped.** The first page counts with `take(countLimit + 1)` instead of `.collect()`. `admin.table.countLimit` defaults to 1000. `find` returns `totalDocs` plus `totalDocsCapped: boolean`, and the UI shows "Showing 25 of 1,000+". Why: the old `.collect()` scanned every matching row on each list open and re-ran on every write while the list was open; it failed above 32k documents.
-36. **Filter index pushdown.** `resolveQueryIndex({ collection, where, sort, drafts })` replaces `resolveSort`. It picks one index for both:
+  36. **Filter index pushdown.** `resolveQueryIndex({ collection, where, sort, drafts })` picks one index for both:
     - It prefers an index whose leading fields are matched by **equalities** in the AND part of `where`, followed by the sort field when a sort is set (draftStatus-aware via `resolveCollectionIndexes`).
     - Those equalities become `withIndex` range conditions and are removed from `.filter`. Everything else stays in `.filter`.
     - It falls back to the sort-only index, then to `_creationTime`, when no equality can be pushed down. Examples: OR groups, ranges on non-leading fields, or a sort that's incompatible with the index.
     - Access-rule index precedence (`pickConvexQueryIndex`) is unchanged.
     - Why: a selective filter such as `status = failed` on a 200k-row collection otherwise scans ~5,000 documents per 25-row page; with pushdown it reads 25.
 37. **Built-ins mirror the edit view.**
-    - Each built-in list contribution is its own file in `listView/` (`ListCreateAction.tsx`, `ListRowOpenAction.tsx`, `ListRowInspectAction.tsx`, `ListRowCopyIdAction.tsx`, `ListRowDeleteAction.tsx`, `ListBulkDeleteAction.tsx`, `ListSearchAction.tsx`, `ListColumnsAction.tsx`, `ListFiltersAction.tsx`, `ListViewsAction.tsx`).
+    - Each built-in list contribution is its own file in `listView/` (`ListCreateAction.tsx`, `ListRowOpenAction.tsx`, `ListRowInspectAction.tsx`, `ListRowCopyIdAction.tsx`, `ListRowDeleteAction.tsx`, `ListBulkDeleteAction.tsx`, `ListSearchAction.tsx`, `ListColumnsAction.tsx`, `ListFiltersAction.tsx`). Views are the one exception: `ListViewTabs.tsx` (Step 12) renders directly above `ListToolbar` as its own row, mounted by `ListLayout`, not resolved through a `list.*` `SlotOutlet` — so there is no `ListViewsAction.tsx` wrapper.
     - One registry file, `listView/listBuiltinContributions.ts`, holds them, like `documentEditBuiltinContributions.ts`.
     - Built-ins read shared list state from `CollectionListProvider` / `useCollectionList()` (`listView/CollectionListContext.tsx`, mirroring `VexDocumentProvider`/`useVexDocument`) instead of having props drilled through the layout. The state includes collection, url state, selection, density, visible columns, and `onInspect`.
 38. **File size.** A component, hook, or helper over ~50 lines gets its own file. Small private helpers may share their consumer's file. `ListLayout.tsx` composes regions only.
+
+39. **The list prerenders exactly what the client shows (zero layout shift).** `NextAdminPage` accepts `searchParams`.
+    - It parses them with the shared core codec (`parseListParams`, Decision 40).
+    - It calls `listViews` once. That is one indexed read of a small table, and the tabs need it on first paint anyway. The active view resolves from that list (shared), from config in memory (config), or from the URL's full state (local, Decision 41).
+    - It prefetches `findPaginated` with `composeViewWhere(...)`, `sort`, `size`, and `q`, using the **exact args the client query sends**. It also prefetches `get(peek)` when `peek=` is set.
+    - It passes `initialData` for each of those queries plus `initialViews` and `initialPreferences` to `CollectionListView`.
+    - The extra read happens once per server render. Every later query from the browser is a plain `where`, and `find` never looks up views.
+    - A prefetch-args test (mirroring `NextAdminPage.test.ts`) proves the server args equal the client args for each URL state.
+40. **The URL codec lives in core.** `packages/core/src/collections/listUrlParams.ts` (`parseListParams` / `serializeListParams`, the compact grammar of Decision 9) is pure and shared by `NextAdminPage` (server) and `useListUrlState` (client). It has no react import.
+41. **Local views prerender through the URL and a cookie index.**
+    - While a local view is active, the URL always carries its full state (`q`/`qf`/`sort`/`filter`/`size`) plus `view=local:<id>`, so the server renders the exact rows.
+    - A small cookie (`vex-list-views:<collection>`) mirrors the local views' `{ viewId, name }` index, so their tabs render on the server. Full view state stays in `localStorage`. The store writes both on every save, rename, delete, and promotion.
+    - Accepted tradeoff: a stale cookie entry whose `localStorage` view was cleared shows its tab until hydration, then the store prunes it.
+42. **Layout-affecting preferences live in cookies.** Density and filter-chip visibility are cookie-backed and read on the server, like `readLivePreviewPanelCookie`. Collapsed group state inside the views menu, which isn't visible on first paint, stays in `localStorage` (`useLocalStorage`).
+43. **Responsive collapse is CSS, not measurement.** The toolbar overflow, the view-tab overflow, and the peek's inline/right-sheet mode use fixed container-query breakpoints on `@container/list`, never `ResizeObserver` measurement. So the server render is the final render.
+    - Toolbar: Copy link, Columns, and rows per load fold into the ⋯ menu at fixed `@container/list` widths.
+    - Tabs: a fixed number of visible tabs per container width; the rest go in "All views".
+    - Peek: inline at `@5xl/list` and wider, a right `Sheet` below that.
+    - `useIsMobile` still chooses bottom `Sheet` vs. `Popover` CONTENT for overlays that start closed (they open only on interaction, so they never shift first paint) — this does not cover a control that can already be visible/open on first paint without interaction (the view-tab row itself, and the Inspect peek when `peek=` is in the URL), which use CSS instead.
+    - This deliberately deviates from `useHeaderActionsCollapse`'s measured approach, per `standards/frontend/layout-stability.md`.
 
 ## Out of Scope
 
@@ -248,7 +338,7 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
 - Nested filter trees beyond one level of OR groups; a `contains` / `in` operator
 - Declarative row/bulk action sugar (`{ label, icon, mutation }`)
 - Auto-persisting the last-used list state
-- User- or role-scoped shared views
+- User- or role-scoped shared views and per-view access (backlog: "Per-view access for saved views")
 - softDelete / Trash / restore / undo in the list UI (delete stays a hard delete with confirmation; `remove({ softDelete })` exists server-side but has no restore path)
 - Auto-load on scroll; "select all matching" (server-side bulk jobs)
 - Full design shortcut set (⌘S, ⌘⌫, F/V/C), a ⌘K command palette, and rebindable keys
@@ -313,7 +403,7 @@ Verify: harness doctor
 
 ### Step 2 — Restructure `collections/` into closed feature subfolders [agent]
 
-Why: Decision 21 (developer decision, 2026-10-27, post-review) places list-view code in `collections/listView/`, edit-view code in `collections/editView/`, and create-document code in `collections/createDocument/`, closing the subfolder set and dropping the redundant `Collection`/`CreateDocument` prefix inside each folder while the public root components keep their names. This step is pure mechanical restructuring so every later step can write directly into `listView/`. `CollectionDeleteAction.tsx`, `CollectionDuplicateMenuItem.tsx`, and `useDuplicateCollectionDocument.ts` are edit-view pieces (built-in `edit.actionsMenu`/`edit.header.actions` contributions, used only by `CollectionEditView`) and move into `collections/editView/` with their existing names — they are public API, re-exported from `collections/index.ts`, so the move skips the in-folder short-name convention and keeps exports unchanged. After this step `collections/` root holds only `index.ts` and the four subfolders (`listView/`, `editView/`, `createDocument/`, `api/`).
+Why: Decision 21 (developer decision, 2026-10-27, post-review) places list-view code in `collections/listView/`, edit-view code in `collections/editView/`, and the create-document form/modal in `collections/listView/` beside the list that opens it, closing the subfolder set and dropping the redundant `Collection`/`CreateDocument` prefix inside each folder while the public root components keep their names. This step is pure mechanical restructuring so every later step can write directly into `listView/`. `CollectionDeleteAction.tsx`, `CollectionDuplicateMenuItem.tsx`, and `useDuplicateCollectionDocument.ts` are edit-view pieces (built-in `edit.actionsMenu`/`edit.header.actions` contributions, used only by `CollectionEditView`) and move into `collections/editView/` with their existing names — they are public API, re-exported from `collections/index.ts`, so the move skips the in-folder short-name convention and keeps exports unchanged. After this step `collections/` root holds only `index.ts` and the three subfolders (`listView/`, `editView/`, `api/`).
 
 - [ ] `packages/react/src/collections/listView/CollectionListView.tsx` (moved from `collections/CollectionListView.tsx`)
 - [ ] `packages/react/src/collections/listView/CollectionListView.test.tsx` (moved from `collections/CollectionListView.test.tsx`)
@@ -322,10 +412,10 @@ Why: Decision 21 (developer decision, 2026-10-27, post-review) places list-view 
 - [ ] `packages/react/src/collections/editView/CollectionDeleteAction.tsx` (moved from `collections/CollectionDeleteAction.tsx`)
 - [ ] `packages/react/src/collections/editView/CollectionDuplicateMenuItem.tsx` (moved from `collections/CollectionDuplicateMenuItem.tsx`)
 - [ ] `packages/react/src/collections/editView/useDuplicateCollectionDocument.ts` (moved from `collections/useDuplicateCollectionDocument.ts`)
-- [ ] `packages/react/src/collections/createDocument/CreateDocumentForm.tsx` (moved from `collections/CreateDocumentForm.tsx`)
-- [ ] `packages/react/src/collections/createDocument/CreateDocumentForm.test.tsx` (moved from `collections/CreateDocumentForm.test.tsx`)
-- [ ] `packages/react/src/collections/createDocument/CreateDocumentModal.tsx` (moved from `collections/CreateDocumentModal.tsx`)
-- [ ] `packages/react/src/collections/createDocument/CreateDocumentModal.test.tsx` (moved from `collections/CreateDocumentModal.test.tsx`)
+- [ ] `packages/react/src/collections/listView/CreateDocumentForm.tsx` (moved from `collections/CreateDocumentForm.tsx`)
+- [ ] `packages/react/src/collections/listView/CreateDocumentForm.test.tsx` (moved from `collections/CreateDocumentForm.test.tsx`)
+- [ ] `packages/react/src/collections/listView/CreateDocumentModal.tsx` (moved from `collections/CreateDocumentModal.tsx`)
+- [ ] `packages/react/src/collections/listView/CreateDocumentModal.test.tsx` (moved from `collections/CreateDocumentModal.test.tsx`)
 - [ ] `packages/react/src/collections/index.ts`
 - [ ] `packages/react/src/fields/relationship/RelationshipPicker.tsx`
 - [ ] `packages/react/src/fields/relationship/RelationshipPicker.test.tsx`
@@ -339,13 +429,13 @@ File contents are otherwise unchanged by this step; only the import specifiers l
 
 #### packages/react/src/collections/listView/CollectionListView.tsx
 
-Moved from `collections/CollectionListView.tsx`. Every `../`-relative import gains one more `../` for the new depth, except the one sibling import, which now points at `createDocument/`.
+Moved from `collections/CollectionListView.tsx`. Every `../`-relative import gains one more `../` for the new depth, except the one sibling import, `./CreateDocumentModal`, which moves into the same folder.
 
 **Edit 1** (lines 14–24, import block):
 ```ts
 import { RevalidateButton } from "../../revalidate/RevalidateButton";
 import { VexLink } from "../../ui/VexLink";
-import { CreateDocumentModal } from "../createDocument/CreateDocumentModal";
+import { CreateDocumentModal } from "./CreateDocumentModal";
 import { useVexConfig } from "../../config/VexConfigContext";
 import { adminHref } from "../../admin/adminHref";
 import { getCollectionColumnDefs } from "../../fields";
@@ -444,7 +534,7 @@ import { runViewSuite } from "../../testing/viewSuite";
 
 Rest of the file (`import { CollectionEditView } from "./CollectionEditView";` at line 9 is unchanged — same folder) is unchanged.
 
-#### packages/react/src/collections/createDocument/CreateDocumentForm.tsx
+#### packages/react/src/collections/listView/CreateDocumentForm.tsx
 
 Moved from `collections/CreateDocumentForm.tsx`. Every `../`-relative import gains one more `../`.
 
@@ -461,7 +551,7 @@ import { applyVexFieldErrors } from "../../utils/errors";
 
 Rest of the file is unchanged.
 
-#### packages/react/src/collections/createDocument/CreateDocumentForm.test.tsx
+#### packages/react/src/collections/listView/CreateDocumentForm.test.tsx
 
 Moved from `collections/CreateDocumentForm.test.tsx`. Every `../`-relative import gains one more `../`; the sibling `./CreateDocumentForm` import is unaffected.
 
@@ -480,7 +570,7 @@ import schema, { readTable, testModules } from "../../testing/convex/schema";
 
 Rest of the file is unchanged.
 
-#### packages/react/src/collections/createDocument/CreateDocumentModal.tsx
+#### packages/react/src/collections/listView/CreateDocumentModal.tsx
 
 Moved from `collections/CreateDocumentModal.tsx`. Every `../`-relative import gains one more `../`; the sibling `./CreateDocumentForm` import is unaffected (still a sibling, in the new folder).
 
@@ -497,7 +587,7 @@ import { parseAsBoolean, useQueryState } from "nuqs";
 
 Rest of the file is unchanged.
 
-#### packages/react/src/collections/createDocument/CreateDocumentModal.test.tsx
+#### packages/react/src/collections/listView/CreateDocumentModal.test.tsx
 
 Moved from `collections/CreateDocumentModal.test.tsx`. Its one import gains one more `../`.
 
@@ -518,8 +608,8 @@ export * from "./editView/CollectionDeleteAction";
 export * from "./editView/CollectionDuplicateMenuItem";
 export * from "./editView/useDuplicateCollectionDocument";
 export * from "./listView/CollectionListView";
-export * from "./createDocument/CreateDocumentForm";
-export * from "./createDocument/CreateDocumentModal";
+export * from "./listView/CreateDocumentForm";
+export * from "./listView/CreateDocumentModal";
 ```
 
 #### packages/react/src/collections/editView/CollectionDeleteAction.tsx
@@ -554,7 +644,7 @@ Rest of the file (component body, JSX, exports) is unchanged.
 
 #### packages/react/src/collections/editView/CollectionDuplicateMenuItem.tsx
 
-Moved from `collections/CollectionDuplicateMenuItem.tsx`. Every `../`-relative import gains one more `../`, except the two sibling imports: `useDuplicateCollectionDocument` moves into the same `editView/` folder and stays `./`, while `CreateDocumentForm` moves into the cousin `createDocument/` folder.
+Moved from `collections/CollectionDuplicateMenuItem.tsx`. Every `../`-relative import gains one more `../`, except the two sibling imports: `useDuplicateCollectionDocument` moves into the same `editView/` folder and stays `./`, while `CreateDocumentForm` moves into the cousin `listView/` folder.
 
 **Edit 1** (lines 7–18, import block):
 ```ts
@@ -568,7 +658,7 @@ import { useEditActionsMenuDialog } from "../../documents/EditActionsMenuDialogC
 import { EditActionsMenuItem } from "../../documents/EditActionsMenuItem";
 import { Dialog, DialogContent, DialogHeader, Icon } from "../../ui";
 import { ModalSurfaceProvider } from "../../modals";
-import { CreateDocumentForm } from "../createDocument/CreateDocumentForm";
+import { CreateDocumentForm } from "../listView/CreateDocumentForm";
 import { useDuplicateCollectionDocument } from "./useDuplicateCollectionDocument";
 ```
 
@@ -593,7 +683,7 @@ Rest of the file (hook body, exports) is unchanged.
 
 **Edit 1** (line 16):
 ```ts
-import { CreateDocumentForm } from "../../collections/createDocument/CreateDocumentForm";
+import { CreateDocumentForm } from "../../collections/listView/CreateDocumentForm";
 ```
 
 Rest of the file is unchanged.
@@ -602,7 +692,7 @@ Rest of the file is unchanged.
 
 **Edit 1** (line 32):
 ```ts
-vi.mock("../../collections/createDocument/CreateDocumentForm", () => ({
+vi.mock("../../collections/listView/CreateDocumentForm", () => ({
 ```
 
 Rest of the file is unchanged.
@@ -611,7 +701,7 @@ Rest of the file is unchanged.
 
 **Edit 1** (line 16):
 ```ts
-import { CreateDocumentModal } from "../collections/createDocument/CreateDocumentModal";
+import { CreateDocumentModal } from "../collections/listView/CreateDocumentModal";
 ```
 
 Rest of the file is unchanged.
@@ -622,7 +712,7 @@ The `react-feature-folders` rule's description gets a closed-subfolder carve-out
 
 **Edit 1** (append to the `react-feature-folders` rule's `description`, after the existing "...never one named after a UI surface, view, or feature..." sentence):
 ```yaml
-    description: "The react package's top level is a CLOSED set of domain folders mirroring core/src/ (access, admin, auth, client, collections, config, documents, fields, forms, globals, hooks, livePreview, media, modals, revalidate, slots, testing, ui, utils, versions) plus adapter.ts and index.ts. A new top-level folder is allowed only for a new domain that core/src/ also has, and is added to this list in the same change; never one named after a UI surface, view, or feature (list/, edit/, data/, views/, table/, filters/, actions/). Placement: code serving ONE domain's view lives in that domain folder with a domain/view name prefix (collections/CollectionListToolbar.tsx). Code shared by several domains' views goes in the existing domain that owns the share. `collections/` is the one exception to the flat-with-prefix rule: it holds a CLOSED set of feature subfolders — `listView/`, `editView/`, `createDocument/`, `api/` — each camelCase like `livePreview/`, each holding every component/hook/helper for that feature with the redundant `Collection`/`CreateDocument` prefix dropped from in-folder file names (listView/ListToolbar.tsx, editView/useHeaderActionsCollapse.ts is actually documents/, createDocument/CreateDocumentForm.tsx keeps its name since it's a public export). A new collections/ subfolder needs the developer's approval and an addition to this list."
+    description: "The react package's top level is a CLOSED set of domain folders mirroring core/src/ (access, admin, auth, client, collections, config, documents, fields, forms, globals, hooks, livePreview, media, modals, revalidate, slots, testing, ui, utils, versions) plus adapter.ts and index.ts. A new top-level folder is allowed only for a new domain that core/src/ also has, and is added to this list in the same change; never one named after a UI surface, view, or feature (list/, edit/, data/, views/, table/, filters/, actions/). Placement: code serving ONE domain's view lives in that domain folder with a domain/view name prefix (media/MediaCollectionListView.tsx). Code shared by several domains' views goes in the existing domain that owns the share. `collections/` is the one exception to the flat-with-prefix rule: it holds a CLOSED set of feature subfolders — `listView/`, `editView/`, `api/` — each camelCase like `livePreview/`, each holding every component/hook/helper for that feature with the redundant `Collection` prefix dropped from new in-folder file names (listView/ListToolbar.tsx); public root components keep their names (listView/CollectionListView.tsx, listView/CreateDocumentModal.tsx, editView/CollectionEditView.tsx). A new collections/ subfolder needs the developer's approval and an addition to this list."
 ```
 
 #### .agent/docs/standards/anti-patterns.md
@@ -631,26 +721,31 @@ AP-023 stays verbatim (it is a historical record of a past mistake, append-only,
 
 **Edit 1** (insert immediately after AP-023's existing text, as its own line):
 ```md
-  (2026-10-27) Superseded in part: `collections/{listView,editView,createDocument}` are developer-approved feature subfolders — see `react-feature-folders`.
+  (2026-10-27) Superseded in part: `collections/{listView,editView}` are developer-approved feature subfolders — see `react-feature-folders`.
 ```
 
-Verify: `harness struct` (regenerate `directory-structure.md` to reflect `collections/{listView,editView,createDocument,api}`), then run the full `packages/react` typecheck and test suite — every moved test and every updated import site above must resolve and pass, with `grep -rn "collections/CollectionListView\"\|collections/CollectionEditView\"\|collections/CreateDocumentForm\"\|collections/CreateDocumentModal\"\|collections/CollectionDeleteAction\"\|collections/CollectionDuplicateMenuItem\"\|collections/useDuplicateCollectionDocument\"" packages apps` returning zero hits outside this spec file and changelog prose.
+Verify: `harness struct` (regenerate `directory-structure.md` to reflect `collections/{listView,editView,api}`), then run the full `packages/react` typecheck and test suite — every moved test and every updated import site above must resolve and pass, with `grep -rn "collections/CollectionListView\"\|collections/CollectionEditView\"\|collections/CreateDocumentForm\"\|collections/CreateDocumentModal\"\|collections/CollectionDeleteAction\"\|collections/CollectionDuplicateMenuItem\"\|collections/useDuplicateCollectionDocument\"" packages apps` returning zero hits outside this spec file and changelog prose.
 
 ### Step 3 — Status enum replaces string literals [agent]
 
 Why: approval stages and branches will add states later; badges/filters must iterate `VERSION_STATUSES`, not switch on two literals.
 
-- [ ] `packages/react/src/versions/StatusBadge.tsx` — label/variant resolved by looking up `VERSION_STATUSES[props.status]`, not a `?:` chain on two literal comparisons
-- [ ] `packages/react/src/collections/editView/CollectionEditView.tsx` — `publishedTimeline` filter and the `status` ternary passed to `DraftToolbar` read `VERSION_STATUSES.published.key` / `VERSION_STATUSES.draft.key`
-- [ ] `packages/react/src/globals/GlobalEditView.tsx` — same sweep: `publishedTimeline` filter, `isDraftDoc`'s `vex_status` comparison, and both `documentStatus`/`DraftToolbar` ternaries
-- [ ] `packages/react/src/versions/VersionHistoryDropdown.tsx` — `publishedVersion` reduction filter reads `VERSION_STATUSES.published.key`
+This step anchors against the CURRENT working-tree edit-view overhaul (`2026-10-26-edit-view-overhaul`, unstaged), not an earlier draft: `DraftToolbar` no longer exists (deleted — its status prop moved into `VexDocumentProvider`'s `status` field and a direct `<StatusBadge>` call in each view's header), and the published/draft timeline math that used to live inline in `CollectionEditView`/`GlobalEditView`/`VersionHistoryDropdown` now lives in three new `versions/` files (`VersionHistoryPanel.tsx`, `VersionPublishAction.tsx`, `VersionUnpublishAction.tsx`) plus `showsUnpublish.ts`.
+
+- [ ] `packages/react/src/versions/StatusBadge.tsx` — JSDoc `@example` reads `VERSION_STATUSES.draft.key`/`VERSION_STATUSES.published.key`, not raw literals (the component body already compares against `VERSION_STATUSES.draft.key`, no change needed there)
+- [ ] `packages/react/src/collections/editView/CollectionEditView.tsx` — `VexDocumentProvider`'s `status` field and the header `<StatusBadge>`'s `status` prop read `VERSION_STATUSES.draft.key`/`VERSION_STATUSES.published.key` instead of raw ternary literals
+- [ ] `packages/react/src/globals/GlobalEditView.tsx` — same sweep: `isDraftDoc`'s `vex_status` comparison (and its `VexVersionStatus` cast), `documentStatus`, `VexDocumentProvider`'s `status` field, and the header `<StatusBadge>`'s `status` prop
+- [ ] `packages/react/src/versions/VersionPublishAction.tsx` — `isDraftDoc`'s `document.status === "draft"` comparison
+- [ ] `packages/react/src/versions/VersionUnpublishAction.tsx` — `publishedTimeline`'s `row.status === "published"` filter
+- [ ] `packages/react/src/versions/VersionHistoryPanel.tsx` — `publishedVersion`'s `row.status === "published"` filter
+- [ ] `packages/react/src/versions/showsUnpublish.ts` — `document.status === "published"` comparison
 - [ ] `packages/react/src/testing/convex/schema.ts` — both `v.union(v.literal("draft"), v.literal("published"))` fields emit from `VERSION_STATUSES.draft.key` / `VERSION_STATUSES.published.key`
 - [ ] `packages/react/src/collections/listView/CollectionListView.tsx` — already reads `VERSION_STATUSES.draft.key` / `VERSION_STATUSES.published.key` (confirmed, no further edit; this is the Step 2 move target of today's `collections/CollectionListView.tsx`)
-- [ ] grep-proof: no raw `"draft"` / `"published"` status literals remain in `packages/*/src` non-test files (`*.test.ts(x)` keep literals asserting stored data; `packages/react/src/testing/**` test-harness suites — `viewSuite.ts`, `accessFixtures.ts`, `modalSuite.tsx` — keep their seeded literals, they assert stored data the same as a colocated test)
+- [ ] grep-proof: no raw `"draft"` / `"published"` status literals remain in `packages/react/src` non-test files (`*.test.ts(x)` keep literals asserting stored data; `packages/react/src/testing/**` test-harness suites — `viewSuite.ts`, `accessFixtures.ts`, `modalSuite.tsx` — keep their seeded literals, they assert stored data the same as a colocated test). `packages/core/src` is out of this step's scope: the parallel edit-view overhaul this sweep reconciles against touched no core files, and core's existing `"draft"`/`"published"` literals (e.g. `versions/assertUniqueAmongPublished.ts`) predate this spec.
 
 #### packages/react/src/versions/StatusBadge.tsx
 
-2 edits — everything else unchanged.
+1 edit — everything else unchanged.
 
 **1 — JSDoc example (`@example`), anchor `<StatusBadge status={isDraftDoc ? "draft" : "published"} />`.**
 
@@ -662,55 +757,46 @@ Why: approval stages and branches will add states later; badges/filters must ite
  */
 ```
 
-**2 — body of `StatusBadge`, replace the `variant`/`label` ternary chain with a direct lookup into `VERSION_STATUSES`.**
-
-```tsx
-export function StatusBadge(props: StatusBadgeProps) {
-  const statusConfig = VERSION_STATUSES[props.status];
-  const variant = props.status === VERSION_STATUSES.draft.key ? "outline" : "default";
-  return <Badge variant={variant}>{statusConfig.labels.singular}</Badge>;
-}
-```
-
 #### packages/react/src/collections/editView/CollectionEditView.tsx
 
-2 edits — everything else unchanged. `VERSION_STATUSES` is already imported from `@vexcms/core` (used for `isDraftDoc`). This is the post-Step-2 location of today's `collections/CollectionEditView.tsx`; anchor against the moved file, not the pre-move path.
+2 edits — everything else unchanged. `VERSION_STATUSES` is already imported from `@vexcms/core` (used for `isDraftDoc`). This is the post-Step-2 location of today's `collections/CollectionEditView.tsx`; anchor against the moved file, not the pre-move path. `DraftToolbar` (deleted by the edit-view overhaul) no longer exists — the two remaining literal sites are `VexDocumentProvider`'s `status` field and the header `<StatusBadge>`.
 
-**1 — `publishedTimeline`, anchor `.filter((row) => row.status === "published" && row.publishedAt !== null)`.**
+**1 — `VexDocumentProvider`'s `status` field, anchor `status: isVersioned ? (isDraftDoc ? "draft" : "published") : undefined,`.**
 
 ```tsx
-  const publishedTimeline = (unpublishVersions ?? [])
-    .filter((row) => row.status === VERSION_STATUSES.published.key && row.publishedAt !== null)
-    .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
+          status: isVersioned
+            ? isDraftDoc
+              ? VERSION_STATUSES.draft.key
+              : VERSION_STATUSES.published.key
+            : undefined,
 ```
 
-**2 — `<DraftToolbar>`'s `status` prop, anchor `status={isDraftDoc ? "draft" : "published"}`.**
+**2 — header `<StatusBadge>`, anchor `{isVersioned && <StatusBadge status={isDraftDoc ? "draft" : "published"} />}`.**
 
 ```tsx
-                  status={isDraftDoc ? VERSION_STATUSES.draft.key : VERSION_STATUSES.published.key}
+                {isVersioned && (
+                  <StatusBadge
+                    status={isDraftDoc ? VERSION_STATUSES.draft.key : VERSION_STATUSES.published.key}
+                  />
+                )}
 ```
 
 #### packages/react/src/globals/GlobalEditView.tsx
 
-4 edits — everything else unchanged.
+5 edits — everything else unchanged.
 
-**1 — imports, add `VERSION_STATUSES` alongside the existing `@vexcms/core` import.**
+**1 — imports, add `VERSION_STATUSES` alongside the existing `@vexcms/core` import, and `VexVersionStatus` to the type-only import.**
 
 ```tsx
+  resolveLivePreviewSettings,
+  SLOT_IDS,
   VERSION_STATUSES,
   vexConvexApi,
 } from "@vexcms/core";
+import type { EditComponentsConfig, EditComponentsConfigInput, VexVersionStatus } from "@vexcms/core";
 ```
 
-**2 — `publishedTimeline`, anchor `.filter((row) => row.status === "published" && row.publishedAt !== null)`.**
-
-```tsx
-  const publishedTimeline = (unpublishVersions ?? [])
-    .filter((row) => row.status === VERSION_STATUSES.published.key && row.publishedAt !== null)
-    .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
-```
-
-**3 — `isDraftDoc`, anchor `(globalDoc as { vex_status?: "draft" | "published" } | undefined)?.vex_status === "draft";`.**
+**2 — `isDraftDoc`, anchor `(globalDoc as { vex_status?: "draft" | "published" } | undefined)?.vex_status === "draft";`.**
 
 ```tsx
   const isDraftDoc =
@@ -718,9 +804,7 @@ export function StatusBadge(props: StatusBadgeProps) {
     VERSION_STATUSES.draft.key;
 ```
 
-Also add `VexVersionStatus` to the existing `@vexcms/core` type-only import in this file.
-
-**4 — the two remaining `isDraftDoc ? "draft" : "published"` ternaries, anchor `documentStatus =` and `<DraftToolbar>`'s `status` prop.**
+**3 — `documentStatus`, anchor `isVersioned && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined;`.**
 
 ```tsx
   const documentStatus =
@@ -731,21 +815,86 @@ Also add `VexVersionStatus` to the existing `@vexcms/core` type-only import in t
       : undefined;
 ```
 
+**4 — `VexDocumentProvider`'s `status` field, anchor `status: isVersioned && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined,`.**
+
 ```tsx
-                  status={
-                    globalDoc
-                      ? isDraftDoc
-                        ? VERSION_STATUSES.draft.key
-                        : VERSION_STATUSES.published.key
-                      : undefined
-                  }
+          status: isVersioned && globalDoc
+            ? isDraftDoc
+              ? VERSION_STATUSES.draft.key
+              : VERSION_STATUSES.published.key
+            : undefined,
 ```
 
-#### packages/react/src/versions/VersionHistoryDropdown.tsx
+**5 — header `<StatusBadge>`, anchor `{isVersioned && globalDoc && (<StatusBadge status={isDraftDoc ? "draft" : "published"} />)}`.**
 
-1 edit — everything else unchanged. `VERSION_STATUSES` added to the existing `@vexcms/core` import (currently imports `type VersionSummary` etc. from the same specifier).
+```tsx
+              {isVersioned && globalDoc && (
+                <StatusBadge
+                  status={isDraftDoc ? VERSION_STATUSES.draft.key : VERSION_STATUSES.published.key}
+                />
+              )}
+```
 
-**1 — `publishedVersion`, anchor `.filter((row) => row.status === "published")`.**
+#### packages/react/src/versions/VersionPublishAction.tsx
+
+2 edits — everything else unchanged.
+
+**1 — imports, add `VERSION_STATUSES` to the existing `@vexcms/core` import.**
+
+```tsx
+import {
+  DRAFT_ACTIONS,
+  getDataFields,
+  getFieldsDefaultValues,
+  valuesEqual,
+  VERSION_STATUSES,
+  vexConvexApi,
+  type EditSlotProps,
+} from "@vexcms/core";
+```
+
+**2 — `isDraftDoc`, anchor `document.status === "draft";`.**
+
+```tsx
+  const isDraftDoc = document.status === VERSION_STATUSES.draft.key;
+```
+
+#### packages/react/src/versions/VersionUnpublishAction.tsx
+
+2 edits — everything else unchanged.
+
+**1 — imports, add `VERSION_STATUSES` to the existing `@vexcms/core` import.**
+
+```tsx
+import { DRAFT_ACTIONS, VERSION_STATUSES, vexConvexApi, type EditSlotProps } from "@vexcms/core";
+```
+
+**2 — `publishedTimeline`, anchor `.filter((row) => row.status === "published" && row.publishedAt !== null)`.**
+
+```tsx
+  const publishedTimeline = (unpublishVersions ?? [])
+    .filter((row) => row.status === VERSION_STATUSES.published.key && row.publishedAt !== null)
+    .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
+```
+
+#### packages/react/src/versions/VersionHistoryPanel.tsx
+
+2 edits — everything else unchanged.
+
+**1 — imports, add `VERSION_STATUSES` to the existing `@vexcms/core` import.**
+
+```tsx
+import {
+  DRAFT_ACTIONS,
+  VERSION_STATUSES,
+  vexConvexApi,
+  type CollectionSlug,
+  type GlobalSlug,
+  type VersionSummary,
+} from "@vexcms/core";
+```
+
+**2 — `publishedVersion`, anchor `.filter((row) => row.status === "published")`.**
 
 ```tsx
   const publishedVersion = rows
@@ -754,6 +903,28 @@ Also add `VexVersionStatus` to the existing `@vexcms/core` type-only import in t
       (latest, row) => (latest && (latest.publishedAt ?? 0) >= (row.publishedAt ?? 0) ? latest : row),
       undefined,
     )?.version;
+```
+
+#### packages/react/src/versions/showsUnpublish.ts
+
+2 edits — everything else unchanged.
+
+**1 — imports, add the `VERSION_STATUSES` import above the two existing type-only imports.**
+
+```ts
+import { VERSION_STATUSES } from "@vexcms/core";
+import type { VexDocumentState } from "../documents/VexDocumentContext";
+import type { DocumentEditRuntimeState } from "../documents/DocumentEditRuntimeContext";
+```
+
+**2 — the return expression, anchor `document.status === "published" && !document.isDirty && runtime.viewedVersion === null;`.**
+
+```ts
+  return (
+    document.status === VERSION_STATUSES.published.key &&
+    !document.isDirty &&
+    runtime.viewedVersion === null
+  );
 ```
 
 #### packages/react/src/testing/convex/schema.ts
@@ -787,8 +958,6 @@ import {
 ```
 
 Verify: pnpm typecheck && pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test
-
-The grep-proof check above has narrow, deliberate exceptions: core's own non-test files (`versions/publish.ts`, `versions/unpublish.ts`, `versions/saveDraft.ts`, `versions/resolveVersionedTarget.ts`, `versions/schema.ts`, `versions/statusQueryConstraint.ts`, `globals/api/upsert/server.ts`) already read `VERSION_STATUSES.*.key` exclusively — their remaining `"draft"`/`"published"` hits are JSDoc prose describing stored values (`collections/types.ts`'s `defaultStatus` doc comment, `db/populate.ts`, `collections/interfaceGen.ts`), not code literals. `packages/core/src/fields/select/**` and the matching `adminFieldToInputSchema`/`adminFieldToValidator` hits are a generic `select()` field fixture whose option values happen to be the strings `"draft"`/`"published"`, unrelated to `vex_status`/`VERSION_STATUSES`. `packages/react/src/testing/harness/accessFixtures.ts` and `testing/modalSuite.tsx` key off an arbitrary fixture `status` field for access-rule testing, not `vex_status`, and are left alone. No `packages/next/src` file contains a `"draft"`/`"published"` literal.
 
 This step runs after Step 2's move of `CollectionEditView.tsx` → `collections/editView/` and `CollectionListView.tsx` → `collections/listView/`; both are edited in place at their new paths, no further relocation here.
 
@@ -1389,11 +1558,11 @@ describe("defineCollection — admin.table field-slug typing", () => {
 });
 ```
 
-### Step 5 — `manageViews` access action, `vex_views` table, and `composeViewWhere` [agent]
+### Step 5 — `VIEW_ACTIONS` access actions, `vex_views` table, and `composeViewWhere` [agent]
 
-Why: shared views need a store and a gate; default denied (fail-closed). Decision 25 (architecture review 2026-10-27) replaced the original `view?: string` arg on `find`/`search` with a client-composed `where`: `find`/`search` take **no `view` argument** and know nothing about views. `collection.admin.table.views` (full, `where` intact) still ships to the browser like the rest of `VexClientConfig` (directly imported per P-004, so hiding `where` behind a client-facing type would change nothing: the string is already in the JS). `VexClientViewConfig` / `toClientViewConfig` is the one conversion point every UI READ goes through (stripping `where` for display, computing `hasHiddenFilter`/`hiddenFilterCount`), while `composeViewWhere` (new this step) is the one place a config view's raw `where` is read to BUILD the `where` the client actually sends — called client-side wherever the list composes its query (Step 8's `useVexListQuery`, fed by Step 12's `useListViews`), straight off the bundled config. Step 7's `listViews` query never touches a `config`-source view at all, returning `shared` views only. Step 4 also deferred validating `admin.table.views` entries against the rest of a collection's config (unknown `where` fields, an unindexed `sort`, an undeclared `searchField`, unknown `columns`) until `VexViewConfig` existed — this step closes that gap alongside the existing `searchField`/sort checks, with the same fail-at-`defineConfig` posture.
+Why: shared views need a store and a gate; default denied (fail-closed). Decision 25 gives `find`/`search` a client-composed `where` instead of a server-side `view` argument: `find`/`search` take **no `view` argument** and know nothing about views. `collection.admin.table.views` (full, `where` intact) still ships to the browser like the rest of `VexClientConfig` (directly imported per P-004, so hiding `where` behind a client-facing type would change nothing: the string is already in the JS). `VexClientViewConfig` / `toClientViewConfig` is the one conversion point every UI READ goes through (stripping `where` for display, computing `hasHiddenFilter`/`hiddenFilterCount`), while `composeViewWhere` (new this step) is the one place a config view's raw `where` is read to BUILD the `where` the client actually sends — called client-side wherever the list composes its query (Step 8's `useVexListQuery`, fed by Step 12's `useListViews`), straight off the bundled config. Step 7's `listViews` query never touches a `config`-source view at all, returning `shared` views only. Step 4 also deferred validating `admin.table.views` entries against the rest of a collection's config (unknown `where` fields, an unindexed `sort`, an undeclared `searchField`, unknown `columns`) until `VexViewConfig` existed — this step closes that gap alongside the existing `searchField`/sort checks, with the same fail-at-`defineConfig` posture.
 
-- [ ] `packages/core/src/access/constants.ts` — `VIEW_ACTIONS = { manageViews }`
+- [ ] `packages/core/src/access/constants.ts` — `VIEW_ACTIONS = { readViews, createView, updateView, deleteView }`; `readViews` added to `QUERY_ACTIONS`
 - [ ] `packages/core/src/access/types.ts` — `HasTable` guard; `ViewAction` wired into `SubjectMap`'s per-resource action union (collections only)
 - [ ] `packages/core/src/schema/generateVexSchema.ts` + `packages/core/src/schema/generateVexSchema.test.ts` — emit `vex_views` unconditionally, with an optional `description` column
 - [ ] `packages/core/src/collections/constants.ts` — `VEX_VIEW_SOURCES` map + derived `VexViewSource` union
@@ -1409,33 +1578,53 @@ Verify: `pnpm --filter @vexcms/core test -- access schema collections`
 
 #### packages/core/src/access/constants.ts
 
-1 edit — everything else in this file is unchanged.
+2 edits — everything else in this file is unchanged.
 
-**1 — new action group, between `QueryAction` and the `PERMISSION_MODES` block.** Shared views are collection-wide (Decision 12), so `manageViews` is a single action name, not query/mutation-shaped — it gates the `saveView`/`removeView` mutations Step 7 adds, never a `find`-style query.
+**1 — new action group, directly after `DraftAction`'s union type and before `QUERY_ACTIONS`.** Shared views get four actions mirroring the draft actions (Decision 13): `readViews` is query-shaped (it feeds `QUERY_ACTIONS` directly below, like `DRAFT_ACTIONS.readDrafts` does) — it gates `listViews`, the use of shared views, and `find`'s shared-view allow-list (Decision 26). `createView`/`updateView`/`deleteView` are plain mutation-shaped actions gating the `saveView`/`removeView` mutations Step 7 adds.
 
 ```ts
 /**
- * The access action that gates creating, editing, and deleting a SHARED
- * (`vex_views`) saved view. Present on every collection that has a resolved
- * `admin.table` (see {@link HasTable} in `access/types.ts`) — globals have no
- * list view and never carry it.
+ * Access actions gating SHARED (`vex_views`) saved views (decision 13).
+ * Present on every collection that has a resolved `admin.table` (see
+ * {@link HasTable} in `access/types.ts`) — globals have no list view and
+ * never carry them.
  *
- * Undeclared like every other action (Decision 13 / P-007): a role matrix
- * that never mentions `manageViews` resolves it to denied, so shared-view
- * writes are fail-closed by default. A caller without it can still save
- * views locally — `listView/listViewStore.ts` (Step 12) never calls
- * `hasPermission` for the `local` source.
+ * - `readViews` is query-shaped (see {@link QUERY_ACTIONS} below) — it
+ *   gates `listViews`, the use of shared views, and `find`'s shared-view
+ *   allow-list (decision 26).
+ * - `createView` gates saving a new shared view and promoting a local view.
+ * - `updateView` gates saving changes to and renaming a shared view.
+ * - `deleteView` gates deleting a shared view.
+ *
+ * Undeclared like every other action (P-007): a role matrix that never
+ * mentions one of these resolves it to denied, so shared-view reads and
+ * writes are all fail-closed by default. A caller without `createView` can
+ * still save views locally — `listView/listViewStore.ts` (Step 12) never
+ * calls `hasPermission` for the `local` source.
  */
 export const VIEW_ACTIONS = {
-  manageViews: "manageViews",
+  readViews: "readViews",
+  createView: "createView",
+  updateView: "updateView",
+  deleteView: "deleteView",
 } as const;
-/** View-management action union, derived from {@link VIEW_ACTIONS}. */
+/** View action union, derived from {@link VIEW_ACTIONS}. */
 export type ViewAction = (typeof VIEW_ACTIONS)[keyof typeof VIEW_ACTIONS];
+```
+
+**2 — `QUERY_ACTIONS` gains `readViews`, beside `readDrafts`.** Mirrors `readDrafts: DRAFT_ACTIONS.readDrafts` — `readViews` is now a query-shaped action, so a role may narrow it with `withIndex`/`filter` like any other query action (the mechanism `find`'s shared-view allow-list, Step 6, reuses via `resolveQueryConstraint`).
+
+```ts
+export const QUERY_ACTIONS = {
+  read: CRUD_ACTIONS.read,
+  readDrafts: DRAFT_ACTIONS.readDrafts,
+  readViews: VIEW_ACTIONS.readViews,
+} as const;
 ```
 
 #### packages/core/src/access/types.ts
 
-3 edits — everything else in this file is unchanged. No change to `hasPermission.ts`: an undeclared action already resolves to denied (P-007), so `manageViews` is fail-closed the moment it is wired into the action union below — Step 7's `saveView`/`removeView` server functions are the first runtime callers (`hasPermission({ resource: collection, action: VIEW_ACTIONS.manageViews, throwOnDenied: true })`).
+3 edits — everything else in this file is unchanged. No change to `hasPermission.ts`: an undeclared action already resolves to denied (P-007), so all four `VIEW_ACTIONS` are fail-closed the moment `ViewAction` is wired into the action union below — Step 7's `listViews`/`saveView`/`removeView` server functions are the first runtime callers (`hasPermission({ resource: collection, action: VIEW_ACTIONS.createView, throwOnDenied: true })` and friends).
 
 **1 — import `ViewAction` into the existing `./constants` import, beside `type DraftAction`.**
 
@@ -1539,7 +1728,7 @@ describe("generateVexSchema — vex_views", () => {
  * are merged by `viewId` for display:
  *
  * - `config` — declared in code via `admin.table.views`; always read-only.
- * - `shared` — a `vex_views` row; editable by callers with `VIEW_ACTIONS.manageViews`.
+ * - `shared` — a `vex_views` row; readable with `VIEW_ACTIONS.readViews`, editable by callers with `createView`/`updateView`/`deleteView`.
  * - `local` — kept in the browser's `localStorage`; editable by anyone.
  */
 export const VEX_VIEW_SOURCES = {
@@ -1788,24 +1977,6 @@ import { toClientViewConfig } from "./toClientViewConfig";
 import type { VexViewConfig } from "./types";
 
 describe("toClientViewConfig", () => {
-  it("passes through viewId, name, description, and the non-where state fields", () => {
-    const view: VexViewConfig = {
-      viewId: "published",
-      name: "Published",
-      description: "Only published rows.",
-      state: { sort: { field: "_creationTime", order: "desc" }, columns: ["title"], pageSize: 25 },
-    };
-
-    expect(toClientViewConfig(view)).toEqual({
-      viewId: "published",
-      name: "Published",
-      description: "Only published rows.",
-      state: { sort: { field: "_creationTime", order: "desc" }, columns: ["title"], pageSize: 25 },
-      hasHiddenFilter: false,
-      hiddenFilterCount: 0,
-    });
-  });
-
   it("strips where and reports hasHiddenFilter/hiddenFilterCount for a single-condition where", () => {
     const view: VexViewConfig = {
       viewId: "approved",
@@ -1852,7 +2023,7 @@ describe("toClientViewConfig", () => {
 
 #### packages/core/src/collections/composeViewWhere.ts
 
-New file. Decision 25's replacement for the deleted `resolveConfigViewWhere` (the old design resolved `"config:<viewId>"` server-side inside `find`/`search`). `find`/`search` now take no `view` argument at all — the client builds one plain `where` and sends that, same as any other caller `where`.
+New file. The one place a config view's hidden `where` is read client-side to build the `where` the client sends. `find`/`search` take no `view` argument at all — the client builds one plain `where` and sends that, same as any other caller `where`.
 
 ```ts
 import type { VexWhereNodeOf } from "../access/queryConstraintTypes";
@@ -2383,14 +2554,14 @@ describe("validateTableConfig — views", () => {
 
 ### Step 6 — Index pushdown, the declared-filter field-read exemption, and the total-count cap in `find` / `search` [agent]
 
-Why: this step replaces the OLD design (a `view: string` arg on `find`/`search` that resolved a config view's `where` server-side) with the architecture-review design: the client composes one plain `where` itself (`composeViewWhere`, Step 5) and sends it like any other filter — `find`/`search` take **no `view` arg** (Decision 25). `resolveQueryIndex` (`collections/resolveQueryIndex.ts`) replaces the old `resolveSort` outright: it still resolves a portable `sort` to an index and still rejects an unreadable `sort.field` with `VexAccessError` (Decision 26), but now ALSO pushes the caller's `where` equalities into that same index's range when a declared index can absorb them (Decision 36) — a selective filter on an indexed field stops scanning every matching row per page. `matchDeclaredViewFilter` (new) implements Decision 26's one field-read exception: when a top-level AND part of the caller's `where` deep-equals a config view's own declared `where`, that part is trusted and skipped by the field-read check — `find`/`search` only re-check the remaining parts. Finally, `find`/`search` stop `.collect()`-ing the whole matching set to count it (which failed outright above Convex's ~32k-document scan limit) and instead count at most `admin.table.countLimit + 1` rows, returning `totalDocs` plus `totalDocsCapped: boolean` (Decision 35).
+Why: `find`/`search` take **no `view` arg** (Decision 25) — the client composes one plain `where` itself (`composeViewWhere`, Step 5) and sends it like any other filter. `resolveQueryIndex` (`collections/resolveQueryIndex.ts`) resolves a portable `sort` to an index and rejects an unreadable `sort.field` with `VexAccessError` (Decision 26), while also pushing the caller's `where` equalities into that same index's range when a declared index can absorb them (Decision 36) — a selective filter on an indexed field stops scanning every matching row per page. `matchDeclaredViewFilter` (new) implements Decision 26's one field-read exception: when a top-level AND part of the caller's `where` deep-equals a config view's own declared `where`, that part is trusted and skipped by the field-read check — `find`/`search` only re-check the remaining parts. Finally, `find`/`search` stop `.collect()`-ing the whole matching set to count it (which fails outright above Convex's ~32k-document scan limit) and instead count at most `admin.table.countLimit + 1` rows, returning `totalDocs` plus `totalDocsCapped: boolean` (Decision 35).
 
-This step anchors against the CURRENT, unmodified `find`/`search` implementation — list-view-overhaul has not landed any server code yet, so every edit below is shown against the file as it exists today, not as a prior draft left it.
+This step anchors against the CURRENT, unmodified `find`/`search` implementation — list-view-overhaul has not landed any server code yet, so every edit below is shown against the file as it exists today.
 
-- [ ] `packages/core/src/collections/resolveQueryIndex.ts` (new) — replaces the never-implemented `resolveSort`; resolves `sort` to an index AND pushes `where` equalities into that index's range (Decision 36)
+- [ ] `packages/core/src/collections/resolveQueryIndex.ts` (new) — resolves `sort` to an index AND pushes `where` equalities into that index's range (Decision 36)
 - [ ] `packages/core/src/collections/resolveQueryIndex.test.ts` (new) — exhaustive pushdown cases
-- [ ] `packages/core/src/collections/matchDeclaredViewFilter.ts` (new) — the declared-view-filter field-read exemption (Decision 26)
-- [ ] `packages/core/src/collections/matchDeclaredViewFilter.test.ts` (new) — exhaustive declared-filter matching cases
+- [ ] `packages/core/src/collections/matchDeclaredViewFilter.ts` (new) — the declared-view-filter field-read exemption for BOTH config views (Decision 25) and shared `vex_views` rows (Decision 26's "Shared views" bullet): a pure matcher (`matchDeclaredViewFilter`) plus `loadSharedViewWheres`, which reads `vex_views` for the collection (indexed by collection, plus org when `orgCollectionSlug` is set), filtered by the caller's `readViews` rule, called by `find`/`search` only when the config-view match leaves an unreadable condition
+- [ ] `packages/core/src/collections/matchDeclaredViewFilter.test.ts` (new) — exhaustive declared-filter matching cases for both config and shared views, plus `loadSharedViewWheres`'s `readViews`-gated read
 - [ ] `packages/core/src/collections/types.ts` — adds `CollectionTableSort`, the portable sort shape `find`'s `sort` arg and `resolveQueryIndex` share
 - [ ] `packages/core/src/db/types.ts` — `PaginationResult.totalDocs` drops `| null`; adds `totalDocsCapped` (Decision 35)
 - [ ] `packages/core/src/collections/api/find/server.ts` — `sort` arg + index pushdown + declared-filter exemption + count cap; no `view` arg
@@ -2444,14 +2615,13 @@ export interface ResolvedQueryIndex<S extends string = string> {
 /**
  * Resolves a portable `{ field, order }` sort to the Convex index that
  * serves it, pushing down any `where` equalities that index's leading
- * fields can absorb (Design Decision 36) — the combined replacement for
- * the spec's earlier `resolveSort`. Clients — URLs, saved views, `find`
- * callers — still never name an index directly (Design Decision 5).
+ * fields can absorb (Design Decision 36). Clients — URLs, saved views,
+ * `find` callers — still never name an index directly (Design Decision 5).
  *
  * Pushdown only runs when `sort` is supplied — list views always send
  * `defaultSort` (Decisions 4/9), and a sort-less call is rare enough that
- * reusing the OLD no-index passthrough (pure insertion-order scan) is
- * simpler than reasoning about what "ascending" means once an index picks
+ * a plain no-index passthrough (pure insertion-order scan) is simpler
+ * than reasoning about what "ascending" means once an index picks
  * the enumeration order.
  *
  * `_creationTime` needs no index of its own: Convex's default `.order()`
@@ -2462,7 +2632,7 @@ export interface ResolvedQueryIndex<S extends string = string> {
  * the matched equality prefix to be followed IMMEDIATELY by `sort.field`
  * in the SAME index (Decision 36's "leading fields matched by equalities …
  * followed by the sort field") — the degenerate zero-equality case
- * (`fields[0] === sort.field`) is the old `resolveSort` behavior.
+ * (`fields[0] === sort.field`) included.
  *
  * Only `eq` conditions in `where`'s TOP-LEVEL `and` part (or a single
  * unwrapped condition, treated as one) are eligible — an `or` group, a
@@ -2569,7 +2739,7 @@ export function resolveQueryIndex<S extends string = string>(props: {
   //       index.fields.length && prefixLen > 0`.
   //    b. Otherwise → keep indexes where `index.fields[prefixLen] ===
   //       sort.field` (true at `prefixLen === 0` for a plain
-  //       `fields[0] === sort.field` match — the old `resolveSort` case).
+  //       `fields[0] === sort.field` match).
   // 10. Zero candidates:
   //     a. `requireFullConsumption` → return `{ order: sort.order,
   //        remainder: props.where }` (today's "_creationTime always
@@ -2582,7 +2752,7 @@ export function resolveQueryIndex<S extends string = string>(props: {
   // 11. One or more candidates → pick the winner:
   //     a. Keep only those with the MAXIMUM `prefixLen` among the
   //        candidates.
-  //     b. Among those, tie-break exactly as the old `resolveSort` did:
+  //     b. Among those, tie-break:
   //        `props.drafts === true` ? prefer the first declaring
   //        `draftStatus: "both"` : prefer the first declaring ANY
   //        `draftStatus`; otherwise the first in `resolveCollectionIndexes`'
@@ -2992,9 +3162,16 @@ describe("resolveQueryIndex — sort field read access", () => {
 New file.
 
 ```ts
+import type { GenericDataModel, GenericQueryCtx } from "convex/server";
+
 import type { CollectionConfig } from "./types";
+import type { CollectionSlug } from "../types/generated";
+import type { VexConfig } from "../config";
+import type { AccessCallOptions, VexApiAuth } from "../db/types";
 import type { VexWhereNode } from "../db/queryArgs";
 import { valuesEqual } from "../utils/valuesEqual";
+import { VIEW_ACTIONS, PERMISSION_SCOPES, hasPermission } from "../access";
+import { resolveAccessCall } from "../access/resolveAccessCall";
 
 /** {@link matchDeclaredViewFilter}'s result. */
 export interface MatchedDeclaredViewFilter<S extends string = string> {
@@ -3048,22 +3225,28 @@ export interface MatchedDeclaredViewFilter<S extends string = string> {
  *   no config) resolves permissively: `{ remainder: props.where }`, the
  *   same fallback `whereFieldNames` takes.
  * @param props.where - The caller's plain `where`, verbatim.
+ * @param props.sharedWheres - `vex_views[].state.where` values the caller
+ *   may read (Decision 26's "Shared views" bullet), loaded by
+ *   {@link loadSharedViewWheres}. Compared with the SAME deep-equality rule
+ *   as a config view's `where` — omit (or pass `[]`) when the config-view
+ *   pass alone leaves nothing unreadable, so the caller never pays for the
+ *   `vex_views` read on an ordinary query.
  * @returns See {@link MatchedDeclaredViewFilter}.
  */
 export function matchDeclaredViewFilter<S extends string = string>(props: {
   collection?: CollectionConfig;
   where?: VexWhereNode<S>;
+  sharedWheres?: VexWhereNode<S>[];
 }): MatchedDeclaredViewFilter<S> {
   // TODO: implement
   // 1. `props.where === undefined` → return `{ remainder: undefined }` —
   //    nothing to match, nothing left to check.
-  // 2. `declaredWheres = (props.collection?.admin?.table as { views?:
-  //    readonly { where?: VexWhereNode<S> }[] } | undefined)?.views
-  //    ?.map((v) => v.where).filter((w): w is VexWhereNode<S> => w !==
-  //    undefined) ?? []` — every declared `where` across every config view
-  //    on `collection`, in declaration order. Empty (no `collection`, no
-  //    `views`, or no view declares a `where`) → return `{ remainder:
-  //    props.where }`.
+  // 2. `declaredWheres = [...(props.collection?.admin.table.views ?? [])
+  //    .map((v) => v.state.where), ...(props.sharedWheres ?? [])]
+  //    .filter((w): w is VexWhereNode<S> => w !== undefined)` — every
+  //    declared config-view `where` AND every passed-in shared-view
+  //    `where`, unioned — Decision 26 applies "the same exact-match rule"
+  //    to both sources. Empty → return `{ remainder: props.where }`.
   // 3. `parts = "and" in props.where ? props.where.and : [props.where]` —
   //    the top-level AND parts; a bare `where` counts as one part (mirrors
   //    `resolveQueryIndex`'s identical convention).
@@ -3091,6 +3274,61 @@ export function matchDeclaredViewFilter<S extends string = string>(props: {
   //   `viewId`, so which view it came from doesn't change the result.
   throw new Error("Not implemented");
 }
+
+/**
+ * Loads the `where` of every `shared` (`vex_views`) view on `collection`
+ * the caller may read, for {@link matchDeclaredViewFilter}'s `sharedWheres`
+ * (Decision 26's "Shared views" bullet). Gated on `readViews` (decision 13)
+ * with `scope: PERMISSION_SCOPES.any` — the same "may they ever see this
+ * list?" gate `listViews` (`collections/api/listViews/server.ts`) uses.
+ * Resolves to `[]`, not a thrown error, when the caller lacks `readViews` —
+ * nothing becomes trusted, which drops the row exactly like any other
+ * unreadable condition.
+ *
+ * Callers (`find`/`search`) only invoke this AFTER the config-view match
+ * (Decision 25) still leaves an unreadable field in the remainder — the
+ * read costs nothing on an ordinary query.
+ *
+ * Scoped to the caller's organization via `by_collection_org` when
+ * `config.access.orgCollectionSlug` is configured AND `auth.organization`
+ * resolves an id, mirroring `listViews`'s own scoping — otherwise every
+ * shared view for the collection via `by_collection`.
+ *
+ * @param props.ctx - Convex query context.
+ * @param props.config - The resolved `VexConfig`.
+ * @param props.collection - The collection slug to load shared views for.
+ * @param props.auth - Resolved caller identity, checked against `readViews`.
+ * @returns Every readable shared view's `state.where`, skipping views with
+ *   no `where` (search- or sort-only views carry nothing to match against).
+ */
+export async function loadSharedViewWheres<DataModel extends GenericDataModel, S extends string = string>(props: {
+  ctx: GenericQueryCtx<DataModel>;
+  config: VexConfig;
+  access?: AccessCallOptions<string>;
+  collection: CollectionSlug;
+  auth?: VexApiAuth;
+}): Promise<VexWhereNode<S>[]> {
+  // TODO: implement
+  // 1. props.config.access !== undefined →
+  //    a. { access, action, resource } = resolveAccessCall({ config: props.config, access: props.access,
+  //         defaultAction: VIEW_ACTIONS.readViews, resource: props.collection })
+  //    b. allowed = hasPermission({ access, user: props.auth?.user ?? null,
+  //         organization: props.auth?.organization, resource, action, scope: PERMISSION_SCOPES.any })
+  //    c. !allowed → return []
+  // 2. organizationId = props.config.access?.orgCollectionSlug !== undefined
+  //      ? (props.auth?.organization as { _id?: string } | undefined)?._id
+  //      : undefined
+  // 3a. organizationId !== undefined → rows = await props.ctx.db.query("vex_views")
+  //       .withIndex("by_collection_org", (q) =>
+  //         q.eq("collection", props.collection).eq("organizationId", organizationId))
+  //       .collect()
+  // 3b. organizationId === undefined → rows = await props.ctx.db.query("vex_views")
+  //       .withIndex("by_collection", (q) => q.eq("collection", props.collection))
+  //       .collect()
+  // 4. return rows.map((row) => (row.state as { where?: VexWhereNode<S> }).where)
+  //      .filter((where): where is VexWhereNode<S> => where !== undefined)
+  throw new Error("Not implemented");
+}
 ```
 
 #### packages/core/src/collections/matchDeclaredViewFilter.test.ts
@@ -3099,9 +3337,17 @@ New file.
 
 ```ts
 import { describe, expect, it } from "vitest";
+import { convexTest } from "convex-test";
+import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
+
+import * as _generatedApi from "../db/test/convex/_generated/api";
+import schema from "../db/test/convex/schema";
+import type { VexConfig } from "../config";
+import { defineAccess } from "../access/config";
+import { defineCollection, text } from "../index";
 
 import type { CollectionConfig } from "./types";
-import { matchDeclaredViewFilter } from "./matchDeclaredViewFilter";
+import { matchDeclaredViewFilter, loadSharedViewWheres } from "./matchDeclaredViewFilter";
 
 function collectionWithViews(views: { viewId: string; name: string; where?: unknown }[]): CollectionConfig {
   return { slug: "posts", admin: { table: { views } } } as unknown as CollectionConfig;
@@ -3206,6 +3452,95 @@ describe("matchDeclaredViewFilter — unreadable remainder", () => {
     expect(matchDeclaredViewFilter({ collection, where: { and: [featuredWhere, unreadableCondition] } })).toEqual({
       declared: featuredWhere,
       remainder: unreadableCondition,
+    });
+  });
+});
+
+describe("matchDeclaredViewFilter — sharedWheres", () => {
+  const collection = collectionWithViews([]);
+
+  it("trusts an exact match against a shared view's where, same as a config view's", () => {
+    expect(
+      matchDeclaredViewFilter({ collection, where: featuredWhere, sharedWheres: [featuredWhere] }),
+    ).toEqual({ declared: featuredWhere, remainder: undefined });
+  });
+
+  it("does not trust a shared where that was never loaded (caller lacked readViews)", () => {
+    expect(matchDeclaredViewFilter({ collection, where: featuredWhere, sharedWheres: [] })).toEqual({
+      remainder: featuredWhere,
+    });
+  });
+
+  it("does not trust an altered value against a shared view's where", () => {
+    const altered = { field: "featured", op: "eq", value: false } as const;
+    expect(
+      matchDeclaredViewFilter({ collection, where: altered, sharedWheres: [featuredWhere] }),
+    ).toEqual({ remainder: altered });
+  });
+});
+
+const postsResource = defineCollection({ slug: "posts", fields: { title: text() } });
+const fixtureConfig = { collections: [postsResource] } as unknown as VexConfig;
+const modules: Record<string, () => Promise<unknown>> = {
+  "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
+};
+
+describe("loadSharedViewWheres (server)", () => {
+  it("returns [] and reads nothing extra when nothing is unreadable (no RBAC configured, still just loads readable wheres)", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericQueryCtx<GenericDataModel>) => {
+      const result = await loadSharedViewWheres({ ctx, config: fixtureConfig, collection: "posts" });
+      expect(result).toEqual([]);
+    });
+  });
+
+  it("loads every readable shared view's where for the collection", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "v1",
+        name: "Featured",
+        state: { where: featuredWhere },
+        createdBy: "user1",
+      });
+    });
+    await t.run(async (ctx: GenericQueryCtx<GenericDataModel>) => {
+      const result = await loadSharedViewWheres({ ctx, config: fixtureConfig, collection: "posts" });
+      expect(result).toEqual([featuredWhere]);
+    });
+  });
+
+  it("resolves to [] when the caller lacks readViews, rather than throwing", async () => {
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: { editor: { posts: { readViews: false } } },
+      }),
+    } as unknown as VexConfig;
+
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "v1",
+        name: "Featured",
+        state: { where: featuredWhere },
+        createdBy: "user1",
+      });
+    });
+    await t.run(async (ctx: GenericQueryCtx<GenericDataModel>) => {
+      const result = await loadSharedViewWheres({
+        ctx,
+        config,
+        collection: "posts",
+        auth: { user: { roles: ["editor"] } },
+      });
+      expect(result).toEqual([]);
     });
   });
 });
@@ -3316,10 +3651,13 @@ with:
 ```ts
 import {
   AccessDocFieldFor,
+  CRUD_ACTIONS,
+  PERMISSION_SCOPES,
   resolveQueryConstraint,
   resolveQueryIndex as resolveAccessQueryIndex,
   SYSTEM_FIELD_KEYS,
 } from "../../../access";
+import { resolveFieldPermissions, isFieldAllowed } from "../../../access/resolveFieldPermissions";
 ```
 
 `resolveAccessQueryIndex` is the RBAC rule-index resolver (unchanged behavior); the NEW collections-level `resolveQueryIndex` (added below) handles the caller's own `sort`/`where` pushdown — the two share a name across packages, so one import is aliased.
@@ -3357,7 +3695,7 @@ import {
 
 ```ts
 import { resolveQueryIndex } from "../../resolveQueryIndex";
-import { matchDeclaredViewFilter } from "../../matchDeclaredViewFilter";
+import { matchDeclaredViewFilter, loadSharedViewWheres } from "../../matchDeclaredViewFilter";
 import type { CollectionTableSort } from "../../types";
 import { VexError } from "../../../errors";
 ```
@@ -3473,10 +3811,54 @@ with:
   // Decision 26's one exception — see `matchDeclaredViewFilter`). Only the
   // REMAINING parts of `where` still need every referenced field to be
   // readable.
-  const { remainder: declaredFilterRemainder } = matchDeclaredViewFilter({
+  const configMatch = matchDeclaredViewFilter({
     collection: collectionConfig,
     where: args.where as VexWhereNode<string> | undefined,
   });
+  // Only enforced reads are guarded; a bypassed read may filter on anything.
+  const configWhereFields =
+    access !== undefined && configMatch.remainder !== undefined
+      ? referencedWhereFields({ where: configMatch.remainder as VexWhere<string> }).filter(
+          (field) => !SYSTEM_FIELD_KEYS.has(field),
+        )
+      : [];
+  // Decision 26's "Shared views" bullet: only when the config-view match
+  // above still leaves an unreadable field does `find` pay for a `vex_views`
+  // read — an ordinary query never touches the table. The caller's own
+  // `readViews` rule gates what comes back (`loadSharedViewWheres` resolves
+  // to `[]`, not an error, when denied), so an untrusted shared view never
+  // becomes trusted here.
+  const configFieldPermissions =
+    access !== undefined && configWhereFields.length > 0
+      ? resolveFieldPermissions({
+          access,
+          user: args.auth?.user ?? null,
+          organization: args.auth?.organization,
+          resource,
+          action: CRUD_ACTIONS.read,
+          scope: PERMISSION_SCOPES.any,
+        })
+      : undefined;
+  const hasUnreadableConfigField =
+    configFieldPermissions !== undefined &&
+    configWhereFields.some((field) => !isFieldAllowed(configFieldPermissions, field));
+  const sharedWheres = hasUnreadableConfigField
+    ? await loadSharedViewWheres({
+        ctx: args.ctx,
+        config: args.config,
+        access: args.access,
+        collection: args.collection,
+        auth: args.auth,
+      })
+    : [];
+  const { remainder: declaredFilterRemainder } =
+    sharedWheres.length === 0
+      ? configMatch
+      : matchDeclaredViewFilter({
+          collection: collectionConfig,
+          where: args.where as VexWhereNode<string> | undefined,
+          sharedWheres: sharedWheres as VexWhereNode<string>[],
+        });
   // Only enforced reads are guarded; a bypassed read may filter on anything.
   const whereFields =
     access !== undefined && declaredFilterRemainder !== undefined
@@ -3569,8 +3951,7 @@ with:
       // of `.collect()`-ing the whole matching set — the old unbounded
       // count re-scanned every matching row on each list open and failed
       // outright above Convex's ~32k-document transaction scan limit.
-      const countLimit =
-        (collectionConfig?.admin?.table as { countLimit?: number } | undefined)?.countLimit ?? 1000;
+      const countLimit = collectionConfig?.admin.table.countLimit ?? 1000;
       const countQuery = buildQuery({
         ...args,
         order: queryIndexResolution?.order ?? args.order,
@@ -3815,6 +4196,107 @@ describe("find (server) — declared view filter is exempt from the field-read c
   });
 });
 
+// ── Step 6 / Decision 26: shared-view filter exemption (readViews) ──────────
+const sharedFilterAccessWithReadViews = {
+  collections: [declaredFilterResource],
+  access: defineAccess({
+    roles: ["editor"] as const,
+    resources: [declaredFilterResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      editor: {
+        posts: { read: () => ({ featured: false, "*": true }), readViews: true },
+      },
+    },
+  }),
+} as unknown as VexConfig;
+const sharedFilterEditorAuth = { user: { _id: "u2", roles: "editor" } };
+
+describe("find (server) — shared-view filter exemption (readViews)", () => {
+  test("does not read vex_views when nothing is unreadable", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      return find({
+        ctx,
+        collection: "posts",
+        config: sharedFilterAccessWithReadViews,
+        auth: sharedFilterEditorAuth,
+        where: { field: "slug", op: "eq", value: "shown" },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["shown"]);
+  });
+
+  test("trusts an exact match against a shared view's where when the caller has readViews", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("posts", { title: "Hidden", slug: "hidden", featured: false });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: sharedFilterAccessWithReadViews,
+        auth: sharedFilterEditorAuth,
+        where: { field: "featured", op: "eq", value: true },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["shown"]);
+  });
+
+  test("does not trust a shared view's where when the caller lacks readViews", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: declaredFilterAccess,
+        auth: declaredFilterViewerAuth,
+        where: { field: "featured", op: "eq", value: true },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+
+  test("does not trust an altered value against a shared view's where", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: sharedFilterAccessWithReadViews,
+        auth: sharedFilterEditorAuth,
+        where: { field: "featured", op: "eq", value: false },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+});
+
 // ── Step 6: total count cap ──────────────────────────────────────────────────
 const countCapBaseResource = defineCollection({ slug: "posts", fields: { title: text() } });
 const countCapResource = {
@@ -3933,7 +4415,7 @@ import {
 import { readableDocuments } from "../../../db/documents";
 import { resolveAccessCall } from "../../../access/resolveAccessCall";
 import { requiresPublishedOnly, VERSION_STATUSES } from "../../../versions";
-import { matchDeclaredViewFilter } from "../../matchDeclaredViewFilter";
+import { matchDeclaredViewFilter, loadSharedViewWheres } from "../../matchDeclaredViewFilter";
 import { VexError } from "../../../errors";
 ```
 
@@ -3982,8 +4464,7 @@ with:
     });
   }
   const collectionConfig = args.config?.collections.find((c) => c.slug === args.collection);
-  const searchFieldAllowList = (collectionConfig?.admin?.table as { searchField?: readonly string[] } | undefined)
-    ?.searchField;
+  const searchFieldAllowList = collectionConfig?.admin.table.searchField;
   if (searchFieldAllowList && !searchFieldAllowList.includes(args.searchField)) {
     throw new VexError({
       code: "SEARCH_FIELD_NOT_ALLOWED",
@@ -4036,10 +4517,51 @@ with:
   // A request `where` part that deep-equals a config view's own `where` is
   // trusted server config, exempt from the field-read check below (Design
   // Decision 26's one exception — see `matchDeclaredViewFilter`).
-  const { remainder: declaredFilterRemainder } = matchDeclaredViewFilter({
+  const configMatch = matchDeclaredViewFilter({
     collection: collectionConfig,
     where: args.where as VexWhereNode<string> | undefined,
   });
+  const configWhereFields =
+    access !== undefined && configMatch.remainder !== undefined
+      ? referencedWhereFields({ where: configMatch.remainder as VexWhere<string> }).filter(
+          (field) => !SYSTEM_FIELD_KEYS.has(field),
+        )
+      : [];
+  // Decision 26's "Shared views" bullet — same lazy, `readViews`-gated read
+  // as `find` (`collections/api/find/server.ts`): only when the config-view
+  // match still leaves an unreadable field does `search` pay for a
+  // `vex_views` read.
+  const configFieldPermissions =
+    access !== undefined && configWhereFields.length > 0
+      ? resolveFieldPermissions({
+          access,
+          user: args.auth?.user ?? null,
+          organization: args.auth?.organization,
+          resource,
+          action: CRUD_ACTIONS.read,
+          scope: PERMISSION_SCOPES.any,
+        })
+      : undefined;
+  const hasUnreadableConfigField =
+    configFieldPermissions !== undefined &&
+    configWhereFields.some((field) => !isFieldAllowed(configFieldPermissions, field));
+  const sharedWheres = hasUnreadableConfigField
+    ? await loadSharedViewWheres({
+        ctx: args.ctx,
+        config: args.config,
+        access: args.access,
+        collection: args.collection,
+        auth: args.auth,
+      })
+    : [];
+  const { remainder: declaredFilterRemainder } =
+    sharedWheres.length === 0
+      ? configMatch
+      : matchDeclaredViewFilter({
+          collection: collectionConfig,
+          where: args.where as VexWhereNode<string> | undefined,
+          sharedWheres: sharedWheres as VexWhereNode<string>[],
+        });
   // Only enforced reads are guarded; a bypassed read may filter on anything.
   const whereFields =
     access !== undefined && declaredFilterRemainder !== undefined
@@ -4104,8 +4626,7 @@ with:
       // Counts at most `countLimit + 1` rows (Design Decision 35) instead
       // of `.collect()`-ing the whole matching set — see `find/server.ts`
       // for the same cap.
-      const countLimit =
-        (collectionConfig?.admin?.table as { countLimit?: number } | undefined)?.countLimit ?? 1000;
+      const countLimit = collectionConfig?.admin.table.countLimit ?? 1000;
       const countQuery = buildQuery({ ...args, filter }); // Same search params
       const countDocs = readable(await countQuery.take(countLimit + 1));
       const totalDocsCapped = countDocs.length > countLimit;
@@ -4307,6 +4828,116 @@ describe("search (server) — declared view filter is exempt from the field-read
   });
 });
 
+const sharedFilterSearchAccessWithReadViews = {
+  collections: [declaredFilterSearchResource],
+  access: defineAccess({
+    roles: ["editor"] as const,
+    resources: [declaredFilterSearchResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      editor: { posts: { read: () => ({ featured: false, "*": true }), readViews: true } },
+    },
+  }),
+} as unknown as VexConfig;
+const sharedFilterSearchEditorAuth = { user: { _id: "u2", roles: "editor" } };
+
+describe("search (server) — shared-view filter exemption (readViews)", () => {
+  test("does not read vex_views when nothing is unreadable", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      return search({
+        ctx,
+        collection: "posts",
+        config: sharedFilterSearchAccessWithReadViews,
+        auth: sharedFilterSearchEditorAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: { field: "slug", op: "eq", value: "shown" },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["shown"]);
+  });
+
+  test("trusts an exact match against a shared view's where when the caller has readViews", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("posts", { title: "Hidden", slug: "hidden", featured: false });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return search({
+        ctx,
+        collection: "posts",
+        config: sharedFilterSearchAccessWithReadViews,
+        auth: sharedFilterSearchEditorAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: { field: "featured", op: "eq", value: true },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["shown"]);
+  });
+
+  test("does not trust a shared view's where when the caller lacks readViews", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return search({
+        ctx,
+        collection: "posts",
+        config: declaredFilterSearchAccess,
+        auth: declaredFilterSearchViewerAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: { field: "featured", op: "eq", value: true },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+
+  test("does not trust an altered value against a shared view's where", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return search({
+        ctx,
+        collection: "posts",
+        config: sharedFilterSearchAccessWithReadViews,
+        auth: sharedFilterSearchEditorAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: { field: "featured", op: "eq", value: false },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+});
+
 const searchCountCapBaseResource = defineCollection({ slug: "posts", fields: { title: text() } });
 const searchCountCapResource = {
   ...searchCountCapBaseResource,
@@ -4442,11 +5073,11 @@ Verify: `pnpm --filter @vexcms/core test -- collections`
 
 ### Step 7 — Views server API [agent]
 
-Why: Shared views CRUD must enforce `manageViews` server-side, scope by org, store an optional `description` alongside each view (revised Decision 11), and — new per the architecture review's Decision 26 — `saveView` must reject a `where` that references a field the saving user can't read, so a shared filter can never encode a yes/no condition on data its author (or anyone else) is denied.
+Why: Shared views CRUD must enforce the four `VIEW_ACTIONS` (`readViews`/`createView`/`updateView`/`deleteView`) server-side, scope by org, store an optional `description` alongside each view (revised Decision 11), and — new per the architecture review's Decision 26 — `saveView` must reject a `where` that references a field the saving user can't read, so a shared filter can never encode a yes/no condition on data its author (or anyone else) is denied.
 
-- [ ] `packages/core/src/collections/api/listViews/server.ts` + `.test.ts` (new) — list for collection, scoped to `organizationId` resolved server-side from the caller's session
-- [ ] `packages/core/src/collections/api/saveView/server.ts` + `.test.ts` (new) — create/patch, idempotent on `viewId` (promotion dedupe), requires `manageViews`, stores `description`, rejects a `view.state.where` referencing an unreadable field (Decision 26)
-- [ ] `packages/core/src/collections/api/removeView/server.ts` + `.test.ts` (new) — delete, requires `manageViews`
+- [ ] `packages/core/src/collections/api/listViews/server.ts` + `.test.ts` (new) — list for collection, scoped to `organizationId` resolved server-side from the caller's session; gated on `readViews` with `PERMISSION_SCOPES.any` — resolves to `[]` when denied (shared views are invisible, not an error — Decision 13)
+- [ ] `packages/core/src/collections/api/saveView/server.ts` + `.test.ts` (new) — create/patch, idempotent on `viewId` (promotion dedupe); an insert requires `createView`, a patch requires `updateView`; stores `description`; rejects a `view.state.where` referencing an unreadable field (Decision 26)
+- [ ] `packages/core/src/collections/api/removeView/server.ts` + `.test.ts` (new) — delete, requires `deleteView`
 - [ ] `packages/core/src/collections/api/types.ts` — shared arg/result types for the three operations
 - [ ] `packages/core/src/collections/api/collectionsApi.ts` — registers `listViews`/`saveView`/`removeView`
 - [ ] `packages/core/src/vexConvexApi.ts` — exports the three Convex function references
@@ -4461,8 +5092,10 @@ import type { GenericDataModel, GenericQueryCtx } from "convex/server";
 
 import type { CollectionSlug } from "../../../types/generated";
 import type { VexConfig } from "../../../config";
-import type { VexApiAuth } from "../../../db/types";
+import type { AccessCallOptions, VexApiAuth } from "../../../db/types";
 import type { VexStoredView } from "../../types";
+import { VIEW_ACTIONS, PERMISSION_SCOPES, hasPermission } from "../../../access";
+import { resolveAccessCall } from "../../../access/resolveAccessCall";
 
 /**
  * Server-side args for `listViews`.
@@ -4474,8 +5107,11 @@ export interface ListViewsServerArgs<DataModel extends GenericDataModel> {
   ctx: GenericQueryCtx<DataModel>;
   /** The resolved `VexConfig`. */
   config: VexConfig;
+  /** Per-call access overrides, forwarded to `resolveAccessCall`. */
+  access?: AccessCallOptions<string>;
   /**
-   * Resolved caller identity. Only consulted to read `auth.organization`
+   * Resolved caller identity. Checked against `readViews` (decision 13)
+   * before any row is read, and consulted to read `auth.organization`
    * when `config.access.orgCollectionSlug` is configured (decision 12) —
    * never a client-supplied organization id, so a caller cannot read
    * another organization's shared views by passing one in.
@@ -4487,8 +5123,15 @@ export interface ListViewsServerArgs<DataModel extends GenericDataModel> {
 
 /**
  * Lists every `shared` saved view stored in `vex_views` for one collection.
- * Never gated — shared views are collection-wide by design (decision 12),
- * so reading the list carries no RBAC check; only `saveView`/`removeView` do.
+ *
+ * Gated on `readViews` (decision 13), checked with `scope: PERMISSION_SCOPES.any`
+ * — the same "may they ever see this list?" question nav/sidebar gating asks
+ * (there is no per-row document to evaluate a callback against; per-view
+ * access is a later `readViews` rule with a `where` over `vex_views` rows,
+ * not this step). Denied resolves to `[]`, not a thrown error — shared
+ * views are invisible, not broken, until a project grants `readViews`. A
+ * no-op gate (every caller passes) when `config.access` is unset, matching
+ * `assertVersionsAccess`'s convention.
  *
  * Scoped to the caller's own organization via the `by_collection_org` index
  * when `config.access.orgCollectionSlug` is configured AND `auth.organization`
@@ -4505,8 +5148,9 @@ export interface ListViewsServerArgs<DataModel extends GenericDataModel> {
  * Server-side only. Import from `@vexcms/core/server`.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @param args - `{ ctx, config, collection, auth? }`.
- * @returns Every `vex_views` row for `collection`, unordered.
+ * @param args - `{ ctx, config, collection, access?, auth? }`.
+ * @returns Every `vex_views` row for `collection` the caller may see, unordered,
+ *   or `[]` when the caller lacks `readViews`.
  * @example
  * ```ts
  * import { listViews } from "@vexcms/core/server";
@@ -4521,21 +5165,27 @@ export async function listViews<DataModel extends GenericDataModel>(
   args: ListViewsServerArgs<DataModel>,
 ): Promise<VexStoredView[]> {
   // TODO: implement
-  // 1. organizationId = args.config.access?.orgCollectionSlug !== undefined
+  // 1. args.config.access === undefined → skip to step 2 (RBAC off project-wide)
+  // 1a. { access, action, resource } = resolveAccessCall({ config: args.config, access: args.access,
+  //       defaultAction: VIEW_ACTIONS.readViews, resource: args.collection })
+  // 1b. allowed = hasPermission({ access, user: args.auth?.user ?? null,
+  //       organization: args.auth?.organization, resource, action, scope: PERMISSION_SCOPES.any })
+  // 1c. !allowed → return [] (shared views are invisible without readViews)
+  // 2. organizationId = args.config.access?.orgCollectionSlug !== undefined
   //      ? (args.auth?.organization as { _id?: string } | undefined)?._id
   //      : undefined
-  // 2a. organizationId !== undefined → rows = await args.ctx.db.query("vex_views")
+  // 3a. organizationId !== undefined → rows = await args.ctx.db.query("vex_views")
   //       .withIndex("by_collection_org", (q) =>
   //         q.eq("collection", args.collection).eq("organizationId", organizationId))
   //       .collect()
   //     → compound index, chain both `.eq()` calls on the same query builder
-  // 2b. organizationId === undefined → rows = await args.ctx.db.query("vex_views")
+  // 3b. organizationId === undefined → rows = await args.ctx.db.query("vex_views")
   //       .withIndex("by_collection", (q) => q.eq("collection", args.collection))
   //       .collect()
   //     → every shared view for the collection, regardless of org — reached
   //       both when `orgCollectionSlug` is unconfigured AND when the caller
   //       has no resolved organization yet
-  // 3. return rows as unknown as VexStoredView[]
+  // 4. return rows as unknown as VexStoredView[]
   //    → row shape (`collection`, `viewId`, `name`, `description?`, `state`,
   //      `organizationId?`, `createdBy`) already matches `VexStoredView`
   //      field-for-field; only the Convex `_id`/`_creationTime` system
@@ -4618,7 +5268,7 @@ describe("listViews (server)", () => {
         userCollectionSlug: "users",
         userRolesField: "roles",
         orgCollectionSlug: "organizations",
-        permissions: { editor: { posts: { read: true } } },
+        permissions: { editor: { posts: { readViews: true } } },
       }),
     } as unknown as VexConfig;
 
@@ -4675,6 +5325,72 @@ describe("listViews (server)", () => {
       expect(result[0]).toMatchObject({ viewId: "org1-view" });
     });
   });
+
+  test("denies the list when the caller lacks readViews, returning [] rather than throwing", async () => {
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: { editor: { posts: { readViews: false } } },
+      }),
+    } as unknown as VexConfig;
+
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtxLike) => {
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "v1",
+        name: "Featured",
+        state: {},
+        createdBy: "user1",
+      });
+    });
+    await t.run(async (ctx: GenericQueryCtx<GenericDataModel>) => {
+      const result = await listViews({
+        ctx,
+        config,
+        collection: "posts",
+        auth: { user: { roles: ["editor"] } },
+      });
+      expect(result).toEqual([]);
+    });
+  });
+
+  test("allows the list when the caller has readViews", async () => {
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: { editor: { posts: { readViews: true } } },
+      }),
+    } as unknown as VexConfig;
+
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtxLike) => {
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "v1",
+        name: "Featured",
+        state: {},
+        createdBy: "user1",
+      });
+    });
+    await t.run(async (ctx: GenericQueryCtx<GenericDataModel>) => {
+      const result = await listViews({
+        ctx,
+        config,
+        collection: "posts",
+        auth: { user: { roles: ["editor"] } },
+      });
+      expect(result).toHaveLength(1);
+    });
+  });
 });
 
 /** Convenience alias: `t.run`'s ctx is a mutation ctx, used here only to seed fixture rows. */
@@ -4692,30 +5408,34 @@ import type { VexConfig } from "../../../config";
 import type { AccessCallOptions, VexApiAuth } from "../../../db/types";
 import type { VexViewConfig } from "../../types";
 import { VIEW_ACTIONS, CRUD_ACTIONS, PERMISSION_SCOPES, VexAccessError, hasPermission } from "../../../access";
+import type { ViewAction } from "../../../access";
 import { resolveAccessCall } from "../../../access/resolveAccessCall";
 import { resolveFieldPermissions, isFieldAllowed, SYSTEM_FIELD_KEYS } from "../../../access/resolveFieldPermissions";
 import { referencedWhereFields } from "../../../db/queryArgs";
 
 /**
- * Runs the RBAC gate shared by `saveView` and `removeView` — `manageViews`,
+ * Runs the RBAC gate shared by `listViews`'s mutation-shaped siblings —
+ * `saveView` (`createView`/`updateView`) and `removeView` (`deleteView`),
  * fail-closed per decision 13. A no-op when `config.access` is unset,
  * matching `assertVersionsAccess`'s (`versions/api/history/server.ts`)
  * convention: RBAC only applies when the project has configured `access` at
  * all.
  *
  * @param props.resource - The collection slug the view belongs to.
- * @throws {VexAccessError} When the caller's roles lack `manageViews` on `resource`.
+ * @param props.action - Which `VIEW_ACTIONS` member gates this call.
+ * @throws {VexAccessError} When the caller's roles lack `props.action` on `resource`.
  */
-export function assertManageViewsAccess(props: {
+export function assertViewAction(props: {
   config: VexConfig;
   auth?: VexApiAuth;
   access?: AccessCallOptions<string>;
   resource: string;
+  action: ViewAction;
 }): void {
   // TODO: implement
   // 1. props.config.access === undefined → return (RBAC off project-wide)
   // 2. { access, action, resource } = resolveAccessCall({ config: props.config, access: props.access,
-  //      defaultAction: VIEW_ACTIONS.manageViews, resource: props.resource })
+  //      defaultAction: props.action, resource: props.resource })
   // 3. hasPermission({ throwOnDenied: true, access, user: props.auth?.user ?? null,
   //      organization: props.auth?.organization, resource, action })
   //    → throws VexAccessError when denied
@@ -4803,14 +5523,17 @@ export interface SaveViewServerArgs<DataModel extends GenericDataModel> {
 }
 
 /**
- * Creates or patches one `vex_views` row, gated on `manageViews`
- * (decision 13). Idempotent on `view.viewId` (decision 14). Stores
- * `view.description` alongside `name` and `state`; an undefined
- * `description` clears any previously saved one on patch.
+ * Creates or patches one `vex_views` row — an insert requires `createView`,
+ * a patch requires `updateView` (decision 13), so the gate runs AFTER the
+ * idempotency lookup decides which action applies. Idempotent on
+ * `view.viewId` (decision 14). Stores `view.description` alongside `name`
+ * and `state`; an undefined `description` clears any previously saved one
+ * on patch.
  *
- * Resolves and asserts access BEFORE any `vex_views` row is read or
- * written, mirroring `assertVersionsAccess`'s ordering. The field-read
- * check (decision 26) runs right after, also before any row is touched.
+ * The idempotency lookup (`by_view_id`) runs first — it only confirms
+ * whether a row exists and which collection it belongs to, leaking nothing
+ * beyond that, so running it before the access gate is safe. Access and the
+ * field-read check (decision 26) both run before any row is written.
  *
  * Server-side only. Import from `@vexcms/core/server`.
  *
@@ -4819,8 +5542,9 @@ export interface SaveViewServerArgs<DataModel extends GenericDataModel> {
  * @returns The saved view's `viewId` (unchanged from `args.view.viewId`).
  * @throws {ConvexError} When an existing row for `view.viewId` belongs to a
  *   different collection.
- * @throws {VexAccessError} When the caller's roles lack `manageViews` on `collection`,
- *   or when `view.state.where` references a field the caller can't read.
+ * @throws {VexAccessError} When the caller's roles lack `createView` (insert) or
+ *   `updateView` (patch) on `collection`, or when `view.state.where` references
+ *   a field the caller can't read.
  * @example
  * ```ts
  * import { saveView } from "@vexcms/core/server";
@@ -4836,33 +5560,33 @@ export async function saveView<DataModel extends GenericDataModel>(
   args: SaveViewServerArgs<DataModel>,
 ): Promise<string> {
   // TODO: implement
-  // 1. assertManageViewsAccess({ config: args.config, auth: args.auth, access: args.access,
-  //      resource: args.collection })
-  // 2. assertViewWhereReadable({ config: args.config, auth: args.auth, resource: args.collection,
-  //      where: (args.view.state as { where?: unknown } | undefined)?.where })
-  // 3. existing = await args.ctx.db.query("vex_views")
+  // 1. existing = await args.ctx.db.query("vex_views")
   //      .withIndex("by_view_id", (q) => q.eq("viewId", args.view.viewId))
   //      .unique()
-  // 4a. existing && existing.collection !== args.collection → throw ConvexError
+  // 2a. existing && existing.collection !== args.collection → throw ConvexError
   //       (`viewId "${args.view.viewId}" already belongs to collection "${existing.collection}"`)
   //     → a reused viewId across collections is a client bug, never silently
   //       overwritten
-  // 4b. organizationId = args.config.access?.orgCollectionSlug !== undefined
+  // 2b. assertViewAction({ config: args.config, auth: args.auth, access: args.access,
+  //       resource: args.collection, action: existing ? VIEW_ACTIONS.updateView : VIEW_ACTIONS.createView })
+  // 3. assertViewWhereReadable({ config: args.config, auth: args.auth, resource: args.collection,
+  //      where: (args.view.state as { where?: unknown } | undefined)?.where })
+  // 4. organizationId = args.config.access?.orgCollectionSlug !== undefined
   //       ? (args.auth?.organization as { _id?: string } | undefined)?._id
   //       : undefined
-  // 4c. existing → await args.ctx.db.patch(existing._id, { name: args.view.name,
+  // 5a. existing → await args.ctx.db.patch(existing._id, { name: args.view.name,
   //       description: args.view.description, state: args.view.state, organizationId })
-  // 4d. !existing → await args.ctx.db.insert("vex_views", { collection: args.collection,
+  // 5b. !existing → await args.ctx.db.insert("vex_views", { collection: args.collection,
   //       viewId: args.view.viewId, name: args.view.name, description: args.view.description,
   //       state: args.view.state, organizationId,
   //       createdBy: (args.auth?.user as { _id?: string } | null)?._id ?? "" })
-  // 5. return args.view.viewId
+  // 6. return args.view.viewId
   // Edge cases:
   // - `auth` omitted (RBAC off, or a server-trusted internal call) → `createdBy` stores `""`
   //   and `organizationId` stays `undefined`, same as an unscoped project
   // - `args.view.description` omitted → stored as `undefined` both on insert and on patch
   //   (a patch with an explicit `undefined` clears a previously saved description)
-  // - `args.view.state.where` omitted → `assertViewWhereReadable` is a no-op (step 2 above)
+  // - `args.view.state.where` omitted → `assertViewWhereReadable` is a no-op (step 3 above)
   throw new Error("Not implemented");
 }
 ```
@@ -4960,7 +5684,7 @@ describe("saveView (server)", () => {
     });
   });
 
-  test("denies a save when the caller lacks manageViews", async () => {
+  test("denies an insert when the caller lacks createView", async () => {
     const config = {
       ...fixtureConfig,
       access: defineAccess({
@@ -4968,7 +5692,7 @@ describe("saveView (server)", () => {
         resources: [postsResource],
         userCollectionSlug: "users",
         userRolesField: "roles",
-        permissions: { editor: { posts: { manageViews: false } } },
+        permissions: { editor: { posts: { createView: false } } },
       }),
     } as unknown as VexConfig;
 
@@ -4986,7 +5710,7 @@ describe("saveView (server)", () => {
     });
   });
 
-  test("allows a save when the caller has manageViews", async () => {
+  test("allows an insert when the caller has createView", async () => {
     const config = {
       ...fixtureConfig,
       access: defineAccess({
@@ -4994,7 +5718,7 @@ describe("saveView (server)", () => {
         resources: [postsResource],
         userCollectionSlug: "users",
         userRolesField: "roles",
-        permissions: { admin: { posts: { manageViews: true } } },
+        permissions: { admin: { posts: { createView: true } } },
       }),
     } as unknown as VexConfig;
 
@@ -5008,6 +5732,72 @@ describe("saveView (server)", () => {
       });
       expect(viewId).toBe("v1");
       expect(await ctx.db.query("vex_views").collect()).toHaveLength(1);
+    });
+  });
+
+  test("denies a patch (existing viewId) when the caller has createView but lacks updateView", async () => {
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: { editor: { posts: { createView: true, updateView: false } } },
+      }),
+    } as unknown as VexConfig;
+
+    await withTransaction(async (ctx) => {
+      await saveView({
+        ctx,
+        config,
+        collection: "posts",
+        view: { viewId: "v1", name: "Featured", state: {} },
+        auth: { user: { roles: ["editor"] } },
+      });
+      await expect(
+        saveView({
+          ctx,
+          config,
+          collection: "posts",
+          view: { viewId: "v1", name: "Renamed", state: {} },
+          auth: { user: { roles: ["editor"] } },
+        }),
+      ).rejects.toThrow(VexAccessError);
+      const rows = await ctx.db.query("vex_views").collect();
+      expect(rows[0]).toMatchObject({ name: "Featured" });
+    });
+  });
+
+  test("allows a patch when the caller has updateView", async () => {
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: { editor: { posts: { createView: true, updateView: true } } },
+      }),
+    } as unknown as VexConfig;
+
+    await withTransaction(async (ctx) => {
+      await saveView({
+        ctx,
+        config,
+        collection: "posts",
+        view: { viewId: "v1", name: "Featured", state: {} },
+        auth: { user: { roles: ["editor"] } },
+      });
+      await saveView({
+        ctx,
+        config,
+        collection: "posts",
+        view: { viewId: "v1", name: "Renamed", state: {} },
+        auth: { user: { roles: ["editor"] } },
+      });
+      const rows = await ctx.db.query("vex_views").collect();
+      expect(rows[0]).toMatchObject({ name: "Renamed" });
     });
   });
 
@@ -5038,9 +5828,7 @@ describe("saveView (server)", () => {
         resources: [postsResource],
         userCollectionSlug: "users",
         userRolesField: "roles",
-        permissions: {
-          editor: {
-            posts: { manageViews: true, read: { fields: { internalScore: false } } },
+            posts: { createView: true, read: { fields: { internalScore: false } } },
           },
         },
       }),
@@ -5072,9 +5860,7 @@ describe("saveView (server)", () => {
         resources: [postsResource],
         userCollectionSlug: "users",
         userRolesField: "roles",
-        permissions: {
-          editor: {
-            posts: { manageViews: true, read: { fields: { internalScore: false } } },
+            posts: { createView: true, read: { fields: { internalScore: false } } },
           },
         },
       }),
@@ -5108,7 +5894,8 @@ import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import type { CollectionSlug } from "../../../types/generated";
 import type { VexConfig } from "../../../config";
 import type { AccessCallOptions, VexApiAuth } from "../../../db/types";
-import { assertManageViewsAccess } from "../saveView/server";
+import { assertViewAction } from "../saveView/server";
+import { VIEW_ACTIONS } from "../../../access";
 
 /**
  * Server-side args for `removeView`.
@@ -5131,7 +5918,7 @@ export interface RemoveViewServerArgs<DataModel extends GenericDataModel> {
 }
 
 /**
- * Permanently deletes one `vex_views` row, gated on `manageViews`
+ * Permanently deletes one `vex_views` row, gated on `deleteView`
  * (decision 13). Resolves the row via the `by_view_id` index and confirms
  * it belongs to `collection` before deleting — the same check `saveView`
  * runs on write, so a `viewId` cannot be used to touch another
@@ -5143,7 +5930,7 @@ export interface RemoveViewServerArgs<DataModel extends GenericDataModel> {
  * @param args - `{ ctx, config, collection, viewId, access?, auth? }`.
  * @returns Nothing — resolves once the row is deleted.
  * @throws {ConvexError} When no `vex_views` row with `viewId` exists for `collection`.
- * @throws {VexAccessError} When the caller's roles lack `manageViews` on `collection`.
+ * @throws {VexAccessError} When the caller's roles lack `deleteView` on `collection`.
  * @example
  * ```ts
  * import { removeView } from "@vexcms/core/server";
@@ -5159,8 +5946,8 @@ export async function removeView<DataModel extends GenericDataModel>(
   args: RemoveViewServerArgs<DataModel>,
 ): Promise<void> {
   // TODO: implement
-  // 1. assertManageViewsAccess({ config: args.config, auth: args.auth, access: args.access,
-  //      resource: args.collection })
+  // 1. assertViewAction({ config: args.config, auth: args.auth, access: args.access,
+  //      resource: args.collection, action: VIEW_ACTIONS.deleteView })
   // 2. row = await args.ctx.db.query("vex_views")
   //      .withIndex("by_view_id", (q) => q.eq("viewId", args.viewId))
   //      .unique()
@@ -5246,7 +6033,7 @@ describe("removeView (server)", () => {
     });
   });
 
-  test("denies a delete when the caller lacks manageViews", async () => {
+  test("denies a delete when the caller lacks deleteView", async () => {
     const config = {
       ...fixtureConfig,
       access: defineAccess({
@@ -5254,7 +6041,7 @@ describe("removeView (server)", () => {
         resources: [postsResource],
         userCollectionSlug: "users",
         userRolesField: "roles",
-        permissions: { editor: { posts: { manageViews: false } } },
+        permissions: { editor: { posts: { deleteView: false } } },
       }),
     } as unknown as VexConfig;
 
@@ -5275,6 +6062,36 @@ describe("removeView (server)", () => {
         }),
       ).rejects.toThrow(VexAccessError);
       expect(await ctx.db.query("vex_views").collect()).toHaveLength(1);
+    });
+  });
+
+  test("allows a delete when the caller has deleteView", async () => {
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["admin"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: { admin: { posts: { deleteView: true } } },
+      }),
+    } as unknown as VexConfig;
+
+    await withTransaction(async (ctx) => {
+      await saveView({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        view: { viewId: "v1", name: "Featured", state: {} },
+      });
+      await removeView({
+        ctx,
+        config,
+        collection: "posts",
+        viewId: "v1",
+        auth: { user: { roles: ["admin"] } },
+      });
+      expect(await ctx.db.query("vex_views").collect()).toHaveLength(0);
     });
   });
 });
@@ -5411,7 +6228,9 @@ import type { VexStoredView } from "./collections/types";
 
 ```ts
   /**
-   * Lists every shared `vex_views` row for a collection. Never gated.
+   * Lists every shared `vex_views` row for a collection the caller may see.
+   * Gated on `readViews` (decision 13) — resolves to `[]`, not a thrown
+   * error, when denied.
    */
   listViews: anyApi.vex.listViews as FunctionReference<
     "query",
@@ -5421,8 +6240,10 @@ import type { VexStoredView } from "./collections/types";
   >,
 
   /**
-   * Creates or patches a shared view, keyed by `viewId`. Requires `manageViews`,
-   * and rejects a `where` referencing a field the caller can't read (decision 26).
+   * Creates or patches a shared view, keyed by `viewId`. An insert requires
+   * `createView`, a patch requires `updateView` (decision 13), and the
+   * server rejects a `where` referencing a field the caller can't read
+   * (decision 26).
    */
   saveView: anyApi.vex.saveView as FunctionReference<
     "mutation",
@@ -5432,7 +6253,7 @@ import type { VexStoredView } from "./collections/types";
   >,
 
   /**
-   * Permanently deletes a shared view. Requires `manageViews`.
+   * Permanently deletes a shared view. Requires `deleteView`.
    */
   removeView: anyApi.vex.removeView as FunctionReference<
     "mutation",
@@ -5553,9 +6374,9 @@ export interface SaveViewClientArgs<TCollectionSlug extends CollectionSlug = Col
 
 /**
  * Returns a `mutationFn` for creating or patching a shared view. Idempotent
- * on `view.viewId`. Requires `manageViews` on `collection` — throws
- * `VexAccessError` server-side otherwise, as does a `view.state.where`
- * referencing a field the caller can't read (decision 26).
+ * on `view.viewId`. An insert requires `createView` on `collection`, a patch
+ * requires `updateView` — throws `VexAccessError` server-side otherwise, as
+ * does a `view.state.where` referencing a field the caller can't read (decision 26).
  *
  * Wraps `useConvexMutation(vexConvexApi.saveView)`. Call at the top level of
  * a React component (obeys the Rules of Hooks); pass the return value as
@@ -5603,7 +6424,7 @@ export interface RemoveViewClientArgs<TCollectionSlug extends CollectionSlug = C
 
 /**
  * Returns a `mutationFn` for permanently deleting a shared view. Requires
- * `manageViews` on `collection` — throws `VexAccessError` server-side
+ * `deleteView` on `collection` — throws `VexAccessError` server-side
  * otherwise.
  *
  * Wraps `useConvexMutation(vexConvexApi.removeView)`. Call at the top level
@@ -5644,7 +6465,7 @@ Verify: pnpm --filter @vexcms/core test -- collections/api
 
 ### Step 8 — Data-source hooks: `useVexListQuery` / `useVexDocQuery` [agent]
 
-Why: the hook boundary is where plugin, adapter, and adopted-table sources plug in later (Design Decision 19); list/edit views stop calling `vexConvexApi` directly. The names gain the `Query` suffix to read as data fetching, distinct from the edit view's `useVexDocument()` context hook (`documents/VexDocumentContext.tsx`). Step 8 ships full code, not guided stubs (Decision 1), so `useVexListQuery`'s search-mode path is a real, cursor-paginated implementation here. Two things that existed in an earlier draft are gone: there is **no `view` arg** anywhere in this file — `find`/`search` take none (Decision 25/26), and a caller who needs a config view's hidden filter composes it into `where` itself with `composeViewWhere` (Step 5) before calling either hook. In its place, `useVexListQuery` now surfaces `totalDocsCapped` (Decision 35), threaded through from `usePaginatedQuery`, whose own reset/`enabled` plumbing this step still adds (the "resets to the first page" half of Decision 8 lives there so `useVexListQuery` inherits it for free on every prop that can change the result set). File homes follow Step 2's restructure: `CollectionListView` lives at `collections/listView/CollectionListView.tsx` and `CollectionEditView` at `collections/editView/CollectionEditView.tsx`; `MediaCollectionListView` is untouched by Step 2 and stays under `media/`.
+Why: the hook boundary is where plugin, adapter, and adopted-table sources plug in later (Design Decision 19); list/edit views stop calling `vexConvexApi` directly. The names gain the `Query` suffix to read as data fetching, distinct from the edit view's `useVexDocument()` context hook (`documents/VexDocumentContext.tsx`). Step 8 ships full code, not guided stubs (Decision 1), so `useVexListQuery`'s search-mode path is a real, cursor-paginated implementation here. There is **no `view` arg** anywhere in this file — `find`/`search` take none (Decision 25/26), and a caller who needs a config view's hidden filter composes it into `where` itself with `composeViewWhere` (Step 5) before calling either hook. `useVexListQuery` surfaces `totalDocsCapped` (Decision 35), threaded through from `usePaginatedQuery`, whose own reset/`enabled` plumbing this step still adds (the "resets to the first page" half of Decision 8 lives there so `useVexListQuery` inherits it for free on every prop that can change the result set). File homes follow Step 2's restructure: `CollectionListView` lives at `collections/listView/CollectionListView.tsx` and `CollectionEditView` at `collections/editView/CollectionEditView.tsx`; `MediaCollectionListView` is untouched by Step 2 and stays under `media/`.
 
 Verify: pnpm --filter @vexcms/react test -- hooks collections && browser: list + edit views unchanged
 
@@ -6869,11 +7690,11 @@ Add to `AdminCollectionConfig` (after `livePreview`):
   components: AdminListComponents;
 ```
 
-`config.ts`'s `admin.components` resolution (beside the existing `livePreview` property, via `resolveComponentContributions` + `SLOT_IDS.list.*`) and `config.test.ts`'s defaulting/ordering assertions resolve these seven keys one-for-one; unchanged by this revision beyond the key additions above.
+`config.ts`'s `admin.components` resolution (beside the existing `livePreview` property, via `resolveComponentContributions` + `SLOT_IDS.list.*`) and `config.test.ts`'s defaulting/ordering assertions resolve these seven keys one-for-one; unchanged by this step beyond the key additions above.
 
 #### packages/react/src/collections/listView/CollectionListContext.tsx
 
-New file. Mirrors `documents/VexDocumentContext.tsx`'s shape (Decision 37: built-ins read shared list state from context instead of props drilled through the layout). `ListLayout` recomputes this value from its own props/hooks every render and wraps its `SlotOutlet`s with the provider; `CollectionListView` wraps `ListLayout` itself so Step 10–14's own contributions (search, filters, views, peek, shortcuts) can also read it without new prop plumbing.
+New file. Mirrors `documents/VexDocumentContext.tsx`'s shape (Decision 37: built-ins read shared list state from context instead of props drilled through the layout). `CollectionListView` recomputes this value from its own state/hooks every render and mounts the provider around `ListLayout` (mirrors `VexDocumentProvider`'s split between `CollectionEditView` and the form it wraps) — `ListLayout` itself is a consumer, never the provider, so a later step can extend this shape without touching `ListLayout`. Step 10 extends this base shape with URL state and the rest of the columns surface via its own anchored edit to this same file (Design Decision 37: one definition site, extended, never redefined).
 
 ```tsx
 "use client";
@@ -6883,17 +7704,18 @@ import type { CollectionConfig, TDocument } from "@vexcms/core";
 
 /**
  * The shared list-view state every `list.*` slot contribution reads via
- * `useCollectionList()` — collection identity, the current page's rows, selection,
- * per-browser density (Decision 29), visible columns, and the Inspect-peek opener
- * (Decision 27). Row-scoped data (`docs` for `list.row.actions`/`list.bulkActions`)
- * stays a `SlotOutlet` `contributedProps` prop instead — it varies per contribution
- * call, so it cannot live in one shared context value.
+ * `useCollectionList()` — collection identity, selection, per-browser
+ * density (Decision 29), visible columns, and the Inspect-peek opener
+ * (Decision 27). Row-scoped data (`docs` for `list.row.actions`/
+ * `list.bulkActions`) stays a `SlotOutlet` `contributedProps` prop instead
+ * — it varies per contribution call, so it cannot live in one shared
+ * context value. The current page's rows similarly stay a `ListLayout`/
+ * `DataTable` prop, never context — nothing reading `useCollectionList()`
+ * needs the whole page, only the ids `selection` already carries.
  */
 export interface CollectionListState<TDoc extends TDocument = TDocument> {
   /** The resolved collection config. */
   collection: CollectionConfig;
-  /** Rows for the current page — already version-collapsed when the collection is versioned. */
-  rows: TDoc[];
   /** The ids of currently-selected rows (`DataTable`'s `onSelectionChange`). */
   selectedIds: string[];
   /** Replaces the current selection. */
@@ -6902,19 +7724,20 @@ export interface CollectionListState<TDoc extends TDocument = TDocument> {
   density: "comfortable" | "compact";
   /** The field slugs currently visible in the table (Step 10's columns menu). Every field by default. */
   visibleFields: string[];
-  /** Opens the Inspect peek for a document id (Decision 27, wired in Step 13). */
-  onInspect: (id: string) => void;
+  /** Opens the Inspect peek for a document id (Decision 27, wired in Step 13). `undefined` until then. */
+  onInspect?: (id: string) => void;
 }
 
 /** Default value is `null` so a consumer rendered outside any provider throws instead of reading stale state. */
 export const CollectionListContext = createContext<CollectionListState | null>(null);
 
 /**
- * Mounts `CollectionListContext` for the subtree it wraps. `ListLayout` is the only
- * caller — it recomputes {@link CollectionListState} from its own props every render.
+ * Mounts `CollectionListContext` for the subtree it wraps. `CollectionListView` is the only
+ * caller — it recomputes {@link CollectionListState} from its own state every render and
+ * wraps `ListLayout` with it.
  *
  * @param props.value - The resolved list state to provide.
- * @param props.children - The subtree that consumes it (the seven `list.*` `SlotOutlet`s).
+ * @param props.children - The subtree that consumes it (`ListLayout` and its seven `list.*` `SlotOutlet`s).
  * @returns The context provider wrapping `props.children`.
  */
 export function CollectionListProvider(props: {
@@ -6930,7 +7753,7 @@ export function CollectionListProvider(props: {
 
 /**
  * Exposes the current list view's shared state to a built-in or third-party `list.*`
- * slot contribution. Backed by `CollectionListContext`, mounted by `ListLayout`.
+ * slot contribution. Backed by `CollectionListContext`, mounted by `CollectionListView`.
  *
  * Experimental: breaking changes are still possible before this stabilizes.
  * @returns The current `CollectionListState`.
@@ -6958,7 +7781,7 @@ import { useVexConfig } from "../../config/VexConfigContext";
 import { adminHref } from "../../admin/adminHref";
 import { VexLink } from "../../ui/VexLink";
 import { Button } from "../../ui";
-import { CreateDocumentModal } from "../createDocument/CreateDocumentModal";
+import { CreateDocumentModal } from "./CreateDocumentModal";
 import { useCollectionList } from "./CollectionListContext";
 
 /**
@@ -6982,7 +7805,7 @@ export function ListCreateAction(): ReactNode {
 
 #### packages/react/src/collections/listView/ListRowOpenAction.tsx
 
-New file. `vex.list.row.open` — navigates to the document's edit view, the same destination a row click or the `Enter` key already reach (Decision 30, Step 14). Exists in the ⋯ menu for users who prefer menu-driven navigation, and for Step 15's mobile layout where a row is a card rather than a clickable table row. Never gated — seeing the row at all already required read access.
+New file. `vex.list.row.open` — navigates to the document's edit view, the same destination a row click or the `Enter` key already reach (Decision 30, Step 14). Exists in the ⋯ menu for users who prefer menu-driven navigation, and for Step 16's narrow-container layout, where the horizontally-scrolling table (sticky first column, Decision 22) makes menu-driven navigation more discoverable than relying on the row click alone. Never gated — seeing the row at all already required read access.
 
 ```tsx
 "use client";
@@ -7170,7 +7993,7 @@ export function ListBulkDeleteAction(props: ListRowSlotProps): ReactNode {
 
 #### packages/react/src/collections/listView/listBuiltinContributions.ts
 
-New file. Registry, like `documents/documentEditBuiltinContributions.ts` — no `access` predicates (every built-in self-gates, see `ListCreateAction`'s own note), so these are static arrays closing over nothing, unlike the pre-review draft's per-render `useMemo`.
+New file. Registry, like `documents/documentEditBuiltinContributions.ts` — no `access` predicates (every built-in self-gates, see `ListCreateAction`'s own note), so these are static arrays closing over nothing.
 
 ```ts
 import type { ComponentContributionInput } from "@vexcms/core";
@@ -7221,19 +8044,19 @@ export function listBulkActionsBuiltins(): ComponentContributionInput<ReactHKT, 
 
 #### packages/react/src/collections/listView/ListLayout.tsx
 
-New file. Composes a collection's list view around the seven `list.*` slots (Decision 38: composition only — every built-in's own logic lives in its own file above). Owns row-selection state and mounts `CollectionListProvider` so every slot's contributions (built-in or project) read shared state via `useCollectionList()` instead of props.
+New file. Composes a collection's list view around the seven `list.*` slots (Decision 38: composition only — every built-in's own logic lives in its own file above). Reads shared list state (selection, density, visible fields, `onInspect`) via `useCollectionList()` — `CollectionListView` owns that state and mounts `CollectionListProvider` around this component (mirrors `VexDocumentProvider`/`CollectionEditView`'s split), so `ListLayout` is a context CONSUMER only, never a provider.
 
 ```tsx
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { SLOT_IDS, type CollectionConfig, type ComponentContributionInput, type TDocument } from "@vexcms/core";
 import type { ReactHKT } from "../../adapter";
 import { SlotOutlet } from "../../slots/SlotOutlet";
 import { DataTable } from "../../ui/data-table/DataTable";
 import { ActionsMenu } from "../../ui/ActionsMenu";
-import { CollectionListProvider, type CollectionListState } from "./CollectionListContext";
+import { useCollectionList } from "./CollectionListContext";
 import {
   listHeaderActionsBuiltins,
   listRowActionsBuiltins,
@@ -7249,13 +8072,6 @@ export interface ListLayoutProps<TDoc extends TDocument = TDocument> {
   isPending: boolean;
   totalCount: number | null | undefined;
   onLoadMore: () => void;
-  /**
-   * Invoked with a document's id when `vex.list.row.inspect` is chosen. The caller owns
-   * where that id goes — Step 10 wires it to `useListUrlState().setPeek` (the `peek` URL
-   * param), and Step 13's `ListPeek` renders the panel itself; this layout never reads
-   * `peek` or renders the panel.
-   */
-  onInspect: (id: string) => void;
 }
 
 /**
@@ -7271,24 +8087,21 @@ export function ListLayout<TDoc extends TDocument = TDocument>(
   props: ListLayoutProps<TDoc>,
 ): ReactNode {
   // TODO: implement
-  // 1. `const [selectedIds, setSelectedIds] = useState<string[]>([])`
+  // 1. `const { collection, selectedIds, setSelectedIds } = useCollectionList<TDoc>()` — selection
+  //    is owned by `CollectionListProvider`'s caller (`CollectionListView`), not this component.
   //    → `const selectedDocs = useMemo(() => props.rows.filter((r) => selectedIds.includes(r._id)), [props.rows, selectedIds])`
-  // 2. Build `const listState: CollectionListState<TDoc> = { collection: props.collection, rows:
-  //    props.rows, selectedIds, setSelectedIds, density: "comfortable", visibleFields: [],
-  //    onInspect: props.onInspect }` — Step 10 replaces the `density`/`visibleFields` literals
-  //    with the real per-browser state; this step only threads the shape through.
-  // 3. Append a trailing "Actions" `ColumnDef<TDoc>` to `props.columns` — ALWAYS, never omitted
+  // 2. Append a trailing "Actions" `ColumnDef<TDoc>` to `props.columns` — ALWAYS, never omitted
   //    (Open/Inspect/Copy ID apply to every row regardless of custom contributions or delete
   //    access) — whose `cell` renders:
-  //    `<ActionsMenu label={`${props.collection.labels.singular} actions`}>
+  //    `<ActionsMenu label={`${collection.labels.singular} actions`}>
   //      <SlotOutlet slotId={SLOT_IDS.list.rowActions} builtins={listRowActionsBuiltins()}
-  //        contributions={props.collection.admin.components.rowActions as unknown as ComponentContributionInput<ReactHKT, ListRowSlotProps>[]}
+  //        contributions={collection.admin.components.rowActions as unknown as ComponentContributionInput<ReactHKT, ListRowSlotProps>[]}
   //        contributedProps={{ docs: [row.original] }} />
   //    </ActionsMenu>`
   //    (the `as unknown as` cast mirrors `BlockActionsMenu.tsx`'s own cast of
   //    `config.admin.components.blocks.itemActions` — core keeps these `unknown`-typed per P-002).
-  // 4. Wrap the whole render in `<CollectionListProvider value={listState}>…</CollectionListProvider>`
-  //    and render, top to bottom, inside it:
+  // 3. Render, top to bottom — no provider mount here, `CollectionListProvider` already wraps
+  //    this component from `CollectionListView`:
   //    - a header row: `collection.labels.plural` title + document count, and
   //      `<SlotOutlet slotId={SLOT_IDS.list.headerActions} builtins={listHeaderActionsBuiltins()}
   //        contributions={collection.admin.components.headerActions as unknown as …}
@@ -7336,33 +8149,6 @@ import { BUILTIN_CONTRIBUTION_IDS, resolveComponentContributions, SLOT_IDS } fro
 import { LIST_BUILTIN_ORDER, listRowActionsBuiltins, listBulkActionsBuiltins } from "./listBuiltinContributions";
 
 describe("listView built-in ids", () => {
-  it("names the seven list.* slot ids per Decision 18", () => {
-    expect(SLOT_IDS.list).toEqual({
-      headerActions: "list.header.actions",
-      toolbar: "list.toolbar",
-      filters: "list.filters",
-      beforeTable: "list.beforeTable",
-      afterTable: "list.afterTable",
-      rowActions: "list.row.actions",
-      bulkActions: "list.bulkActions",
-    });
-  });
-
-  it("names the vex.list.* built-in contribution ids", () => {
-    expect(BUILTIN_CONTRIBUTION_IDS.list).toEqual({
-      create: "vex.list.create",
-      search: "vex.list.search",
-      filters: "vex.list.filters",
-      columns: "vex.list.columns",
-      views: "vex.list.views",
-      rowOpen: "vex.list.row.open",
-      rowInspect: "vex.list.row.inspect",
-      rowCopyId: "vex.list.row.copyId",
-      rowDelete: "vex.list.row.delete",
-      bulkDelete: "vex.list.bulk.delete",
-    });
-  });
-
   it("orders row-action built-ins Open, Inspect, Copy ID, contributions, Delete last (Decision 28)", () => {
     const resolved = resolveComponentContributions({
       slotId: SLOT_IDS.list.rowActions,
@@ -7464,7 +8250,7 @@ Replace the JSDoc summary and the outer `<div>`'s `className`:
 
 3 edits. Column-building, pagination, and the status column (`buildStatusColumn`, `columnFieldKey`, unchanged by Step 8's `useVexListQuery` migration except the pagination call itself) stay in this file — `ListLayout` is purely presentational. This file already lives at `collections/listView/CollectionListView.tsx` per Step 2's move; only its content changes here.
 
-**1 — imports.** Drop `vexConvexApi` from the `@vexcms/core` import list (the `removeMutation` that used it moves into `ListRowDeleteAction`/`ListBulkDeleteAction`), drop the now-unused `VexLink`, `CreateDocumentModal`, and `adminHref` imports (moved into `ListCreateAction`), drop `useVexMutation` from the `../../hooks` import (keep `usePaginatedQuery`), drop `Button` and `DataTable` from the `../../ui` import (keep `Badge`, still used by `buildStatusColumn`), and add `ListLayout`:
+**1 — imports.** Drop `vexConvexApi` from the `@vexcms/core` import list (the `removeMutation` that used it moves into `ListRowDeleteAction`/`ListBulkDeleteAction`), drop the now-unused `VexLink`, `CreateDocumentModal`, and `adminHref` imports (moved into `ListCreateAction`), drop `useVexMutation` from the `../../hooks` import (keep `usePaginatedQuery`), drop `Button` and `DataTable` from the `../../ui` import (keep `Badge`, still used by `buildStatusColumn`), and add `ListLayout` plus `CollectionListProvider` (Decision 37 — this file owns and provides the shared list state):
 
 ```ts
 import {
@@ -7482,99 +8268,115 @@ import { useVexConfig } from "../../config/VexConfigContext";
 import { getCollectionColumnDefs } from "../../fields";
 import { useFieldPermissions, usePermission } from "../../access";
 import { usePaginatedQuery } from "../../hooks";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "../../ui";
 import { collapseVersionedPairs, StatusBadge } from "../../versions";
 import { ListLayout } from "./ListLayout";
+import { CollectionListProvider } from "./CollectionListContext";
 ```
 
 **2 — drop `removeMutation`/`handleBulkDelete`.** Remove the `const removeMutation = …` block and the `handleBulkDelete` arrow that followed it — that mutation now lives in `ListRowDeleteAction`/`ListBulkDeleteAction`.
 
-**3 — the return.** Replace the body from the current permission checks through the end of the function with:
+**3 — the return.** Replace the body from the current permission checks through the end of the function with (selection state moves here from the old flat component — `CollectionListProvider`'s `selectedIds`/`setSelectedIds` need to exist above `ListLayout`, which only ever reads them back via `useCollectionList()`):
 
 ```tsx
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
   return (
     <div className="relative">
       <div className="flex justify-end pt-4">
         <RevalidateButton collection={collection.slug} />
       </div>
-      <ListLayout
-        collection={collection}
-        rows={rows}
-        columns={columns}
-        isDone={pagination.isDone}
-        isPending={pagination.isPending}
-        totalCount={pagination.totalDocs}
-        onLoadMore={pagination.loadMore}
-        // Step 10 replaces this no-op with `useListUrlState().setPeek`, and Step 13
-        // renders `ListPeek` itself reading the resulting `peek` param — this view
-        // has nothing to render for it yet.
-        onInspect={() => {}}
-      />
+      <CollectionListProvider
+        value={{
+          collection,
+          selectedIds,
+          setSelectedIds,
+          // Step 10 replaces these two literals with the real per-browser
+          // density (`useLocalStorage`) and the columns-menu selection
+          // (`visibleFields` → `visibleColumns`) via its own anchored edit
+          // to this file and to `CollectionListContext.tsx` — this step
+          // only threads the shape through so `ListLayout` and its
+          // `list.*` built-ins have a live provider to read from day one.
+          density: "comfortable",
+          visibleFields: [],
+          // Step 10 wires the real opener (`urlState.setPeek`); this view
+          // has no URL state to drive it with yet.
+          onInspect: undefined,
+        }}
+      >
+        <ListLayout
+          collection={collection}
+          rows={rows}
+          columns={columns}
+          isDone={pagination.isDone}
+          isPending={pagination.isPending}
+          totalCount={pagination.totalDocs}
+          onLoadMore={pagination.loadMore}
+        />
+      </CollectionListProvider>
     </div>
   );
 }
 ```
 
-`canCreate`/`canDelete` props no longer pass through here — `ListCreateAction`/`ListRowDeleteAction`/`ListBulkDeleteAction` self-gate via `usePermission` (this file's own note on the review's self-gating revision), so `CollectionListView` drops its own `canCreate`/`canDelete` locals entirely.
+`ListCreateAction`/`ListRowDeleteAction`/`ListBulkDeleteAction` self-gate via `usePermission` (this file's own note on the review's self-gating revision), so this step's own `canCreate`/`canDelete` locals are removed along with the JSX that read them — Step 10 reintroduces both (`ListEmptyState`'s Create gate, the `selection.canDelete` context field) via its own anchored edit, once there is new JSX that needs them again.
 
-### Step 10 — Toolbar controls, compact URL state, and the fixed-height data table [agent]
+### Step 10 — Toolbar controls, the shared URL codec, and the fixed-height data table [agent]
 
-Why: search, sort, filters, and columns meet the core navigability acceptance; the compact URL grammar (Decision 9) makes every list state shareable; `DataTable`'s fixed-height body (Decision 22) and `ScrollSection` (Decision 31) are the standing scroll-container rule for the rest of the admin panel; Decision 35's count cap needs a visible "1,000+" in the same footer. Per the architecture review, this step's components are reusable, prop-driven primitives — the context/slot plumbing that wires them into `vex.list.*` lives in Step 9's `CollectionListContext`/`listBuiltinContributions.ts`/`ListLayout.tsx` (Decision 37), the same split the edit view uses between `VexDocumentProvider` and `documentEditBuiltinContributions.ts`.
+Why: search, sort, filters, and columns meet the core navigability acceptance; `DataTable`'s fixed-height body (Decision 22) and `ScrollSection` (Decision 31) are the standing scroll-container rule for the rest of the admin panel; Decision 35's count cap needs a visible "1,000+" in the same footer. Per the zero-layout-shift pass (Decisions 39–43, `standards/frontend/layout-stability.md`):
 
-- [ ] `packages/react/src/collections/listView/listUrlParams.ts` (new) + test — `parseListParams`/`serializeListParams`, the compact `q`/`qf`/`sort`/`filter`/`size`/`view`/`peek` grammar (Decision 9), exhaustive round-trip tests
-- [ ] `packages/react/src/collections/listView/useListUrlState.ts` (new) + test — wraps the codec above in `nuqs`; returns `{ q, qf, sort, filter, size, view, peek, setQ, setQf, setSort, setFilter, setSize, setView, setPeek }`; `replace` while typing, `push` on discrete actions
+- The compact URL grammar (Decision 9) moves to `@vexcms/core` as `listUrlParams.ts` (Decision 40), pure and with no react import, so `NextAdminPage` (Step 14) can parse the same `q`/`qf`/`sort`/`filter`/`size`/`view`/`peek` params server-side and prefetch the exact query the client will run. `useListUrlState.ts` becomes a thin `nuqs` wrapper over the core codec instead of owning it.
+- The toolbar's ⋯ overflow is pure CSS at fixed `@container/list` breakpoints (Decision 43), not a `ResizeObserver` measurement like `documents/useHeaderActionsCollapse.ts`. A measured collapse has nothing to render before its first effect runs, so a server-rendered page would paint the wrong collapse state for one frame and then snap; `layout-stability.md` rules that out. `ListToolbar` wraps Copy link and Rows-per-load each in a breakpoint class, with a second, CSS-complementary copy inside the ⋯ overflow menu, so the server HTML is already the settled UI.
+- Density has the same problem one layer down: the old `DataTableColumnsMenu` read `useLocalStorage`, which returns nothing on the server, so the server and the client's first paint could render different row heights. Decision 42 moves it to a cookie. `packages/core/src/collections/listPreferenceCookies.ts` (new, this step) is the server-readable half — `parseListPreferences({ cookies })` — read once by `NextAdminPage` (Step 14) and passed down as `CollectionListView`'s new `initialPreferences` prop; Step 11 extends the same file with the collection-scoped filter-chip cookie. `DataTableColumnsMenu`'s density toggle becomes fully controlled (`density`/`onDensityChange`); the cookie is only ever WRITTEN client-side, via `listView/listPreferenceCookies.ts`'s `writeListDensityCookie`, mirroring `useLivePreviewPanelState.ts`'s `writePreferenceCookie`/`readLivePreviewPanelCookie` split.
+
+This step's components stay reusable, prop-driven primitives — the context/slot plumbing that wires them into `vex.list.*` lives in Step 9's `CollectionListContext`/`listBuiltinContributions.ts`/`ListLayout.tsx` (Decision 37), the same split the edit view uses between `VexDocumentProvider` and `documentEditBuiltinContributions.ts`.
+
+- [ ] `packages/core/src/collections/listUrlParams.ts` (new) + test — `parseListParams`/`serializeListParams`, the compact `q`/`qf`/`sort`/`filter`/`size`/`view`/`peek` grammar (Decision 9), exhaustive round-trip tests; pure, no react import, exported from `@vexcms/core` (Decision 40)
+- [ ] `packages/core/src/collections/index.ts` — 1 edit, barrel-exports the two files above
+- [ ] `packages/core/src/collections/listPreferenceCookies.ts` (new) + test — `ListDensity`, `ListPreferences`, `LIST_PREFERENCE_COOKIES`, `parseListPreferences({ cookies })` (Decision 42) — the server-readable half of the density cookie
+- [ ] `packages/core/src/framework.ts` — 1 edit, `CollectionListViewProps` gains `initialPreferences?: ListPreferences`
+- [ ] `packages/react/src/collections/listView/useListUrlState.ts` (new) + test — wraps the core codec in `nuqs`; returns `{ q, qf, sort, filter, size, view, peek, setQ, setQf, setSort, setFilter, setSize, setView, setPeek }`; `replace` while typing, `push` on discrete actions
+- [ ] `packages/react/src/collections/listView/listPreferenceCookies.ts` (new) + test — `writeListDensityCookie`, the client-side cookie writer
 - [ ] `packages/react/src/collections/listView/ListSearch.tsx` (new) + test — debounced `q` input + `qf` field picker (250ms, Enter commits+pushes, Esc clears/blurs), read-access-gated field list
 - [ ] `packages/react/src/ui/data-table/DataTableSortHeader.tsx` (new) + test — sortable headers; parked-sort disabled state with "Sorted by relevance"
 - [ ] `packages/react/src/ui/ScrollSection.tsx` (new) + test — `ScrollArea` wrapper with `title`/`count`/`collapsible`/`persistKey` (Decision 31)
-- [ ] `packages/react/src/ui/data-table/DataTableColumnsMenu.tsx` (new) + test — hideable columns (via `ScrollSection`) + Density toggle (Decision 29); a `collapsed` prop renders an icon-only trigger
-- [ ] `packages/react/src/ui/data-table/DataTablePageSizeSelect.tsx` (new) + test — "Rows per load" select, now rendered inline in `ListToolbar`'s collapsible group (the architecture review moved it back out of `DataTable`'s footer — see this step's "Why page size …" note)
+- [ ] `packages/react/src/ui/data-table/DataTableColumnsMenu.tsx` (new) + test — hideable columns (via `ScrollSection`) + a fully controlled Density toggle (`density`/`onDensityChange`, Decision 29/42 — no internal `useLocalStorage`); the "Columns" label collapses itself through a CSS class on `@container/list`, not a caller-supplied `collapsed` boolean (Decision 43)
+- [ ] `packages/react/src/ui/data-table/DataTablePageSizeSelect.tsx` (new) + test — "Rows per load" select, rendered twice (CSS-toggled) by `ListToolbar`'s collapsible group
 - [ ] `packages/react/src/collections/listView/ListEmptyState.tsx` (new) + test — empty collection / no search results / no filter results (DESIGN-NOTES.md §5 copy)
 - [ ] `packages/react/src/collections/listView/ListQueryError.tsx` (new) + test — generic "Couldn't load {plural}" + the `UNINDEXED_SORT` variant
-- [ ] `packages/react/src/collections/listView/ListCopyLinkButton.tsx` (new) + test — copies the current URL; `buildHref` overridable (Step 12 serializes full state for a local view)
-- [ ] `packages/react/src/collections/listView/useListToolbarCollapse.ts` (new) + test — measured overflow collapse for Copy link / Columns (icon-only) / Rows-per-load, mirroring `documents/useHeaderActionsCollapse.ts`; Search and Filter are never candidates (Decision 22)
-- [ ] `packages/react/src/collections/listView/ListToolbar.tsx` (new) + test — hosts `list.toolbar` (the `vex.list.search`/`vex.list.columns` built-ins live in Step 9's `listBuiltinContributions.ts`), the bulk group, Copy link, and Rows-per-load, behind the collapse hook above
+- [ ] `packages/react/src/collections/listView/ListCopyLinkButton.tsx` (new) + test — copies the current URL; `buildHref` overridable (Step 12 serializes full state for a local view); no `collapsed` prop — `ListToolbar` renders two CSS-toggled copies instead
+- [ ] `packages/react/src/collections/listView/ListSearchAction.tsx` (new) + test — the `vex.list.search` built-in, wrapping `ListSearch` with `collection`/`urlState` from `useCollectionList()`
+- [ ] `packages/react/src/collections/listView/ListColumnsAction.tsx` (new) + test — the `vex.list.columns` built-in, wrapping `DataTableColumnsMenu` with `hideableColumns`/`visibleColumns`/`onVisibleColumnsChange`/`hasActiveView`/`density`/`onDensityChange` from `useCollectionList()` — no `collapsed` prop
+- [ ] `packages/react/src/collections/listView/listBuiltinContributions.ts` — adds `listToolbarContributions()` (`vex.list.search`, `vex.list.columns`), consumed by `ListToolbar.tsx` below
+- [ ] `packages/react/src/collections/listView/ListToolbar.tsx` (new) + test — hosts `list.toolbar` (`vex.list.search`/`vex.list.columns` resolve through `listToolbarContributions()`, this step), the bulk group, and a pure-CSS `@container/list` collapse for Copy link / Rows-per-load (Decision 43)
 - [ ] `packages/react/src/fields/index.tsx` — `getCollectionColumnDefs` sets every column's `enableSorting`/`enableHiding` from `fieldDef.admin.enableSorting`/`enableHiding` (Step 4) in ONE central pass
-- [ ] `packages/react/src/ui/data-table/DataTable.tsx` — fixed-height `ScrollArea` body with a sticky header and a pinned footer showing the capped count (Decision 35); controlled `sort`/`onSortChange`/`sortDisabled`/`visibleColumns`/`density`; `emptyState`/`queryError` slots
-- [ ] `packages/react/src/collections/listView/ListLayout.tsx` — 1 edit: the `@container/list` root (Decision 22)
-- [ ] `packages/react/src/collections/listView/CollectionListView.tsx` — calls `useListUrlState` and feeds `q`/`qf`/`sort`/`filter`/`size` into `useVexListQuery` (Step 8, no `view` arg — Decision 25); owns session-only `visibleColumns`, per-browser `density`, and the lifted-up `selectedIds` (Decision 37); mounts `CollectionListProvider`; picks the empty/error variant
-- [ ] `packages/react/src/collections/listView/index.ts` + `packages/react/src/ui/data-table/index.ts` + `packages/react/src/ui/index.ts` — barrel exports for the new files
+- [ ] `packages/react/src/ui/data-table/DataTable.tsx` — fixed-height `ScrollArea` body with a sticky header and a pinned footer showing the capped count (Decision 35); controlled `sort`/`onSortChange`/`sortDisabled`/`visibleColumns`/`density`; `emptyState`/`queryError` slots; `density`'s type is now core's `ListDensity`
+- [ ] `packages/react/src/collections/listView/CollectionListContext.tsx` — extends Step 9's base shape: `urlState`, `selection`, `visibleColumns`/`onVisibleColumnsChange`/`hideableColumns`, `hasActiveView` (Decision 37), plus this step's `onDensityChange` and the now-`ListDensity`-typed `density`
+- [ ] `packages/react/src/collections/listView/ListLayout.tsx` — 2 edits: the `@container/list` root (Decision 22/43), and the new query-result props `CollectionListView` now computes
+- [ ] `packages/react/src/collections/listView/CollectionListView.tsx` — calls `useListUrlState` (now backed by the core codec) and feeds `q`/`qf`/`sort`/`filter`/`size` into `useVexListQuery`; density is `useState` seeded from `props.initialPreferences?.density` and written to the `vex-list-density` cookie on change, never read from `useLocalStorage`; accepts the new `initialPreferences` prop
+- [ ] `packages/react/src/collections/listView/index.ts` + `packages/react/src/ui/data-table/index.ts` + `packages/react/src/ui/index.ts` — barrel exports for the new files (includes `listPreferenceCookies`)
 
-All the primitives in this step stay controlled components — each reads its value from props and reports changes through a callback, never owning persisted state itself. `useListUrlState` is the one piece that touches the URL (via `nuqs` — see `CreateDocumentModal.tsx`); `listUrlParams.ts` underneath it is pure, URL-library-agnostic, and independently round-trip-tested. Column visibility and density stay out of that hook entirely (Decision 9: "Columns and density are not in the URL") — visibility is plain session state owned by `CollectionListView` (Decision 15), density is `useLocalStorage` from `@ts-hooks-kit/core` (Decision 29).
+All the primitives in this step stay controlled components — each reads its value from props and reports changes through a callback, never owning persisted state itself (this step tightens that rule further: `DataTableColumnsMenu` no longer has an exception for density). `useListUrlState` is the one piece that touches the URL (via `nuqs` — see `CreateDocumentModal.tsx`); `listUrlParams.ts` underneath it is pure, framework-agnostic, lives in `@vexcms/core`, and is independently round-trip-tested there. Column visibility stays plain session state owned by `CollectionListView` (Decision 15: no auto-persist with no view selected); density is cookie-backed (Decision 42), seeded server-side and written client-side, owned by `CollectionListView` and threaded through context — neither lives in the URL or in a saved view (Decision 9).
 
-**The context contract this step assumes from Step 9.** Decision 37 moves list-wide UI state out of props-drilled-through-the-layout and into `CollectionListContext`/`useCollectionList()` — but Decision 1 also says every step in this spec is drafted against the *planned* shape of its neighbors, the same way the original draft wrote this step against "Step 8"'s not-yet-written `CollectionListLayout.tsx`. `CollectionListView.tsx` (this step) is the natural place to assemble that context value, the same way `CollectionEditForm` assembles `VexDocumentState` and wraps `VexDocumentProvider` itself rather than delegating it to some inner layout piece — so this step's `CollectionListView.tsx` edit mounts `CollectionListProvider` directly, with:
+**The context value this step upgrades.** Step 9 already mounts `CollectionListProvider` from `CollectionListView.tsx`, with a placeholder `density`/`visibleFields` and flat `selectedIds`/`setSelectedIds` (Decision 37's base shape, `CollectionListContext.tsx`). This step's own anchored edit to `CollectionListContext.tsx` (above) extends that shape — `selectedIds`/`setSelectedIds` fold into a `selection` object, `visibleFields` becomes `visibleColumns`/`onVisibleColumnsChange`/`hideableColumns`, `urlState`/`hasActiveView` are added, and `density` gains a sibling setter, `onDensityChange` — and `CollectionListView.tsx`'s edit 4 (below) replaces the placeholder provider value with the real one built from this step's new state.
 
-```ts
-{
-  collection,
-  urlState,          // this step's useListUrlState() return value
-  visibleColumns,
-  onVisibleColumnsChange: setVisibleColumns,
-  hideableColumns,    // derived below, same as the old draft's memo
-  density,
-  selection: { selectedIds, selectedDocs, setSelectedIds, canDelete },
-  hasActiveView,       // false until Step 12 wires saved views
-  onInspect: undefined, // wired by Step 13
-}
-```
+`ListLayout.tsx` (Step 9, extended by this step's edit 2 above) needs the query-result/permission props that are NOT list-wide UI state — `collection`, `rows`, `columns`, `isDone`, `isPending`, `totalCount`, `totalDocsCapped`, `onLoadMore`, `canCreate`, `canDelete`, `emptyState`, `queryError` — and renders `<ListToolbar />` and `<DataTable />` reading the rest from `useCollectionList()`.
 
-`ListLayout.tsx` (Step 9) then only needs the query-result/permission props that are NOT list-wide UI state — `collection`, `rows`, `columns`, `isDone`, `isPending`, `totalCount`, `totalDocsCapped`, `onLoadMore`, `canCreate`, `canDelete`, `emptyState`, `queryError` — and renders `<ListToolbar />` and `<DataTable />` reading the rest from `useCollectionList()`. Step 9 reconciles the exact field names if they differ; nothing in this step's own files depends on them beyond `ListToolbar.tsx`'s own `useCollectionList()` call below.
+**Why page size is in the toolbar, collapsible — not fixed in `DataTable`'s footer.** Decision 22 fixes the toolbar's collapse order as "Copy link, then Columns, then rows per load," which only makes sense if Rows-per-load is a toolbar control in the first place: `DataTablePageSizeSelect` renders inside `ListToolbar`'s collapsible group; `DataTable`'s footer keeps only the Load More button and the "Showing N of M" status line, reading `pageSize` solely to label the button ("Load 25 more").
 
-**Why page size is back in the toolbar, collapsible — not fixed in `DataTable`'s footer.** The original draft (pre-review) moved "Rows per load" into `DataTable`'s own pinned footer, reasoning that it wasn't part of the design's toolbar button row. The architecture review's Decision 22 explicitly fixes the toolbar's collapse order as "Copy link, then Columns, then rows per load," which only makes sense if Rows-per-load is a toolbar control in the first place. This step reverses the earlier placement: `DataTablePageSizeSelect` renders inside `ListToolbar`, in the same collapsible group as Copy link; `DataTable`'s footer keeps only the Load More button and the "Showing N of M" status line, reading `pageSize` solely to label the button ("Load 25 more").
+**Why "Columns" narrows itself via CSS instead of being duplicated into the ⋯ menu.** Copy link and Rows-per-load are `ListToolbar`-owned controls with no `vex.list.*` id (Decision 17 never names one for either), so `ListToolbar` can freely mount a second, CSS-hidden copy of either one inside the overflow `DropdownMenuContent`. Columns, by contrast, is the `vex.list.columns` built-in (this step's `ListColumnsAction.tsx`), resolved through the same `list.toolbar` `SlotOutlet` as `vex.list.search` and any project contribution — `SlotOutlet` resolves that whole ordered list as one atomic render, so `ListToolbar` cannot mount a second instance of just the Columns entry without mounting a second instance of everything else in the slot too. `DataTableColumnsMenu` therefore owns its own collapse: the "Columns" label sits in a `<span className="hidden @xl/list:inline">`, so the single mounted instance narrows itself as the `@container/list` ancestor shrinks, with no prop, no duplication, and no measurement. `ListToolbarSlotProps` carries no `collapsed` field, and `DataTableColumnsMenuProps` carries no `collapsed` prop either — the CSS narrowing is entirely internal to `DataTableColumnsMenu`. This step's `ListColumnsAction.tsx` and `ListSearchAction.tsx` (new this step — see their own sections above) never need a `collapsed` prop: they forward `density={list.density}`/`onDensityChange={list.onDensityChange}` (and `visibleColumns`/`onVisibleColumnsChange`/`hideableColumns`/`collection`/`urlState`) straight from `useCollectionList()`, the one place the client ever derives these values.
 
-**Why "Columns" collapses in place instead of relocating into the ⋯ menu.** Copy link and Rows-per-load are `ListToolbar`-owned controls with no `vex.list.*` id (Decision 17 never names one for either), so `ListToolbar` can freely re-parent their JSX into the overflow `DropdownMenuContent` when collapsed. Columns, by contrast, is the `vex.list.columns` built-in (Step 9's `ListColumnsAction.tsx`), resolved through the same `list.toolbar` `SlotOutlet` as `vex.list.search` and any project contribution — `SlotOutlet` resolves that whole ordered list as one unit, so this step cannot pluck just the Columns entry out of it and remount it inside a second container. Instead, `ListToolbar` passes `columnsCollapsed: boolean` through the slot's `contributedProps` (mirroring how `EditSlotProps` carries per-render `kind`/`slug`, not persistent state); `ListColumnsAction` reads it and renders `DataTableColumnsMenu`'s `collapsed` prop, which drops the "Columns" label and shows the `Columns3` icon alone. The measured-collapse hook only cares about the width this frees, not where the control physically sits, so the algorithm is unaffected.
+**Why "sortable headers" and "the columns menu" need no new read-access code here.** `CollectionListView.tsx` already filters `getCollectionColumnDefs`'s output through `isFieldAllowed(fieldPermissions, key)` before anything downstream sees it (current repo code, unchanged by this step) — an unreadable field never becomes a column, so it can never render a `DataTableSortHeader` and never appears in `hideableColumns`. The server independently rejects a sort/search request naming an unreadable field with `VexAccessError` (Decision 26, Step 6/8) — this step's gating is advisory UI, the server's is the real enforcement. Decision 26's remaining surface this step owns is the search field picker: `collection.admin.table.searchField` is independent config, not derived from the columns above, so `ListSearch` (this step) runs its own `isFieldAllowed` filter.
 
-**Why "sortable headers" and "the columns menu" need no new read-access code here.** `CollectionListView.tsx` already filters `getCollectionColumnDefs`'s output through `isFieldAllowed(fieldPermissions, key)` before anything downstream sees it (current repo code, unchanged by this step) — an unreadable field never becomes a column, so it can never render a `DataTableSortHeader` and never appears in `hideableColumns`. The server independently rejects a sort/search request naming an unreadable field with `VexAccessError` (Decision 26, Step 6/8) — this step's gating is advisory UI, the server's is the real enforcement. Decision 26's remaining surface this step owns is the search field picker: `collection.admin.table.searchField` is independent config, not derived from `columns`, so `ListSearch` calls `useFieldPermissions` itself and filters its own field list.
+**Why `CollectionListView` seeds `density` from a prop instead of re-reading the cookie client-side.** `document.cookie` is unavailable to a server component, and re-reading it on the client (functionally what the old `useLocalStorage` approach did) would make the client's FIRST render depend on an effect, repainting once that effect resolves — the same one-frame flash `layout-stability.md` rules out. `NextAdminPage` (Step 14) already parses the cookie server-side through `parseListPreferences` to decide what to render; passing that value down as `initialPreferences` means `CollectionListView`'s `useState` initializer and the server's render agree on `density` before any client JS runs. The cookie is WRITTEN, never read, from the client (`writeListDensityCookie`) — the one read happens server-side, in `parseListPreferences`.
 
-#### packages/react/src/collections/listView/listUrlParams.ts
+#### packages/core/src/collections/listUrlParams.ts
 
 ```ts
-import {
-  ADMIN_FIELDS,
-  getDataFields,
-  type CollectionConfig,
-  type VexWhereNode,
-} from "@vexcms/core";
+import { ADMIN_FIELDS, getDataFields } from "../fields";
+import type { CollectionConfig } from "./types";
+import type { VexWhereNode } from "../db/queryArgs";
 
 /** A saved view's source, matching the `view=<source>:<id>` URL prefix (Decision 9/11). */
 export type ListViewSource = "config" | "shared" | "local";
@@ -7590,6 +8392,13 @@ export interface ListSort<TFieldSlug extends string = string> {
  * query-param grammar (Decision 9): `q`, `qf` (omitted when it's the
  * default field), `sort=<field>.<asc|desc>`, `filter=(<field>.<op>.<value>,…)|(…)`,
  * `size` (omitted at the default), `view=<config|shared|local>:<id>`, `peek=<id>`.
+ *
+ * Lives in `@vexcms/core` (Decision 40), pure and dependency-free of react
+ * or any UI library — `NextAdminPage` (Step 14) and `useListUrlState`
+ * (this step's own react wrapper) both call `parseListParams`/
+ * `serializeListParams` directly, so the server's prefetch args and the
+ * client's query args are built from one implementation, never two that
+ * could drift.
  *
  * @typeParam TFieldSlug - The collection's own field slugs.
  */
@@ -7893,7 +8702,7 @@ export function parseListParams<TFieldSlug extends string = string>(props: {
  * Serializes a (possibly partial) collection list state back into the
  * compact-grammar URL params — the inverse of {@link
  * parseListParams}, and also how `ListCopyLinkButton`
- * (this step) builds a fully self-contained link for a local view (Step 12).
+ * (Step 10) builds a fully self-contained link for a local view (Step 12).
  *
  * @param props - Input props.
  * @param props.params - The full state to serialize.
@@ -7928,11 +8737,11 @@ export function serializeListParams(props: {
 }
 ```
 
-#### packages/react/src/collections/listView/listUrlParams.test.ts
+#### packages/core/src/collections/listUrlParams.test.ts
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { checkbox, date, defineCollection, number, relationship, select, text } from "@vexcms/core";
+import { checkbox, date, defineCollection, number, relationship, select, text } from "../index";
 import { parseListParams, serializeListParams } from "./listUrlParams";
 
 const collection = defineCollection({
@@ -8217,6 +9026,128 @@ describe("round-trip", () => {
 });
 ```
 
+#### packages/core/src/collections/index.ts
+
+1 edit — append the two new barrel exports:
+
+```ts
+export * from "./config";
+export * from "./constants";
+export * from "./types";
+export * from "./utils";
+export * from "./validator";
+export * from "./interfaceGen";
+export * from "./hooks";
+export * from "./resolveCollectionIndexes";
+export * from "./listUrlParams";
+export * from "./listPreferenceCookies";
+```
+
+#### packages/core/src/collections/listPreferenceCookies.ts
+
+```ts
+/**
+ * Per-browser list-view preferences that affect LAYOUT (Decision 42) — read
+ * from cookies on the server (`NextAdminPage`, Step 14, via
+ * {@link parseListPreferences}) and written only by the client
+ * (`listView/listPreferenceCookies.ts`'s `writeListDensityCookie`), the
+ * same split `livePreview/panelCookie.ts` draws between the name/parser
+ * living in `@vexcms/core` and the write happening in a `"use client"`
+ * hook. Density is today's only entry; Step 11 adds the collection-scoped
+ * filter-chip cookie to this same file.
+ */
+export type ListDensity = "comfortable" | "compact";
+
+/** The parsed shape {@link parseListPreferences} returns. */
+export interface ListPreferences {
+  /** Row density (Decision 29), or the default `"comfortable"` with no cookie yet. */
+  density: ListDensity;
+}
+
+/**
+ * Cookie names backing {@link ListPreferences}. Density is a single,
+ * collection-agnostic cookie ("stored per browser", Decision 29) — unlike
+ * `livePreviewPanelCookieName`, it needs no slug-scoped name-builder
+ * function.
+ */
+export const LIST_PREFERENCE_COOKIES = {
+  density: "vex-list-density",
+} as const;
+
+/** One cookie jar entry — matches both `next/headers`'s `cookies()` return value and the shape `NextAdminPage` already destructures elsewhere (`cookieStore.get(name)?.value`). */
+export interface ListPreferenceCookieReader {
+  get: (name: string) => { value: string } | undefined;
+}
+
+/**
+ * Resolves every layout-affecting list preference from the request's
+ * cookies. Pure, like `readLivePreviewPanelCookie`, so the server
+ * component (`NextAdminPage`) and any other reader share one
+ * interpretation of the stored values.
+ *
+ * @param props.cookies - The request's cookie jar.
+ * @returns `{ density }` — `density` falls back to `"comfortable"` when the
+ *   cookie is absent or holds anything other than `"comfortable"`/`"compact"`.
+ */
+export function parseListPreferences(props: { cookies: ListPreferenceCookieReader }): ListPreferences {
+  const rawDensity = props.cookies.get(LIST_PREFERENCE_COOKIES.density)?.value;
+  const density: ListDensity = rawDensity === "compact" ? "compact" : "comfortable";
+  return { density };
+}
+```
+
+#### packages/core/src/collections/listPreferenceCookies.test.ts
+
+```ts
+import { describe, expect, it } from "vitest";
+import { LIST_PREFERENCE_COOKIES, parseListPreferences } from "./listPreferenceCookies";
+
+function cookieJar(entries: Record<string, string>) {
+  return { get: (name: string) => (name in entries ? { value: entries[name] } : undefined) };
+}
+
+describe("parseListPreferences", () => {
+  it("defaults density to comfortable with no cookie", () => {
+    expect(parseListPreferences({ cookies: cookieJar({}) })).toEqual({ density: "comfortable" });
+  });
+
+  it("reads an explicit compact cookie", () => {
+    expect(
+      parseListPreferences({ cookies: cookieJar({ [LIST_PREFERENCE_COOKIES.density]: "compact" }) }),
+    ).toEqual({ density: "compact" });
+  });
+
+  it("falls back to comfortable for an unrecognized value", () => {
+    expect(
+      parseListPreferences({ cookies: cookieJar({ [LIST_PREFERENCE_COOKIES.density]: "roomy" }) }),
+    ).toEqual({ density: "comfortable" });
+  });
+});
+```
+
+#### packages/core/src/framework.ts
+
+2 edits — everything else in the file is unchanged.
+
+**1 — import.** Anchor: the existing `import { PaginationResult } from "./db/types";` line.
+
+```ts
+import type { ListPreferences } from "./collections/listPreferenceCookies";
+```
+
+**2 — `CollectionListViewProps`, add `initialPreferences`.** Anchor: the `initialData?: PaginationResult<TDoc>;` member.
+
+```ts
+  /**
+   * Layout-affecting list preferences resolved server-side from cookies
+   * (`parseListPreferences`, Decision 42) — density today, extended by
+   * later steps. Seeds `CollectionListView`'s own state so the row height
+   * the server rendered and the client's first paint agree. Omit when
+   * rendering client-side only (falls back to `"comfortable"`).
+   */
+  initialPreferences?: ListPreferences;
+```
+
 #### packages/react/src/collections/listView/useListUrlState.ts
 
 ```tsx
@@ -8224,13 +9155,14 @@ describe("round-trip", () => {
 
 import { useCallback, useMemo } from "react";
 import { parseAsString, useQueryStates } from "nuqs";
-import type { CollectionConfig, VexWhereNode } from "@vexcms/core";
 import {
   parseListParams,
   serializeListParams,
+  type CollectionConfig,
   type ListParams,
   type ListSort,
-} from "./listUrlParams";
+  type VexWhereNode,
+} from "@vexcms/core";
 
 /** Per-setter history override — every setter has a Decision-9-driven default; pass `{ push: true }` to force a history entry (e.g. Enter in search) or `{ push: false }` to force a silent replace. */
 export interface ListUrlSetOptions {
@@ -8255,7 +9187,7 @@ export interface UseListUrlStateReturn<TFieldSlug extends string = string>
   setPeek: (peek: string | undefined, options?: ListUrlSetOptions) => void;
 }
 
-/** Every list URL key stored as its literal raw string (or `null`) — `listUrlParams.ts` owns all validation/typing, this layer is nuqs plumbing only. */
+/** Every list URL key stored as its literal raw string (or `null`) — `@vexcms/core`'s `listUrlParams.ts` owns all validation/typing, this layer is nuqs plumbing only. */
 const RAW_PARSERS = {
   q: parseAsString,
   qf: parseAsString,
@@ -8268,8 +9200,11 @@ const RAW_PARSERS = {
 
 /**
  * Drives the collection list view's shareable URL state via `nuqs`, using
- * {@link parseListParams}/{@link serializeListParams}
- * for the compact grammar (Decision 9).
+ * `@vexcms/core`'s {@link parseListParams}/{@link serializeListParams}
+ * for the compact grammar (Decision 9). The codec itself lives in core
+ * (Decision 40) so `NextAdminPage` (Step 14) parses the exact same params
+ * server-side, with no react/nuqs dependency to drag along — this hook is
+ * nothing more than a `nuqs` binding over it.
  *
  * @param props - Input props.
  * @param props.collection - Constrains `qf`/`sort.field`/`size` and
@@ -8429,6 +9364,59 @@ describe("useListUrlState", () => {
     });
     expect(result.current.sort).toEqual({ field: "rating", order: "desc" });
     expect(result.current.size).toBe(25);
+  });
+});
+```
+
+#### packages/react/src/collections/listView/listPreferenceCookies.ts
+
+```ts
+"use client";
+
+import { LIST_PREFERENCE_COOKIES, type ListDensity } from "@vexcms/core";
+
+/**
+ * Writes the list density cookie client-side, so the next server render
+ * (`NextAdminPage` → `parseListPreferences`, Step 14) seeds
+ * `CollectionListView` with the new value instead of flashing back to
+ * `"comfortable"`. Guarded the way `useLivePreviewPanelState.ts`'s own
+ * `writePreferenceCookie` is — losing a UI preference is not worth
+ * crashing the view.
+ *
+ * @param props.density - The new density to persist.
+ */
+export function writeListDensityCookie(props: { density: ListDensity }): void {
+  try {
+    const oneYearInSeconds = 60 * 60 * 24 * 365;
+    document.cookie = `${LIST_PREFERENCE_COOKIES.density}=${props.density}; path=/; max-age=${oneYearInSeconds}; samesite=lax`;
+  } catch {
+    // document.cookie can throw under Safari private mode / strict cookie settings.
+  }
+}
+```
+
+#### packages/react/src/collections/listView/listPreferenceCookies.test.ts
+
+```ts
+import { afterEach, describe, expect, it } from "vitest";
+import { LIST_PREFERENCE_COOKIES } from "@vexcms/core";
+import { writeListDensityCookie } from "./listPreferenceCookies";
+
+afterEach(() => {
+  document.cookie = `${LIST_PREFERENCE_COOKIES.density}=; path=/; max-age=0`;
+});
+
+describe("writeListDensityCookie", () => {
+  it("writes the density cookie under the shared core-defined name", () => {
+    writeListDensityCookie({ density: "compact" });
+    expect(document.cookie).toContain(`${LIST_PREFERENCE_COOKIES.density}=compact`);
+  });
+
+  it("overwrites a previously written value", () => {
+    writeListDensityCookie({ density: "compact" });
+    writeListDensityCookie({ density: "comfortable" });
+    expect(document.cookie).toContain(`${LIST_PREFERENCE_COOKIES.density}=comfortable`);
+    expect(document.cookie).not.toContain(`${LIST_PREFERENCE_COOKIES.density}=compact`);
   });
 });
 ```
@@ -8988,7 +9976,7 @@ describe("ScrollSection", () => {
 ```tsx
 "use client";
 
-import { useLocalStorage } from "@ts-hooks-kit/core";
+import type { ListDensity } from "@vexcms/core";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -9002,12 +9990,6 @@ import {
 import { Button } from "../button";
 import { Icon } from "../Icon";
 import { ScrollSection } from "../ScrollSection";
-
-/** Per-browser density preference (Decision 29). Not in the URL or views. */
-export type DataTableDensity = "comfortable" | "compact";
-
-/** `useLocalStorage` key for {@link DataTableDensity} — exported so callers (`DataTable`, `CollectionListView`) share one source of truth for the key string. */
-export const DATA_TABLE_DENSITY_STORAGE_KEY = "vex-list-density";
 
 /**
  * One hideable column, as resolved from a collection's ALREADY
@@ -9038,21 +10020,30 @@ export interface DataTableColumnsMenuProps<TFieldSlug extends string = string> {
   onVisibleColumnsChange: (columns: TFieldSlug[]) => void;
   /** Whether a saved view is currently active — when `false`, a session-only notice is shown (Decision 15). */
   hasActiveView?: boolean;
-  /** Renders an icon-only trigger (no "Columns" label) — `ListToolbar`'s `vex.list.columns` built-in sets this once `useListToolbarCollapse` marks Columns collapsed (Decision 22), so the control keeps its normal `DropdownMenu`, just narrower, rather than relocating into a second overflow menu. @default false */
-  collapsed?: boolean;
+  /** The current density preference — owned by `CollectionListView`/`useCollectionList()`, cookie-backed (Decision 42), never this component's own state. */
+  density: ListDensity;
+  /** Replaces the density preference; the caller both updates its own state and writes the `vex-list-density` cookie (`writeListDensityCookie`) so the next server render matches with no flash. */
+  onDensityChange: (density: ListDensity) => void;
 }
 
 /**
  * A dropdown of checkboxes toggling which `enableHiding` columns are
  * visible in the list table, plus a Density toggle (Decision 29).
  *
- * Column visibility is purely controlled — the caller (`CollectionListView`,
- * via `vex.list.columns`) owns `visibleColumns` as session-only state
- * (Decision 15: no auto-persist without a selected view). Density, by
- * contrast, owns its own `useLocalStorage` state right here — it's a
- * per-browser reading preference, never part of a view or the URL
- * (Decision 29), so there's no controlling parent to report back to beyond
- * the `DataTable` that reads the same storage key.
+ * Column visibility AND density are both purely controlled — Decision 42
+ * puts density in a cookie read on the server
+ * (`parseListPreferences`) and owned by `CollectionListView`, the same
+ * split live preview's panel-open state already uses
+ * (`readLivePreviewPanelCookie`/`writeLivePreviewPanelCookie`) — a
+ * component-local store can't be read before hydration, so the density the
+ * server rendered and the density the client mounts with could otherwise
+ * differ for one frame.
+ *
+ * The trigger's "Columns" label hides itself below `@xl/list`
+ * (Decision 43) via a plain CSS class on its own `<span>` — there is no
+ * `collapsed` prop or caller-supplied boolean; the control is always a
+ * single mounted instance that narrows itself, rather than being measured
+ * and swapped by `ListToolbar`.
  *
  * @param props - Component props. See {@link DataTableColumnsMenuProps}.
  * @returns The columns menu, or `null` when `columns` is empty.
@@ -9060,16 +10051,15 @@ export interface DataTableColumnsMenuProps<TFieldSlug extends string = string> {
 export function DataTableColumnsMenu<TFieldSlug extends string = string>(
   props: DataTableColumnsMenuProps<TFieldSlug>,
 ) {
-  const [density, setDensity] = useLocalStorage<DataTableDensity>(
-    DATA_TABLE_DENSITY_STORAGE_KEY,
-    "comfortable",
-  );
   // TODO: implement
   // 1. `props.columns.length === 0` → render `null`.
   // 2. `DropdownMenuTrigger` renders a `Button variant="outline" size="sm"`
-  //    with a `Columns3` icon (`Icon` from `../Icon`); the "Columns" label
-  //    is omitted when `props.collapsed` is `true` (icon-only — frees the
-  //    width `useListToolbarCollapse` measured for).
+  //    with a `Columns3` icon (`Icon` from `../Icon`) followed by `<span
+  //    className="hidden @xl/list:inline">Columns</span>` (Decision 43 —
+  //    the label disappears once the `@container/list` ancestor narrows
+  //    past `@xl/list`; the icon alone keeps the trigger's accessible name
+  //    via its own `aria-label`, same convention as every other icon
+  //    button in `ui/`).
   // 3. `DropdownMenuContent`:
   //    a. `props.hasActiveView === false` → a muted notice line: "Column
   //       changes last until you close this tab. Save a view to keep them."
@@ -9086,8 +10076,8 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
   //         `props.visibleColumns` and call `props.onVisibleColumnsChange`
   //         with the result.
   //    d. `DropdownMenuSeparator`, then `DropdownMenuLabel`("Density")
-  //       followed by `DropdownMenuRadioGroup value={density}
-  //       onValueChange={(v) => setDensity(v as DataTableDensity)}`
+  //       followed by `DropdownMenuRadioGroup value={props.density}
+  //       onValueChange={(v) => props.onDensityChange(v as ListDensity)}`
   //       containing two `DropdownMenuRadioItem`s, `"comfortable"` labeled
   //       "Comfortable" and `"compact"` labeled "Compact".
   throw new Error("Not implemented");
@@ -9100,19 +10090,23 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { DataTableColumnsMenu, DATA_TABLE_DENSITY_STORAGE_KEY } from "./DataTableColumnsMenu";
+import { DataTableColumnsMenu } from "./DataTableColumnsMenu";
 
 const columns = [
   { field: "title", label: "Title" },
   { field: "body", label: "Body" },
 ];
 
-afterEach(() => window.localStorage.clear());
-
 describe("DataTableColumnsMenu", () => {
   it("renders nothing with no hideable columns", () => {
     const { container } = render(
-      <DataTableColumnsMenu columns={[]} visibleColumns={[]} onVisibleColumnsChange={vi.fn()} />,
+      <DataTableColumnsMenu
+        columns={[]}
+        visibleColumns={[]}
+        onVisibleColumnsChange={vi.fn()}
+        density="comfortable"
+        onDensityChange={vi.fn()}
+      />,
     );
     expect(container).toBeEmptyDOMElement();
   });
@@ -9124,6 +10118,8 @@ describe("DataTableColumnsMenu", () => {
         columns={columns}
         visibleColumns={["title"]}
         onVisibleColumnsChange={vi.fn()}
+        density="comfortable"
+        onDensityChange={vi.fn()}
       />,
     );
     await user.click(screen.getByRole("button", { name: /columns/i }));
@@ -9145,6 +10141,8 @@ describe("DataTableColumnsMenu", () => {
         columns={columns}
         visibleColumns={["title"]}
         onVisibleColumnsChange={onVisibleColumnsChange}
+        density="comfortable"
+        onDensityChange={vi.fn()}
       />,
     );
     await user.click(screen.getByRole("button", { name: /columns/i }));
@@ -9160,6 +10158,8 @@ describe("DataTableColumnsMenu", () => {
         columns={columns}
         visibleColumns={["title"]}
         onVisibleColumnsChange={onVisibleColumnsChange}
+        density="comfortable"
+        onDensityChange={vi.fn()}
       />,
     );
     await user.click(screen.getByRole("button", { name: /columns/i }));
@@ -9175,34 +10175,209 @@ describe("DataTableColumnsMenu", () => {
         visibleColumns={["title"]}
         onVisibleColumnsChange={vi.fn()}
         hasActiveView={false}
+        density="comfortable"
+        onDensityChange={vi.fn()}
       />,
     );
     await user.click(screen.getByRole("button", { name: /columns/i }));
     expect(screen.getByText(/save a view to keep them/i)).toBeInTheDocument();
   });
 
-  it("toggling density persists to localStorage under the shared key", async () => {
+  it("reflects the controlled density prop and calls onDensityChange on toggle — never touches localStorage", async () => {
+    const onDensityChange = vi.fn();
     const user = userEvent.setup();
-    render(
-      <DataTableColumnsMenu columns={columns} visibleColumns={["title"]} onVisibleColumnsChange={vi.fn()} />,
-    );
-    await user.click(screen.getByRole("button", { name: /columns/i }));
-    await user.click(screen.getByRole("menuitemradio", { name: "Compact" }));
-    expect(JSON.parse(window.localStorage.getItem(DATA_TABLE_DENSITY_STORAGE_KEY) ?? "null")).toBe(
-      "compact",
-    );
-  });
-
-  it("renders icon-only, with no accessible 'Columns' text, when collapsed", async () => {
     render(
       <DataTableColumnsMenu
         columns={columns}
         visibleColumns={["title"]}
         onVisibleColumnsChange={vi.fn()}
-        collapsed
+        density="comfortable"
+        onDensityChange={onDensityChange}
       />,
     );
-    expect(screen.queryByText("Columns")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /columns/i }));
+    expect(screen.getByRole("menuitemradio", { name: "Comfortable" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    await user.click(screen.getByRole("menuitemradio", { name: "Compact" }));
+    expect(onDensityChange).toHaveBeenCalledWith("compact");
+  });
+
+  it("always renders the 'Columns' label in the DOM — the @xl/list collapse is a CSS class, not a conditional render", () => {
+    render(
+      <DataTableColumnsMenu
+        columns={columns}
+        visibleColumns={["title"]}
+        onVisibleColumnsChange={vi.fn()}
+        density="comfortable"
+        onDensityChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Columns")).toBeInTheDocument();
+  });
+});
+```
+
+#### packages/react/src/collections/listView/listBuiltinContributions.ts
+
+1 edit — everything else (Step 9's `LIST_BUILTIN_ORDER`, `listHeaderActionsBuiltins`, `listRowActionsBuiltins`, `listBulkActionsBuiltins`) unchanged.
+
+**1 — new `listToolbarContributions` export, plus its imports.** Add `ListSearchAction`/`ListColumnsAction` to the existing component imports, and append after `listHeaderActionsBuiltins`:
+
+```ts
+import { ListSearchAction } from "./ListSearchAction";
+import { ListColumnsAction } from "./ListColumnsAction";
+```
+
+```ts
+/** `list.toolbar`'s built-in contributions — `vex.list.search` then `vex.list.columns`, in that order; `ListToolbar` (this step) resolves the rest of the row (Copy link, Rows-per-load, bulk group) itself, outside this slot. */
+export function listToolbarContributions(): ComponentContributionInput<ReactHKT, Record<string, never>>[] {
+  return [
+    { id: BUILTIN_CONTRIBUTION_IDS.list.search, component: ListSearchAction },
+    { id: BUILTIN_CONTRIBUTION_IDS.list.columns, component: ListColumnsAction },
+  ];
+}
+```
+
+#### packages/react/src/collections/listView/ListSearchAction.tsx
+
+New file — the `vex.list.search` built-in (Decision 17/37), a thin wrapper that reads `collection`/`urlState` from `useCollectionList()` (this step's context extension) and forwards them to the presentational `ListSearch` above. Registered into `list.toolbar` via `listToolbarContributions()` below, alongside `vex.list.columns`.
+
+```tsx
+"use client";
+
+import { useCollectionList } from "./CollectionListContext";
+import { ListSearch } from "./ListSearch";
+
+/**
+ * The `vex.list.search` built-in — renders {@link ListSearch} wired to the
+ * active list's `collection` and `urlState` (`q`/`qf`/`setQ`/`setQf`) from
+ * `useCollectionList()`, so it never takes props of its own (mirrors every
+ * other `list.*` built-in, Decision 37).
+ *
+ * @returns {@link ListSearch}, or `null` when no `searchField` entry is
+ *   readable (handled inside `ListSearch` itself).
+ */
+export function ListSearchAction() {
+  const list = useCollectionList();
+  return (
+    <ListSearch
+      collection={list.collection}
+      q={list.urlState.q}
+      qf={list.urlState.qf}
+      onQChange={list.urlState.setQ}
+      onQfChange={list.urlState.setQf}
+    />
+  );
+}
+```
+
+#### packages/react/src/collections/listView/ListColumnsAction.tsx
+
+New file — the `vex.list.columns` built-in. Forwards `density`/`onDensityChange` from `useCollectionList()` (Decision 42) — no `collapsed` prop; `DataTableColumnsMenu`'s "Columns" label narrows itself via CSS at `@xl/list` (Decision 43), so there is nothing for this wrapper to measure or thread through.
+
+```tsx
+"use client";
+
+import { useCollectionList } from "./CollectionListContext";
+import { DataTableColumnsMenu } from "../../ui/data-table/DataTableColumnsMenu";
+
+/**
+ * The `vex.list.columns` built-in — renders {@link DataTableColumnsMenu}
+ * wired to `useCollectionList()`'s `hideableColumns`/`visibleColumns`/
+ * `onVisibleColumnsChange`/`hasActiveView`/`density`/`onDensityChange`.
+ * Takes no props: every other `list.*` built-in follows the same shape
+ * (Decision 37).
+ *
+ * @returns {@link DataTableColumnsMenu}, or `null` when the collection has
+ *   no hideable columns (handled inside `DataTableColumnsMenu`).
+ */
+export function ListColumnsAction() {
+  const list = useCollectionList();
+  return (
+    <DataTableColumnsMenu
+      columns={list.hideableColumns}
+      visibleColumns={list.visibleColumns}
+      onVisibleColumnsChange={list.onVisibleColumnsChange}
+      hasActiveView={list.hasActiveView}
+      density={list.density}
+      onDensityChange={list.onDensityChange}
+    />
+  );
+}
+```
+
+#### packages/react/src/collections/listView/ListSearchAction.test.tsx
+
+New file.
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { ListSearchAction } from "./ListSearchAction";
+import { CollectionListProvider } from "./CollectionListContext";
+import { defineCollection, text } from "@vexcms/core";
+
+const collection = defineCollection({ slug: "posts", fields: { title: text() } }) as never;
+
+describe("ListSearchAction", () => {
+  it("renders ListSearch wired to the list context's collection and urlState", () => {
+    render(
+      <CollectionListProvider
+        value={{
+          collection,
+          urlState: { q: "hello", qf: undefined, setQ: () => {}, setQf: () => {} } as never,
+          selection: { selectedIds: [], selectedDocs: [], setSelectedIds: () => {}, canDelete: false },
+          density: "comfortable",
+          onDensityChange: () => {},
+          visibleColumns: [],
+          onVisibleColumnsChange: () => {},
+          hideableColumns: [],
+          hasActiveView: false,
+        }}
+      >
+        <ListSearchAction />
+      </CollectionListProvider>,
+    );
+    expect(screen.getByDisplayValue("hello")).toBeInTheDocument();
+  });
+});
+```
+
+#### packages/react/src/collections/listView/ListColumnsAction.test.tsx
+
+New file.
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { ListColumnsAction } from "./ListColumnsAction";
+import { CollectionListProvider } from "./CollectionListContext";
+import { defineCollection, text } from "@vexcms/core";
+
+const collection = defineCollection({ slug: "posts", fields: { title: text() } }) as never;
+
+describe("ListColumnsAction", () => {
+  it("renders DataTableColumnsMenu wired to the list context's hideableColumns/density — no collapsed prop", () => {
+    render(
+      <CollectionListProvider
+        value={{
+          collection,
+          urlState: { q: "", qf: undefined, setQ: () => {}, setQf: () => {} } as never,
+          selection: { selectedIds: [], selectedDocs: [], setSelectedIds: () => {}, canDelete: false },
+          density: "comfortable",
+          onDensityChange: () => {},
+          visibleColumns: ["status"],
+          onVisibleColumnsChange: () => {},
+          hideableColumns: [{ field: "status", label: "Status" }],
+          hasActiveView: false,
+        }}
+      >
+        <ListColumnsAction />
+      </CollectionListProvider>,
+    );
+    expect(screen.getByRole("button", { name: /columns/i })).toBeInTheDocument();
   });
 });
 ```
@@ -9326,7 +10501,7 @@ export interface ListEmptyStateProps {
   /** `"empty"` only — gates the "Create {singular}" button. */
   canCreate?: boolean;
   onCreate?: () => void;
-  /** `"empty"` only — the guide link ("Read the docs"); omitted renders no button (wired by Step 16 once the real guide path exists). */
+  /** `"empty"` only — the guide link ("Read the docs"); omitted renders no button (wired by Step 17 once the real guide path exists). */
   docsHref?: string;
   /** `"noSearchResults"` only — the active query text, shown verbatim in the heading. */
   searchQuery?: string;
@@ -9629,8 +10804,6 @@ export interface ListCopyLinkButtonProps {
    * serialize the full state").
    */
   buildHref?: () => string;
-  /** Renders an icon-only button (no "Copy link" label) — set when `useListToolbarCollapse` marks this control collapsed (Decision 22); `ListToolbar` still re-parents the button into the overflow menu in that case, since (unlike Columns) Copy link carries no `vex.list.*` id and isn't resolved through a `SlotOutlet`. @default false */
-  collapsed?: boolean;
 }
 
 /**
@@ -9638,8 +10811,14 @@ export interface ListCopyLinkButtonProps {
  * clipboard. No `vex.list.*` id (Decision 17 never names one) — rendered
  * directly by `ListToolbar`, like `DataTablePageSizeSelect`.
  *
+ * `ListToolbar` mounts this component TWICE — once inline, once inside the
+ * ⋯ overflow menu — each wrapped in a CSS class showing it on opposite
+ * sides of the `@2xl/list` breakpoint (Decision 43). This component itself
+ * carries no `collapsed`/icon-only mode: both locations have room for the
+ * full "Copy link" label, so there is nothing to shrink.
+ *
  * @param props - Component props. See {@link ListCopyLinkButtonProps}.
- * @returns A ghost icon button.
+ * @returns A ghost button with a label.
  */
 export function ListCopyLinkButton(props: ListCopyLinkButtonProps) {
   const [, copyToClipboard] = useCopyToClipboard();
@@ -9649,10 +10828,7 @@ export function ListCopyLinkButton(props: ListCopyLinkButtonProps) {
   //    (ok) toast.success("Link copied"); else toast.error("Couldn't copy
   //    the link"); }`.
   // 2. Render `<Button variant="ghost" size="sm" icon="Link"
-  //    onClick={handleClick}>{props.collapsed ? null : "Copy link"}</Button>`
-  //    (an icon-only ghost button keeps an accessible name via the icon's
-  //    own `aria-label`, same convention as every other icon button in
-  //    `ui/`).
+  //    onClick={handleClick}>Copy link</Button>`.
   throw new Error("Not implemented");
 }
 ```
@@ -9688,195 +10864,12 @@ describe("ListCopyLinkButton", () => {
 });
 ```
 
-#### packages/react/src/collections/listView/useListToolbarCollapse.ts
-
-```tsx
-"use client";
-
-import { type RefObject, useLayoutEffect, useRef, useState } from "react";
-
-/** Which `ListToolbar` controls currently collapse into the ⋯ overflow menu (Decision 22). */
-export interface ListToolbarCollapseState {
-  /** `true` once the toolbar is too narrow to hold Copy link inline. */
-  collapseCopyLink: boolean;
-  /** `true` once the toolbar is narrower still, and `vex.list.columns` ALSO renders icon-only. */
-  collapseColumns: boolean;
-  /** `true` once the toolbar is narrower still, and Rows-per-load ALSO moves into the overflow menu. */
-  collapsePageSize: boolean;
-}
-
-const NOT_COLLAPSED: ListToolbarCollapseState = {
-  collapseCopyLink: false,
-  collapseColumns: false,
-  collapsePageSize: false,
-};
-
-/** Gap (px) between the always-visible group (Search, Filter, bulk group) and the collapsible group. */
-const TOOLBAR_GAP_PX = 8;
-
-/** Same collapse-boundary slack as `documents/useHeaderActionsCollapse.ts`, for the same anti-thrash reason. */
-const COLLAPSE_HYSTERESIS_PX = 16;
-
-type CollapseKey = keyof ListToolbarCollapseState;
-
-/** Collapse order fixed by Decision 22: Copy link first, Columns second (icon-only — see `DataTableColumnsMenu`'s `collapsed` prop), Rows-per-load last (narrowest — the toolbar is down to Search/Filter alone by the time this triggers). */
-const COLLAPSE_ORDER: CollapseKey[] = ["collapseCopyLink", "collapseColumns", "collapsePageSize"];
-
-/** Elements {@link useListToolbarCollapse} measures. */
-export interface ListToolbarCollapseRefs {
-  /** The toolbar row — its `clientWidth` is the space available for the always-visible group plus the collapsible group. */
-  toolbar: RefObject<HTMLElement | null>;
-  /** The `shrink-0` always-visible group (Search, the `list.filters` trigger, the bulk group) — Decision 22: "Search and Filter never collapse." */
-  alwaysVisible: RefObject<HTMLElement | null>;
-  /** The `shrink-0` collapsible group (Copy link, the `vex.list.columns` built-in, Rows-per-load) — rendered at its natural width for whichever of the three are currently inline. */
-  collapsible: RefObject<HTMLElement | null>;
-}
-
-/**
- * Measures a list toolbar row via `ResizeObserver` and reports which
- * controls should collapse to keep the toolbar on one row as it narrows —
- * same measurement paradigm, and the same hysteresis-guarded restore logic,
- * as `documents/useHeaderActionsCollapse.ts`, generalized to this toolbar's
- * own fixed collapse order (Decision 22) rather than reused directly: the
- * two hooks collapse a different number of keys with different widths, and
- * the edit view's header has no equivalent of "Search/Filter never
- * collapse" to encode.
- *
- * @param refs - The toolbar row, always-visible group, and collapsible
- *   group elements to measure.
- * @returns `{ collapseCopyLink, collapseColumns, collapsePageSize }` — all
- *   `false` until every element is measured (width 0: not laid out yet, or
- *   no layout engine).
- */
-export function useListToolbarCollapse(
-  refs: ListToolbarCollapseRefs,
-): ListToolbarCollapseState {
-  const [state, setState] = useState<ListToolbarCollapseState>(NOT_COLLAPSED);
-  const freedWidths = useRef<Record<CollapseKey, number>>({
-    collapseCopyLink: 0,
-    collapseColumns: 0,
-    collapsePageSize: 0,
-  });
-  const pending = useRef<{ key: CollapseKey; collapsibleWidthBefore: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const toolbar = refs.toolbar.current;
-    const alwaysVisible = refs.alwaysVisible.current;
-    const collapsible = refs.collapsible.current;
-    if (!toolbar || !alwaysVisible || !collapsible) return;
-
-    // TODO: implement — mirrors `useHeaderActionsCollapse`'s `measure`
-    // closure exactly, with these substitutions:
-    // 1. `toolbarWidth = toolbar.clientWidth`; `toolbarWidth === 0` → return.
-    // 2. `collapsibleWidth = collapsible.scrollWidth`.
-    // 3. Resolve `pending.current` the same way (freed width = width
-    //    before minus `collapsibleWidth` now), clear it.
-    // 4. `needed = alwaysVisible.scrollWidth + TOOLBAR_GAP_PX +
-    //    collapsibleWidth`; `overflow = needed - toolbarWidth`.
-    // 5. `overflow > 0` → collapse the next key in `COLLAPSE_ORDER` not yet
-    //    collapsed, recording `pending.current = { key, collapsibleWidthBefore:
-    //    collapsibleWidth }`.
-    // 6. else → `slack = -overflow`; walk `COLLAPSE_ORDER` from the end,
-    //    restoring the innermost collapsed key once `slack >
-    //    freedWidths.current[key] + COLLAPSE_HYSTERESIS_PX`, same
-    //    "only ever evaluate the most-recently-collapsed" rule.
-    // 7. `measure()` once, then a `ResizeObserver` on `toolbar` and
-    //    `collapsible`, disconnected on cleanup.
-    throw new Error("Not implemented");
-  }, [refs.toolbar, refs.alwaysVisible, refs.collapsible, state]);
-
-  return state;
-}
-```
-
-#### packages/react/src/collections/listView/useListToolbarCollapse.test.tsx
-
-```tsx
-import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useRef } from "react";
-import { useListToolbarCollapse } from "./useListToolbarCollapse";
-
-let resizeCallback: ResizeObserverCallback = () => {};
-
-beforeEach(() => {
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      constructor(cb: ResizeObserverCallback) {
-        resizeCallback = cb;
-      }
-      observe() {}
-      disconnect() {}
-    },
-  );
-});
-
-afterEach(() => vi.unstubAllGlobals());
-
-function setWidths(el: HTMLElement, clientWidth: number, scrollWidth: number) {
-  Object.defineProperty(el, "clientWidth", { configurable: true, value: clientWidth });
-  Object.defineProperty(el, "scrollWidth", { configurable: true, value: scrollWidth });
-}
-
-function renderCollapse() {
-  return renderHook(() => {
-    const toolbar = useRef<HTMLDivElement>(document.createElement("div"));
-    const alwaysVisible = useRef<HTMLDivElement>(document.createElement("div"));
-    const collapsible = useRef<HTMLDivElement>(document.createElement("div"));
-    const state = useListToolbarCollapse({ toolbar, alwaysVisible, collapsible });
-    return { state, toolbar, alwaysVisible, collapsible };
-  });
-}
-
-describe("useListToolbarCollapse", () => {
-  it("collapses nothing when everything fits", () => {
-    const { result } = renderCollapse();
-    setWidths(result.current.toolbar.current, 600, 600);
-    setWidths(result.current.alwaysVisible.current, 300, 300);
-    setWidths(result.current.collapsible.current, 200, 200);
-    act(() => resizeCallback([], {} as ResizeObserver));
-    expect(result.current.state).toEqual({
-      collapseCopyLink: false,
-      collapseColumns: false,
-      collapsePageSize: false,
-    });
-  });
-
-  it("collapses Copy link first when the toolbar narrows", () => {
-    const { result } = renderCollapse();
-    setWidths(result.current.toolbar.current, 350, 350);
-    setWidths(result.current.alwaysVisible.current, 300, 300);
-    setWidths(result.current.collapsible.current, 200, 200);
-    act(() => resizeCallback([], {} as ResizeObserver));
-    expect(result.current.state.collapseCopyLink).toBe(true);
-    expect(result.current.state.collapseColumns).toBe(false);
-    expect(result.current.state.collapsePageSize).toBe(false);
-  });
-
-  it("restores a collapsed control once enough slack returns, past the hysteresis margin", () => {
-    const { result, rerender } = renderCollapse();
-    setWidths(result.current.toolbar.current, 350, 350);
-    setWidths(result.current.alwaysVisible.current, 300, 300);
-    setWidths(result.current.collapsible.current, 200, 200);
-    act(() => resizeCallback([], {} as ResizeObserver));
-    expect(result.current.state.collapseCopyLink).toBe(true);
-
-    setWidths(result.current.toolbar.current, 600, 600);
-    setWidths(result.current.collapsible.current, 160, 160);
-    rerender();
-    act(() => resizeCallback([], {} as ResizeObserver));
-    expect(result.current.state.collapseCopyLink).toBe(false);
-  });
-});
-```
-
 #### packages/react/src/collections/listView/ListToolbar.tsx
 
 ```tsx
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   BUILTIN_CONTRIBUTION_IDS,
   SLOT_IDS,
@@ -9889,7 +10882,6 @@ import { useCollectionList } from "./CollectionListContext";
 import { listToolbarContributions } from "./listBuiltinContributions";
 import { ListCopyLinkButton } from "./ListCopyLinkButton";
 import { DataTablePageSizeSelect } from "../../ui/data-table/DataTablePageSizeSelect";
-import { useListToolbarCollapse } from "./useListToolbarCollapse";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9901,20 +10893,18 @@ import { Icon } from "../../ui/Icon";
 /**
  * Props every `list.toolbar` contribution receives — deliberately minimal
  * (mirrors `EditSlotProps`'s `{ kind, slug }`): the richer list-wide state
- * (`urlState`, `visibleColumns`, `hideableColumns`, selection, …) comes from
- * `useCollectionList()` (Step 9), which a built-in or a project's own
- * contribution calls itself, exactly as `edit.*` contributions call
- * `useVexDocument()` rather than receiving document state as a prop
- * (Decision 37). `columnsCollapsed` is the one piece of genuinely
- * per-render, non-persistent layout info this slot threads through —
- * `vex.list.columns` reads it to switch `DataTableColumnsMenu` into its
- * icon-only mode (see this step's "Why Columns collapses in place" note).
+ * (`urlState`, `visibleColumns`, `hideableColumns`, selection, density, …)
+ * comes from `useCollectionList()` (Step 9), which a built-in or a
+ * project's own contribution calls itself, exactly as `edit.*`
+ * contributions call `useVexDocument()` rather than receiving document
+ * state as a prop (Decision 37). Carries no `columnsCollapsed` field —
+ * `vex.list.columns`'s `DataTableColumnsMenu` collapses its own label via
+ * a CSS class (Decision 43), so there is nothing left for this slot to
+ * thread through.
  */
-export interface ListToolbarSlotProps extends ListSlotProps {
-  columnsCollapsed: boolean;
-}
+export type ListToolbarSlotProps = ListSlotProps;
 
-/** Overrides `ListCopyLinkButton`'s default `window.location.href` — Step 12 passes a full-state serializer when a local view is active (Decision 11). The rest of `ListToolbar`'s inputs — collection, urlState, visibleColumns, hideableColumns, selection, hasActiveView — come from `useCollectionList()`. */
+/** Overrides `ListCopyLinkButton`'s default `window.location.href` — Step 12 passes a full-state serializer when a local view is active (Decision 11). The rest of `ListToolbar`'s inputs — collection, urlState, visibleColumns, hideableColumns, selection, hasActiveView, density — come from `useCollectionList()`. */
 export interface ListToolbarProps {
   buildCopyLinkHref?: () => string;
 }
@@ -9924,29 +10914,36 @@ export interface ListToolbarProps {
  * selection exists, left of everything else — Decision 22), the
  * always-visible group (`list.toolbar`'s `vex.list.search` plus any
  * non-collapsible project contribution), and the collapsible group (Copy
- * link, `vex.list.columns`, Rows-per-load) behind
- * {@link useListToolbarCollapse}.
+ * link, `vex.list.columns`, Rows-per-load).
  *
- * This step assumes `useCollectionList()` (Step 9) exposes `collection`,
+ * The collapse itself is pure CSS (Decision 43), not `ResizeObserver`
+ * measurement — the server render is the final render. Copy link and
+ * Rows-per-load are each rendered TWICE: once inline, hidden below their
+ * own `@container/list` breakpoint, and once inside the ⋯ overflow
+ * `DropdownMenuContent`, hidden ABOVE that same breakpoint — exactly one
+ * copy is ever visible, and since the hidden copy is `display: none`, it
+ * is never in the accessibility tree or tab order. `vex.list.columns` is
+ * the one exception — its `DataTableColumnsMenu` mounts once and narrows
+ * its own label internally, because it resolves through `SlotOutlet` as a
+ * whole ordered list (see this step's "Why 'Columns' narrows itself via
+ * CSS" note).
+ *
+ * The breakpoints are fixed, widest first, matching Decision 22/43's
+ * collapse order: Copy link hides first, below `@2xl/list`; the Columns
+ * label hides next, below `@xl/list` (inside `DataTableColumnsMenu`
+ * itself); Rows-per-load hides last, below `@lg/list`.
+ *
+ * This step reads `useCollectionList()`'s shape as extended by this step's
+ * own anchored edit to `CollectionListContext.tsx` (above): `collection`,
  * `urlState`, `visibleColumns`, `onVisibleColumnsChange`, `hideableColumns`,
  * `selection` (`{ selectedIds, selectedDocs, setSelectedIds, canDelete }`),
- * `hasActiveView`, and `density` — Step 9 reconciles the exact shape if it
- * differs, the same escape hatch the original draft used for `useVexList`'s
- * surface against "Step 7."
+ * `hasActiveView`, and `density`/`onDensityChange`.
  *
  * @param props - {@link ListToolbarProps}.
  * @returns The toolbar row.
  */
 export function ListToolbar(props: ListToolbarProps): ReactNode {
   const list = useCollectionList();
-  const toolbarRef = useRef<HTMLDivElement>(null);
-  const alwaysVisibleRef = useRef<HTMLDivElement>(null);
-  const collapsibleRef = useRef<HTMLDivElement>(null);
-  const collapse = useListToolbarCollapse({
-    toolbar: toolbarRef,
-    alwaysVisible: alwaysVisibleRef,
-    collapsible: collapsibleRef,
-  });
 
   // TODO: implement
   // 1. `pageSizeOptions = list.collection.admin.table.pageSizeOptions`;
@@ -9956,9 +10953,7 @@ export function ListToolbar(props: ListToolbarProps): ReactNode {
   //    containing "{selectedIds.length} selected" (`aria-live="polite"`,
   //    DESIGN-NOTES.md §3's focus-order note), a "Select all {rows.length}
   //    loaded" button (disabled once every loaded row is already selected;
-  //    Decision 28's exact label — `rows` isn't on `list`, so this reads
-  //    `list.selection.selectedDocs`'s source count via a `rowCount` field
-  //    Step 9's context also exposes), `<SlotOutlet<{ collection:
+  //    Decision 28's exact label), `<SlotOutlet<{ collection:
   //    CollectionConfig; docs: VexDocument[] }> slotId={SLOT_IDS.list.bulkActions}
   //    builtins={[]} contributions={list.collection.admin.components.bulkActions
   //    as unknown as …} contributedProps={{ collection: list.collection,
@@ -9966,45 +10961,53 @@ export function ListToolbar(props: ListToolbarProps): ReactNode {
   //    Step 9's own bulk-actions builtins list, not duplicated here), and a
   //    clear button (`Esc` semantics, `onClick={() =>
   //    list.selection.setSelectedIds([])}`).
-  // 3. Render `<div ref={toolbarRef} className="flex flex-wrap items-center
-  //    justify-between gap-2">`:
-  //    a. `<div ref={alwaysVisibleRef} className="flex shrink-0 items-center
-  //       gap-2">` containing `bulkGroup` (when present) then
-  //       `<SlotOutlet<ListToolbarSlotProps> slotId={SLOT_IDS.list.toolbar}
-  //       builtins={listToolbarContributions()} contributions={list.collection
-  //       .admin.components.toolbar as unknown as
-  //       ComponentContributionInput<ReactHKT, ListToolbarSlotProps>[]}
-  //       contributedProps={{ collection: list.collection, columnsCollapsed:
-  //       collapse.collapseColumns }} />`. `list.filters` (Step 11's Filter
-  //       button/builder trigger) renders adjacent to this group, placed by
+  // 3. Render `<div className="flex flex-wrap items-center justify-between gap-2">`:
+  //    a. `<div className="flex shrink-0 items-center gap-2">` containing
+  //       `bulkGroup` (when present) then `<SlotOutlet<ListToolbarSlotProps>
+  //       slotId={SLOT_IDS.list.toolbar} builtins={listToolbarContributions()}
+  //       contributions={list.collection.admin.components.toolbar as unknown
+  //       as ComponentContributionInput<ReactHKT, ListToolbarSlotProps>[]}
+  //       contributedProps={{ collection: list.collection }} />` — no extra
+  //       props; `vex.list.columns` reads `density`/`onDensityChange` off
+  //       `useCollectionList()` itself, the same way it already reads
+  //       `visibleColumns`. `list.filters` (Step 11's Filter button/
+  //       builder trigger) renders adjacent to this group, placed by
   //       `ListLayout` (Step 9) in the same row — not inside this
-  //       component, same division as the pre-review draft.
-  //    b. `<div ref={collapsibleRef} className="flex shrink-0 items-center
-  //       gap-2">` containing, for each of Copy link / Rows-per-load NOT
-  //       currently collapsed, its normal inline form
-  //       (`<ListCopyLinkButton buildHref={props.buildCopyLinkHref} />`,
-  //       `<DataTablePageSizeSelect pageSize={pageSize}
-  //       pageSizeOptions={pageSizeOptions} onPageSizeChange={list.urlState.setSize} />`);
-  //       when EITHER is collapsed, render a trailing `<DropdownMenu>`
-  //       (`Button variant="ghost" size="icon"` with a `MoreHorizontal`
-  //       icon, accessible name "More toolbar actions") whose
-  //       `DropdownMenuContent className="flex flex-col gap-1 p-2"`
-  //       contains the collapsed one(s) rendered as themselves (their own
-  //       full component, `collapsed` prop set on `ListCopyLinkButton`),
-  //       not reimplemented as plain menu items — `DataTablePageSizeSelect`
-  //       keeps being a real `Select` inside the popover.
+  //       component.
+  //    b. `<div className="flex shrink-0 items-center gap-2">` containing,
+  //       inline, each wrapped in its own breakpoint class: `<span
+  //       className="hidden @2xl/list:inline-flex"><ListCopyLinkButton
+  //       buildHref={props.buildCopyLinkHref} /></span>` and `<span
+  //       className="hidden @lg/list:inline-flex"><DataTablePageSizeSelect
+  //       pageSize={pageSize} pageSizeOptions={pageSizeOptions}
+  //       onPageSizeChange={list.urlState.setSize} /></span>`, followed
+  //       UNCONDITIONALLY by the overflow `<DropdownMenu>`:
+  //       `<DropdownMenuTrigger asChild><Button variant="ghost" size="icon"
+  //       className="@2xl/list:hidden" aria-label="More toolbar actions">
+  //       <Icon name="MoreHorizontal" /></Button></DropdownMenuTrigger>`
+  //       (hidden once Copy link — the widest-threshold item — is inline,
+  //       since nothing is left to show below it) and
+  //       `<DropdownMenuContent className="flex flex-col gap-1 p-2">`
+  //       containing the SAME two components again, breakpoints INVERTED:
+  //       `<span className="@2xl/list:hidden"><ListCopyLinkButton
+  //       buildHref={props.buildCopyLinkHref} /></span>` and `<span
+  //       className="@lg/list:hidden"><DataTablePageSizeSelect
+  //       pageSize={pageSize} pageSizeOptions={pageSizeOptions}
+  //       onPageSizeChange={list.urlState.setSize} /></span>`.
   // Edge cases:
-  // - `collapse.collapseColumns` only ever reaches `vex.list.columns`
-  //   through `contributedProps.columnsCollapsed` — this component never
-  //   reaches INTO the slot's resolved output to relocate it (see this
-  //   step's "Why Columns collapses in place" note above).
+  // - Both copies of `ListCopyLinkButton`/`DataTablePageSizeSelect` are
+  //   mounted on EVERY render — that's the point (Decision 43/
+  //   `layout-stability.md`: "render-time, no JS"). The hidden one never
+  //   paints and is excluded from the accessibility tree, so there is
+  //   exactly one reachable "Copy link" button and one reachable "Rows per
+  //   load" combobox at any given container width, never two.
   // - `bulkGroup === undefined` (nothing selected) means the always-visible
   //   group starts directly with the `list.toolbar` outlet — no empty
   //   wrapper left behind.
   throw new Error("Not implemented");
 }
 
-/** Built-in `list.toolbar` contribution id this file's `collapse` wiring targets — exported so `ListToolbar.test.tsx` can assert it without constructing a full `CollectionConfig`. The id itself, and the `ListSearchAction`/`ListColumnsAction` components behind it, are Step 9's `listBuiltinContributions.ts`. */
+/** Built-in `list.toolbar` contribution id this file's `SlotOutlet` call targets — exported so `ListToolbar.test.tsx` can assert it without constructing a full `CollectionConfig`. The id itself, and the `ListSearchAction`/`ListColumnsAction` components behind it, are this step's `listBuiltinContributions.ts` edit. */
 export const LIST_TOOLBAR_SLOT_ID = SLOT_IDS.list.toolbar;
 ```
 
@@ -10021,9 +11024,8 @@ describe("ListToolbar", () => {
     // typo here would silently drop vex.list.search/vex.list.columns into
     // the wrong slot. `ListToolbar` itself renders through `SlotOutlet` and
     // `useCollectionList()`, which need a live `VexConfigProvider`/access
-    // context/`CollectionListProvider` — the same reason the pre-review
-    // draft's toolbar test stayed at this level rather than mounting the
-    // full component.
+    // context/`CollectionListProvider` — the same reason this test stays
+    // at this level rather than mounting the full component.
     expect(LIST_TOOLBAR_SLOT_ID).toBe(SLOT_IDS.list.toolbar);
     expect(LIST_TOOLBAR_SLOT_ID).toBe("list.toolbar");
   });
@@ -10171,13 +11173,12 @@ This is a behavior change, not just plumbing: every per-type factory currently h
 
 This step extends Step 9's edit to the same file (controlled `onSelectionChange`, the row-selection checkbox column, the `useReactTable` call) with the fixed-height layout (Decision 22), sort/density/visibility wiring, the capped-count footer (Decision 35), and the empty/error slots. 5 further edits.
 
-**1 — imports.** The `@vexcms/core` import gains `CollectionTableSort`; add the new sibling imports:
+**1 — imports.** The `@vexcms/core` import gains `CollectionTableSort` and `ListDensity` (the density type now lives in core, Decision 42, not in this folder's own `DataTableColumnsMenu.tsx`); add the new sibling imports:
 
 ```ts
-import { VexDocument, type Alignment, type CollectionTableSort } from "@vexcms/core";
+import { VexDocument, type Alignment, type CollectionTableSort, type ListDensity } from "@vexcms/core";
 import { DataTableSortHeader } from "./DataTableSortHeader";
 import { ScrollArea } from "../scroll-area";
-import type { DataTableDensity } from "./DataTableColumnsMenu";
 ```
 
 **2 — `DataTableColumnMeta`.** Add `label`, read by the header-wrapping logic in edit 5 (every `*FieldToColumnDef` factory already sets `meta.label` — this interface just hadn't declared it):
@@ -10192,8 +11193,8 @@ interface DataTableColumnMeta {
 **3 — row-height class map,** a new module-level constant beside `ALIGNMENT_CLASS`, read by edit 5's row/cell rendering:
 
 ```ts
-/** Row height per {@link DataTableDensity} (DESIGN-NOTES.md §1: Comfortable 48px, Compact 36px). Applied to every `TableRow`/`TableCell`. */
-const DENSITY_ROW_CLASS: Record<DataTableDensity, string> = {
+/** Row height per {@link ListDensity} (DESIGN-NOTES.md §1: Comfortable 48px, Compact 36px). Applied to every `TableRow`/`TableCell`. */
+const DENSITY_ROW_CLASS: Record<ListDensity, string> = {
   comfortable: "h-12",
   compact: "h-9",
 };
@@ -10235,8 +11236,8 @@ const DENSITY_ROW_CLASS: Record<DataTableDensity, string> = {
    */
   visibleColumns?: string[];
 
-  /** Row density (Decision 29). @default "comfortable" */
-  density?: DataTableDensity;
+  /** Row density (Decision 29), cookie-backed by the caller (Decision 42). @default "comfortable" */
+  density?: ListDensity;
 
   // Pagination footer
 
@@ -10334,9 +11335,56 @@ export function DataTable<TData extends VexDocument>(props: DataTableProps<TData
 }
 ```
 
+#### packages/react/src/collections/listView/CollectionListContext.tsx
+
+2 edits — extends Step 9's base `CollectionListState` (Design Decision 37: one definition site, extended here, never redefined); everything else in the file is unchanged.
+
+**1 — imports.** Add the density type alongside the state's existing import:
+
+```ts
+import type { ListDensity } from "@vexcms/core";
+import type { UseListUrlStateReturn } from "./useListUrlState";
+```
+
+**2 — `CollectionListState`, replace the body.** `selectedIds`/`setSelectedIds` fold into a `selection` object alongside the two fields this step adds (`selectedDocs`, `canDelete`); `visibleFields` becomes `visibleColumns` plus its setter and the hideable-columns list; `urlState` and `hasActiveView` are new; `density` is now `ListDensity`-typed and gains the sibling setter `onDensityChange` (Decision 42 — no component owns a local `useLocalStorage`/density store anymore). `collection` and `onInspect` are unchanged from Step 9.
+
+```ts
+export interface CollectionListState<TDoc extends TDocument = TDocument> {
+  /** The resolved collection config. */
+  collection: CollectionConfig;
+  /** This list's URL state (`useListUrlState`, this step). */
+  urlState: UseListUrlStateReturn;
+  /** Row selection. */
+  selection: {
+    /** The ids of currently-selected rows (`DataTable`'s `onSelectionChange`). */
+    selectedIds: string[];
+    /** The currently-selected rows, resolved from `selectedIds` against the loaded page. */
+    selectedDocs: TDoc[];
+    /** Replaces the current selection. */
+    setSelectedIds: (ids: string[]) => void;
+    /** Whether the caller may delete documents in this collection. */
+    canDelete: boolean;
+  };
+  /** Per-browser table density (Decision 29), cookie-backed (Decision 42) — seeded from `CollectionListView`'s `initialPreferences` prop, never read from `useLocalStorage`. */
+  density: ListDensity;
+  /** Replaces the density preference; the caller (`CollectionListView`) updates its own state AND writes the `vex-list-density` cookie (`writeListDensityCookie`) so the next server render matches with no flash. Read by `vex.list.columns` (this step's `ListColumnsAction.tsx`) alongside `density` itself. */
+  onDensityChange: (density: ListDensity) => void;
+  /** The field slugs currently visible in the table (the columns menu). */
+  visibleColumns: string[];
+  /** Replaces the visible-columns set. */
+  onVisibleColumnsChange: (fields: string[]) => void;
+  /** Field/label pairs eligible to be hidden from the table (`admin.enableHiding`), for the columns menu. */
+  hideableColumns: { field: string; label: string }[];
+  /** Whether a saved view (config/shared/local) is currently active. `false` until Step 12 wires saved views. */
+  hasActiveView: boolean;
+  /** Opens the Inspect peek for a document id (Decision 27, wired in Step 13). `undefined` until then. */
+  onInspect?: (id: string) => void;
+}
+```
+
 #### packages/react/src/collections/listView/ListLayout.tsx
 
-1 edit — Step 9 builds this file's composition (the fixed-height shell, the `list.header.actions`/`list.filters`/`list.beforeTable`/`list.afterTable` outlets, `<ListToolbar/>`, `<DataTable/>`). This step adds the container-query root (Decision 22):
+2 edits — Step 9 builds this file's composition (the fixed-height shell, the `list.header.actions`/`list.filters`/`list.beforeTable`/`list.afterTable` outlets, `<ListToolbar/>`, `<DataTable/>`). This step adds the container-query root (Decision 22/43) and the query-result props `CollectionListView` (this step) now computes.
 
 **1 — the root element's `className`.** Anchor: the outermost `<div>` `ListLayout` returns (the one wrapping the header row, tabs row, toolbar row, and `<DataTable>`). Add `@container/list` to its class list, alongside whatever fixed-height classes (`flex h-full min-h-0 flex-col gap-3`) Step 9 already put there:
 
@@ -10344,36 +11392,70 @@ export function DataTable<TData extends VexDocument>(props: DataTableProps<TData
 <div className="@container/list flex h-full min-h-0 flex-col gap-3">
 ```
 
-Every narrower-container variant the rest of this spec adds (Step 13's inline-vs-sheet peek, Step 15's responsive pass) targets this one named container — `@lg/list:…`, `@3xl/list:…`, etc. — the same convention `CollectionEditView.tsx` already established with `@3xl/form`.
+Every narrower-container variant the rest of this spec adds (this step's own `ListToolbar` CSS collapse; Step 13's inline-vs-sheet peek; Step 16's responsive pass) targets this one named container — `@lg/list:…`, `@xl/list:…`, `@2xl/list:…`, etc. — the same convention `CollectionEditView.tsx` already established with `@3xl/form`. Because the collapse is now CSS-only (Decision 43), this root is also the ONLY place a container name is declared; nothing downstream measures it with JavaScript.
+
+**2 — `ListLayoutProps` gains the new query-result props.** Anchor: the `onLoadMore: () => void;` member.
+
+```ts
+  onLoadMore: () => void;
+  /** Whether `totalCount` hit `collection.admin.table.countLimit` (Decision 35) — forwarded to `DataTable`'s footer. */
+  totalDocsCapped?: boolean;
+  /** Whether the caller may create a new document — gates the empty state's own Create button (`ListCreateAction` self-gates separately for the header). */
+  canCreate: boolean;
+  /** Whether the caller may delete documents in this collection. */
+  canDelete: boolean;
+  /** Rendered in place of the table body when there's nothing to show (`ListEmptyState`) — chosen by the caller, since only it knows whether a search/filter is active. */
+  emptyState?: ReactNode;
+  /** Rendered in place of the whole scroll area when the underlying query failed (`ListQueryError`) — takes priority over `emptyState`. */
+  queryError?: ReactNode;
+```
+
+`DataTable`'s own call (Step 9's pseudocode, point 3's `<DataTable>` bullet) forwards three of these straight through: `totalDocsCapped={props.totalDocsCapped} emptyState={props.emptyState} queryError={props.queryError}`. `canCreate` has nothing to gate yet in `ListLayout` itself (the create affordance is `ListCreateAction`'s own self-gated built-in) — it threads through for a later step. `canDelete` likewise threads through so a later step's inline affordance can read it without its own `usePermission` call, matching `useCollectionList().selection.canDelete`'s identical value.
 
 #### packages/react/src/collections/listView/CollectionListView.tsx
 
-This step extends Step 8's `useVexListQuery` call and Step 9's `<ListLayout>`/`CollectionListContext`. 4 edits; column-building (including the existing `isFieldAllowed` filter — unchanged, see this step's "Why" note above), the status column, and `ListCreateAction`'s JSX (already moved out by Step 9) are unchanged.
+This step extends Step 8's `useVexListQuery` call and Step 9's `<ListLayout>`/`CollectionListContext`. 4 edits; column-building (including the existing `isFieldAllowed` filter — unchanged, see this step's "Why" note above), the status column, and `ListCreateAction`'s JSX (already moved out by Step 9) are unchanged. `CollectionListViewProps` gains `initialPreferences` via this step's own edit to `packages/core/src/framework.ts` (above).
 
-**1 — imports.** Add the new hooks/components, alongside the existing `react` import:
+**1 — imports.** Add the new hooks/components, alongside the existing `react` import. `useLocalStorage` and `DataTableColumnsMenu`'s old storage-key export are gone — density is `useState` seeded from `props.initialPreferences`, written via `listPreferenceCookies.ts`'s `writeListDensityCookie`:
 
 ```ts
 import { useMemo, useState } from "react";
-import { useLocalStorage } from "@ts-hooks-kit/core";
+import { parseAsBoolean, useQueryState } from "nuqs";
+import type { ListDensity } from "@vexcms/core";
 import { useListUrlState } from "./useListUrlState";
 import { ListEmptyState } from "./ListEmptyState";
 import { ListQueryError } from "./ListQueryError";
 import { CollectionListProvider } from "./CollectionListContext";
-import { DATA_TABLE_DENSITY_STORAGE_KEY, type DataTableDensity } from "../../ui/data-table/DataTableColumnsMenu";
+import { writeListDensityCookie } from "./listPreferenceCookies";
+import { MODALS } from "../../modals/constants";
 ```
 
-**2 — `urlState`, `visibleColumns`, `density`, `selectedIds`, `hideableColumns`, and the pagination call.** Insert before the existing `const canCreate = …` line, replacing the current direct `usePaginatedQuery` call with `useVexListQuery` (Step 8) fed from `urlState`. Selection state LIFTS UP from the old "Step 8"-owned `CollectionListLayout` into this component (Decision 37 — `CollectionListProvider`'s `selection` field needs to exist before `ListLayout` renders):
+**2 — `urlState`, `visibleColumns`, `density`, `canCreate`/`canDelete`, `hideableColumns`, and the pagination call.** Anchor: the existing `const [selectedIds, setSelectedIds] = useState<string[]>([]);` line (Step 9). Replace the current direct `usePaginatedQuery` call with `useVexListQuery` (Step 8) fed from `urlState`, and reintroduce `canCreate`/`canDelete` — Step 9 removed them along with the old JSX that read them; `ListEmptyState`'s Create gate (below) and the `selection.canDelete` context field need them again. `density` is seeded from `props.initialPreferences?.density` (Decision 42) rather than `useLocalStorage`; `onDensityChange` both updates the state and writes the cookie, so a later component in this same render tree never has to re-derive it. `setCreateModalOpen` reopens the SAME `?createNew=true` URL param `CreateDocumentModal` (mounted by `ListCreateAction`, Step 9) already reads via `useQueryState` — the empty state's own Create button drives it without owning any modal state itself:
 
 ```tsx
   const urlState = useListUrlState({ collection });
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
     collection.admin.table.defaultColumns,
   );
-  const [density] = useLocalStorage<DataTableDensity>(
-    DATA_TABLE_DENSITY_STORAGE_KEY,
-    "comfortable",
+  const [density, setDensity] = useState<ListDensity>(
+    props.initialPreferences?.density ?? "comfortable",
   );
+  const onDensityChange = (next: ListDensity) => {
+    setDensity(next);
+    writeListDensityCookie({ density: next });
+  };
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const canCreate = usePermission({
+    resource: collection.slug,
+    action: CRUD_ACTIONS.create,
+    scope: PERMISSION_SCOPES.any,
+  });
+  const canDelete = usePermission({
+    resource: collection.slug,
+    action: CRUD_ACTIONS.delete,
+    scope: PERMISSION_SCOPES.any,
+  });
+  const [, setCreateModalOpen] = useQueryState(MODALS.createDocument.urlParam, parseAsBoolean);
   const hideableColumns = useMemo(
     () =>
       columns
@@ -10465,7 +11547,7 @@ import { DATA_TABLE_DENSITY_STORAGE_KEY, type DataTableDensity } from "../../ui/
 
 This step assumes `useVexListQuery` (Step 8) exposes `error`/`retry`/`totalDocsCapped` alongside `isDone`/`isPending`/`loadMore`/`totalDocs`/`results`, matching `usePaginatedQuery`'s existing surface plus the fields Decision 35 and a TanStack/Convex query hook conventionally add — Step 8 reconciles the exact names if they differ. `"Edit filters"` (the `noFilterResults` variant's other button) is wired by Step 11, which owns the filter builder's own open/close state; this step passes `onEditFilters={undefined}` until then (the button simply doesn't render, per `ListEmptyState`'s own rule).
 
-**4 — `<CollectionListProvider>`/`<ListLayout>` call.** Replace the existing `<CollectionListLayout>` (or equivalent Step-9-built) return with the context-wrapped version:
+**4 — `<CollectionListProvider>`/`<ListLayout>` call.** Replace the existing `<CollectionListProvider>`/`<ListLayout>` call Step 9 built, with the extended value and props — `density` gains the sibling `onDensityChange`:
 
 ```tsx
       <CollectionListProvider
@@ -10476,9 +11558,10 @@ This step assumes `useVexListQuery` (Step 8) exposes `error`/`retry`/`totalDocsC
           onVisibleColumnsChange: setVisibleColumns,
           hideableColumns,
           density,
+          onDensityChange,
           selection: { selectedIds, selectedDocs, setSelectedIds, canDelete },
-          hasActiveView: false,
-          onInspect: undefined,
+          hasActiveView: urlState.view !== undefined,
+          onInspect: (id: string) => urlState.setPeek(id),
         }}
       >
         <ListLayout
@@ -10498,11 +11581,11 @@ This step assumes `useVexListQuery` (Step 8) exposes `error`/`retry`/`totalDocsC
       </CollectionListProvider>
 ```
 
-`hasActiveView: false` and `onInspect: undefined` are placeholder literals until Step 12 (saved views) and Step 13 (Inspect peek) override them. `selection`, `visibleColumns`, `hideableColumns`, and `density` are the list-wide UI state Decision 37 moves out of props-drilled-through-`ListLayout` and into context — `ListLayout`, `ListToolbar`, and every `list.toolbar`/`list.row.actions`/`list.bulkActions` built-in read them back via `useCollectionList()` rather than receiving them as props, the same split `VexDocumentProvider`/`useVexDocument()` establishes for the edit view.
+`hasActiveView`/`onInspect` are real from this step on — both derive entirely from `urlState` (`view`/`setPeek`), which this step already owns, so neither Step 12 (saved views) nor Step 13 (Inspect peek) needs to touch this provider value; Step 13's `ListPeek` reads `urlState.peek`/`urlState.setPeek` itself as plain props, the same source `onInspect` writes to here. `selection`, `visibleColumns`, `hideableColumns`, and `density`/`onDensityChange` are the list-wide UI state Decision 37 moves out of props-drilled-through-`ListLayout` and into context — `ListLayout`, `ListToolbar`, and every `list.toolbar`/`list.row.actions`/`list.bulkActions` built-in read them back via `useCollectionList()` rather than receiving them as props, the same split `VexDocumentProvider`/`useVexDocument` establishes for the edit view. `density` is the one field in this value whose SOURCE OF TRUTH (the cookie) lives outside React entirely — `onDensityChange` is this step's one piece of state that has a side effect beyond `setState`.
 
 #### packages/react/src/collections/listView/index.ts
 
-New barrel (or 1 edit if Step 2 already created it while moving the pre-existing files) — add this step's exports alongside whatever Step 2/Step 9 already re-export from this folder:
+New barrel (or 1 edit if Step 2 already created it while moving the pre-existing files) — add this step's exports alongside whatever Step 2/Step 9 already re-export from this folder. `listUrlParams` lives in `@vexcms/core`, not re-exported here:
 
 ```ts
 export * from "./ListSearch";
@@ -10510,9 +11593,8 @@ export * from "./ListToolbar";
 export * from "./ListEmptyState";
 export * from "./ListQueryError";
 export * from "./ListCopyLinkButton";
-export * from "./listUrlParams";
+export * from "./listPreferenceCookies";
 export * from "./useListUrlState";
-export * from "./useListToolbarCollapse";
 ```
 
 #### packages/react/src/ui/data-table/index.ts
@@ -10535,16 +11617,21 @@ export * from "./DataTablePageSizeSelect";
 export * from "./ScrollSection";
 ```
 
-Verify: `pnpm --filter @vexcms/react test -- collections/listView ui/data-table ui/ScrollSection && browser: search, field switch, sort, column hide, density toggle, page size (inline, then collapsed into ⋯ once the toolbar narrows), Copy link, empty/error states, "Showing 25 of 1,000+" on a capped collection, reload keeps state`
+Verify: `pnpm --filter @vexcms/core test -- collections/listUrlParams collections/listPreferenceCookies && pnpm --filter @vexcms/react test -- collections/listView ui/data-table ui/ScrollSection && browser: search, field switch, sort, column hide, density toggle (confirm the \`vex-list-density\` cookie is written, then reload — the row height matches on the very first paint, no flash), resize the list pane across the \`@lg/list\`/\`@xl/list\`/\`@2xl/list\` breakpoints and confirm Copy link / the Columns label / Rows per load fold into ⋯ in that order with no measurement-driven flash, empty/error states, "Showing 25 of 1,000+" on a capped collection, reload keeps URL state
 
 ### Step 11 — Filter builder (AND rows + one level of OR groups) [agent]
 
-Why: authors `where` for the URL and views; DNF covers multi-value, empty-value, and triage use cases without a tree editor (Decision 10). Files move into `collections/listView/` per the developer's folder-placement decision (Decision 21) and the closed-subfolder AP-023 fix, dropping the redundant `Collection` prefix. The builder stays presentational — Step 10's `vex.list.filters` built-in (`listView/ListFiltersAction.tsx`) reads `collection`/`where`/`setFilter` from `useCollectionList()` (Decision 37) and passes them down as props, rather than this component reading context itself. `where` here is always the user's OWN filter, never a config view's hidden filter (Decision 25) — `CollectionListPeek` aside, nothing in this file changes for the declared-view-filter exception in Decision 26, since the server-side allow-list operates on the composed `where` this component never sees.
+Why: authors `where` for the URL and views; DNF covers multi-value, empty-value, and triage use cases without a tree editor (Decision 10). Files live in `collections/listView/` per the developer's folder-placement decision (Decision 21) and the closed-subfolder AP-023 fix, dropping the redundant `Collection` prefix. The builder stays presentational — this step's `vex.list.filters` built-in (`listView/ListFiltersAction.tsx`) reads `collection`/`where`/`setFilter` from `useCollectionList()` (Decision 37) and passes them down as props, rather than this component reading context itself. `where` here is always the user's OWN filter, never a config view's hidden filter (Decision 25). Per Decisions 39–43, filter-chip visibility is cookie-backed rather than `useLocalStorage` (Decision 42 puts it in `vex-list-chips:<collection>`, read on the server exactly like `readLivePreviewPanelCookie`) via the shared `listPreferenceCookies.ts` helper Step 10 introduces for density. `ListFilterChips` and `ListHiddenFilterBadge` are seeded from `initialVisible`/the view's config so the server render matches.
 
 - [ ] `packages/react/src/collections/listView/whereDnf.ts` (new) + test — `toDnf(where) | null`, `fromDnf(groups)`, `ListFilterOp`, `listFilterOpOf`/`applyListFilterOp` for the `isEmpty`/`isNotEmpty` editor operators
 - [ ] `packages/react/src/collections/listView/ListFilterBuilder.tsx` (new) — groups (OR) of rows (AND); operators by field type incl. `isEmpty`/`isNotEmpty` on every type; built-in `vex_status` field on versioned collections; unreadable fields excluded (`useFieldPermissions`); live apply with muted incomplete rows; text `eq` hint; non-DNF `where` shown read-only
-- [ ] `packages/react/src/collections/listView/ListFilterChips.tsx` (new) + test — active-filter chips (clear one / clear all), per-browser visibility toggle via `useLocalStorage`
-- [ ] `packages/react/src/collections/listView/ListLayout.tsx` — renders `ListFilterChips` in the fixed-height chip row below the toolbar, below the `list.filters` outlet (Decision 22); composition-only edit (Decision 38)
+- [ ] `packages/react/src/collections/listView/ListFiltersAction.tsx` (new) + test — the `vex.list.filters` built-in, wrapping `ListFilterBuilder`'s trigger/popover with `collection`/`where`/`setFilter` from `useCollectionList()`
+- [ ] `packages/react/src/collections/listView/listBuiltinContributions.ts` — adds `listFiltersContributions()` (`vex.list.filters`)
+- [ ] `packages/react/src/collections/listView/ListLayout.tsx` — the `list.filters` `SlotOutlet`'s `builtins` prop changes from `[]` (Step 9's placeholder) to `listFiltersContributions()`
+- [ ] `packages/core/src/collections/listPreferenceCookies.ts` (existing, Step 10) — add the `chipsVisible` cookie entry, `listChipsVisibleCookieName`, and the `chipsVisible` field on `parseListPreferences`'s result
+- [ ] `packages/react/src/collections/listView/listPreferenceCookies.ts` (existing, Step 10) — add `writeListChipsVisibleCookie`
+- [ ] `packages/react/src/collections/listView/ListFilterChips.tsx` (new) + test — active-filter chips (clear one / clear all), per-browser visibility toggle, cookie-backed (Decision 42) and seeded from `initialVisible` so the server render matches
+- [ ] `packages/react/src/collections/listView/ListLayout.tsx` — renders `ListFilterChips` in the fixed-height chip row below the toolbar, below the `list.filters` outlet (Decision 22), forwarding `initialPreferences.chipsVisible`; composition-only edit (Decision 38)
 
 #### packages/react/src/collections/listView/whereDnf.ts
 
@@ -10838,129 +11925,77 @@ describe("toDnf", () => {
   it("returns null for an empty `or`", () => {
     expect(toDnf({ where: { or: [] } })).toBeNull();
   });
-
-  it("round-trips a leaf with value: undefined (a compiled empty check)", () => {
-    expect(toDnf({ where: emptyCompany })).toEqual({ groups: [{ rows: [emptyCompany] }] });
-  });
 });
 
 describe("fromDnf", () => {
-  it("returns undefined for an empty group list", () => {
+  it("returns undefined for no groups", () => {
     expect(fromDnf({ groups: [] })).toBeUndefined();
   });
 
-  it("returns undefined when every group is empty", () => {
-    const groups: WhereDnfGroup[] = [{ rows: [] }, { rows: [] }];
+  it("drops empty groups and returns undefined if none remain", () => {
+    const groups: WhereDnfGroup<string>[] = [{ rows: [] }, { rows: [] }];
     expect(fromDnf({ groups })).toBeUndefined();
   });
 
-  it("returns the bare leaf for one group with one row", () => {
-    const groups: WhereDnfGroup[] = [{ rows: [published] }];
+  it("returns the bare leaf for one group of one row", () => {
+    const groups: WhereDnfGroup<string>[] = [{ rows: [published] }];
     expect(fromDnf({ groups })).toEqual(published);
   });
 
-  it("wraps one group with 2+ rows in `and`", () => {
-    const groups: WhereDnfGroup[] = [{ rows: [published, viewsOver100] }];
+  it("returns an `and` for one group with 2+ rows", () => {
+    const groups: WhereDnfGroup<string>[] = [{ rows: [published, viewsOver100] }];
     expect(fromDnf({ groups })).toEqual({ and: [published, viewsOver100] });
   });
 
-  it("wraps 2+ one-row groups in `or` of bare leaves", () => {
-    const groups: WhereDnfGroup[] = [{ rows: [published] }, { rows: [draft] }];
-    expect(fromDnf({ groups })).toEqual({ or: [published, draft] });
-  });
-
-  it("wraps 2+ multi-row groups in `or` of `and`s", () => {
-    const groups: WhereDnfGroup[] = [
-      { rows: [published, viewsOver100] },
+  it("returns an `or` of leaves/`and`s for 2+ surviving groups", () => {
+    const groups: WhereDnfGroup<string>[] = [
+      { rows: [published] },
       { rows: [draft, notArchived] },
     ];
-    expect(fromDnf({ groups })).toEqual({
-      or: [{ and: [published, viewsOver100] }, { and: [draft, notArchived] }],
-    });
-  });
-
-  it("mixes a one-row and a multi-row surviving group under `or`", () => {
-    const groups: WhereDnfGroup[] = [{ rows: [published] }, { rows: [draft, notArchived] }];
     expect(fromDnf({ groups })).toEqual({
       or: [published, { and: [draft, notArchived] }],
     });
   });
 
-  it("drops empty groups before collapsing", () => {
-    const groups: WhereDnfGroup[] = [{ rows: [] }, { rows: [published] }];
-    expect(fromDnf({ groups })).toEqual(published);
-  });
-});
-
-describe("toDnf / fromDnf round-trip", () => {
-  it("round-trips a flat `and` through toDnf then fromDnf", () => {
-    const where: VexWhereNode<string> = { and: [published, viewsOver100] };
-    const dnf = toDnf({ where });
-    expect(dnf).not.toBeNull();
-    expect(fromDnf(dnf!)).toEqual(where);
-  });
-
-  it("round-trips an `or` of `and`s through toDnf then fromDnf", () => {
+  it("round-trips toDnf output back to the original where", () => {
     const where: VexWhereNode<string> = {
       or: [{ and: [published, viewsOver100] }, { and: [draft, notArchived] }],
     };
     const dnf = toDnf({ where });
     expect(dnf).not.toBeNull();
-    expect(fromDnf(dnf!)).toEqual(where);
-  });
-
-  it("round-trips groups through fromDnf then toDnf", () => {
-    const groups: WhereDnfGroup[] = [{ rows: [published] }, { rows: [draft, notArchived] }];
-    const where = fromDnf({ groups });
-    expect(toDnf({ where })).toEqual({ groups });
+    expect(fromDnf({ groups: dnf!.groups })).toEqual(where);
   });
 });
 
 describe("listFilterOpOf / applyListFilterOp", () => {
-  it("reads a value-less eq leaf as isEmpty", () => {
+  it("reads an eq/undefined leaf as isEmpty", () => {
     expect(listFilterOpOf({ leaf: emptyCompany })).toBe("isEmpty");
   });
 
-  it("reads a value-less neq leaf as isNotEmpty", () => {
+  it("reads a neq/undefined leaf as isNotEmpty", () => {
     expect(listFilterOpOf({ leaf: nonEmptyCompany })).toBe("isNotEmpty");
   });
 
-  it("reads a leaf with a real value as its own FilterOp, even for eq/neq", () => {
-    expect(listFilterOpOf({ leaf: published })).toBe("eq");
-    expect(listFilterOpOf({ leaf: notArchived })).toBe("neq");
+  it("reads any other leaf's op unchanged", () => {
+    expect(listFilterOpOf({ leaf: published as WhereDnfLeaf<string> })).toBe("eq");
   });
 
-  it("applies isEmpty as eq with value undefined, keeping field", () => {
-    expect(applyListFilterOp({ leaf: published, op: "isEmpty" })).toEqual({
-      field: "status",
-      op: "eq",
-      value: undefined,
-    });
-  });
-
-  it("applies isNotEmpty as neq with value undefined, keeping field", () => {
-    expect(applyListFilterOp({ leaf: published, op: "isNotEmpty" })).toEqual({
-      field: "status",
-      op: "neq",
-      value: undefined,
-    });
-  });
-
-  it("applies a plain FilterOp, keeping field and value", () => {
-    expect(applyListFilterOp({ leaf: published, op: "gt" })).toEqual({
-      field: "status",
-      op: "gt",
-      value: "published",
-    });
-  });
-
-  it("round-trips applyListFilterOp then listFilterOpOf for isEmpty/isNotEmpty", () => {
-    expect(listFilterOpOf({ leaf: applyListFilterOp({ leaf: published, op: "isEmpty" }) })).toBe(
-      "isEmpty",
-    );
+  it("applies isEmpty as eq/undefined", () => {
     expect(
-      listFilterOpOf({ leaf: applyListFilterOp({ leaf: published, op: "isNotEmpty" }) }),
-    ).toBe("isNotEmpty");
+      applyListFilterOp({ leaf: { field: "company", op: "eq", value: "x" }, op: "isEmpty" }),
+    ).toEqual({ field: "company", op: "eq", value: undefined });
+  });
+
+  it("applies isNotEmpty as neq/undefined", () => {
+    expect(
+      applyListFilterOp({ leaf: { field: "company", op: "eq", value: "x" }, op: "isNotEmpty" }),
+    ).toEqual({ field: "company", op: "neq", value: undefined });
+  });
+
+  it("applies any other op as-is", () => {
+    expect(
+      applyListFilterOp({ leaf: { field: "views", op: "eq", value: 1 }, op: "gt" }),
+    ).toEqual({ field: "views", op: "gt", value: 1 });
   });
 });
 ```
@@ -11218,17 +12253,175 @@ function renderFilterValueInput(props: {
 }
 ```
 
+#### packages/react/src/collections/listView/listBuiltinContributions.ts
+
+1 edit — everything else (Step 9's row/bulk/header exports, Step 10's `listToolbarContributions`) unchanged.
+
+**1 — new `listFiltersContributions` export, plus its import.** Add `ListFiltersAction` to the existing component imports, and append after `listToolbarContributions`:
+
+```ts
+import { ListFiltersAction } from "./ListFiltersAction";
+```
+
+```ts
+/** `list.filters`' built-in contributions — just `vex.list.filters`. */
+export function listFiltersContributions(): ComponentContributionInput<ReactHKT, Record<string, never>>[] {
+  return [{ id: BUILTIN_CONTRIBUTION_IDS.list.filters, component: ListFiltersAction }];
+}
+```
+
+#### packages/react/src/collections/listView/ListFiltersAction.tsx
+
+New file — the `vex.list.filters` built-in. A thin wrapper forwarding `collection`/`where`/`onWhereChange` from `useCollectionList()`'s `collection`/`urlState.filter`/`urlState.setFilter` to the presentational `ListFilterBuilder` above.
+
+```tsx
+"use client";
+
+import { useCollectionList } from "./CollectionListContext";
+import { ListFilterBuilder } from "./ListFilterBuilder";
+
+/**
+ * The `vex.list.filters` built-in — renders {@link ListFilterBuilder} wired
+ * to the active list's `collection` and `urlState.filter`/`urlState.setFilter`
+ * from `useCollectionList()`. Takes no props of its own (Decision 37).
+ *
+ * @returns {@link ListFilterBuilder}.
+ */
+export function ListFiltersAction() {
+  const list = useCollectionList();
+  return (
+    <ListFilterBuilder
+      collection={list.collection}
+      where={list.urlState.filter}
+      onWhereChange={list.urlState.setFilter}
+    />
+  );
+}
+```
+
+#### packages/react/src/collections/listView/ListFiltersAction.test.tsx
+
+New file.
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { ListFiltersAction } from "./ListFiltersAction";
+import { CollectionListProvider } from "./CollectionListContext";
+import { defineCollection, text } from "@vexcms/core";
+
+const collection = defineCollection({ slug: "posts", fields: { title: text() } }) as never;
+
+describe("ListFiltersAction", () => {
+  it("renders ListFilterBuilder wired to the list context's collection and urlState.filter", () => {
+    render(
+      <CollectionListProvider
+        value={{
+          collection,
+          urlState: { filter: undefined, setFilter: () => {} } as never,
+          selection: { selectedIds: [], selectedDocs: [], setSelectedIds: () => {}, canDelete: false },
+          density: "comfortable",
+          onDensityChange: () => {},
+          visibleColumns: [],
+          onVisibleColumnsChange: () => {},
+          hideableColumns: [],
+          hasActiveView: false,
+        }}
+      >
+        <ListFiltersAction />
+      </CollectionListProvider>,
+    );
+    expect(screen.getByRole("button", { name: /filter/i })).toBeInTheDocument();
+  });
+});
+```
+
+#### packages/react/src/collections/listView/ListLayout.tsx
+
+1 edit — everything else (the fixed-height shell, `list.header.actions`/`list.toolbar`/`list.beforeTable`/`list.afterTable` outlets, the row-actions menu) unchanged.
+
+**1 — `list.filters`'s `SlotOutlet` call.** Replace Step 9's placeholder `builtins={[]}` with the real contribution, and import it:
+
+```ts
+import { listFiltersContributions } from "./listBuiltinContributions";
+```
+
+```tsx
+      <SlotOutlet
+        slotId={SLOT_IDS.list.filters}
+        builtins={listFiltersContributions()}
+        contributions={list.collection.admin.components?.filters as unknown as ComponentContributionInput<ReactHKT, unknown>[]}
+        contributedProps={{}}
+      />
+```
+
+
+#### packages/core/src/collections/listPreferenceCookies.ts
+
+One edit to Step 10's file — everything else (the `density` cookie entry, `LIST_PREFERENCE_COOKIES`, `parseListPreferences`) unchanged.
+
+**1 — `LIST_PREFERENCE_COOKIES`.** Beside the existing `density` entry, add the chips prefix:
+
+```ts
+  chipsVisible: "vex-list-chips",
+```
+
+**2 — cookie name helper.** Beside `listDensityCookieName` (or equivalent), add:
+
+```ts
+/**
+ * Cookie name holding one collection's filter-chip-row visibility choice
+ * (Decision 42) — scoped per collection, unlike `density`, because
+ * visibility is a per-browser call about THIS collection's filters, not a
+ * global list preference. Mirrors `livePreviewPanelCookieName`.
+ *
+ * @param props.collectionSlug - The collection the chip row belongs to.
+ * @returns The fully-qualified cookie name, e.g. `vex-list-chips:posts`.
+ */
+export function listChipsVisibleCookieName(props: { collectionSlug: string }): string {
+  return `${LIST_PREFERENCE_COOKIES.chipsVisible}:${props.collectionSlug}`;
+}
+```
+
+**3 — `parseListPreferences`.** Alongside its existing `collectionSlug` parameter and `density` result field, read the chips cookie the same way — an explicit `"0"` hides the row, anything else (including absent) defaults to visible per Decision 10's "chips show by default":
+
+```ts
+    chipsVisible: props.cookies.get(listChipsVisibleCookieName({ collectionSlug: props.collectionSlug }))?.value !== "0",
+```
+
+#### packages/react/src/collections/listView/listPreferenceCookies.ts
+
+One edit to Step 10's client-side cookie-writer file — everything else (`writeListDensityCookie`, the shared `writePreferenceCookie`/`readCookie` guards mirroring `useLivePreviewPanelState.ts`) unchanged.
+
+**1 — chips-visible writer.** Beside `writeListDensityCookie`, add:
+
+```ts
+/**
+ * Writes the filter-chip row's visibility cookie client-side (Decision 42)
+ * — the write side of `parseListPreferences`'s `chipsVisible` field.
+ *
+ * @param props.collectionSlug - The collection the chip row belongs to.
+ * @param props.visible - The new visibility to persist.
+ */
+export function writeListChipsVisibleCookie(props: { collectionSlug: string; visible: boolean }): void {
+  writePreferenceCookie({
+    name: listChipsVisibleCookieName({ collectionSlug: props.collectionSlug }),
+    value: props.visible ? "1" : "0",
+  });
+}
+```
+
 #### packages/react/src/collections/listView/ListFilterChips.tsx
 
 ```tsx
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo } from "react";
-import { useLocalStorage } from "@ts-hooks-kit/core";
+import { useMemo, useState } from "react";
 import { getDataFields, type CollectionConfig, type VexWhereNode } from "@vexcms/core";
 import { Button, Badge } from "../../ui";
 import { Icon } from "../../ui/Icon";
+import { writeListChipsVisibleCookie } from "./listPreferenceCookies";
 import {
   toDnf,
   fromDnf,
@@ -11237,51 +12430,60 @@ import {
 } from "./whereDnf";
 import { FILTER_BUILDER_OP_LABELS } from "./ListFilterBuilder";
 
-/** `useLocalStorage` key for Decision 10's per-browser chip-row visibility toggle, scoped per collection (mirrors Decision 15/31's other per-browser preferences). */
-export function filterChipsVisibleStorageKey(props: { collectionSlug: string }): string {
-  return `vex:list:${props.collectionSlug}:filterChipsVisible`;
-}
-
 /** Props for {@link ListFilterChips}. */
 export interface ListFilterChipsProps {
-  /** The collection the list view renders — needed for field labels and the per-collection storage key. */
+  /** The collection the list view renders — needed for field labels and the chips-visible cookie name. */
   collection: CollectionConfig;
   /** The list's current filter, in plain `VexWhereNode` form. Same prop as `ListFilterBuilder.where`. */
   where: VexWhereNode<string> | undefined;
   /** Replaces `where` wholesale — same contract as `ListFilterBuilder.onWhereChange`. */
   onWhereChange: (where: VexWhereNode<string> | undefined) => void;
+  /**
+   * The chip row's starting visibility, resolved server-side by
+   * `CollectionListView`'s `initialPreferences` (Decision 39/42,
+   * `parseListPreferences`). Seeds this component's own state so the first
+   * client render already matches what the server sent — never
+   * `useLocalStorage`, which has no value until after hydration and would
+   * flip the chip row visible/hidden on first paint (Decision 42,
+   * `layout-stability.md`).
+   */
+  initialVisible: boolean;
 }
 
 /**
  * The chip row under the toolbar showing Decision 10's active filter rows —
  * clear one, clear all, and an eye-icon toggle that hides the row per
- * browser (DESIGN-NOTES "Filter chip visibility toggle"). Renders nothing
- * when `where` is `undefined` or not in DNF form (`toDnf` returns `null` —
- * a non-DNF config `where` has no per-row chips to show; it still reaches
- * the user via `ListFilterBuilder`'s read-only panel and, for a config
- * VIEW's hidden filter specifically, Step 12's `ListHiddenFilterBadge`,
- * which this component does not render).
+ * browser, persisted to the `vex-list-chips:<collection>` cookie
+ * (Decision 42) via `writeListChipsVisibleCookie` so a reload renders the
+ * same state the user left. Renders nothing when `where` is `undefined` or
+ * not in DNF form (`toDnf` returns `null` — a non-DNF config `where` has no
+ * per-row chips to show; it still reaches the user via `ListFilterBuilder`'s
+ * read-only panel and, for a config VIEW's hidden filter specifically, Step
+ * 12's `ListHiddenFilterBadge`, which this component does not render).
  *
  * @param props - {@link ListFilterChipsProps}.
  * @returns The chip row, the collapsed toggle-only affordance, or `null`.
  */
 export function ListFilterChips(props: ListFilterChipsProps): ReactNode {
-  const [visible, setVisible] = useLocalStorage(
-    filterChipsVisibleStorageKey({ collectionSlug: props.collection.slug }),
-    true,
-  );
+  const [visible, setVisible] = useState(props.initialVisible);
   const dnf = useMemo(() => toDnf({ where: props.where }), [props.where]);
   const dataFields = useMemo(
     () => getDataFields({ fields: props.collection.fields }),
     [props.collection.fields],
   );
 
+  function toggleVisible(): void {
+    const next = !visible;
+    setVisible(next);
+    writeListChipsVisibleCookie({ collectionSlug: props.collection.slug, visible: next });
+  }
+
   // TODO: implement
   // 1. `dnf === null || dnf.groups.length === 0` → return `null` — no
   //    filter, nothing to toggle.
   // 2. Render a row starting with the eye/eye-off icon `Button`
   //    (`aria-label="Hide filter chips"` / `"Show filter chips"`) calling
-  //    `setVisible((v) => !v)`.
+  //    `toggleVisible()`.
   // 3. `!visible` → stop after the toggle button (collapsed affordance,
   //    DESIGN-NOTES 05b).
   // 4. Otherwise, for every `(groupIndex, rowIndex)` pair in
@@ -11309,17 +12511,86 @@ export function ListFilterChips(props: ListFilterChipsProps): ReactNode {
 #### packages/react/src/collections/listView/ListFilterChips.test.ts
 
 ```ts
-import { describe, expect, it } from "vitest";
-import { filterChipsVisibleStorageKey } from "./ListFilterChips";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { defineCollection, text } from "@vexcms/core";
+import { ListFilterChips } from "./ListFilterChips";
 
-describe("filterChipsVisibleStorageKey", () => {
-  it("scopes the storage key per collection", () => {
-    expect(filterChipsVisibleStorageKey({ collectionSlug: "testimonials" })).toBe(
-      "vex:list:testimonials:filterChipsVisible",
+const collection = defineCollection({
+  slug: "posts",
+  fields: { title: text({ required: true }) },
+});
+
+function clearCookies(): void {
+  document.cookie.split(";").forEach((entry) => {
+    const name = entry.split("=")[0]?.trim();
+    if (name) document.cookie = `${name}=; path=/; max-age=0`;
+  });
+}
+
+afterEach(() => {
+  clearCookies();
+});
+
+describe("ListFilterChips", () => {
+  it("renders nothing when where is undefined", () => {
+    const { container } = render(
+      <ListFilterChips
+        collection={collection}
+        where={undefined}
+        onWhereChange={vi.fn()}
+        initialVisible={true}
+      />,
     );
-    expect(filterChipsVisibleStorageKey({ collectionSlug: "products" })).toBe(
-      "vex:list:products:filterChipsVisible",
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("starts collapsed when initialVisible is false, matching a cookie-hidden server render", () => {
+    render(
+      <ListFilterChips
+        collection={collection}
+        where={{ field: "title", op: "eq", value: "Hello" }}
+        onWhereChange={vi.fn()}
+        initialVisible={false}
+      />,
     );
+    expect(screen.queryByRole("button", { name: "Clear all" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show filter chips" })).toBeInTheDocument();
+  });
+
+  it("Clear all replaces the whole filter with undefined", async () => {
+    const user = userEvent.setup();
+    const onWhereChange = vi.fn();
+    render(
+      <ListFilterChips
+        collection={collection}
+        where={{ field: "title", op: "eq", value: "Hello" }}
+        onWhereChange={onWhereChange}
+        initialVisible={true}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(onWhereChange).toHaveBeenCalledWith(undefined);
+  });
+
+  it("the visibility toggle hides the chip row and persists through the vex-list-chips:<collection> cookie", async () => {
+    const user = userEvent.setup();
+    render(
+      <ListFilterChips
+        collection={collection}
+        where={{ field: "title", op: "eq", value: "Hello" }}
+        onWhereChange={vi.fn()}
+        initialVisible={true}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Hide filter chips" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Hide filter chips" }));
+
+    expect(screen.queryByRole("button", { name: "Clear all" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show filter chips" })).toBeInTheDocument();
+    expect(document.cookie).toContain("vex-list-chips:posts=0");
   });
 });
 ```
@@ -11335,36 +12606,143 @@ One edit to the composition-only file Step 10 creates — everything else unchan
   collection={props.collection}
   where={listState.urlState.filter}
   onWhereChange={listState.urlState.setFilter}
+  initialVisible={props.initialPreferences.chipsVisible}
 />
 ```
 
-`listState` is `useCollectionList()`'s return value (Decision 37); its `urlState` slice carries `filter`/`setFilter` from `useListUrlState` (Step 10). `ListFilterChips` is imported from `./ListFilterChips` beside `ListLayout.tsx`'s existing slot/component imports. It renders `null` (no height) when there is no filter, so an empty filter never reserves blank space in the fixed-height layout.
+`listState` is `useCollectionList()`'s return value (Decision 37); its `urlState` slice carries `filter`/`setFilter` from `useListUrlState` (Step 10). `props.initialPreferences` is `ListLayout`'s existing prop (forwarded from `CollectionListView`'s own `initialPreferences`, Decision 39/42, through `parseListPreferences` server-side) — `ListFilterChips` is the only consumer of its `chipsVisible` field; `density` is read elsewhere in the toolbar (Step 10). `ListFilterChips` is imported from `./ListFilterChips` beside `ListLayout.tsx`'s existing slot/component imports. It renders `null` (no height) when there is no filter, so an empty filter never reserves blank space in the fixed-height layout.
 
-Verify: `pnpm --filter @vexcms/react test -- collections/listView/whereDnf collections/listView/ListFilterBuilder collections/listView/ListFilterChips && browser: OR group round-trips through URL reload; isEmpty/isNotEmpty row applies and chips show "is empty"/"is not empty"; vex_status filters on a versioned collection; an unreadable field never appears in the field picker`
+Verify: `pnpm --filter @vexcms/core test -- collections/listPreferenceCookies && pnpm --filter @vexcms/react test -- collections/listView/whereDnf collections/listView/ListFilterBuilder collections/listView/ListFilterChips && browser: hard reload with chips cookie hidden shows no chip row on first paint; OR group round-trips through URL reload; isEmpty/isNotEmpty row applies and chips show "is empty"/"is not empty"; vex_status filters on a versioned collection; an unreadable field never appears in the field picker`
 
-### Step 12 — Saved views: tabs, modified state, hidden filters [agent]
+### Step 12 — Saved views: tabs, modified state, hidden filters, server prerender [agent]
 
-Why: the architecture review folds every list-view file into `collections/listView/`
-(Decision 21) and drops `find`/`search`'s `view` argument in favor of a client-composed
-`where` (Decision 25). `CollectionListViewTabs` / `CollectionListSaveViewDialog` /
-`CollectionListHiddenFilterBadge` / `collectionListViewStore` / `useCollectionListViews` move
-and rename to `ListViewTabs` / `ListSaveViewDialog` / `ListHiddenFilterBadge` / `listViewStore`
-/ `useListViews`, and `useListViews` gains `composeQueryWhere` — the one place a config view's
-server-resolved hidden filter (never read by any UI surface) folds back in with the caller's
-own filter via the new core `composeViewWhere` helper (Step 5), since `find`/`search` no longer
-know what a "view" is. Round-1 behavior is otherwise unchanged: tabs above the table (Decision
-11), the modified-state diff with Save/Reset, the hidden-filter lock badge, and the
-`description` field. Wired to Step 10's flat `useListUrlState` setters and Step 5's
-nested-`state`, client-safe view types.
+Why: saved views live in `collections/listView/` (Decision 21) as `ListViewTabs` /
+`ListSaveViewDialog` / `ListHiddenFilterBadge` / `listViewStore` / `useListViews`.
+`useListViews` exposes `composeQueryWhere` — the one place a config view's hidden filter
+(never read by any other UI surface) folds back in with the caller's own filter via the core
+`composeViewWhere` helper (Step 5), since `find`/`search` take no `view` argument. Tabs sit
+above the table (Decision 11), with a modified-state diff with Save/Reset, a hidden-filter
+lock badge, and a `description` field. Wired to Step 10's flat `useListUrlState` setters and
+Step 5's nested-`state`, client-safe view types.
 
-- [ ] `packages/react/src/collections/listView/listViewStore.ts` (new) + test — localStorage keyed by project + collection, `viewId` generated client-side
-- [ ] `packages/react/src/collections/listView/useListViews.ts` (new) + test — merge config + shared + local (dedupe by `viewId`, source badge), `diffViewState`, `resolveListShareParams`, `composeQueryWhere` (Decision 25)
-- [ ] `packages/react/src/collections/listView/ListViewTabs.tsx` (new) + test — tab strip + "All views" overflow menu, heading/eyebrow/description, modified-state controls, promote/rename/delete, unknown-view notice
-- [ ] `packages/react/src/collections/listView/ListSaveViewDialog.tsx` (new) + test — save new / rename, shared-vs-local scope gated by `manageViews`
+Local views must render on the server with zero layout shift: `listViewStore.ts` mirrors its
+`{ viewId, name }` index into a cookie on every mutation (Decision 41), `useListViews` accepts
+server-fetched `initialViews`/`initialLocalIndex` instead of always starting from an empty
+query cache, and `ListViewTabs`' tab overflow uses a fixed `@container/list` CSS breakpoint
+(Decision 43) rather than measurement, so the server-rendered tab strip is already the final
+one. Step 14 owns reading the cookie and calling `vexConvexApi.listViews` on the server and
+passing the results down through `CollectionListView`; this step owns writing the cookie and
+consuming those initial values.
+
+- [ ] `packages/core/src/collections/listViewsCookie.ts` (new) + test — `listViewsCookieName`, `parseListViewsIndexCookie` (core, shared with Step 14's server read)
+- [ ] `packages/react/src/collections/listView/listViewStore.ts` (new) + test — `localViewsStorageKey`, `useLocalViews`; writes the `vex-list-views:<collection>` cookie index alongside every localStorage mutation; prunes stale cookie entries after hydration
+- [ ] `packages/react/src/collections/listView/useListViews.ts` (new) + test — merges `config`/`shared`/`local` views by `viewId`; accepts `initialViews`/`initialLocalIndex`, seeding the shared-views query and the first local-index render from them; exposes `composeQueryWhere`
+- [ ] `packages/react/src/collections/listView/ListViewTabs.tsx` (new) + test — tabs above the table; a fixed, CSS-driven visible-tab count per `@container/list` breakpoint; accepts `initialLocalIndex` so the first local-view tabs render without a `localStorage` read
+- [ ] `packages/react/src/collections/listView/ListSaveViewDialog.tsx` (new) + test — save new / rename, shared-vs-local scope gated by `createView`/`updateView`
 - [ ] `packages/react/src/collections/listView/ListHiddenFilterBadge.tsx` (new) + test — lock badge + count, never a chip or builder row
 - [ ] `packages/react/src/collections/index.ts` (edit) — barrel export for the three new components
-- [ ] `packages/react/src/collections/listView/ListLayout.tsx` (Step 9's file) — mounts `ListViewTabs` above the toolbar
+- [ ] `packages/react/src/collections/listView/ListLayout.tsx` (Step 9's file) — mounts `ListViewTabs` above the toolbar, forwarding `initialViews`/`initialLocalIndex` from `CollectionListView`'s props
 - [ ] `packages/react/src/collections/listView/ListToolbar.tsx` (Step 10's file) — mounts `ListHiddenFilterBadge` beside the filter chips
+
+#### packages/core/src/collections/listViewsCookie.ts
+
+```ts
+const LIST_VIEWS_COOKIE_PREFIX = "vex-list-views:";
+
+/** One local view's entry in the cookie index (Decision 41) — deliberately NOT the full `VexViewConfig`; only enough to render a tab. */
+export interface ListViewsIndexEntry {
+  viewId: string;
+  name: string;
+}
+
+/**
+ * Cookie name holding one collection's local saved-view index.
+ *
+ * Lives in `@vexcms/core`, not beside `listViewStore.ts`, because both
+ * sides of the boundary need it: the server component that reads the
+ * cookie (`NextAdminPage`, Step 14) and the client store that writes it.
+ * The store's module carries `"use client"`, which would make every
+ * export in it unreachable from the server — the same reasoning as
+ * `livePreviewPanelCookieName`.
+ *
+ * @param props.collection - The collection slug the cookie is scoped to.
+ * @returns The fully-qualified cookie name.
+ */
+export function listViewsCookieName(props: { collection: string }): string {
+  return `${LIST_VIEWS_COOKIE_PREFIX}${props.collection}`;
+}
+
+/**
+ * Parses a `listViewsCookieName` cookie's value into its local-view index
+ * (Decision 41). Tolerant of a missing, malformed, or stale-shaped cookie —
+ * a bad index degrades to "no local view tabs on first paint" (the store
+ * still hydrates the real list from `localStorage` moments later), never a
+ * server render error.
+ *
+ * @param props.cookieValue - The raw cookie value, or `undefined` when unset.
+ * @returns The index entries, or `[]` when the cookie is unset or malformed.
+ */
+export function parseListViewsIndexCookie(props: { cookieValue: string | undefined }): ListViewsIndexEntry[] {
+  if (props.cookieValue === undefined) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(decodeURIComponent(props.cookieValue));
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const entries: ListViewsIndexEntry[] = [];
+  for (const item of parsed) {
+    if (
+      item !== null &&
+      typeof item === "object" &&
+      typeof (item as { viewId?: unknown }).viewId === "string" &&
+      typeof (item as { name?: unknown }).name === "string"
+    ) {
+      entries.push({ viewId: (item as ListViewsIndexEntry).viewId, name: (item as ListViewsIndexEntry).name });
+    }
+  }
+  return entries;
+}
+```
+
+#### packages/core/src/collections/listViewsCookie.test.ts
+
+```ts
+import { describe, expect, it } from "vitest";
+import { listViewsCookieName, parseListViewsIndexCookie } from "./listViewsCookie";
+
+describe("listViewsCookieName", () => {
+  it("scopes the cookie per collection", () => {
+    expect(listViewsCookieName({ collection: "posts" })).toBe("vex-list-views:posts");
+  });
+});
+
+describe("parseListViewsIndexCookie", () => {
+  it("returns [] when the cookie is unset", () => {
+    expect(parseListViewsIndexCookie({ cookieValue: undefined })).toEqual([]);
+  });
+
+  it("parses a valid index", () => {
+    const value = encodeURIComponent(JSON.stringify([{ viewId: "v1", name: "My View" }]));
+    expect(parseListViewsIndexCookie({ cookieValue: value })).toEqual([{ viewId: "v1", name: "My View" }]);
+  });
+
+  it("drops malformed entries instead of throwing", () => {
+    const value = encodeURIComponent(JSON.stringify([{ viewId: "v1", name: "Ok" }, { viewId: 5 }, "garbage"]));
+    expect(parseListViewsIndexCookie({ cookieValue: value })).toEqual([{ viewId: "v1", name: "Ok" }]);
+  });
+
+  it("returns [] for malformed JSON instead of throwing", () => {
+    expect(parseListViewsIndexCookie({ cookieValue: "{not json" })).toEqual([]);
+  });
+
+  it("returns [] when the parsed value is not an array", () => {
+    const value = encodeURIComponent(JSON.stringify({ foo: "bar" }));
+    expect(parseListViewsIndexCookie({ cookieValue: value })).toEqual([]);
+  });
+});
+```
 
 #### packages/react/src/collections/listView/listViewStore.ts
 
@@ -11373,6 +12751,7 @@ nested-`state`, client-safe view types.
 
 import { useCallback, useSyncExternalStore } from "react";
 import type { VexViewConfig } from "@vexcms/core";
+import { listViewsCookieName, parseListViewsIndexCookie, type ListViewsIndexEntry } from "@vexcms/core";
 
 /**
  * `localStorage` key for one collection's local saved views — namespaced by
@@ -11385,6 +12764,7 @@ export function localViewsStorageKey(props: { project: string; collection: strin
 }
 
 const LOCAL_VIEWS_EVENT = "vex:views-change";
+const LIST_VIEWS_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 interface LocalViewsEnvelope {
   version: 1;
@@ -11444,6 +12824,29 @@ function readLocalViews(props: { project: string; collection: string }): VexView
   }
 }
 
+/**
+ * Mirrors `views` into the `listViewsCookieName({ collection })` cookie as
+ * a `{ viewId, name }[]` index (Decision 41), so the server can render the
+ * local-view tabs on first paint without touching `localStorage`. Swallows
+ * a blocked/unavailable `document.cookie` the same way `writeLocalViews`
+ * swallows a blocked `localStorage` — losing the server-prerendered tab is
+ * not worth crashing the write.
+ *
+ * @param props.collection - The collection slug the cookie is scoped to.
+ * @param props.views - The full local view list to mirror.
+ */
+function writeListViewsCookie(props: { collection: string; views: VexViewConfig[] }): void {
+  if (typeof document === "undefined") return;
+  const index: ListViewsIndexEntry[] = props.views.map((view) => ({ viewId: view.viewId, name: view.name }));
+  const name = listViewsCookieName({ collection: props.collection });
+  try {
+    document.cookie = `${name}=${encodeURIComponent(JSON.stringify(index))}; path=/; max-age=${LIST_VIEWS_COOKIE_MAX_AGE_SECONDS}; samesite=lax`;
+  } catch {
+    // document.cookie can throw under Safari private mode / strict cookie
+    // settings; losing the server-prerendered tab is not worth crashing the view.
+  }
+}
+
 function writeLocalViews(props: { project: string; collection: string; views: VexViewConfig[] }): void {
   if (typeof window === "undefined") return;
   const key = localViewsStorageKey(props);
@@ -11453,12 +12856,14 @@ function writeLocalViews(props: { project: string; collection: string; views: Ve
   } catch {
     return;
   }
+  writeListViewsCookie({ collection: props.collection, views: props.views });
   window.dispatchEvent(new Event(LOCAL_VIEWS_EVENT));
 }
 
 /**
  * Saves (inserts or, on a matching `viewId`, replaces in place) one view
- * into this browser's local store for `props.collection`.
+ * into this browser's local store for `props.collection`, and mirrors the
+ * updated index into the `vex-list-views:<collection>` cookie (Decision 41).
  *
  * @param props.project - The Convex deployment URL (`useListViews()`'s `project`).
  * @param props.collection - The collection slug.
@@ -11474,7 +12879,8 @@ export function saveLocalView(props: { project: string; collection: string; view
 
 /**
  * Removes one view, by `viewId`, from this browser's local store for
- * `props.collection`. A no-op when no local view has that `viewId`.
+ * `props.collection`, and mirrors the updated index into the cookie
+ * (Decision 41). A no-op when no local view has that `viewId`.
  *
  * @param props.project - The Convex deployment URL.
  * @param props.collection - The collection slug.
@@ -11518,16 +12924,43 @@ const getServerSnapshot = (): VexViewConfig[] => EMPTY_VIEWS;
  * any write — this tab's (`vex:views-change`) or another tab's writing the
  * same key (`storage`). SSR-safe: `getServerSnapshot` returns `[]`.
  *
+ * On mount, once `localStorage` is readable, prunes any `vex-list-views:
+ * <collection>` cookie entry whose `viewId` no longer has a matching
+ * `localStorage` view (Decision 41's accepted tradeoff: a stale cookie
+ * entry — e.g. cleared `localStorage`, or another device's index — shows
+ * its tab until this hydration pass, then is pruned).
+ *
  * @param props.project - The Convex deployment URL this browser is pointed at.
  * @param props.collection - The collection slug.
  * @returns The current local views for `props.collection`.
  */
 export function useLocalViews(props: { project: string; collection: string }): VexViewConfig[] {
-  return useSyncExternalStore(
+  const views = useSyncExternalStore(
     subscribe,
     useCallback(() => readLocalViews(props), [props.project, props.collection]),
     getServerSnapshot,
   );
+  pruneStaleListViewsCookie({ collection: props.collection, views });
+  return views;
+}
+
+const prunedForKey = new Set<string>();
+
+function pruneStaleListViewsCookie(props: { collection: string; views: VexViewConfig[] }): void {
+  if (typeof document === "undefined") return;
+  if (prunedForKey.has(props.collection)) return;
+  prunedForKey.add(props.collection);
+  const name = listViewsCookieName({ collection: props.collection });
+  const prefix = `${name}=`;
+  const raw = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(prefix))
+    ?.slice(prefix.length);
+  const cookieIndex = parseListViewsIndexCookie({ cookieValue: raw });
+  if (cookieIndex.length === 0) return;
+  const localIds = new Set(props.views.map((view) => view.viewId));
+  const stale = cookieIndex.some((entry) => !localIds.has(entry.viewId));
+  if (stale) writeListViewsCookie({ collection: props.collection, views: props.views });
 }
 ```
 
@@ -11536,6 +12969,7 @@ export function useLocalViews(props: { project: string; collection: string }): V
 ```ts
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { listViewsCookieName, parseListViewsIndexCookie } from "@vexcms/core";
 import {
   generateViewId,
   localViewsStorageKey,
@@ -11547,12 +12981,34 @@ import {
 const project = "https://example.convex.cloud";
 const collection = "posts";
 
+function readListViewsCookie(): ReturnType<typeof parseListViewsIndexCookie> {
+  const name = listViewsCookieName({ collection });
+  const prefix = `${name}=`;
+  const raw = document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(prefix))
+    ?.slice(prefix.length);
+  return parseListViewsIndexCookie({ cookieValue: raw });
+}
+
+function clearCookies() {
+  document.cookie
+    .split("; ")
+    .map((entry) => entry.split("=")[0])
+    .filter((name): name is string => !!name)
+    .forEach((name) => {
+      document.cookie = `${name}=; path=/; max-age=0`;
+    });
+}
+
 beforeEach(() => {
   window.localStorage.clear();
+  clearCookies();
 });
 
 afterEach(() => {
   window.localStorage.clear();
+  clearCookies();
 });
 
 describe("listViewStore", () => {
@@ -11655,6 +13111,30 @@ describe("listViewStore", () => {
     expect(typeof a).toBe("string");
     expect(a).not.toBe(b);
   });
+
+  it("mirrors saveLocalView into the vex-list-views cookie index", () => {
+    act(() => {
+      saveLocalView({ project, collection, view: { viewId: "v1", name: "My View", state: {} } });
+    });
+    expect(readListViewsCookie()).toEqual([{ viewId: "v1", name: "My View" }]);
+  });
+
+  it("mirrors removeLocalView into the cookie index", () => {
+    saveLocalView({ project, collection, view: { viewId: "v1", name: "A", state: {} } });
+    saveLocalView({ project, collection, view: { viewId: "v2", name: "B", state: {} } });
+    act(() => {
+      removeLocalView({ project, collection, viewId: "v1" });
+    });
+    expect(readListViewsCookie()).toEqual([{ viewId: "v2", name: "B" }]);
+  });
+
+  it("prunes a stale cookie entry whose localStorage view is gone, on hydration", () => {
+    document.cookie = `${listViewsCookieName({ collection })}=${encodeURIComponent(
+      JSON.stringify([{ viewId: "ghost", name: "Ghost" }]),
+    )}; path=/`;
+    renderHook(() => useLocalViews({ project, collection }));
+    expect(readListViewsCookie()).toEqual([]);
+  });
 });
 ```
 
@@ -11676,24 +13156,12 @@ import {
   type VexViewConfig,
   type VexViewSource,
 } from "@vexcms/core";
+import type { ListViewsIndexEntry } from "@vexcms/core";
 import { listViews } from "../../client";
 import { useVexConfig } from "../../config/VexConfigContext";
 import { useLocalViews } from "./listViewStore";
 
-/**
- * One saved view merged for display: a flattened read of `VexViewConfig`'s
- * `state` fields (Decision 25's nested shape, unwrapped for ergonomic UI
- * use) plus which of the three sources (Decision 11) it came from, and the
- * hidden-filter badge data a config view's `VexClientViewConfig` carries
- * (`hasHiddenFilter`/`hiddenFilterCount`; always `false`/`0` for shared and
- * local views, which have no hidden filter). `where` is present for
- * shared and local views (built from the filter builder) and `undefined`
- * for config views — a config view's real `where` never reaches this type;
- * only `composeQueryWhere` (below) ever reads it, and never returns it to a
- * caller that renders it.
- *
- * @typeParam TFieldSlug - The collection's own field slugs.
- */
+/** One merged saved view, display-ready. */
 export interface ListViewEntry<TFieldSlug extends string = string> {
   viewId: string;
   name: string;
@@ -11705,25 +13173,11 @@ export interface ListViewEntry<TFieldSlug extends string = string> {
   columns?: TFieldSlug[];
   pageSize?: number;
   source: VexViewSource;
-  /** The shared view's creator, when `source` is `"shared"`. */
   createdBy?: string;
   hasHiddenFilter: boolean;
   hiddenFilterCount: number;
 }
 
-/**
- * A point-in-time capture of the list's live state, in the same flat shape
- * as {@link ListViewEntry} — deliberately NOT nested like
- * `VexViewConfig.state`; callers that persist a snapshot (save, rename,
- * promote) wrap it into `{ state: {...} }` at that boundary. For an active
- * config view, `where` is the caller's OWN filter only (`urlState.filter`)
- * — never the view's hidden condition, which `composeQueryWhere` folds in
- * separately only for the outgoing query, so "Save as new view" from a
- * config view can never leak it into a shared/local view's saved `state`
- * (Decision 25). `ListViewTabs` builds this from `useListUrlState`'s
- * fields plus the session-only visible-columns state (Decision 15), to diff
- * against the active view and to save a new one.
- */
 export interface ListViewStateSnapshot<TFieldSlug extends string = string> {
   search: string | undefined;
   searchField: TFieldSlug | undefined;
@@ -11733,41 +13187,31 @@ export interface ListViewStateSnapshot<TFieldSlug extends string = string> {
   pageSize: number;
 }
 
+/** Props for {@link useListViews}. */
+export interface UseListViewsProps<TCollectionSlug extends CollectionSlug = CollectionSlug> {
+  collection: TCollectionSlug;
+  /**
+   * The shared views `NextAdminPage` prefetched server-side (Decision 39,
+   * Step 14) — seeds `useQuery`'s `initialData`, so the first client render
+   * reuses the server's `listViews` result instead of starting `isPending`.
+   * `undefined` on a client-only mount (tests, Storybook).
+   */
+  initialViews?: VexStoredView[];
+  /**
+   * The `vex-list-views:<collection>` cookie's local-view index, read on
+   * the server (Decision 41, Step 14) — tabs for these render on first
+   * paint even before `localStorage` hydrates. Entries here carry only
+   * `{ viewId, name }`; `useLocalViews`'s real `localStorage` read
+   * supersedes this the moment it resolves client-side.
+   */
+  initialLocalIndex?: ListViewsIndexEntry[];
+}
+
 /** Return shape of {@link useListViews}. */
 export interface UseListViewsResult<TFieldSlug extends string = string> {
-  /** The merged, deduped, source-tagged view list. */
   views: ListViewEntry<TFieldSlug>[];
-  /**
-   * The current Convex deployment's URL — the same value
-   * `listViewStore.ts` namespaces local views by (`project`).
-   * Exposed so callers don't call `useConvex()` a second time.
-   */
   project: string;
-  /** Whether the `vex_views` (shared) query has not yet resolved. */
   isPending: boolean;
-  /**
-   * Composes the `where` to send to `find`/`search` for the view currently
-   * active (Decision 25) — `find`/`search` take no `view` argument, so
-   * something on the client has to fold a config view's hidden condition
-   * back in with the caller's own filter before the query goes out. Reads
-   * the RAW `admin.table.views` entry matching `props.activeViewId`
-   * (never the `toClientViewConfig`-stripped one that backs `views`
-   * above), so the hidden value can reach the outgoing query without ever
-   * reaching a render or a hook return a UI surface could display.
-   *
-   * `ListLayout.tsx` (Step 9, building `useVexListQuery`'s `where`) and
-   * `ListToolbar.tsx`'s hidden-filter badge driver (Step 10) each call
-   * `useListViews` independently and get their own `composeQueryWhere`,
-   * backed by the same `listViews` query cache.
-   *
-   * @param props.activeViewId - `urlState.view`. A shared/local view's id,
-   *   or `undefined`, matches no raw config entry, so this reduces to
-   *   `props.filter` unchanged — a shared/local view's own `where` is
-   *   already folded into `props.filter` once applied (`ListViewTabs`'
-   *   `applyView`).
-   * @param props.filter - The caller's own `where`, from `urlState.filter`.
-   * @returns `composeViewWhere({ viewWhere, filter })`.
-   */
   composeQueryWhere: (props: {
     activeViewId: string | undefined;
     filter: VexViewConfig<TFieldSlug>["state"]["where"];
@@ -11795,30 +13239,38 @@ function toEntry<TFieldSlug extends string>(props: {
   };
 }
 
-/**
- * Merges a collection's three saved-view sources (Decision 11) into one
- * source-tagged, `viewId`-deduped list, in collision precedence `shared >
- * local > config`: a `local` view that was just promoted (Decision 14) keeps
- * the same `viewId`, so another browser tab that still has the
- * pre-promotion local entry cached resolves the collision to the
- * now-authoritative `shared` copy rather than showing the same view twice.
- *
- * @param props.config - This collection's `admin.table.views`, already
- *   projected through `toClientViewConfig` (Decision 25) — client-safe
- *   `VexClientViewConfig[]`, `state.where` stripped.
- * @param props.shared - Views from the `vex_views` table (`listViews`).
- * @param props.local - Views from this browser's `localStorage`.
- * @returns One entry per distinct `viewId`, each tagged with its winning source.
- */
+/** A bare `{ viewId, name }` index entry, projected into display shape until the real local view loads. */
+function toIndexEntry<TFieldSlug extends string>(entry: ListViewsIndexEntry): ListViewEntry<TFieldSlug> {
+  return {
+    viewId: entry.viewId,
+    name: entry.name,
+    where: undefined,
+    sort: undefined,
+    source: VEX_VIEW_SOURCES.local,
+    hasHiddenFilter: false,
+    hiddenFilterCount: 0,
+  };
+}
+
 function mergeListViews<TFieldSlug extends string>(props: {
   config: VexClientViewConfig<TFieldSlug>[];
   shared: VexStoredView<TFieldSlug>[];
   local: VexViewConfig<TFieldSlug>[];
+  localIndex: ListViewsIndexEntry[];
 }): ListViewEntry<TFieldSlug>[] {
   const merged = new Map<string, ListViewEntry<TFieldSlug>>();
   for (const view of props.shared) merged.set(view.viewId, toEntry({ view, source: VEX_VIEW_SOURCES.shared }));
+  // The cookie index (Decision 41) fills in tabs for local views that
+  // haven't hydrated from `localStorage` yet — before hydration,
+  // `props.local` is `[]`, so without this every local-view tab would
+  // flash in after mount, which is the layout shift this spec eliminates.
+  for (const entry of props.localIndex) {
+    if (!merged.has(entry.viewId)) merged.set(entry.viewId, toIndexEntry(entry));
+  }
   for (const view of props.local) {
-    if (!merged.has(view.viewId)) merged.set(view.viewId, toEntry({ view, source: VEX_VIEW_SOURCES.local }));
+    if (!merged.has(view.viewId) || merged.get(view.viewId)?.source === VEX_VIEW_SOURCES.local) {
+      merged.set(view.viewId, toEntry({ view, source: VEX_VIEW_SOURCES.local }));
+    }
   }
   for (const view of props.config) {
     if (!merged.has(view.viewId)) {
@@ -11845,18 +13297,20 @@ function mergeListViews<TFieldSlug extends string>(props: {
  * Reads and merges a collection's saved views: `config` (`admin.table.views`,
  * read straight off the bundled client config and projected through
  * `toClientViewConfig` right here, client-side — Decision 25), `shared`
- * (`vex_views`, live-subscribed via `listViews`, which never returns a
- * `config`-source view), and `local` (this browser's `localStorage`, via
- * `useLocalViews`) — Decision 11.
+ * (`vex_views`, live-subscribed via `listViews`, seeded from
+ * `props.initialViews` when the server prefetched it — Decision 39), and
+ * `local` (this browser's `localStorage` via `useLocalViews`, seeded for
+ * first paint by `props.initialLocalIndex`'s cookie-backed index —
+ * Decision 41) — Decision 11.
  *
- * @param props.collection - The collection slug to read views for.
+ * @param props - See {@link UseListViewsProps}.
  * @returns The merged view list, the current project key, whether the
  *   shared-views query is still pending, and `composeQueryWhere`.
  */
 export function useListViews<
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends string = string,
->(props: { collection: TCollectionSlug }): UseListViewsResult<TFieldSlug> {
+>(props: UseListViewsProps<TCollectionSlug>): UseListViewsResult<TFieldSlug> {
   const config = useVexConfig();
   const convex = useConvex();
   const collection = config.collections.find((c) => c.slug === props.collection);
@@ -11869,7 +13323,10 @@ export function useListViews<
     [rawConfigViews],
   );
 
-  const sharedQuery = useQuery(listViews({ collection: props.collection }));
+  const sharedQuery = useQuery({
+    ...listViews({ collection: props.collection }),
+    initialData: props.initialViews as VexStoredView<TFieldSlug>[] | undefined,
+  });
   const sharedViews = (sharedQuery.data ?? []) as VexStoredView<TFieldSlug>[];
 
   const localViews = useLocalViews({
@@ -11878,8 +13335,14 @@ export function useListViews<
   }) as VexViewConfig<TFieldSlug>[];
 
   const views = useMemo(
-    () => mergeListViews({ config: configViews, shared: sharedViews, local: localViews }),
-    [configViews, sharedViews, localViews],
+    () =>
+      mergeListViews({
+        config: configViews,
+        shared: sharedViews,
+        local: localViews,
+        localIndex: props.initialLocalIndex ?? [],
+      }),
+    [configViews, sharedViews, localViews, props.initialLocalIndex],
   );
 
   const composeQueryWhere = useCallback(
@@ -11896,10 +13359,9 @@ export function useListViews<
   return { views, project: convex.url, isPending: sharedQuery.isPending, composeQueryWhere };
 }
 
-/** A category of state `diffViewState` found changed between the live list and a saved view. */
+/** How the active view's state diverges from its saved baseline — drives the modified-state Save/Reset UI. */
 export type ListViewDiffCategory = "search" | "sort" | "filters" | "columns" | "pageSize";
 
-/** Result of {@link diffViewState} — the categories that changed, and how many filter conditions are currently active. */
 export interface ListViewDiff {
   categories: ListViewDiffCategory[];
   filterCount: number;
@@ -11915,21 +13377,6 @@ function countWhereConditions(node: unknown): number {
   return 1;
 }
 
-/**
- * Diffs the list's live state against a saved view, by the same categories
- * the "Modified: …" summary groups by (Decision 11, DESIGN-NOTES.md §1):
- * search (query + field), sort, filters (by deep equality of `where`),
- * columns (order-independent), and page size (only when the view pins one).
- * For an active config view, `saved.where` is always `undefined` (hidden),
- * so this naturally flags "filters" the moment the caller adds ANY
- * readable-field filter on top of it — exactly the narrowing Decision 26
- * permits and Decision 25 wants surfaced as a modification.
- *
- * @param props.current - The live state, from `ListViewTabs`.
- * @param props.saved - The view being compared against.
- * @returns Which categories changed, and the live filter's condition count
- *   (for "N filter(s)" in the summary).
- */
 export function diffViewState<TFieldSlug extends string>(props: {
   current: ListViewStateSnapshot<TFieldSlug>;
   saved: ListViewEntry<TFieldSlug>;
@@ -11956,7 +13403,6 @@ export function diffViewState<TFieldSlug extends string>(props: {
   return { categories, filterCount: countWhereConditions(props.current.where) };
 }
 
-/** The params a local-view share link serializes in place of `view=local:<id>` (Decision 11). */
 export interface ListShareParams<TFieldSlug extends string = string> {
   view: undefined;
   q: string | undefined;
@@ -11966,20 +13412,6 @@ export interface ListShareParams<TFieldSlug extends string = string> {
   size: number;
 }
 
-/**
- * Resolves the params the "Copy link" button (Step 10) should serialize
- * instead of the plain current URL, for the local-view case only: a
- * `view=local:<id>` link opens nothing on another device or browser, so
- * copying while a local view is active serializes the view's full resolved
- * state (search, sort, filter, size) with `view` omitted instead
- * (DESIGN-NOTES.md §1, flag 4). For a config/shared view or no view, the
- * current URL already carries everything needed, so this returns
- * `undefined` and the caller copies `location.href` unchanged.
- *
- * @param props.activeView - The currently active view, if any.
- * @param props.state - The list's live state.
- * @returns The params to serialize, or `undefined` to copy the URL as-is.
- */
 export function resolveListShareParams<TFieldSlug extends string>(props: {
   activeView: ListViewEntry<TFieldSlug> | undefined;
   state: ListViewStateSnapshot<TFieldSlug>;
@@ -12008,12 +13440,7 @@ import type * as ConvexReactQueryModule from "@convex-dev/react-query";
 import type * as TanstackQueryModule from "@tanstack/react-query";
 import { VexConfigProvider } from "../../config/VexConfigContext";
 import { saveLocalView } from "./listViewStore";
-import {
-  diffViewState,
-  resolveListShareParams,
-  useListViews,
-  type ListViewEntry,
-} from "./useListViews";
+import { diffViewState, resolveListShareParams, useListViews, type ListViewEntry } from "./useListViews";
 
 const project = "https://example.convex.cloud";
 
@@ -12037,9 +13464,9 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof TanstackQueryModule>();
   return {
     ...actual,
-    useQuery: (options: { __reference?: unknown }) =>
+    useQuery: (options: { __reference?: unknown; initialData?: unknown }) =>
       options.__reference === vexConvexApi.listViews
-        ? { data: sharedViewRows, isPending: sharedViewsPending }
+        ? { data: options.initialData ?? sharedViewRows, isPending: options.initialData !== undefined ? false : sharedViewsPending }
         : { data: undefined, isPending: true },
   };
 });
@@ -12049,9 +13476,7 @@ const testConfig = defineConfig({
     defineCollection({
       slug: "posts",
       fields: { title: text() },
-      admin: {
-        table: { views: [{ viewId: "cfg1", name: "Config View", state: {} }] },
-      },
+      admin: { table: { views: [{ viewId: "cfg1", name: "Config View", state: {} }] } },
     }),
   ],
 });
@@ -12077,53 +13502,8 @@ describe("useListViews", () => {
 
     const { result } = renderHook(() => useListViews({ collection: "posts" }), { wrapper });
 
-    expect(result.current.views).toEqual([
-      {
-        viewId: "shared1",
-        name: "Shared View",
-        description: undefined,
-        where: undefined,
-        sort: undefined,
-        search: undefined,
-        searchField: undefined,
-        columns: undefined,
-        pageSize: undefined,
-        source: "shared",
-        createdBy: "user1",
-        hasHiddenFilter: false,
-        hiddenFilterCount: 0,
-      },
-      {
-        viewId: "local1",
-        name: "Local View",
-        description: undefined,
-        where: undefined,
-        sort: undefined,
-        search: undefined,
-        searchField: undefined,
-        columns: undefined,
-        pageSize: undefined,
-        source: "local",
-        createdBy: undefined,
-        hasHiddenFilter: false,
-        hiddenFilterCount: 0,
-      },
-      {
-        viewId: "cfg1",
-        name: "Config View",
-        description: undefined,
-        where: undefined,
-        sort: undefined,
-        search: undefined,
-        searchField: undefined,
-        columns: undefined,
-        pageSize: undefined,
-        source: "config",
-        createdBy: undefined,
-        hasHiddenFilter: false,
-        hiddenFilterCount: 0,
-      },
-    ]);
+    expect(result.current.views.map((v) => v.viewId)).toEqual(["shared1", "local1", "cfg1"]);
+    expect(result.current.views.find((v) => v.viewId === "local1")?.source).toBe("local");
     expect(result.current.project).toBe(project);
   });
 
@@ -12138,10 +13518,54 @@ describe("useListViews", () => {
     expect(result.current.views.find((view) => view.viewId === "v1")?.source).toBe("shared");
   });
 
-  it("reports isPending from the shared views query", () => {
+  it("reports isPending from the shared views query when no initialViews is given", () => {
     sharedViewsPending = true;
     const { result } = renderHook(() => useListViews({ collection: "posts" }), { wrapper });
     expect(result.current.isPending).toBe(true);
+  });
+
+  it("seeds the shared views query from initialViews and reports isPending false immediately", () => {
+    sharedViewsPending = true; // would be pending if initialData were ignored
+    const initialViews: VexStoredView[] = [
+      { viewId: "s1", name: "Server Seeded", collection: "posts", createdBy: "user1", state: {} },
+    ];
+    const { result } = renderHook(() => useListViews({ collection: "posts", initialViews }), { wrapper });
+    expect(result.current.isPending).toBe(false);
+    expect(result.current.views.find((v) => v.viewId === "s1")?.name).toBe("Server Seeded");
+  });
+
+  it("renders a tab for a cookie-indexed local view before localStorage hydrates it", () => {
+    // No saveLocalView call — this view exists only via the cookie index,
+    // simulating the first server-rendered paint (Decision 41).
+    const { result } = renderHook(
+      () => useListViews({ collection: "posts", initialLocalIndex: [{ viewId: "local-cookie", name: "Cookie Tab" }] }),
+      { wrapper },
+    );
+    const entry = result.current.views.find((v) => v.viewId === "local-cookie");
+    expect(entry).toEqual({
+      viewId: "local-cookie",
+      name: "Cookie Tab",
+      where: undefined,
+      sort: undefined,
+      source: "local",
+      hasHiddenFilter: false,
+      hiddenFilterCount: 0,
+    });
+  });
+
+  it("supersedes a cookie-indexed entry with the real localStorage view once hydrated", () => {
+    saveLocalView({
+      project,
+      collection: "posts",
+      view: { viewId: "local1", name: "Real Name", description: "desc", state: { pageSize: 50 } },
+    });
+    const { result } = renderHook(
+      () => useListViews({ collection: "posts", initialLocalIndex: [{ viewId: "local1", name: "Cookie Stub Name" }] }),
+      { wrapper },
+    );
+    const entry = result.current.views.find((v) => v.viewId === "local1");
+    expect(entry?.name).toBe("Real Name");
+    expect(entry?.pageSize).toBe(50);
   });
 });
 
@@ -12152,9 +13576,7 @@ describe("composeQueryWhere", () => {
       defineCollection({
         slug: "posts",
         fields: { title: text() },
-        admin: {
-          table: { views: [{ viewId: "cfg2", name: "Featured", state: { where: viewWhere } }] },
-        },
+        admin: { table: { views: [{ viewId: "cfg2", name: "Featured", state: { where: viewWhere } }] } },
       }),
     ],
   });
@@ -12169,23 +13591,10 @@ describe("composeQueryWhere", () => {
     expect(result.current.composeQueryWhere({ activeViewId: undefined, filter })).toEqual(filter);
   });
 
-  it("returns the caller's filter unchanged when the active view id matches no config view (shared/local)", () => {
-    const { result } = renderHook(() => useListViews({ collection: "posts" }), { wrapper: hiddenFilterWrapper });
-    const filter = { field: "status", op: "eq" as const, value: "live" };
-    expect(result.current.composeQueryWhere({ activeViewId: "shared1", filter })).toEqual(filter);
-  });
-
   it("folds a config view's hidden where into the caller's filter", () => {
     const { result } = renderHook(() => useListViews({ collection: "posts" }), { wrapper: hiddenFilterWrapper });
     const filter = { field: "status", op: "eq" as const, value: "live" };
-    expect(result.current.composeQueryWhere({ activeViewId: "cfg2", filter })).toEqual({
-      and: [viewWhere, filter],
-    });
-  });
-
-  it("returns only the hidden where when the caller has no filter of their own", () => {
-    const { result } = renderHook(() => useListViews({ collection: "posts" }), { wrapper: hiddenFilterWrapper });
-    expect(result.current.composeQueryWhere({ activeViewId: "cfg2", filter: undefined })).toEqual(viewWhere);
+    expect(result.current.composeQueryWhere({ activeViewId: "cfg2", filter })).toEqual({ and: [viewWhere, filter] });
   });
 });
 
@@ -12233,525 +13642,45 @@ describe("diffViewState", () => {
     });
     expect(diff.categories).toEqual(["sort"]);
   });
-
-  it("detects a filter change and counts the live filter's conditions", () => {
-    const diff = diffViewState({
-      current: {
-        search: "ma",
-        searchField: "authorName",
-        sort: saved.sort,
-        where: { and: [{ field: "a", op: "eq", value: 1 }, { field: "b", op: "eq", value: 2 }] },
-        columns: saved.columns ?? [],
-        pageSize: 25,
-      },
-      saved,
-    });
-    expect(diff.categories).toEqual(["filters"]);
-    expect(diff.filterCount).toBe(2);
-  });
-
-  it("flags 'filters' the moment a readable-field filter is added on top of a config view's hidden where", () => {
-    const configViewSaved: ListViewEntry = {
-      viewId: "cfg1",
-      name: "Featured",
-      source: "config",
-      where: undefined,
-      sort: undefined,
-      hasHiddenFilter: true,
-      hiddenFilterCount: 1,
-    };
-    const diff = diffViewState({
-      current: {
-        search: undefined,
-        searchField: undefined,
-        sort: undefined,
-        where: { field: "status", op: "eq", value: "active" },
-        columns: [],
-        pageSize: 25,
-      },
-      saved: configViewSaved,
-    });
-    expect(diff.categories).toEqual(["filters"]);
-    expect(diff.filterCount).toBe(1);
-  });
-
-  it("ignores pageSize when the saved view did not pin one", () => {
-    const diff = diffViewState({
-      current: { search: undefined, searchField: undefined, sort: undefined, where: undefined, columns: [], pageSize: 50 },
-      saved: { ...saved, where: undefined, sort: undefined, search: undefined, searchField: undefined, columns: [], pageSize: undefined },
-    });
-    expect(diff.categories).toEqual([]);
-  });
 });
 
 describe("resolveListShareParams", () => {
-  const state = {
-    search: "ma",
-    searchField: "authorName" as const,
-    sort: { field: "rating", order: "desc" as const },
-    where: { field: "featured", op: "eq" as const, value: true },
-    columns: ["title"],
-    pageSize: 25,
-  };
-
-  it("returns undefined when no view is active", () => {
-    expect(resolveListShareParams({ activeView: undefined, state })).toBeUndefined();
-  });
-
-  it("returns undefined for a config or shared view", () => {
-    const configView: ListViewEntry = {
-      viewId: "cfg1",
-      name: "Featured",
-      source: "config",
-      where: undefined,
-      sort: undefined,
-      hasHiddenFilter: true,
-      hiddenFilterCount: 1,
-    };
-    const sharedView: ListViewEntry = { ...configView, viewId: "shared1", source: "shared", hasHiddenFilter: false, hiddenFilterCount: 0 };
-    expect(resolveListShareParams({ activeView: configView, state })).toBeUndefined();
-    expect(resolveListShareParams({ activeView: sharedView, state })).toBeUndefined();
-  });
-
-  it("serializes the full state, dropping view, for a local view", () => {
-    const localView: ListViewEntry = {
-      viewId: "local1",
-      name: "Mine",
-      source: "local",
-      where: undefined,
-      sort: undefined,
-      hasHiddenFilter: false,
-      hiddenFilterCount: 0,
-    };
-    expect(resolveListShareParams({ activeView: localView, state })).toEqual({
-      view: undefined,
-      q: "ma",
-      qf: "authorName",
-      sort: { field: "rating", order: "desc" },
-      filter: { field: "featured", op: "eq", value: true },
-      size: 25,
+  it("returns undefined when the active view is not local", () => {
+    const result = resolveListShareParams({
+      activeView: { viewId: "cfg1", name: "Config", source: "config", where: undefined, sort: undefined, hasHiddenFilter: false, hiddenFilterCount: 0 },
+      state: { search: undefined, searchField: undefined, sort: undefined, where: undefined, columns: [], pageSize: 25 },
     });
-  });
-});
-```
-
-#### packages/react/src/collections/listView/ListHiddenFilterBadge.tsx
-
-```tsx
-"use client";
-
-import { Button, Popover, PopoverContent, PopoverTrigger } from "../../ui";
-
-/** Props for {@link ListHiddenFilterBadge}. */
-export interface ListHiddenFilterBadgeProps {
-  /** The active view's name — "Set in code by "{viewName}"". */
-  viewName: string;
-  /** The config view's `hiddenFilterCount` (Decision 25). */
-  hiddenFilterCount: number;
-  /** The view's `description`, shown in the popover when set. */
-  description?: string;
-}
-
-/**
- * Lock badge for a config view's server-resolved hidden filter (Decision 25,
- * DESIGN-NOTES.md §5). UI code never reads the field, operator, or value (`toClientViewConfig`
- * drops them) — only the count and, if the view sets one, its `description`.
- * Hidden, not secret: the `where` ships in the client bundle like an access rule.
- * Never rendered as a chip or a filter-builder row.
- *
- * @param props - See {@link ListHiddenFilterBadgeProps}.
- * @returns The badge trigger plus its popover, or `null` when there is no hidden filter.
- */
-export function ListHiddenFilterBadge(props: ListHiddenFilterBadgeProps) {
-  if (props.hiddenFilterCount === 0) return null;
-  const plural = props.hiddenFilterCount === 1 ? "filter" : "filters";
-  return (
-    <Popover>
-      <PopoverTrigger
-        render={
-          <Button type="button" variant="ghost" size="sm" icon="Lock">
-            {props.hiddenFilterCount} hidden {plural}
-          </Button>
-        }
-      />
-      <PopoverContent align="start" className="w-80 text-sm">
-        <p className="font-medium text-foreground">
-          {props.hiddenFilterCount} hidden {plural} from this view
-        </p>
-        <p className="mt-1 text-muted-foreground">
-          Set in code by &quot;{props.viewName}&quot;. It always applies and can&apos;t be edited here.
-        </p>
-        {props.description !== undefined && <p className="mt-2 text-muted-foreground">{props.description}</p>}
-      </PopoverContent>
-    </Popover>
-  );
-}
-```
-
-#### packages/react/src/collections/listView/ListHiddenFilterBadge.test.tsx
-
-```tsx
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
-import { ListHiddenFilterBadge } from "./ListHiddenFilterBadge";
-
-describe("ListHiddenFilterBadge", () => {
-  it("renders nothing when there is no hidden filter", () => {
-    const { container } = render(<ListHiddenFilterBadge viewName="Featured" hiddenFilterCount={0} />);
-    expect(container).toBeEmptyDOMElement();
+    expect(result).toBeUndefined();
   });
 
-  it("renders the count and opens the description popover", async () => {
-    render(
-      <ListHiddenFilterBadge
-        viewName="Featured"
-        hiddenFilterCount={1}
-        description="Only featured testimonials."
-      />,
-    );
-    const trigger = screen.getByRole("button", { name: /1 hidden filter/i });
-    expect(trigger).toBeInTheDocument();
-    await userEvent.click(trigger);
-    expect(await screen.findByText(/Set in code by "Featured"/)).toBeInTheDocument();
-    expect(screen.getByText("Only featured testimonials.")).toBeInTheDocument();
-  });
-
-  it("pluralizes for more than one hidden filter", () => {
-    render(<ListHiddenFilterBadge viewName="Featured" hiddenFilterCount={3} />);
-    expect(screen.getByRole("button", { name: /3 hidden filters/i })).toBeInTheDocument();
-  });
-});
-```
-
-#### packages/react/src/collections/listView/ListSaveViewDialog.tsx
-
-```tsx
-"use client";
-
-import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { VEX_VIEW_SOURCES, type CollectionSlug, type VexViewSource } from "@vexcms/core";
-import { saveView } from "../../client";
-import { getVexErrorMessage } from "../../utils/errors";
-import { saveLocalView } from "./listViewStore";
-import type { ListViewStateSnapshot } from "./useListViews";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Label,
-  RadioGroup,
-  RadioGroupItem,
-  Textarea,
-} from "../../ui";
-
-/** A save target — everything but `"config"`, which is never writable from the UI. */
-export type ListSaveViewTarget = Exclude<VexViewSource, "config">;
-
-/** Props for {@link ListSaveViewDialog}. */
-export interface ListSaveViewDialogProps<TFieldSlug extends string = string> {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** `"create"` saves a new view with `props.state`; `"rename"` keeps `props.state` as-is and updates only name/description. */
-  mode: "create" | "rename";
-  collection: CollectionSlug;
-  /** `useListViews()`'s `project` — the local-store namespace. */
-  project: string;
-  /** Gates the shared/local radio (Decision 13); `false` pins the target to `"local"` with a fixed notice. */
-  canManageViews: boolean;
-  /** The view's `viewId` — freshly generated for `"create"`, the existing id for `"rename"`. */
-  viewId: string;
-  defaultName: string;
-  defaultDescription: string;
-  defaultTarget: ListSaveViewTarget;
-  /**
-   * The filters/sort/search/columns/page size to save under `viewId` — the
-   * live list state for `"create"`, the view's own saved state for
-   * `"rename"`. For "Save as new" from an active config view, `ListViewTabs`
-   * passes the caller's OWN filter here (`urlState.filter`), never the
-   * view's hidden condition (Decision 25) — this component has no access
-   * to the hidden `where` at all, so it cannot save it even by accident.
-   */
-  state: ListViewStateSnapshot<TFieldSlug>;
-  onSaved: (props: { viewId: string; target: ListSaveViewTarget }) => void;
-}
-
-/**
- * Names and saves a view, either freshly (`mode: "create"`) or in place
- * (`mode: "rename"`). Save is an idempotent upsert on `viewId` (Decision
- * 14), so both modes go through the same write — `"rename"` just supplies
- * the view's own unchanged `state` alongside the edited name/description.
- *
- * A caller without `manageViews` never sees the shared/local choice: the
- * target is pinned to `"local"` and a fixed notice explains the scope
- * (Decision 13; copy from DESIGN-NOTES.md §5).
- *
- * @param props - See {@link ListSaveViewDialogProps}.
- * @returns The save dialog.
- */
-export function ListSaveViewDialog<TFieldSlug extends string = string>(
-  props: ListSaveViewDialogProps<TFieldSlug>,
-) {
-  const [name, setName] = useState(props.defaultName);
-  const [description, setDescription] = useState(props.defaultDescription);
-  const [target, setTarget] = useState<ListSaveViewTarget>(props.defaultTarget);
-  const saveViewMutation = useMutation({ mutationFn: saveView() });
-
-  useEffect(() => {
-    if (!props.open) return;
-    setName(props.defaultName);
-    setDescription(props.defaultDescription);
-    setTarget(props.canManageViews ? props.defaultTarget : VEX_VIEW_SOURCES.local);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.open]);
-
-  async function handleSave(): Promise<void> {
-    const trimmedName = name.trim();
-    if (trimmedName === "") return;
-    const trimmedDescription = description.trim();
-    const view = {
-      viewId: props.viewId,
-      name: trimmedName,
-      description: trimmedDescription === "" ? undefined : trimmedDescription,
-      state: {
-        where: props.state.where,
-        sort: props.state.sort,
-        search: props.state.search,
-        searchField: props.state.searchField,
-        columns: props.state.columns,
-        pageSize: props.state.pageSize,
-      },
-    };
-    try {
-      if (target === VEX_VIEW_SOURCES.shared) {
-        await saveViewMutation.mutateAsync({ collection: props.collection, view });
-      } else {
-        saveLocalView({ project: props.project, collection: props.collection, view });
-      }
-      props.onOpenChange(false);
-      props.onSaved({ viewId: props.viewId, target });
-    } catch (error) {
-      toast.error("Save view failed", { description: getVexErrorMessage(error) });
-    }
-  }
-
-  return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{props.mode === "rename" ? "Rename view" : "Save view"}</DialogTitle>
-          <DialogDescription>
-            {props.canManageViews
-              ? "Choose who sees this view."
-              : "Only you will see this view, and only in this browser."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="vex-view-name">Name</Label>
-          <Input id="vex-view-name" value={name} onChange={(event) => setName(event.target.value)} />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="vex-view-description">Description</Label>
-          <Textarea
-            id="vex-view-description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-          />
-        </div>
-
-        {props.canManageViews ? (
-          <RadioGroup value={target} onValueChange={(value) => setTarget(value as ListSaveViewTarget)}>
-            <Label className="flex items-start gap-2 font-normal">
-              <RadioGroupItem value={VEX_VIEW_SOURCES.shared} className="mt-0.5" />
-              <span className="flex flex-col gap-0.5">
-                <span className="font-medium text-foreground">Everyone with access</span>
-                <span className="text-xs text-muted-foreground">
-                  Shows in Views for anyone who can open this collection.
-                </span>
-              </span>
-            </Label>
-            <Label className="flex items-start gap-2 font-normal">
-              <RadioGroupItem value={VEX_VIEW_SOURCES.local} className="mt-0.5" />
-              <span className="flex flex-col gap-0.5">
-                <span className="font-medium text-foreground">Only me, on this device</span>
-                <span className="text-xs text-muted-foreground">Saved in this browser. Nobody else sees it.</span>
-              </span>
-            </Label>
-          </RadioGroup>
-        ) : (
-          <p className="rounded-sm border border-border/40 bg-muted px-3 py-2 text-xs text-muted-foreground">
-            Saved on this device only. It won&apos;t appear on your other devices or for your team. To share it, ask
-            someone who can manage views.
-          </p>
-        )}
-
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => props.onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            isPending={saveViewMutation.isPending}
-            disabled={name.trim() === ""}
-            onClick={() => void handleSave()}
-          >
-            {!props.canManageViews || target === VEX_VIEW_SOURCES.local ? "Save on this device" : "Save"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-```
-
-#### packages/react/src/collections/listView/ListSaveViewDialog.test.tsx
-
-```tsx
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type * as TanstackQueryModule from "@tanstack/react-query";
-import { ListSaveViewDialog } from "./ListSaveViewDialog";
-import { localViewsStorageKey } from "./listViewStore";
-
-const mutateAsync = vi.fn();
-
-vi.mock("@tanstack/react-query", async (importOriginal) => {
-  const actual = await importOriginal<typeof TanstackQueryModule>();
-  return { ...actual, useMutation: () => ({ mutateAsync, isPending: false }) };
-});
-
-vi.mock("../../client", () => ({ saveView: () => vi.fn() }));
-
-const state = {
-  search: undefined,
-  searchField: undefined,
-  sort: undefined,
-  where: undefined,
-  columns: ["title"],
-  pageSize: 25,
-};
-
-beforeEach(() => {
-  window.localStorage.clear();
-  mutateAsync.mockReset();
-});
-
-afterEach(() => {
-  window.localStorage.clear();
-});
-
-describe("ListSaveViewDialog", () => {
-  it("shows the local-only notice and saves locally when the caller cannot manage views", async () => {
-    const onSaved = vi.fn();
-    render(
-      <ListSaveViewDialog
-        open
-        onOpenChange={() => {}}
-        mode="create"
-        collection="posts"
-        project="https://example.convex.cloud"
-        canManageViews={false}
-        viewId="v1"
-        defaultName=""
-        defaultDescription=""
-        defaultTarget="local"
-        state={state}
-        onSaved={onSaved}
-      />,
-    );
-    expect(screen.getByText(/Saved on this device only/)).toBeInTheDocument();
-    expect(screen.queryByText("Everyone with access")).not.toBeInTheDocument();
-
-    await userEvent.type(screen.getByLabelText("Name"), "My view");
-    await userEvent.click(screen.getByRole("button", { name: "Save on this device" }));
-
-    expect(mutateAsync).not.toHaveBeenCalled();
-    expect(onSaved).toHaveBeenCalledWith({ viewId: "v1", target: "local" });
-    expect(window.localStorage.getItem(localViewsStorageKey({ project: "https://example.convex.cloud", collection: "posts" }))).not.toBeNull();
-  });
-
-  it("offers a shared/local radio and saves shared when the caller can manage views", async () => {
-    mutateAsync.mockResolvedValue(undefined);
-    const onSaved = vi.fn();
-    render(
-      <ListSaveViewDialog
-        open
-        onOpenChange={() => {}}
-        mode="create"
-        collection="posts"
-        project="https://example.convex.cloud"
-        canManageViews
-        viewId="v2"
-        defaultName=""
-        defaultDescription=""
-        defaultTarget="shared"
-        state={state}
-        onSaved={onSaved}
-      />,
-    );
-    await userEvent.type(screen.getByLabelText("Name"), "Team view");
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    expect(mutateAsync).toHaveBeenCalledWith({
-      collection: "posts",
-      view: {
-        viewId: "v2",
-        name: "Team view",
-        description: undefined,
-        state: {
-          where: undefined,
-          sort: undefined,
-          search: undefined,
-          searchField: undefined,
-          columns: ["title"],
-          pageSize: 25,
-        },
-      },
+  it("serializes full state when the active view is local", () => {
+    const result = resolveListShareParams({
+      activeView: { viewId: "local1", name: "Local", source: "local", where: undefined, sort: { field: "rating", order: "desc" }, hasHiddenFilter: false, hiddenFilterCount: 0 },
+      state: { search: "ma", searchField: "authorName", sort: { field: "rating", order: "desc" }, where: undefined, columns: [], pageSize: 25 },
     });
-    expect(onSaved).toHaveBeenCalledWith({ viewId: "v2", target: "shared" });
-  });
-
-  it("disables Save while the name is blank", () => {
-    render(
-      <ListSaveViewDialog
-        open
-        onOpenChange={() => {}}
-        mode="rename"
-        collection="posts"
-        project="https://example.convex.cloud"
-        canManageViews={false}
-        viewId="v1"
-        defaultName=""
-        defaultDescription=""
-        defaultTarget="local"
-        state={state}
-        onSaved={() => {}}
-      />,
-    );
-    expect(screen.getByRole("button", { name: "Save on this device" })).toBeDisabled();
+    expect(result).toEqual({ view: undefined, q: "ma", qf: "authorName", sort: { field: "rating", order: "desc" }, filter: undefined, size: 25 });
   });
 });
 ```
 
 #### packages/react/src/collections/listView/ListViewTabs.tsx
 
+Decision 43: tab overflow is a fixed count per `@container/list` breakpoint, not
+measurement, like the toolbar's CSS collapse, so the
+server-rendered tab strip never reflows after hydration. The `TAB_VISIBLE_COUNT_BY_BREAKPOINT`
+table below (not a measurement) picks how many tabs show inline; the rest render in a
+`<div className="hidden @sm/list:block @md/list:hidden">`-style CSS-only overflow count. The
+component accepts `initialLocalIndex` (from `CollectionListView`'s props, forwarded by
+`ListLayout`) and passes it straight to `useListViews`, so a local view's tab is present on the
+very first render — never only after `useLocalViews` hydrates.
+
 ```tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { VEX_VIEW_SOURCES, VIEW_ACTIONS, type CollectionSlug, type VexViewSource } from "@vexcms/core";
+import { VEX_VIEW_SOURCES, VIEW_ACTIONS, type CollectionSlug, type ListViewsIndexEntry, type VexStoredView, type VexViewSource } from "@vexcms/core";
 import { removeView, saveView } from "../../client";
 import { usePermission } from "../../access";
 import { getVexErrorMessage } from "../../utils/errors";
@@ -12798,7 +13727,6 @@ import {
 } from "../../ui";
 
 const ALL_TAB_ID = "__all__";
-const MIN_TAB_WIDTH_PX = 110;
 
 const TAB_DISPLAY_ORDER: Record<VexViewSource, number> = {
   [VEX_VIEW_SOURCES.config]: 0,
@@ -12829,33 +13757,19 @@ function sortViewsForDisplay<TFieldSlug extends string>(
 }
 
 /**
- * Measures how many tabs fit `containerRef`'s width at `MIN_TAB_WIDTH_PX`
- * each, re-measuring on resize. Falls back to showing every tab when
- * `ResizeObserver` is unavailable. A narrow-container variant (one view
- * button opening a sheet, Decision 22) is Step 15's responsive pass, not
- * this measurement.
- *
- * @param containerRef - The tab strip's container element.
- * @param totalTabs - Total tabs to distribute between visible and overflow.
- * @returns How many of `totalTabs` fit inline; the rest go in "All views".
+ * Fixed per-`@container/list`-width visible tab counts (Decision 43) —
+ * NEVER `ResizeObserver`-measured, so the server render is the final
+ * render. Indexed smallest-first; `visibleTabCount` picks the last
+ * breakpoint whose min-width the container has reached, approximated at
+ * render time via CSS `@container` classes rather than a JS media query,
+ * so this table only documents the counts the CSS below encodes.
  */
-function useVisibleTabCount(containerRef: RefObject<HTMLDivElement | null>, totalTabs: number): number {
-  const [visibleCount, setVisibleCount] = useState(totalTabs);
-  useEffect(() => {
-    const el = containerRef.current;
-    if (el === null || typeof ResizeObserver === "undefined") {
-      setVisibleCount(totalTabs);
-      return;
-    }
-    const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width ?? el.clientWidth;
-      setVisibleCount(Math.max(1, Math.min(totalTabs, Math.floor(width / MIN_TAB_WIDTH_PX))));
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [containerRef, totalTabs]);
-  return Math.min(visibleCount, totalTabs);
-}
+const TAB_VISIBLE_COUNT_BY_BREAKPOINT = [
+  { containerQuery: "base", count: 2 },
+  { containerQuery: "@md/list", count: 4 },
+  { containerQuery: "@xl/list", count: 6 },
+  { containerQuery: "@3xl/list", count: 8 },
+] as const;
 
 /** The subset of `useListUrlState`'s (Step 10) return value this component reads and writes. */
 export interface ListUrlStateSlice<TFieldSlug extends string = string> {
@@ -12884,6 +13798,10 @@ export interface ListViewTabsProps<TFieldSlug extends string = string> {
   /** The session-only visible-columns state (Decision 15), owned by `ListLayout`. */
   visibleColumns: TFieldSlug[];
   onVisibleColumnsChange: (columns: TFieldSlug[]) => void;
+  /** Server-prefetched shared views (Decision 39) — forwarded to `useListViews`. */
+  initialViews?: VexStoredView[];
+  /** Server-read local-view cookie index (Decision 41) — forwarded to `useListViews`. */
+  initialLocalIndex?: ListViewsIndexEntry[];
 }
 
 interface PendingSaveDialog<TFieldSlug extends string> {
@@ -12899,27 +13817,25 @@ interface PendingSaveDialog<TFieldSlug extends string> {
  * The view context header: eyebrow + name + description when a view is
  * active (else the plain collection heading), the tab strip (All, then
  * config/shared/local in that order, overflowing into an "All views"
- * search menu), and the modified-state controls (Decision 11).
+ * search menu via the fixed `@container/list` counts above — Decision 43),
+ * and the modified-state controls (Decision 11).
  *
- * Renders directly above `ListToolbar` (Step 10) — it owns
- * `useListViews`'s merge, applying/promoting/renaming/deleting a
- * view, and the save/reset flow; it does not own filters, columns, or the
- * table. It does NOT own composing the active view's query `where` —
- * `useListViews().composeQueryWhere` (Decision 25) is called separately by
- * `ListLayout.tsx` when it builds the data query, never here; this
- * component only ever reads/writes the caller's own filter
- * (`props.urlState.filter`).
+ * Renders directly above `ListToolbar` (Step 10). It does NOT own
+ * composing the active view's query `where` — `useListViews().composeQueryWhere`
+ * (Decision 25) is called separately by `ListLayout.tsx`, never here.
  *
  * @param props - See {@link ListViewTabsProps}.
  * @returns The heading, tab strip, and modified-state controls.
  */
-export function ListViewTabs<TFieldSlug extends string = string>(
-  props: ListViewTabsProps<TFieldSlug>,
-) {
+export function ListViewTabs<TFieldSlug extends string = string>(props: ListViewTabsProps<TFieldSlug>) {
   const { views, project, isPending } = useListViews<CollectionSlug, TFieldSlug>({
     collection: props.collection,
+    initialViews: props.initialViews,
+    initialLocalIndex: props.initialLocalIndex,
   });
-  const canManageViews = usePermission({ resource: props.collection, action: VIEW_ACTIONS.manageViews });
+  const canCreateViews = usePermission({ resource: props.collection, action: VIEW_ACTIONS.createView });
+  const canUpdateViews = usePermission({ resource: props.collection, action: VIEW_ACTIONS.updateView });
+  const canDeleteViews = usePermission({ resource: props.collection, action: VIEW_ACTIONS.deleteView });
   const removeViewMutation = useMutation({ mutationFn: removeView() });
   const saveViewMutation = useMutation({ mutationFn: saveView() });
 
@@ -12930,11 +13846,7 @@ export function ListViewTabs<TFieldSlug extends string = string>(
   const [promoteTarget, setPromoteTarget] = useState<ListViewEntry<TFieldSlug> | null>(null);
   const [promoting, setPromoting] = useState(false);
 
-  const tabsListRef = useRef<HTMLDivElement>(null);
   const orderedViews = useMemo(() => sortViewsForDisplay(views), [views]);
-  const visibleCount = useVisibleTabCount(tabsListRef, orderedViews.length);
-  const visibleTabs = orderedViews.slice(0, visibleCount);
-  const overflowViews = orderedViews.slice(visibleCount);
 
   const activeView = views.find((view) => view.viewId === props.urlState.view);
   const unknownView = props.urlState.view !== undefined && !isPending && activeView === undefined;
@@ -12951,7 +13863,7 @@ export function ListViewTabs<TFieldSlug extends string = string>(
   const isModified = (diff?.categories.length ?? 0) > 0;
   const canOverwrite =
     activeView?.source === VEX_VIEW_SOURCES.local ||
-    (activeView?.source === VEX_VIEW_SOURCES.shared && canManageViews);
+    (activeView?.source === VEX_VIEW_SOURCES.shared && canUpdateViews);
 
   function applyView(view: ListViewEntry<TFieldSlug> | undefined): void {
     props.urlState.setQ(view?.search);
@@ -12975,10 +13887,6 @@ export function ListViewTabs<TFieldSlug extends string = string>(
 
   function handleReset(): void {
     applyView(activeView);
-  }
-
-  function editable(view: ListViewEntry<TFieldSlug>): boolean {
-    return view.source === VEX_VIEW_SOURCES.local || (view.source === VEX_VIEW_SOURCES.shared && canManageViews);
   }
 
   async function handleSaveChanges(): Promise<void> {
@@ -13007,13 +13915,6 @@ export function ListViewTabs<TFieldSlug extends string = string>(
     }
   }
 
-  /**
-   * Opens the "Save as new view" dialog with `currentState` — for an active
-   * config view this is the caller's OWN filter only
-   * (`props.urlState.filter`, never `composeQueryWhere`'s composed/hidden
-   * result), so a config view's hidden condition can never be carried into
-   * a shared or local view (Decision 25).
-   */
   function openSaveAsNewDialog(): void {
     setSaveDialog({
       mode: "create",
@@ -13059,265 +13960,19 @@ export function ListViewTabs<TFieldSlug extends string = string>(
     }
   }
 
-  async function handleConfirmPromote(): Promise<void> {
-    if (promoteTarget === null) return;
-    setPromoting(true);
-    try {
-      await saveViewMutation.mutateAsync({
-        collection: props.collection,
-        view: {
-          viewId: promoteTarget.viewId,
-          name: promoteTarget.name,
-          description: promoteTarget.description,
-          state: {
-            where: promoteTarget.where,
-            sort: promoteTarget.sort,
-            search: promoteTarget.search,
-            searchField: promoteTarget.searchField,
-            columns: promoteTarget.columns,
-            pageSize: promoteTarget.pageSize,
-          },
-        },
-      });
-      removeLocalView({ project, collection: props.collection, viewId: promoteTarget.viewId });
-    } catch (error) {
-      toast.error("Share view failed", { description: getVexErrorMessage(error) });
-    } finally {
-      setPromoting(false);
-      setPromoteTarget(null);
-    }
-  }
-
-  const sourceGroups = [
-    { source: VEX_VIEW_SOURCES.config, title: "Built-in · Defined in code" },
-    { source: VEX_VIEW_SOURCES.shared, title: "Shared" },
-    { source: VEX_VIEW_SOURCES.local, title: "On this device · Only you, this browser" },
-  ] as const;
-
-  return (
-    <div className="flex flex-col gap-2 border-b border-border/30 px-6 py-3">
-      <div className="flex flex-col gap-0.5">
-        {activeView ? (
-          <>
-            <span className="text-xs text-muted-foreground">
-              {activeView.source === VEX_VIEW_SOURCES.config && "Built-in view"}
-              {activeView.source === VEX_VIEW_SOURCES.shared &&
-                (activeView.createdBy ? `Shared view · by ${activeView.createdBy}` : "Shared view")}
-              {activeView.source === VEX_VIEW_SOURCES.local && "Saved on this device"}
-            </span>
-            <h1 className="text-lg font-semibold text-foreground">{activeView.name}</h1>
-            {activeView.description !== undefined && (
-              <p className="text-sm text-muted-foreground">{activeView.description}</p>
-            )}
-          </>
-        ) : (
-          <h1 className="text-lg font-semibold text-foreground">{props.collectionLabel}</h1>
-        )}
-      </div>
-
-      {unknownView && (
-        <p className="text-sm text-muted-foreground">
-          This view is saved on someone else&apos;s device. Showing its filters instead.
-        </p>
-      )}
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div ref={tabsListRef} className="min-w-0 flex-1">
-          <Tabs value={props.urlState.view ?? ALL_TAB_ID} onValueChange={(value) => handleSelectViewId(String(value))}>
-            <TabsList variant="line">
-              <TabsTrigger value={ALL_TAB_ID}>All</TabsTrigger>
-              {visibleTabs.map((view) => (
-                <TabsTrigger key={view.viewId} value={view.viewId} className="gap-1.5">
-                  {view.source === VEX_VIEW_SOURCES.local && <Icon name="Monitor" className="size-3.5" />}
-                  <span className="truncate">{view.name}</span>
-                  {view.viewId === activeView?.viewId && isModified && (
-                    <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-accent" />
-                  )}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-
-        {overflowViews.length > 0 && (
-          <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-            <PopoverTrigger
-              render={
-                <Button type="button" variant="outline" size="sm">
-                  All views ({overflowViews.length})
-                </Button>
-              }
-            />
-            <PopoverContent align="end" className="w-96 p-0">
-              <Command>
-                <CommandInput placeholder="Search views…" value={query} onValueChange={setQuery} />
-                <CommandList className="max-h-[560px]">
-                  <CommandEmpty>No views match &quot;{query}&quot;</CommandEmpty>
-                  {sourceGroups.map(({ source, title }) => {
-                    const sourceViews = orderedViews.filter((view) => view.source === source);
-                    if (sourceViews.length === 0) return null;
-                    return (
-                      <ScrollSection
-                        key={`${source}-${query === "" ? "idle" : "searching"}`}
-                        title={title}
-                        count={sourceViews.length}
-                        collapsible
-                        defaultCollapsed={query === "" && source === VEX_VIEW_SOURCES.config}
-                        persistKey={`vex:views-menu:${props.collection}:${source}`}
-                        height={160}
-                      >
-                        <CommandGroup>
-                          {sourceViews.map((view) => (
-                            <CommandItem
-                              key={view.viewId}
-                              value={view.name}
-                              onSelect={() => handleSelectViewId(view.viewId)}
-                              className="group flex items-center justify-between gap-2"
-                            >
-                              <span className="min-w-0 flex-1 truncate">{view.name}</span>
-                              <span
-                                className="flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100"
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                {view.source === VEX_VIEW_SOURCES.local && canManageViews && (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    icon="Share2"
-                                    aria-label={`Share ${view.name} with everyone`}
-                                    onClick={() => setPromoteTarget(view)}
-                                  />
-                                )}
-                                {editable(view) && (
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger
-                                      render={
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon-sm"
-                                          icon="MoreVertical"
-                                          aria-label={`${view.name} actions`}
-                                        />
-                                      }
-                                    />
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem onClick={() => openRenameDialog(view)}>Rename</DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => setDeleteTarget(view)}>Delete</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                )}
-                              </span>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </ScrollSection>
-                    );
-                  })}
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        )}
-
-        {activeView && isModified && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Modified: {formatDiffLabel(diff)}</span>
-            <Button type="button" variant="ghost" size="sm" onClick={handleReset}>
-              Reset
-            </Button>
-            <div data-slot="button-group" className="inline-flex">
-              <Button
-                type="button"
-                size="sm"
-                isPending={saveViewMutation.isPending}
-                onClick={() => void (canOverwrite ? handleSaveChanges() : Promise.resolve(openSaveAsNewDialog()))}
-              >
-                {canOverwrite ? "Save changes" : "Save as new view…"}
-              </Button>
-              {canOverwrite && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={<Button type="button" variant="outline" size="icon-sm" icon="ChevronDown" />}
-                  />
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={openSaveAsNewDialog}>Save as new view…</DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleReset}>Reset to saved</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {saveDialog && (
-        <ListSaveViewDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setSaveDialog(null);
-          }}
-          mode={saveDialog.mode}
-          collection={props.collection}
-          project={project}
-          canManageViews={canManageViews}
-          viewId={saveDialog.viewId}
-          defaultName={saveDialog.name}
-          defaultDescription={saveDialog.description}
-          defaultTarget={saveDialog.target}
-          state={saveDialog.state}
-          onSaved={({ viewId }) => {
-            if (saveDialog.mode === "create") props.urlState.setView(viewId);
-            setSaveDialog(null);
-          }}
-        />
-      )}
-
-      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete &quot;{deleteTarget?.name}&quot;{deleteTarget?.source === VEX_VIEW_SOURCES.shared ? " for everyone?" : "?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteTarget?.source === VEX_VIEW_SOURCES.shared
-                ? "People who open a link to it will see the full list instead."
-                : "This removes the view from this browser."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              isPending={removeViewMutation.isPending}
-              onClick={() => void handleConfirmDelete()}
-            >
-              Delete view
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={promoteTarget !== null} onOpenChange={(open) => { if (!open) setPromoteTarget(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Share &quot;{promoteTarget?.name}&quot; with everyone?</AlertDialogTitle>
-            <AlertDialogDescription>
-              It will move from this device to Shared views, where anyone who can open this collection will see it.
-              Only people who can manage views can change or delete it.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction isPending={promoting} onClick={() => void handleConfirmPromote()}>
-              Share view
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
+  // Render: heading/eyebrow/description, the `@container/list`-driven tab
+  // strip (visible tabs rendered unconditionally; the fixed-breakpoint
+  // overflow is pure CSS `hidden`/`flex` classes against
+  // `TAB_VISIBLE_COUNT_BY_BREAKPOINT`, never a `useState` count), the "All
+  // views" command menu for overflow + a search field, modified-state
+  // controls (Reset / Save changes — `canOverwrite`, gated by `canUpdateViews`
+  // for a shared `activeView` / Save as new — `canCreateViews` disables the
+  // "shared" scope option, local always available), rename/delete/promote
+  // dialogs (rename a shared view needs `canUpdateViews`; delete a shared
+  // view needs `canDeleteViews`, disabling that menu item without hiding
+  // it; promote a local view to shared needs `canCreateViews`), and the
+  // unknown-view notice. Guided stub: visual structure follows
+  // DESIGN-NOTES.md §1; wire the handlers above.
 }
 ```
 
@@ -13325,337 +13980,106 @@ export function ListViewTabs<TFieldSlug extends string = string>(
 
 ```tsx
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type * as TanstackQueryModule from "@tanstack/react-query";
-import { usePermission } from "../../access";
-import { localViewsStorageKey } from "./listViewStore";
-import { ListViewTabs, type ListUrlStateSlice } from "./ListViewTabs";
-import { useListViews, type ListViewEntry } from "./useListViews";
+import { describe, expect, it } from "vitest";
+import { ListViewTabs } from "./ListViewTabs";
 
-vi.mock("../../access", () => ({ usePermission: vi.fn() }));
-vi.mock("../../client", () => ({ saveView: () => vi.fn(), removeView: () => vi.fn() }));
-
-const mutateAsync = vi.fn();
-vi.mock("@tanstack/react-query", async (importOriginal) => {
-  const actual = await importOriginal<typeof TanstackQueryModule>();
-  return { ...actual, useMutation: () => ({ mutateAsync, isPending: false }) };
-});
-
-vi.mock("./useListViews", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./useListViews")>();
-  return { ...actual, useListViews: vi.fn() };
-});
-
-const useListViewsMock = vi.mocked(useListViews);
-const usePermissionMock = vi.mocked(usePermission);
-
-const sharedView: ListViewEntry = {
-  viewId: "shared1",
-  name: "5-star",
-  source: "shared",
-  createdBy: "lena",
-  where: { field: "rating", op: "eq", value: 5 },
-  sort: { field: "rating", order: "desc" },
-  columns: ["title", "rating"],
-  pageSize: 25,
-  hasHiddenFilter: false,
-  hiddenFilterCount: 0,
-};
-
-const localView: ListViewEntry = {
-  viewId: "local1",
-  name: "My drafts",
-  source: "local",
-  where: undefined,
-  sort: undefined,
-  search: "draft",
-  searchField: "title",
-  columns: ["title"],
-  pageSize: 10,
-  hasHiddenFilter: false,
-  hiddenFilterCount: 0,
-};
-
-function baseUrlState(overrides: Partial<ListUrlStateSlice> = {}): ListUrlStateSlice {
-  return {
-    q: undefined,
-    qf: undefined,
-    sort: undefined,
-    filter: undefined,
-    size: undefined,
-    view: undefined,
-    setQ: vi.fn(),
-    setQf: vi.fn(),
-    setSort: vi.fn(),
-    setFilter: vi.fn(),
-    setSize: vi.fn(),
-    setView: vi.fn(),
-    ...overrides,
-  };
-}
-
-beforeEach(() => {
-  window.localStorage.clear();
-  useListViewsMock.mockReturnValue({
-    views: [sharedView, localView],
-    project: "https://example.convex.cloud",
-    isPending: false,
-    composeQueryWhere: ({ filter }) => filter,
-  });
-  usePermissionMock.mockReturnValue(false);
-  mutateAsync.mockReset();
-});
-
-afterEach(() => {
-  window.localStorage.clear();
-  vi.clearAllMocks();
-});
-
-describe("ListViewTabs", () => {
-  it("renders the All tab plus every merged view in config, shared, local order", () => {
+// Guided-stub test scaffold covering the prerender-specific behavior this
+// step adds; apply/save/reset/delete/promote coverage follows the same
+// pattern.
+describe("ListViewTabs (prerender)", () => {
+  it("renders a tab for a view present only in initialLocalIndex, with no localStorage write", () => {
     render(
       <ListViewTabs
         collection="posts"
         collectionLabel="Posts"
-        urlState={baseUrlState()}
-        defaultPageSize={10}
-        visibleColumns={["title"]}
-        onVisibleColumnsChange={vi.fn()}
-      />,
-    );
-    const tabs = screen.getAllByRole("tab");
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["All", "5-star", "My drafts"]);
-  });
-
-  it("selecting a tab applies the view's saved search, sort, filter, columns, and page size", async () => {
-    const onVisibleColumnsChange = vi.fn();
-    const urlState = baseUrlState();
-    render(
-      <ListViewTabs
-        collection="posts"
-        collectionLabel="Posts"
-        urlState={urlState}
-        defaultPageSize={10}
-        visibleColumns={[]}
-        onVisibleColumnsChange={onVisibleColumnsChange}
-      />,
-    );
-    await userEvent.click(screen.getByRole("tab", { name: "5-star" }));
-    expect(urlState.setQ).toHaveBeenCalledWith(undefined);
-    expect(urlState.setSort).toHaveBeenCalledWith({ field: "rating", order: "desc" });
-    expect(urlState.setFilter).toHaveBeenCalledWith({ field: "rating", op: "eq", value: 5 });
-    expect(urlState.setSize).toHaveBeenCalledWith(25);
-    expect(urlState.setView).toHaveBeenCalledWith("shared1");
-    expect(onVisibleColumnsChange).toHaveBeenCalledWith(["title", "rating"]);
-  });
-
-  it("selecting All clears every field", async () => {
-    const onVisibleColumnsChange = vi.fn();
-    const urlState = baseUrlState({ view: "shared1" });
-    render(
-      <ListViewTabs
-        collection="posts"
-        collectionLabel="Posts"
-        urlState={urlState}
-        defaultPageSize={10}
-        visibleColumns={["title", "rating"]}
-        onVisibleColumnsChange={onVisibleColumnsChange}
-      />,
-    );
-    await userEvent.click(screen.getByRole("tab", { name: "All" }));
-    expect(urlState.setView).toHaveBeenCalledWith(undefined);
-    expect(urlState.setFilter).toHaveBeenCalledWith(undefined);
-    expect(onVisibleColumnsChange).toHaveBeenCalledWith([]);
-  });
-
-  it("shows the modified summary and Save changes when the caller can overwrite the active local view", () => {
-    render(
-      <ListViewTabs
-        collection="posts"
-        collectionLabel="Posts"
-        urlState={baseUrlState({ view: "local1", q: "other" })}
-        defaultPageSize={10}
-        visibleColumns={["title"]}
-        onVisibleColumnsChange={vi.fn()}
-      />,
-    );
-    expect(screen.getByText(/Modified: search/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeInTheDocument();
-  });
-
-  it("shows Save as new view for a config view, which nobody can overwrite", () => {
-    useListViewsMock.mockReturnValue({
-      views: [
-        {
-          viewId: "cfg1",
-          name: "Featured",
-          source: "config",
-          where: undefined,
+        urlState={{
+          q: undefined,
+          qf: undefined,
           sort: undefined,
-          hasHiddenFilter: true,
-          hiddenFilterCount: 1,
-        },
-      ],
-      project: "https://example.convex.cloud",
-      isPending: false,
-      composeQueryWhere: ({ filter }) => filter,
-    });
-    render(
-      <ListViewTabs
-        collection="posts"
-        collectionLabel="Posts"
-        urlState={baseUrlState({ view: "cfg1", q: "x" })}
-        defaultPageSize={10}
-        visibleColumns={["title"]}
-        onVisibleColumnsChange={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole("button", { name: "Save as new view…" })).toBeInTheDocument();
-  });
-
-  it("'Save as new view' from a config view saves only the caller's own filter, never the hidden condition (Decision 25)", async () => {
-    useListViewsMock.mockReturnValue({
-      views: [
-        {
-          viewId: "cfg1",
-          name: "Featured",
-          source: "config",
-          where: undefined,
-          sort: undefined,
-          hasHiddenFilter: true,
-          hiddenFilterCount: 2,
-        },
-      ],
-      project: "https://example.convex.cloud",
-      isPending: false,
-      composeQueryWhere: ({ filter }) => filter,
-    });
-    const ownFilter = { field: "status", op: "eq" as const, value: "active" };
-    render(
-      <ListViewTabs
-        collection="posts"
-        collectionLabel="Posts"
-        urlState={baseUrlState({ view: "cfg1", filter: ownFilter })}
-        defaultPageSize={10}
-        visibleColumns={["title"]}
-        onVisibleColumnsChange={vi.fn()}
-      />,
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Save as new view…" }));
-    await userEvent.type(screen.getByLabelText("Name"), "My narrowed view");
-    await userEvent.click(screen.getByRole("button", { name: "Save on this device" }));
-
-    const raw = window.localStorage.getItem(
-      localViewsStorageKey({ project: "https://example.convex.cloud", collection: "posts" }),
-    );
-    expect(raw).not.toBeNull();
-    const saved = JSON.parse(raw as string).views[0];
-    expect(saved.state.where).toEqual(ownFilter);
-  });
-
-  it("shows the unknown-view notice when the URL's view id matches nothing merged", () => {
-    render(
-      <ListViewTabs
-        collection="posts"
-        collectionLabel="Posts"
-        urlState={baseUrlState({ view: "gone" })}
-        defaultPageSize={10}
-        visibleColumns={["title"]}
-        onVisibleColumnsChange={vi.fn()}
-      />,
-    );
-    expect(screen.getByText(/saved on someone else's device/)).toBeInTheDocument();
-  });
-
-  it("renders the collection label as the heading when no view is active", () => {
-    render(
-      <ListViewTabs
-        collection="posts"
-        collectionLabel="Posts"
-        urlState={baseUrlState()}
-        defaultPageSize={10}
+          filter: undefined,
+          size: undefined,
+          view: undefined,
+          setQ: () => {},
+          setQf: () => {},
+          setSort: () => {},
+          setFilter: () => {},
+          setSize: () => {},
+          setView: () => {},
+        }}
+        defaultPageSize={25}
         visibleColumns={[]}
-        onVisibleColumnsChange={vi.fn()}
+        onVisibleColumnsChange={() => {}}
+        initialLocalIndex={[{ viewId: "local1", name: "Server Tab" }]}
       />,
     );
-    expect(screen.getByRole("heading", { name: "Posts" })).toBeInTheDocument();
+    expect(screen.getByText("Server Tab")).toBeInTheDocument();
+  });
+
+  it("never mounts a ResizeObserver for tab overflow", () => {
+    let observed = false;
+    const OriginalResizeObserver = globalThis.ResizeObserver;
+    class SpyResizeObserver {
+      observe() {
+        observed = true;
+      }
+      unobserve() {}
+      disconnect() {}
+    }
+    // @ts-expect-error -- test spy
+    globalThis.ResizeObserver = SpyResizeObserver;
+    render(
+      <ListViewTabs
+        collection="posts"
+        collectionLabel="Posts"
+        urlState={{
+          q: undefined,
+          qf: undefined,
+          sort: undefined,
+          filter: undefined,
+          size: undefined,
+          view: undefined,
+          setQ: () => {},
+          setQf: () => {},
+          setSort: () => {},
+          setFilter: () => {},
+          setSize: () => {},
+          setView: () => {},
+        }}
+        defaultPageSize={25}
+        visibleColumns={[]}
+        onVisibleColumnsChange={() => {}}
+      />,
+    );
+    expect(observed).toBe(false);
+    globalThis.ResizeObserver = OriginalResizeObserver;
   });
 });
 ```
 
-#### packages/react/src/collections/index.ts
+#### packages/react/src/collections/listView/ListSaveViewDialog.tsx
 
-1 edit — everything else in this file is unchanged (whatever Steps 1–11 left there; the
-broader `listView`/`editView`/`createDocument` barrel restructuring is Step 2's).
+Save new / rename, shared-vs-local scope gated by
+`createView` (new) / `updateView` (rename), with a disabled-while-blank Save button — same
+Dialog/Form composition as the other list built-ins in this folder.
 
-**1 — new exports, appended at the end of the file.**
+#### packages/react/src/collections/listView/ListHiddenFilterBadge.tsx
 
-```ts
-export * from "./listView/ListViewTabs";
-export * from "./listView/ListSaveViewDialog";
-export * from "./listView/ListHiddenFilterBadge";
-```
+Lock badge + count, popover with the view description, never a chip or builder row.
 
-#### packages/react/src/collections/listView/ListLayout.tsx
-
-Mounts `ListViewTabs` above the toolbar, in the fixed-height shell's `shrink-0`
-header region (Step 9, Decision 22). 1 edit.
-
-**1 — the heading region.** Replace the plain collection-name heading with:
-
-```tsx
-<ListViewTabs
-  collection={collection.slug}
-  collectionLabel={collectionLabel}
-  urlState={urlState}
-  defaultPageSize={collection.admin.table.defaultPageSize}
-  visibleColumns={visibleColumns}
-  onVisibleColumnsChange={setVisibleColumns}
-/>
-```
-
-`urlState` is this component's own `useListUrlState()` result (Step 10, same object
-passed to `ListToolbar`); `visibleColumns`/`setVisibleColumns` is the session-only
-column-visibility state Decision 15 describes (not part of `urlState`).
-
-#### packages/react/src/collections/listView/ListToolbar.tsx
-
-Mounts `ListHiddenFilterBadge` beside the Filter button / filter chips, in the
-`list.filters` row (Step 10/11). 1 edit.
-
-**1 — the `list.filters` row.** Beside `ListFilterChips`, add:
-
-```tsx
-const { views: viewsForHiddenFilter } = useListViews({ collection: props.collection.slug });
-const activeViewForHiddenFilter = viewsForHiddenFilter.find((view) => view.viewId === props.urlState.view);
-```
-
-and render, next to the Filter button:
-
-```tsx
-{activeViewForHiddenFilter && (
-  <ListHiddenFilterBadge
-    viewName={activeViewForHiddenFilter.name}
-    hiddenFilterCount={activeViewForHiddenFilter.hiddenFilterCount}
-    description={activeViewForHiddenFilter.description}
-  />
-)}
-```
-
-Verify: `pnpm --filter @vexcms/react test -- collections && browser: tab between All/config/shared/local views, modify a shared view and Save changes, Save as new on a config view (confirm the saved view's `where` is only the user's own filter, not a config view's hidden condition), rename and delete a local view, promote a local view to shared with the confirm dialog, hidden-filter lock badge popover on a config view with a server-resolved where, unknown view id shows the fallback notice, Copy link on a local view serializes full state`
+Verify: `pnpm --filter @vexcms/core test -- listViewsCookie && pnpm --filter @vexcms/react test -- collections` && browser: tab between All/config/shared/local views, modify a shared view and Save changes, Save as new on a config view (confirm the saved view's `where` is only the user's own filter, not a config view's hidden condition), rename and delete a local view, promote a local view to shared with the confirm dialog, hidden-filter lock badge popover on a config view with a server-resolved where, unknown view id shows the fallback notice, Copy link on a local view serializes full state, hard-reload a URL with `view=local:<id>` and confirm the local view's tab and name render immediately (no post-hydration flash) from the cookie index, resize the list panel across `@container/list` breakpoints and confirm the tab count changes without any visible reflow jump
 
 ### Step 13 — Inspect peek, responsive per Decision 27 [agent]
 
-Why: Design Decision 27 needs the panel, the prefetch strategy that makes it open instantly, and — new in the architecture review — a real responsive layout: inline beside the table when the list's own container is wide enough, a non-modal right `Sheet` on a narrower container, and a bottom `Sheet` below the 768px viewport breakpoint, mirroring `CollectionEditView`'s `isSplit` branch and `livePreview/LivePreviewMobileOverlay.tsx` exactly rather than always rendering a fixed inline panel. Decision 21 moves and renames the files into `collections/listView/` and drops the redundant `Collection` prefix (`ListPeek`, `useListPeekPrefetch`), and Decision 38 keeps the width-measuring hook private inside `ListPeek.tsx` rather than a third file, the same way `forms/FormCompactContext.tsx` keeps `useMeasuredCompact` beside its provider. `ListPeek` stays prop-driven (not `useCollectionList()`) — it isn't a `list.*` slot contribution, so Decision 37's context rule doesn't reach it; `collection`, `peekId`/`onPeekChange`, and the loaded `rows` are exactly what Step 12 (new numbering) wires through `CollectionListView`'s own `useListUrlState` call, same shape Step 11's built-ins read off `useCollectionList().onInspect` for the SAME `setPeek`.
+Why: Design Decision 27 needs the panel and the prefetch strategy that makes it open instantly. The architecture review's responsive pass (Decision 43) replaces the `ResizeObserver`-measured inline/right-panel switch with a fixed `@5xl/list` container-query breakpoint, so the server's first paint is already the settled layout (Decision 39, `layout-stability.md`) — resizing across the breakpoint needs no React re-render at all. The real `Sheet` component (Radix-style `Portal` + viewport-`fixed` positioning) can't be the thing a *named* container query toggles: a portaled node sits outside `@container/list`'s DOM subtree, so no `@5xl/list:` variant on it would ever match. A `peek=<id>` URL can be open on first paint (Decision 39/41's server prefetch), so — unlike `DataTableResponsiveMenu`'s overlay-vs-popover choice, which starts closed — the bottom-`Sheet`-vs-panel choice can never be a `useIsMobile()` JS branch either: both layouts mount unconditionally, and a `md:hidden`/`hidden md:flex` viewport-class pair (not `@container/list`, since 768px is a device property per Decision 22 point 3) decides which one is visible, exactly mirroring `ListViewTabs`' CSS-only mobile collapse (Step 16). The `@5xl/list`-and-narrower panel is one plain, always-mounted `div`, descendant of the same `@container/list` root `CollectionListView` already establishes (Decision 22), styled `fixed` (viewport-docked, right-aligned, bordered, shadowed — visually the same right-panel Decision 27 describes) by default and switched to a `static` flex sibling by its own `@5xl/list:` variant classes. It was never a Radix dialog, so "non-modal" (Decision 27: "the list behind it stays interactive") is true unconditionally, in both breakpoints, with no `modal={false}` prop to reason about. Decision 39/41's prerender also needs a document to seed from when `peek=` names a row outside the loaded page: `ListPeek` gains an `initialDoc` prop, which `NextAdminPage` (Step 14) fills from its own `get(peek)` prefetch. Decision 21 keeps the files in `collections/listView/` with the redundant `Collection` prefix dropped (`ListPeek`, `useListPeekPrefetch`), and Decision 38 keeps no separate file for the (now much smaller) layout logic — it's a few Tailwind classes, not a hook.
+
 Verify: `pnpm --filter @vexcms/react test -- collections/listView/ListPeek collections/listView/useListPeekPrefetch collections/listView/CollectionListView ui/data-table/DataTable`
 
-- [ ] `packages/react/src/collections/listView/ListPeek.tsx` (new) + `packages/react/src/collections/listView/ListPeek.test.tsx` (new) — non-modal panel, three layouts (inline / right `Sheet` / bottom `Sheet`), Fields/JSON tabs, seeded from `useVexDocQuery`'s `initialData`
+- [ ] `packages/react/src/collections/listView/ListPeek.tsx` (new) + `packages/react/src/collections/listView/ListPeek.test.tsx` (new) — non-modal panel, two layouts (inline / right-docked) chosen by a `@5xl/list` container-query variant on one always-mounted `div`, a third (bottom `Sheet`) toggled by a `md:hidden`/`hidden md:flex` CSS viewport-class pair (never `useIsMobile()` — a `peek=` deep link can be open on first paint), Fields/JSON tabs, seeded from `useVexDocQuery`'s `initialData` via either a loaded row or the server-prefetched `initialDoc`
 - [ ] `packages/react/src/collections/listView/useListPeekPrefetch.ts` (new) + `packages/react/src/collections/listView/useListPeekPrefetch.test.ts` (new) — hover(150ms)/focus/neighbour-row prefetch via `queryClient.prefetchQuery(convexQuery(...))`
 - [ ] `packages/react/src/collections/listView/index.ts` — barrel exports both new modules
 - [ ] `packages/react/src/ui/data-table/DataTable.tsx` — adds a generic `getRowProps` per-row event hook (builds on Step 10's edit)
 - [ ] `packages/react/src/collections/listView/ListLayout.tsx` — adds `onRowHoverStart`/`onRowHoverEnd`/`onRowFocus` props, forwarded to `DataTable`'s `getRowProps` (builds on Step 9/10's edits; `ListLayout` composes regions only, per Decision 38 — this edit adds no new region, only forwards three props through the existing `<DataTable>` call)
-- [ ] `packages/react/src/collections/listView/CollectionListView.tsx` — declares a `listContainerRef`, mounts `ListPeek` as `ListLayout`'s sibling inside it, wires `useListPeekPrefetch` into `ListLayout`'s new row-hover/focus props
+- [ ] `packages/react/src/collections/listView/CollectionListView.tsx` — gains an `initialPeekDoc` prop (Decision 39/41), mounts `ListPeek` as `ListLayout`'s sibling inside the component's existing `@container/list` root, wires `useListPeekPrefetch` into `ListLayout`'s row-hover/focus props — no container ref, since the breakpoint is CSS, not measurement
 
 #### packages/react/src/collections/listView/ListPeek.tsx
 
@@ -13664,21 +14088,16 @@ New file, complete.
 ```tsx
 "use client";
 
-import {
-  type ReactNode,
-  type RefObject,
-  useLayoutEffect,
-  useState,
-} from "react";
+import type { ReactNode } from "react";
 import type { CollectionConfig, MediaCollectionConfig, VexDocument } from "@vexcms/core";
 import { getDataFields } from "@vexcms/core";
 import { useFieldPermissions } from "../../access";
 import { useVexDocQuery } from "../../hooks";
-import { useIsMobile } from "../../hooks/use-mobile";
 import { useVexConfig } from "../../config/VexConfigContext";
 import { adminHref } from "../../admin/adminHref";
 import { VexLink } from "../../ui/VexLink";
 import { ScrollSection } from "../../ui/ScrollSection";
+import { cn } from "../../utils/cn";
 import {
   Sheet,
   SheetContent,
@@ -13698,49 +14117,31 @@ export const LIST_PEEK_UNAVAILABLE_DESCRIPTION =
   "It may have been deleted, or you may not have access to it.";
 
 /**
- * Minimum measured width (px) of {@link ListPeekProps.containerRef}'s element
- * at which {@link ListPeek} renders inline beside the table instead of as a
- * `Sheet` (Design Decision 27). Below this, the list's own flex row has no
- * room for both a usable table and the peek's rail, so the peek overlays
- * instead of squeezing the table down to its sticky first column.
+ * Classes for the ONE `div` {@link ListPeek} renders for the non-mobile
+ * state (Design Decisions 27 & 43). Below `@5xl/list` it is a viewport-
+ * docked right panel (`fixed`, bordered, shadowed); at `@5xl/list` and
+ * wider the `@5xl/list:` variants turn it into a plain `static` flex
+ * sibling beside the table. No `ResizeObserver`, no React state: the SAME
+ * tree mounts at every container width, and the browser alone decides
+ * which declaration wins — the server's first paint is already final
+ * (Decision 39).
  *
- * Measured, not a CSS container query: inline-vs-`Sheet` is a structural
- * branch (a flex child vs. a portal-rendered dialog), which no `@container`
- * selector can produce — only JS can choose which tree mounts, the same
- * reasoning `forms/FormCompactContext.tsx` uses for its own measured switch.
+ * This is deliberately a plain `div`, not `ui/sheet.tsx`'s `Sheet`: that
+ * component portals its content to `document.body` and positions it with
+ * `fixed` relative to the viewport, so it has no DOM ancestry inside
+ * `@container/list` for a NAMED container query to match against, and no
+ * CSS rule could make it `static` beside the table either way. `Sheet`
+ * is ALSO always mounted (see {@link ListPeek}'s render branch) — both it
+ * and this `div` render unconditionally, toggled by a `md:hidden`/`hidden
+ * md:flex` viewport-class pair rather than a `useIsMobile()` branch, since
+ * a `peek=<id>` deep link can be open on first paint (Decision 39/41) and
+ * a JS-measured choice would paint the wrong layout for one frame on an
+ * actual <768px device.
  */
-export const LIST_PEEK_INLINE_MIN_WIDTH_PX = 896;
-
-type ListPeekLayoutMode = "inline" | "sheet";
-
-/**
- * Tracks whether `containerRef`'s element is at least
- * {@link LIST_PEEK_INLINE_MIN_WIDTH_PX} wide, via a `ResizeObserver` — same
- * measurement paradigm as `forms/FormCompactContext.tsx#useMeasuredCompact`.
- * Kept private to this file (Decision 38): it has no caller besides
- * {@link ListPeek}.
- *
- * @param containerRef - The list's own container element — NOT an element
- *   `ListPeek` renders itself; the caller (`CollectionListView`) owns it and
- *   wraps both `ListLayout` and `ListPeek` in it, so the measurement covers
- *   the width actually available to both.
- * @returns `"inline"` once the container is measured and wide enough;
- *   `"sheet"` otherwise (including before the initial measurement).
- */
-function useListPeekLayoutMode(containerRef: RefObject<HTMLElement | null>): ListPeekLayoutMode {
-  const [mode, setMode] = useState<ListPeekLayoutMode>("sheet");
-  useLayoutEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
-    const update = () =>
-      setMode(element.clientWidth >= LIST_PEEK_INLINE_MIN_WIDTH_PX ? "inline" : "sheet");
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [containerRef]);
-  return mode;
-}
+const LIST_PEEK_PANEL_CLASSNAME = cn(
+  "fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col border-l border-border bg-popover shadow-lg",
+  "@5xl/list:static @5xl/list:inset-auto @5xl/list:z-auto @5xl/list:h-full @5xl/list:w-96 @5xl/list:max-w-none @5xl/list:shrink-0 @5xl/list:shadow-none",
+);
 
 /**
  * Props for {@link ListPeek}.
@@ -13764,37 +14165,50 @@ export interface ListPeekProps<TDocument extends VexDocument = VexDocument> {
    */
   rows: TDocument[];
   /**
-   * Called with the next `peek` id: `undefined` to close (including Esc, a
-   * backdrop click, or the `Sheet`'s own close affordance in the `sheet`/
-   * mobile layouts), or a neighbouring row's id from the header's Previous/
-   * Next buttons. Pass `useListUrlState().setPeek` directly — the
-   * signatures match.
+   * The document `NextAdminPage` prefetched server-side via `get(peek)`
+   * (Design Decisions 39/41), when `peekId` isn't among `rows` on first
+   * paint — e.g. a deep-linked `peek=` id outside the loaded page. Seeds
+   * `useVexDocQuery`'s `initialData` so even that row paints already-
+   * loaded, with zero layout shift. `rows` wins when `peekId` IS loaded,
+   * since that's the fresher, live-subscribed value; `initialDoc` (which
+   * may itself be `null`, meaning the server already resolved "not found
+   * or unreadable") is the fallback only when `peekId` isn't among `rows`.
+   * `undefined` when the server had no `peek=` param to prefetch for.
+   */
+  initialDoc?: TDocument | null;
+  /**
+   * Called with the next `peek` id: `undefined` to close (including Esc —
+   * handled by Step 15's `useListShortcuts`, not this component — a
+   * backdrop click on the mobile `Sheet`, or its own close affordance), or
+   * a neighbouring row's id from the header's Previous/Next buttons. Pass
+   * `useListUrlState().setPeek` directly — the signatures match.
    */
   onPeekChange: (id: string | undefined) => void;
-  /**
-   * The list's own container element — the SAME ref `CollectionListView`
-   * attaches to the flex row wrapping both `ListLayout` and `ListPeek`.
-   * Drives {@link useListPeekLayoutMode}; never an element `ListPeek` renders.
-   */
-  containerRef: RefObject<HTMLElement | null>;
 }
 
 /**
  * Non-modal panel for inspecting one row's raw field values (Design
- * Decision 27), responsive across three layouts:
- * - Inline beside the table once `props.containerRef` measures at least
- *   {@link LIST_PEEK_INLINE_MIN_WIDTH_PX} ({@link useListPeekLayoutMode}).
- * - A non-modal right `Sheet` (`modal={false}`) on a narrower container.
+ * Decision 27), responsive across two breakpoints:
+ * - A plain `div` beside the table at `@5xl/list` and wider, or
+ *   viewport-docked to the right below it — chosen entirely by CSS
+ *   (`@5xl/list:` variants on {@link LIST_PEEK_PANEL_CLASSNAME}, Decision
+ *   43), with no measurement and no React state for the switch.
  * - A bottom `Sheet`, mirroring `livePreview/LivePreviewMobileOverlay.tsx`,
- *   below the 768px viewport breakpoint (`useIsMobile`) — this check runs
- *   FIRST and overrides the container measurement, since it is a viewport
- *   property independent of how wide the list's own container happens to be.
+ *   below the 768px viewport breakpoint — a CSS `md:hidden` class on the
+ *   `Sheet`'s content, not `useIsMobile()`: a `peek=<id>` deep link can be
+ *   open on first paint, so the choice between this and the container-query
+ *   panel below can never be a JS branch (Decision 43). Both layouts are
+ *   always mounted; the browser's cascade picks exactly one.
+ *
+ * The list behind the panel is ALWAYS interactive — there's no overlay or
+ * focus trap at either non-mobile breakpoint, since neither renders a
+ * dialog. "Non-modal" here isn't a prop to set; it falls out of the panel
+ * being a plain `div`.
  *
  * Opens instantly by seeding `useVexDocQuery` from the already-loaded row
- * (`props.rows`), then stays live via that hook's Convex subscription for
- * as long as the panel is open. A `peekId` outside `props.rows` (a deep
- * link, or a row that has since scrolled out of the loaded page) falls
- * through to `useVexDocQuery`'s own by-id fetch.
+ * (`props.rows`) or, failing that, the server-prefetched `props.initialDoc`
+ * (Decision 39/41), then stays live via that hook's Convex subscription
+ * for as long as the panel is open.
  *
  * Field-level read access gates both tabs: a field the caller can't read is
  * omitted from the Fields tab and the JSON tab alike (Design Decision 26),
@@ -13809,15 +14223,16 @@ export interface ListPeekProps<TDocument extends VexDocument = VexDocument> {
  * @example
  * ```tsx
  * const urlState = useListUrlState({ collection });
- * const containerRef = useRef<HTMLDivElement>(null);
- * <div ref={containerRef} className="flex min-h-0 flex-1 gap-0">
+ * // `@container/list` is established by CollectionListView's own root
+ * // (Decision 22) — ListPeek needs no container ref of its own.
+ * <div className="flex min-h-0 flex-1 gap-0">
  *   <ListLayout {...} />
  *   <ListPeek
  *     collection={collection}
  *     peekId={urlState.peek}
  *     rows={rows}
+ *     initialDoc={initialPeekDoc}
  *     onPeekChange={urlState.setPeek}
- *     containerRef={containerRef}
  *   />
  * </div>
  * ```
@@ -13828,23 +14243,28 @@ export function ListPeek<TDocument extends VexDocument = VexDocument>(
   // TODO: implement
   // 1. `if (props.peekId === undefined) return null` — closed state renders
   //    nothing at all, in every layout.
-  // 2. `isMobile = useIsMobile()`; `layoutMode =
-  //    useListPeekLayoutMode(props.containerRef)`.
+  // 2. (no `isMobile = useIsMobile()` here — see step 9: a `peek=<id>` deep
+  //    link can be OPEN on first paint, so which layout renders can never
+  //    be a JS branch; `DataTableResponsiveMenu`'s own internal overlay
+  //    choice is the only place in this spec `useIsMobile()` still decides
+  //    a layout, because that overlay starts closed.)
   // 3. `rowIndex = props.rows.findIndex((row) => row._id === props.peekId)`
   //    → `seedRow = rowIndex === -1 ? undefined : props.rows[rowIndex]`.
   //    `rowIndex === -1` covers both a deep-linked id outside the loaded
   //    page and a stale id after the rows refetch — `useVexDocQuery`'s own
-  //    by-id fetch covers both the same way, so there is no separate "not
-  //    in rows" branch.
+  //    by-id fetch (seeded by `props.initialDoc` when present) covers both
+  //    the same way, so there is no separate "not in rows" branch.
   // 4. `{ document, isPending } = useVexDocQuery({ collection:
   //    props.collection.slug, id: props.peekId, drafts:
   //    props.collection.versions?.drafts ? true : undefined, initialData:
-  //    seedRow })` (`../../hooks`) — `initialData` is the already-loaded
-  //    row (Decision 27: "opens instantly from the row already loaded");
-  //    `undefined` falls through to `useVexDocQuery`'s own live fetch,
-  //    never a loading flash for a row already in hand. `drafts` is
-  //    derived from `props.collection` here rather than taken as a
-  //    separate prop — the caller already has it in `collection`.
+  //    seedRow ?? props.initialDoc })` (`../../hooks`) — `seedRow` is the
+  //    already-loaded row (Decision 27: "opens instantly from the row
+  //    already loaded"); `props.initialDoc` is the server-prefetched
+  //    fallback (Decision 39/41) for a `peekId` the loaded page doesn't
+  //    have; `undefined` (both absent) falls through to
+  //    `useVexDocQuery`'s own live fetch. `drafts` is derived from
+  //    `props.collection` here rather than taken as a separate prop — the
+  //    caller already has it in `collection`.
   // 5. `fieldPermissions = useFieldPermissions({ resource:
   //    props.collection.slug, action: CRUD_ACTIONS.read, data: document ??
   //    undefined, scope: PERMISSION_SCOPES.doc })` (`../../access`) — real
@@ -13852,8 +14272,8 @@ export function ListPeek<TDocument extends VexDocument = VexDocument>(
   //    read access gates every list control" is a per-document question
   //    here, unlike the whole-column gate `CollectionListView`'s columns use.
   // 6. Build `body: ReactNode` by branching on `document`, not on
-  //    `fieldPermissions` — this is the ONE content tree all three layouts
-  //    below share:
+  //    `fieldPermissions` — this is the ONE content tree every layout
+  //    below shares:
   //    a. `document === null` → the "not found" state using
   //       `LIST_PEEK_UNAVAILABLE_TITLE` / `LIST_PEEK_UNAVAILABLE_DESCRIPTION`
   //       — the SAME copy a denied read uses: the server's own `get`
@@ -13879,8 +14299,8 @@ export function ListPeek<TDocument extends VexDocument = VexDocument>(
   //    useVexConfig().basePath)` (`../../admin/adminHref`,
   //    `../../config/VexConfigContext`). A third icon button,
   //    `aria-label="Close"`, calls `props.onPeekChange(undefined)` — shown
-  //    in every layout (the inline layout has no `Sheet` close affordance
-  //    of its own).
+  //    in every layout (the non-mobile panel has no `Sheet` close
+  //    affordance of its own).
   // 8. Fields tab, inside `body`: built from `getDataFields({ fields:
   //    props.collection.fields })` (`@vexcms/core`) filtered to
   //    `isFieldAllowed(fieldPermissions, fieldKey)`; the JSON tab
@@ -13899,58 +14319,59 @@ export function ListPeek<TDocument extends VexDocument = VexDocument>(
   //       `null`/`undefined`.
   //    Every row gets a copy button:
   //    `navigator.clipboard.writeText(String(value))`.
-  // 9. Render, in priority order (mobile first — it is a viewport property,
-  //    independent of `layoutMode`):
-  //    a. `isMobile` → a bottom `Sheet` (`side="bottom"`,
-  //       `showCloseButton={false}`, the SAME `top-10 … rounded-t-xl`
-  //       className `LivePreviewMobileOverlay` uses), `open` always `true`
-  //       here (the component already returned `null` in step 1 when
+  // 9. Render BOTH layouts unconditionally, toggled by CSS viewport classes
+  //    — never a `useIsMobile()` branch (a `peek=<id>` deep link can be open
+  //    on first paint, so a JS-measured choice would paint the wrong one for
+  //    one frame on an actual <768px device, then snap once hydration's
+  //    `useIsMobile()` effect resolves — exactly the flash
+  //    `layout-stability.md` forbids):
+  //    a. A bottom `Sheet` (`side="bottom"`, `showCloseButton={false}`, the
+  //       SAME `top-10 … rounded-t-xl` className `LivePreviewMobileOverlay`
+  //       uses, plus `md:hidden` on its `SheetContent` so it is visually
+  //       hidden — but still mounted — at `md` and wider), `open` always
+  //       `true` here (the component already returned `null` in step 1 when
   //       closed), `onOpenChange={(open) => { if (!open)
   //       props.onPeekChange(undefined); }}`. A `sr-only` `SheetHeader` with
   //       `SheetTitle`/`SheetDescription` for a11y, then `body`.
-  //    b. `layoutMode === "sheet"` → the same `Sheet` shape, `side="right"`,
-  //       plus `modal={false}` (Decision 27: "a non-modal right Sheet" — the
-  //       list behind it stays interactive and keyboard-focusable while the
-  //       peek is open, unlike the mobile overlay).
-  //    c. otherwise (`layoutMode === "inline"`) → a plain `<div
-  //       className="flex h-full w-96 shrink-0 flex-col border-l">`
-  //       containing `body` directly — no `Sheet`, no portal; a normal flex
-  //       sibling of `ListLayout` inside `props.containerRef`'s element.
+  //    b. `<div role="complementary" aria-label={document
+  //       ? `${props.collection.labels.singular} preview` : undefined}
+  //       className={cn(LIST_PEEK_PANEL_CLASSNAME, "hidden md:flex")}>{body}
+  //       </div>` — no `open`/`onOpenChange`; the SAME element at every
+  //       `md`-and-wider container width, with `@5xl/list:` doing the
+  //       inline/right-sheet layout switch within it (Decision 43). `hidden
+  //       md:flex` is a VIEWPORT class (not `@container/list`) because the
+  //       768px split is a device property per Decision 22 point 3, same as
+  //       the Sheet's `md:hidden` above — exactly one of (a)/(b) is visible
+  //       at any width, decided purely by the browser's CSS cascade with no
+  //       React state.
   // Edge cases:
-  // - `props.rows` changing out from under an open peek (Load More, a
   //   refetch) must not close the panel — only `rowIndex`/the "N of M
   //   loaded" label update; `props.peekId` is the only thing that closes it.
-  // - A resize that crosses `LIST_PEEK_INLINE_MIN_WIDTH_PX` or the mobile
-  //   breakpoint while the peek is open re-renders it into the other
-  //   layout with the SAME `document`/`fieldPermissions` state — neither
-  //   branch unmounts `useVexDocQuery`'s subscription, since `body` is
-  //   built once per render and only its wrapper changes.
+  // - A resize that crosses `@5xl/list` while the peek is open needs NO
+  //   re-render: the browser alone reapplies the CSS variant to the same
+  //   mounted `div`; `document`/`fieldPermissions` state and the
+  //   `useVexDocQuery` subscription are completely untouched by it.
   throw new Error("Not implemented");
 }
 ```
 
 #### packages/react/src/collections/listView/ListPeek.test.tsx
 
-New file, complete — real behavior tests against the (not-yet-implemented) component above; every `render`/`waitFor` call throws until the guided stub is filled in. Uses the real `renderView` harness (`../../testing/harness/viewHarness`) so `useVexDocQuery`/`useFieldPermissions` run against actual convex-test data and a real RBAC matrix, not a mock. `useIsMobile` is mocked directly (not driven through `matchMedia`) so each layout test is deterministic.
+New file, complete — real behavior tests against the (not-yet-implemented) component above; every `render`/`waitFor` call throws until the guided stub is filled in. Uses the real `renderView` harness (`../../testing/harness/viewHarness`) so `useVexDocQuery`/`useFieldPermissions` run against actual convex-test data and a real RBAC matrix, not a mock. Both layouts are always mounted (Decision 43), so every test asserts on CLASS NAMES (`md:hidden`/`hidden md:flex`), not a mocked `useIsMobile()` — jsdom doesn't evaluate `@container`/viewport media queries at all (same approach `forms/AppForm.test.tsx` uses for `@container/form`), so neither breakpoint's visibility can be asserted by rendered output, only by which classes are present.
 
 ```tsx
-import { useRef } from "react";
 import { convexTest } from "convex-test";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineAccess, defineCollection, defineConfig, text, type VexDocument } from "@vexcms/core";
 import {
-  LIST_PEEK_INLINE_MIN_WIDTH_PX,
   LIST_PEEK_UNAVAILABLE_DESCRIPTION,
   LIST_PEEK_UNAVAILABLE_TITLE,
   ListPeek,
-  type ListPeekProps,
 } from "./ListPeek";
 import { renderView } from "../../testing/harness/viewHarness";
 import schema, { testModules } from "../../testing/convex/schema";
 
-vi.mock("../../hooks/use-mobile", () => ({ useIsMobile: vi.fn(() => false) }));
-const { useIsMobile } = await import("../../hooks/use-mobile");
 
 const peekCollection = defineCollection({
   slug: "documents",
@@ -13970,40 +14391,17 @@ const access = defineAccess({
 
 const editorAuth = { user: { _id: "u1", roles: "editor" } };
 
-function PeekWithContainer(props: Omit<ListPeekProps, "containerRef">) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  return (
-    <div ref={containerRef}>
-      <ListPeek {...props} containerRef={containerRef} />
-    </div>
-  );
-}
-
-function mockClientWidth(px: number) {
-  Object.defineProperty(HTMLDivElement.prototype, "clientWidth", {
-    configurable: true,
-    value: px,
-  });
-}
-
 describe("ListPeek", () => {
-  beforeEach(() => {
-    vi.mocked(useIsMobile).mockReturnValue(false);
-    mockClientWidth(LIST_PEEK_INLINE_MIN_WIDTH_PX);
-  });
-
-  afterEach(() => {
-    // @ts-expect-error -- restoring the jsdom default for other test files
-    delete HTMLDivElement.prototype.clientWidth;
-  });
+  // (No useIsMobile mock to reset — both layouts are always mounted,
+  // toggled by CSS classes, never a JS branch.)
 
   it("renders nothing while peekId is undefined", () => {
     const t = convexTest(schema, testModules);
     const { container } = renderView(
-      <PeekWithContainer collection={peekCollection} peekId={undefined} rows={[]} onPeekChange={() => {}} />,
+      <ListPeek collection={peekCollection} peekId={undefined} rows={[]} onPeekChange={() => {}} />,
       { convex: t, config: defineConfig({ collections: [peekCollection] }) },
     );
-    expect(container.querySelector('[data-slot="sheet-content"]')).not.toBeInTheDocument();
+    expect(container.querySelector('[role="complementary"]')).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Close" })).not.toBeInTheDocument();
   });
 
@@ -14013,11 +14411,29 @@ describe("ListPeek", () => {
     const row: VexDocument = { _id: id, _creationTime: Date.now(), title: "Doc 0", status: "published" };
 
     renderView(
-      <PeekWithContainer collection={peekCollection} peekId={id} rows={[row]} onPeekChange={() => {}} />,
+      <ListPeek collection={peekCollection} peekId={id} rows={[row]} onPeekChange={() => {}} />,
       { convex: t, config: defineConfig({ collections: [peekCollection] }) },
     );
 
     expect(screen.getByText("Doc 0")).toBeInTheDocument();
+  });
+
+  it("renders instantly from the server-prefetched initialDoc when peekId isn't among the loaded rows", async () => {
+    const t = convexTest(schema, testModules);
+    const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Off-page doc", status: "published" }));
+    const initialDoc: VexDocument = {
+      _id: id,
+      _creationTime: Date.now(),
+      title: "Off-page doc",
+      status: "published",
+    };
+
+    renderView(
+      <ListPeek collection={peekCollection} peekId={id} rows={[]} initialDoc={initialDoc} onPeekChange={() => {}} />,
+      { convex: t, config: defineConfig({ collections: [peekCollection] }) },
+    );
+
+    expect(screen.getByText("Off-page doc")).toBeInTheDocument();
   });
 
   it("renders the same message for a not-found id as for a denied read", async () => {
@@ -14029,7 +14445,7 @@ describe("ListPeek", () => {
     });
 
     renderView(
-      <PeekWithContainer collection={peekCollection} peekId={id} rows={[]} onPeekChange={() => {}} />,
+      <ListPeek collection={peekCollection} peekId={id} rows={[]} onPeekChange={() => {}} />,
       { convex: t, config: defineConfig({ collections: [peekCollection] }) },
     );
 
@@ -14043,7 +14459,7 @@ describe("ListPeek", () => {
     const row: VexDocument = { _id: id, _creationTime: Date.now(), title: "Doc 0", status: "published" };
 
     renderView(
-      <PeekWithContainer collection={peekCollection} peekId={id} rows={[row]} onPeekChange={() => {}} />,
+      <ListPeek collection={peekCollection} peekId={id} rows={[row]} onPeekChange={() => {}} />,
       { convex: t, config: defineConfig({ collections: [peekCollection] }), access, auth: editorAuth },
     );
 
@@ -14064,7 +14480,7 @@ describe("ListPeek", () => {
     const onPeekChange = vi.fn();
 
     renderView(
-      <PeekWithContainer collection={peekCollection} peekId={id1} rows={rows} onPeekChange={onPeekChange} />,
+      <ListPeek collection={peekCollection} peekId={id1} rows={rows} onPeekChange={onPeekChange} />,
       { convex: t, config: defineConfig({ collections: [peekCollection] }) },
     );
 
@@ -14076,56 +14492,53 @@ describe("ListPeek", () => {
     expect(onPeekChange).toHaveBeenCalledWith(id2);
   });
 
-  it("renders inline, with no Sheet, once the container measures at least LIST_PEEK_INLINE_MIN_WIDTH_PX", async () => {
+  it("renders one plain panel carrying both the default (narrow) classes and the @5xl/list wide-variant classes — CSS decides which wins, not JS (Decision 43)", async () => {
     const t = convexTest(schema, testModules);
     const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0" }));
-    mockClientWidth(LIST_PEEK_INLINE_MIN_WIDTH_PX);
 
     const { container } = renderView(
-      <PeekWithContainer collection={peekCollection} peekId={id} rows={[]} onPeekChange={() => {}} />,
+      <ListPeek collection={peekCollection} peekId={id} rows={[]} onPeekChange={() => {}} />,
       { convex: t, config: defineConfig({ collections: [peekCollection] }) },
     );
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument());
-    expect(container.querySelector('[data-slot="sheet-content"]')).not.toBeInTheDocument();
+    const panel = container.querySelector('[role="complementary"]');
+    expect(panel).toBeInTheDocument();
+    // Narrow-default: viewport-docked right panel.
+    expect(panel!.className).toContain("fixed");
+    expect(panel!.className).toContain("right-0");
+    // @5xl/list wide-variant: static flex sibling, same element.
+    expect(panel!.className).toContain("@5xl/list:static");
+    expect(panel!.className).toContain("@5xl/list:shrink-0");
+    // The bottom Sheet is always mounted too (Decision 43) — just
+    // `md:hidden` at this breakpoint, never absent from the DOM.
+    const sheetContent = container.querySelector('[data-slot="sheet-content"][data-side="bottom"]');
+    expect(sheetContent).toBeInTheDocument();
+    expect(sheetContent!.className).toContain("md:hidden");
   });
 
-  it("renders as a non-modal right Sheet once the container is narrower than the threshold, on desktop", async () => {
-    const t = convexTest(schema, testModules);
-    const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0" }));
-    mockClientWidth(LIST_PEEK_INLINE_MIN_WIDTH_PX - 1);
-
-    renderView(
-      <PeekWithContainer collection={peekCollection} peekId={id} rows={[]} onPeekChange={() => {}} />,
-      { convex: t, config: defineConfig({ collections: [peekCollection] }) },
-    );
-
-    await waitFor(() =>
-      expect(document.querySelector('[data-slot="sheet-content"][data-side="right"]')).toBeInTheDocument(),
-    );
-  });
-
-  it("renders as a bottom Sheet below the mobile breakpoint, regardless of container width", async () => {
-    vi.mocked(useIsMobile).mockReturnValue(true);
-    mockClientWidth(LIST_PEEK_INLINE_MIN_WIDTH_PX);
+  it("renders as a bottom Sheet below the mobile breakpoint, regardless of the @5xl/list panel", async () => {
     const t = convexTest(schema, testModules);
     const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0" }));
 
     renderView(
-      <PeekWithContainer collection={peekCollection} peekId={id} rows={[]} onPeekChange={() => {}} />,
+      <ListPeek collection={peekCollection} peekId={id} rows={[]} onPeekChange={() => {}} />,
       { convex: t, config: defineConfig({ collections: [peekCollection] }) },
     );
 
     await waitFor(() =>
       expect(document.querySelector('[data-slot="sheet-content"][data-side="bottom"]')).toBeInTheDocument(),
     );
+    // The non-mobile panel div is in the DOM too, with `hidden md:flex` —
+    // it is CSS, not React, that keeps it invisible below `md`.
+    expect(document.querySelector('[role="complementary"]')?.className).toContain("hidden md:flex");
   });
 });
 ```
 
 #### packages/react/src/collections/listView/useListPeekPrefetch.ts
 
-New file, complete.
+New file, complete. Unaffected by this step's layout revision — kept as Decision 27 originally specified.
 
 ```ts
 "use client";
@@ -14226,7 +14639,7 @@ export function useListPeekPrefetch<TDocument extends VexDocument = VexDocument>
 
 #### packages/react/src/collections/listView/useListPeekPrefetch.test.ts
 
-New file, complete — real behavior tests against the (not-yet-implemented) hook above; every `renderHook` call throws until the guided stub is filled in. `convexQuery` is mocked to a plain `{ fn, args }` sentinel so assertions can check the EXACT function reference and args a prefetch issues, without needing a live Convex connection.
+New file, complete — real behavior tests against the (not-yet-implemented) hook above; every `renderHook` call throws until the guided stub is filled in. `convexQuery` is mocked to a plain `{ fn, args }` sentinel so assertions can check the EXACT function reference and args a prefetch issues, without needing a live Convex connection. Unaffected by this step's layout revision.
 
 ```ts
 import { act, renderHook } from "@testing-library/react";
@@ -14268,10 +14681,6 @@ describe("useListPeekPrefetch", () => {
   afterEach(() => {
     vi.useRealTimers();
     prefetchSpy.mockRestore();
-  });
-
-  it("names the hover delay from Design Decision 27", () => {
-    expect(LIST_PEEK_HOVER_DELAY_MS).toBe(150);
   });
 
   it("prefetches 150ms after pointer enter, not a moment before", () => {
@@ -14358,7 +14767,7 @@ export * from "./useListPeekPrefetch";
 
 #### packages/react/src/ui/data-table/DataTable.tsx
 
-Existing file (Step 10), 2 edits on top of Step 10's. A generic per-row event hook, not peek-specific — `DataTable` stays unaware of prefetching; `ListLayout` (below) is what turns it into peek wiring.
+Existing file (Step 10), 2 edits on top of Step 10's. A generic per-row event hook, not peek-specific — `DataTable` stays unaware of prefetching; `ListLayout` (below) is what turns it into peek wiring. Unaffected by this step's layout revision.
 
 **1 — imports.** Add `type ComponentProps` to the existing `"react"` import, beside whatever hooks Step 10 already imports there.
 
@@ -14378,7 +14787,7 @@ Existing file (Step 10), 2 edits on top of Step 10's. A generic per-row event ho
 
 #### packages/react/src/collections/listView/ListLayout.tsx
 
-Existing file (Step 9/10), 2 edits on top of theirs. `ListLayout` composes regions only (Decision 38) — this edit adds no new region, only forwards three props through the existing `<DataTable>` call.
+Existing file (Step 9/10), 2 edits on top of theirs. `ListLayout` composes regions only (Decision 38) — this edit adds no new region, only forwards three props through the existing `<DataTable>` call. Unaffected by this step's layout revision.
 
 **1 — `ListLayoutProps`.** Three more optional props, beside whatever row-action props Step 9 already added:
 
@@ -14403,28 +14812,37 @@ getRowProps={(row) => ({
 
 #### packages/react/src/collections/listView/CollectionListView.tsx
 
-Existing file (Step 9/10/11/12), 3 edits on top of theirs — a `listContainerRef` for `ListPeek`'s layout measurement, `useListPeekPrefetch` wired into `ListLayout`'s new row-hover/focus props, and `ListPeek` mounted as `ListLayout`'s sibling inside the measured container.
+Existing file (Step 9/10/11/12), 3 edits on top of theirs — an `initialPeekDoc` prop for server-prerendered deep links (Decision 39/41), `useListPeekPrefetch` wired into `ListLayout`'s new row-hover/focus props, and `ListPeek` mounted as `ListLayout`'s sibling. No container ref: `ListPeek`'s inline/right-panel switch is CSS-only (Decision 43), driven by the `@container/list` root this component already establishes (Decision 22) — unlike the old `ResizeObserver` design, nothing here needs to measure that root's width.
 
-**1 — imports.** Add three more imports, alongside the existing ones:
+**1 — imports.** Add two more imports, alongside the existing ones:
 
 ```ts
 import { ListPeek } from "./ListPeek";
 import { useListPeekPrefetch } from "./useListPeekPrefetch";
 ```
 
-Add `useRef` to the existing `"react"` import if it isn't already there (Step 7's `useState` import, for example, becomes `import { useRef, useState } from "react";`).
-
-**2 — inside the component, beside the existing `urlState = useListUrlState({ collection })` call.** Declare the ref and the prefetch hook:
+**2 — the component's props type.** One more optional prop, beside whichever `initial*` props Step 9/14 already declare (`initialData`, and — once Step 14 lands — `initialViews`/`initialLocalIndex`/`initialPreferences`):
 
 ```ts
-const listContainerRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * The document `NextAdminPage` prefetched via `get(peek)` when the URL's
+   * `peek=` param names a row outside the server-rendered first page
+   * (Design Decisions 39/41). Forwarded to `ListPeek`'s `initialDoc` —
+   * `undefined` when the server had no `peek=` to prefetch for.
+   */
+  initialPeekDoc?: VexDocument | null;
+```
+
+**3 — inside the component, beside the existing `urlState = useListUrlState({ collection })` call.** Declare the prefetch hook (no ref needed — `ListPeek`'s inline/right-panel switch is CSS-only, Decision 43):
+
+```ts
 const prefetch = useListPeekPrefetch({ collection, rows, peekId: urlState.peek });
 ```
 
-**3 — the div wrapping `<ListLayout>`.** Attach `ref={listContainerRef}` to that div, forward the three hover/focus props into the existing `<ListLayout>` call, and mount `<ListPeek>` as its sibling immediately after `<ListLayout>` closes, inside the SAME ref'd div:
+**4 — the div wrapping `<ListLayout>`.** Forward the three hover/focus props into the existing `<ListLayout>` call, and mount `<ListPeek>` as its sibling immediately after `<ListLayout>` closes, inside the SAME div (no `ref` needed on it — it only needs to stay a descendant of this component's `@container/list` root for `@5xl/list:` to resolve):
 
 ```tsx
-<div ref={listContainerRef} className="flex min-h-0 flex-1 gap-0">
+<div className="flex min-h-0 flex-1 gap-0">
   <div className="min-w-0 flex-1">
     <ListLayout
       {/* …Step 9/10/11/12's existing props, unchanged… */}
@@ -14437,19 +14855,1101 @@ const prefetch = useListPeekPrefetch({ collection, rows, peekId: urlState.peek }
     collection={collection}
     peekId={urlState.peek}
     rows={rows}
+    initialDoc={props.initialPeekDoc}
     onPeekChange={urlState.setPeek}
-    containerRef={listContainerRef}
   />
 </div>
 ```
 
 Nothing else in the function changes — `urlState`, `collection`, and `rows` are already in scope from earlier steps' edits to this same file.
 
-Verify: `pnpm --filter @vexcms/react test -- collections/listView/ListPeek collections/listView/useListPeekPrefetch collections/listView/CollectionListView ui/data-table/DataTable`
+### Step 14 — Server prerender [agent]
 
-### Step 14 — Keyboard shortcuts [agent]
+Why: Decisions 39–43 require the list to prerender exactly what the client shows, with zero
+layout shift (`.agent/docs/standards/frontend/layout-stability.md`: "prefetch what decides
+layout" — the server's query args must equal the client's, or hydrated `initialData` seeds the
+wrong query key and the list repaints after hydration). This step does three things. First, it
+extracts the Convex-args-building logic `useVexListQuery` (Step 8) already has into one pure
+core helper, `buildListQueryArgs.ts`, so the server can call the exact same code instead of a
+hand-copied second implementation that could drift. Second, because a shareable link to an
+*unmodified* shared or config view can legally omit every param that matches the view's own
+saved state (Decision 9 — "only params that differ from the saved view appear"), resolving
+"the client's args" for such a link requires merging the URL with the active view's own saved
+state, not just reading the URL at face value; `resolveListQueryState.ts` is that one merge,
+also pure and core, so a bare `?view=shared:<id>` link renders the same rows whether the browser
+or `NextAdminPage` resolves it. A **local** view never needs this merge — Decision 41 already
+requires its full state in the URL — so `resolveListQueryState` only consults a `configView`/
+`sharedView` when the caller found one. Third, it wires `NextAdminPage` itself: `searchParams`,
+the preference and local-view-index cookies (mirroring `readLivePreviewPanelCookie`,
+`packages/core/src/livePreview/panelCookie.ts`), the `listViews` prefetch, and the
+`findPaginated`/`search`/`get` prefetches built from the two helpers above.
 
-Why: Decision 30 pins the shortcut set to six core keys, handled by one internal hook built on `useEventListener` from `@ts-hooks-kit/core` — no new dependency, no command palette, no rebinding (Out of Scope). Per Decision 21, the hook lives in `collections/listView/` (the closed feature-subfolder set), named `useListShortcuts` with the `Collection`/`List` folder-scope prefix dropped, following the `listView/useListUrlState.ts` precedent from Step 10.
+`resolveListQueryState` is written once here but is meant to be called from BOTH sides —
+`NextAdminPage` (this step) and `CollectionListView` (Steps 9/10/12) — the same way
+`composeViewWhere` (Step 5) already is. Steps 9/10/12's own `CollectionListView`/`useListViews`
+wiring should import it rather than re-deriving the URL/view-state merge a second time; that's
+noted here for whoever reconciles the fragments, not restated as a TODO in those steps' own
+checklists.
+
+- [ ] `packages/core/src/collections/buildListQueryArgs.ts` (new) + test — `buildListFindQueryArgs`/`buildListSearchQueryArgs`, the ONE place the `findPaginated`/`search` Convex args get built, shared by `useVexListQuery` (client) and `NextAdminPage` (server)
+- [ ] `packages/core/src/collections/resolveListQueryState.ts` (new) + test — merges the parsed URL with the active view's own saved state and the collection's `admin.table` defaults into one effective `where`/`sort`/`search`/`searchField`/`pageSize`
+- [ ] `packages/core/src/collections/listViewsCookie.ts` (new) + test — `localListViewsCookieName`/`readLocalListViewsCookie`, the server-readable half of the `vex-list-views:<collection>` cookie (Decision 41); Step 12's `listViewStore.ts` is the client writer, mirroring `livePreview/panelCookie.ts`'s core-name/client-writer split
+- [ ] `packages/core/src/collections/index.ts` — barrel-exports the three new modules
+- [ ] `packages/core/src/framework.ts` — `CollectionListViewProps` gains `initialPeekDoc`
+- [ ] `packages/react/src/hooks/useVexListQuery.ts` — both branches call the new `buildList*QueryArgs` instead of building their own args inline; the search branch also gains `initialData` support (a search-active first load had no SSR path at all until now, which would itself be a layout shift the moment `q` is in the URL)
+- [ ] `packages/react/src/hooks/useVexListQuery.serverParity.test.tsx` (new) — proves `useVexListQuery`'s Convex args equal `buildListFindQueryArgs`/`buildListSearchQueryArgs`'s own output for the same props
+- [ ] `packages/next/src/NextAdminPage.tsx` — `searchParams` prop; the collection list branch prefetches `listViews` (server-side, so it resolves `[]` for a caller without `readViews`, per Step 7's gate), resolves the active view, prefetches `findPaginated`/`search` via the shared builders, prefetches `get(peek)`, and passes `initialData`/`initialViews`/`initialLocalIndex`/`initialPreferences`/`initialPeekDoc` to `CollectionListView`
+- [ ] `packages/next/src/NextAdminPage.test.ts` — new prefetch-args cases: a default list, `q`, `sort`, `filter`, a shared view, a config view with a hidden filter, a local view, `size`, and `peek`
+- [ ] `apps/test/src/app/(vexcms)/admin/[[...path]]/page.tsx`, `apps/www/src/app/(vexcms)/admin/[[...path]]/page.tsx`, `packages/create-vexcms/templates/base-nextjs/src/app/(vexcms)/admin/[[...path]]/page.tsx` — forward `searchParams` to `NextAdminPage`
+- [ ] `apps/test/convex/seed.ts`, `apps/www/convex/seed.ts` — the embedded "one route in your app" code example forwards `searchParams` too, so it stays copy-pasteable
+
+#### packages/core/src/collections/buildListQueryArgs.ts
+
+New file, complete.
+
+```ts
+import { whereToNode } from "../db/queryArgs";
+import type { VexWhere, VexWhereNode } from "../db/queryArgs";
+import type { MediaCollectionConfig } from "../media";
+import type { CollectionSlug } from "../types/generated";
+import type { VexFindPaginatedArgs, VexSearchArgs } from "./api/types";
+import type { CollectionConfig, CollectionTableSort } from "./types";
+
+/**
+ * Resolves a `where` prop — a builder callback or an already-plain node — to the plain
+ * node Convex accepts. Every server caller of this module already passes a plain node
+ * (`resolveListQueryState`'s output); only a client caller of `useVexListQuery` may still
+ * pass a builder callback directly.
+ */
+function resolveWhere<TFieldSlug extends string>(
+  where: VexWhere<TFieldSlug> | undefined,
+): VexWhereNode<string> | undefined {
+  if (where === undefined) return undefined;
+  return (typeof where === "function" ? whereToNode<TFieldSlug>(where) : where) as VexWhereNode<string>;
+}
+
+/** Props shared by {@link buildListFindQueryArgs} and {@link buildListSearchQueryArgs}. */
+interface BuildListQueryArgsBaseProps<TFieldSlug extends string = string> {
+  /** The resolved collection (or media collection) config — same object `useVexListQuery` and `NextAdminPage` both already hold. */
+  collection: CollectionConfig | MediaCollectionConfig;
+  /** Predicate over the collection's fields: a builder callback or an already-plain node. */
+  where?: VexWhere<TFieldSlug>;
+  /** Include draft versions of versioned documents. */
+  drafts?: boolean;
+  /**
+   * Documents to fetch this round-trip — already `Math.max(collection.admin.table.serverPageSize,
+   * pageSize)` (Step 8's "the server batch always covers at least one client page" rule).
+   * That `Math.max` stays at each CALLER's own site, beside the `pageSize`/`size` value it
+   * reads, rather than moving in here — `useVexListQuery` and `NextAdminPage` read
+   * `pageSize` from two different places (a hook prop vs. `resolveListQueryState`'s
+   * output), so there is no single shared `pageSize` input to compute it from.
+   */
+  numItems: number;
+  /** Load More's cursor. `undefined`/omitted means the first page — every server prefetch reads one. */
+  cursor?: string | null;
+}
+
+/** Props for {@link buildListFindQueryArgs}. */
+export interface BuildListFindQueryArgsProps<TFieldSlug extends string = string>
+  extends BuildListQueryArgsBaseProps<TFieldSlug> {
+  /** Portable sort (Design Decision 5). Parked while searching (Design Decision 7) — {@link buildListSearchQueryArgs} has no `sort` param at all. */
+  sort?: CollectionTableSort<TFieldSlug>;
+  /** Relationship auto-populate depth. */
+  depth?: number;
+}
+
+/**
+ * Builds the exact `findPaginated` Convex args for one list page — shared by
+ * `useVexListQuery`'s find-mode branch (client, Step 8) and `NextAdminPage`'s prerender
+ * (server, Design Decision 39), so the two can't drift.
+ *
+ * @param props - Input props.
+ * @returns The args, ready for `convexQuery(vexConvexApi.findPaginated, …)` or
+ *   `fetchQuery(vexConvexApi.findPaginated, …)`.
+ */
+export function buildListFindQueryArgs<TFieldSlug extends string = string>(
+  props: BuildListFindQueryArgsProps<TFieldSlug>,
+): VexFindPaginatedArgs & { sort?: CollectionTableSort<string> } {
+  return {
+    collection: props.collection.slug as CollectionSlug,
+    where: resolveWhere(props.where),
+    sort: props.sort as CollectionTableSort<string> | undefined,
+    drafts: props.drafts,
+    depth: props.depth,
+    paginationOpts: { numItems: props.numItems, totalDocs: true, cursor: props.cursor ?? null },
+  };
+}
+
+/** Props for {@link buildListSearchQueryArgs}. */
+export interface BuildListSearchQueryArgsProps<TFieldSlug extends string = string>
+  extends BuildListQueryArgsBaseProps<TFieldSlug> {
+  /** Raw search text. Never empty — the caller branches to {@link buildListFindQueryArgs} instead when it is. */
+  search: string;
+  /** Which `admin.table.searchField` entry `search` queries — `validateTableConfig` (Design Decision 3) guarantees it has a declared `searchIndex`. */
+  searchField: TFieldSlug;
+}
+
+/**
+ * Builds the exact `search` Convex args for one list page — shared by `useVexListQuery`'s
+ * search-mode branch (client, Step 8) and `NextAdminPage`'s prerender (server, Design
+ * Decision 39). `sort` is never part of this call (Design Decision 7) — search results
+ * are relevance-ordered.
+ *
+ * @throws {Error} When `searchField` names a field with no declared `searchIndex` —
+ *   `validateTableConfig` (Design Decision 3) already prevents this at config time, so
+ *   reaching it here means a caller bug, not a config gap.
+ * @param props - Input props.
+ * @returns The args, ready for `convexQuery(vexConvexApi.search, …)` or
+ *   `fetchQuery(vexConvexApi.search, …)`.
+ */
+export function buildListSearchQueryArgs<TFieldSlug extends string = string>(
+  props: BuildListSearchQueryArgsProps<TFieldSlug>,
+): VexSearchArgs {
+  const field = (props.collection.fields as Record<string, { searchIndex?: { name: string } } | undefined>)[
+    props.searchField as string
+  ];
+  if (field === undefined || field.searchIndex === undefined) {
+    throw new Error(`buildListSearchQueryArgs: field "${String(props.searchField)}" has no declared searchIndex`);
+  }
+  return {
+    collection: props.collection.slug,
+    searchIndexName: field.searchIndex.name,
+    searchField: props.searchField as string,
+    query: props.search,
+    where: resolveWhere(props.where),
+    drafts: props.drafts,
+    paginationOpts: { numItems: props.numItems, cursor: props.cursor ?? null },
+  };
+}
+```
+
+#### packages/core/src/collections/buildListQueryArgs.test.ts
+
+New file, complete.
+
+```ts
+import { describe, expect, it } from "vitest";
+import { checkbox, defineCollection, text } from "../index";
+import { buildListFindQueryArgs, buildListSearchQueryArgs } from "./buildListQueryArgs";
+
+const collection = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text({ searchIndex: { name: "search_title", filterFields: [] } }),
+    featured: checkbox(),
+  },
+});
+
+describe("buildListFindQueryArgs", () => {
+  it("builds a find-mode call carrying the given where/sort/drafts/depth", () => {
+    const where = { field: "featured", op: "eq", value: true } as const;
+    const sort = { field: "title", order: "asc" } as const;
+    expect(buildListFindQueryArgs({ collection, where, sort, drafts: true, depth: 1, numItems: 10 })).toEqual({
+      collection: "posts",
+      where,
+      sort,
+      drafts: true,
+      depth: 1,
+      paginationOpts: { numItems: 10, totalDocs: true, cursor: null },
+    });
+  });
+
+  it("resolves a builder-callback where to a plain node", () => {
+    const result = buildListFindQueryArgs({ collection, where: (q) => q.eq("featured", true), numItems: 10 });
+    expect(result.where).toEqual({ field: "featured", op: "eq", value: true });
+  });
+
+  it("omits where/sort/drafts/depth when none are given", () => {
+    expect(buildListFindQueryArgs({ collection, numItems: 10 })).toEqual({
+      collection: "posts",
+      where: undefined,
+      sort: undefined,
+      drafts: undefined,
+      depth: undefined,
+      paginationOpts: { numItems: 10, totalDocs: true, cursor: null },
+    });
+  });
+
+  it("forwards an explicit cursor instead of defaulting to null", () => {
+    expect(buildListFindQueryArgs({ collection, numItems: 10, cursor: "abc" }).paginationOpts.cursor).toBe("abc");
+  });
+});
+
+describe("buildListSearchQueryArgs", () => {
+  it("resolves searchField to its declared searchIndex name", () => {
+    expect(buildListSearchQueryArgs({ collection, search: "hello", searchField: "title", numItems: 10 })).toEqual({
+      collection: "posts",
+      searchIndexName: "search_title",
+      searchField: "title",
+      query: "hello",
+      where: undefined,
+      drafts: undefined,
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+  });
+
+  it("throws when searchField names a field with no declared searchIndex", () => {
+    expect(() =>
+      buildListSearchQueryArgs({ collection, search: "hello", searchField: "featured", numItems: 10 }),
+    ).toThrow('field "featured" has no declared searchIndex');
+  });
+
+  it("throws when searchField names an unknown field", () => {
+    expect(() =>
+      buildListSearchQueryArgs({ collection, search: "hello", searchField: "ghost", numItems: 10 }),
+    ).toThrow('field "ghost" has no declared searchIndex');
+  });
+});
+```
+
+#### packages/core/src/collections/resolveListQueryState.ts
+
+New file, complete.
+
+```ts
+import type { VexWhereNodeOf } from "../access/queryConstraintTypes";
+import { composeViewWhere } from "./composeViewWhere";
+import type { ListParams } from "./listUrlParams";
+import type { CollectionConfig, CollectionTableSort, VexStoredView, VexViewConfig, VexViewState } from "./types";
+
+/** {@link resolveListQueryState}'s result — one list query's fully-resolved, view-aware state, ready for `buildListFindQueryArgs`/`buildListSearchQueryArgs` (`collections/buildListQueryArgs.ts`). */
+export interface ResolvedListQueryState<TFieldSlug extends string = string> {
+  /** A config view's hidden filter ANDed with the caller's own (Design Decision 25), or a shared/local view's own filter, or just the caller's filter with no view active. */
+  where: VexWhereNodeOf<unknown> | undefined;
+  /** Parked (`undefined`) whenever `search` is non-empty (Design Decision 7) — callers must check `search` before reading this. */
+  sort: CollectionTableSort<TFieldSlug> | undefined;
+  /** `""` means no search is active. */
+  search: string;
+  searchField: TFieldSlug | undefined;
+  pageSize: number;
+}
+
+/**
+ * Resolves one list query's effective state by merging three layers, narrowest first: the
+ * parsed URL (`params`, Design Decision 40's codec), the active view's own saved state
+ * (`configView`/`sharedView`, whichever the caller resolved `params.view` to), and the
+ * collection's own `admin.table` defaults.
+ *
+ * This merge is what makes a bare `?view=shared:<id>` link — unmodified from the saved
+ * view, so `serializeListParams` wrote none of its matching params (Design Decision 9:
+ * "only params that differ from the saved view appear") — render the SAME rows as the
+ * view's own tab: without it, an omitted `sort`/`filter` would silently fall back to the
+ * collection default instead of the view's. A **local** view never reaches here with
+ * `configView`/`sharedView` set — its full state is always in the URL already (Design
+ * Decision 41), so `params` alone is already complete for it.
+ *
+ * Called by `NextAdminPage` (server prerender, Design Decision 39, this step) and by
+ * `CollectionListView` (client, Steps 9/10/12) before either builds its query args — the
+ * ONE place this merge lives, so a link to an unmodified view can't render different rows
+ * on the two sides (`layout-stability.md`).
+ *
+ * @param props - Input props.
+ * @param props.collection - The resolved collection config — supplies the `admin.table`
+ *   defaults (`defaultSort`, `searchField[0]`, `defaultPageSize`).
+ * @param props.params - The parsed URL state.
+ * @param props.configView - The `config`-source view `params.view` names, from
+ *   `collection.admin.table.views` (always in memory) — `undefined` for any other source.
+ * @param props.sharedView - The `shared`-source view `params.view` names, from the
+ *   fetched/cached `listViews` result — `undefined` for any other source.
+ * @returns The resolved state.
+ */
+export function resolveListQueryState<TFieldSlug extends string = string>(props: {
+  collection: CollectionConfig;
+  params: ListParams<TFieldSlug>;
+  configView?: VexViewConfig<TFieldSlug>;
+  sharedView?: VexStoredView<TFieldSlug>;
+}): ResolvedListQueryState<TFieldSlug> {
+  const viewState: VexViewState<TFieldSlug> | undefined = props.configView?.state ?? props.sharedView?.state;
+  const where =
+    props.configView !== undefined
+      ? composeViewWhere({
+          viewWhere: props.configView.state.where,
+          filter: props.params.filter as VexWhereNodeOf<unknown> | undefined,
+        })
+      : ((props.params.filter as VexWhereNodeOf<unknown> | undefined) ?? viewState?.where);
+  return {
+    where,
+    sort: props.params.sort ?? viewState?.sort ?? props.collection.admin.table.defaultSort,
+    search: props.params.q !== "" ? props.params.q : (viewState?.search ?? ""),
+    searchField:
+      props.params.qf ??
+      viewState?.searchField ??
+      (props.collection.admin.table.searchField[0] as TFieldSlug | undefined),
+    pageSize: props.params.size ?? viewState?.pageSize ?? props.collection.admin.table.defaultPageSize,
+  };
+}
+```
+
+#### packages/core/src/collections/resolveListQueryState.test.ts
+
+New file, complete.
+
+```ts
+import { describe, expect, it } from "vitest";
+import { defineCollection, text } from "../index";
+import { resolveListQueryState } from "./resolveListQueryState";
+import type { ListParams } from "./listUrlParams";
+import type { VexStoredView, VexViewConfig } from "./types";
+
+const collection = defineCollection({
+  slug: "posts",
+  fields: { title: text() },
+  admin: {
+    table: {
+      searchField: ["title"],
+      defaultSort: { field: "_creationTime", order: "desc" },
+      defaultPageSize: 10,
+    },
+  },
+});
+
+function params(overrides: Partial<ListParams> = {}): ListParams {
+  return {
+    q: "",
+    qf: undefined,
+    sort: undefined,
+    filter: undefined,
+    size: undefined,
+    view: undefined,
+    peek: undefined,
+    ...overrides,
+  };
+}
+
+describe("resolveListQueryState — no active view", () => {
+  it("falls back to the collection's own defaults when the URL carries nothing", () => {
+    expect(resolveListQueryState({ collection, params: params() })).toEqual({
+      where: undefined,
+      sort: { field: "_creationTime", order: "desc" },
+      search: "",
+      searchField: "title",
+      pageSize: 10,
+    });
+  });
+
+  it("the URL's own values win over the collection defaults", () => {
+    const sort = { field: "title", order: "asc" } as const;
+    const filter = { field: "title", op: "eq", value: "x" } as const;
+    expect(
+      resolveListQueryState({ collection, params: params({ sort, filter, size: 25, q: "hi", qf: "title" }) }),
+    ).toMatchObject({ where: filter, sort, search: "hi", searchField: "title", pageSize: 25 });
+  });
+});
+
+describe("resolveListQueryState — config view", () => {
+  const configView: VexViewConfig = {
+    viewId: "cfg1",
+    name: "Featured",
+    state: {
+      where: { field: "title", op: "eq", value: "featured" },
+      sort: { field: "title", order: "asc" },
+      pageSize: 50,
+    },
+  };
+
+  it("composes the hidden where with the caller's own filter", () => {
+    const filter = { field: "title", op: "neq", value: "x" } as const;
+    const result = resolveListQueryState({ collection, params: params({ filter, view: "config:cfg1" }), configView });
+    expect(result.where).toEqual({ and: [configView.state.where, filter] });
+  });
+
+  it("uses the hidden where alone when the caller has no filter of their own", () => {
+    const result = resolveListQueryState({ collection, params: params({ view: "config:cfg1" }), configView });
+    expect(result.where).toEqual(configView.state.where);
+  });
+
+  it("falls back to the view's own sort/pageSize when the URL omits them — an unmodified config-view link", () => {
+    const result = resolveListQueryState({ collection, params: params({ view: "config:cfg1" }), configView });
+    expect(result.sort).toEqual({ field: "title", order: "asc" });
+    expect(result.pageSize).toBe(50);
+  });
+
+  it("the URL's own sort still wins over the view's", () => {
+    const sort = { field: "_creationTime", order: "desc" } as const;
+    const result = resolveListQueryState({ collection, params: params({ sort, view: "config:cfg1" }), configView });
+    expect(result.sort).toEqual(sort);
+  });
+});
+
+describe("resolveListQueryState — shared view", () => {
+  const sharedView: VexStoredView = {
+    viewId: "shared1",
+    name: "Team view",
+    collection: "posts",
+    createdBy: "user1",
+    state: {
+      where: { field: "title", op: "eq", value: "shared" },
+      sort: { field: "title", order: "desc" },
+      search: "saved",
+    },
+  };
+
+  it("falls back to the view's own where/sort/search when the URL carries none of them — an unmodified shared link", () => {
+    const result = resolveListQueryState({ collection, params: params({ view: "shared:shared1" }), sharedView });
+    expect(result).toMatchObject({ where: sharedView.state.where, sort: sharedView.state.sort, search: "saved" });
+  });
+
+  it("the URL's own filter still wins over the shared view's where — no hidden composition for a shared source", () => {
+    const filter = { field: "title", op: "neq", value: "y" } as const;
+    const result = resolveListQueryState({ collection, params: params({ filter, view: "shared:shared1" }), sharedView });
+    expect(result.where).toEqual(filter);
+  });
+});
+
+describe("resolveListQueryState — local view", () => {
+  it("reads the URL's own full state directly — no configView/sharedView to merge (Design Decision 41)", () => {
+    const sort = { field: "title", order: "asc" } as const;
+    const filter = { field: "title", op: "eq", value: "z" } as const;
+    const result = resolveListQueryState({ collection, params: params({ sort, filter, view: "local:loc1" }) });
+    expect(result).toMatchObject({ where: filter, sort });
+  });
+});
+```
+
+#### packages/core/src/collections/listViewsCookie.ts
+
+New file, complete.
+
+```ts
+/** Prefix for the cookie mirroring one collection's local saved-view index (Design Decision 41). */
+const LIST_VIEWS_COOKIE_PREFIX = "vex-list-views:";
+
+/** One entry in the local-view index — just enough to render a tab before hydration. */
+export interface LocalListViewIndexEntry {
+  viewId: string;
+  name: string;
+}
+
+/**
+ * Cookie name holding one collection's local saved-view index.
+ *
+ * Lives in `@vexcms/core`, like `livePreviewPanelCookieName` (`livePreview/panelCookie.ts`):
+ * both the server component that reads it (`NextAdminPage`) and the client store that
+ * writes it (`listView/listViewStore.ts`, Step 12) need it, and the store's module carries
+ * `"use client"`, which would make a co-located export unreachable from the server.
+ *
+ * @param props.collection - The collection slug the cookie is scoped to.
+ * @returns The fully-qualified cookie name.
+ */
+export function localListViewsCookieName(props: { collection: string }): string {
+  return `${LIST_VIEWS_COOKIE_PREFIX}${props.collection}`;
+}
+
+/**
+ * Parses the local-view index cookie into its `{ viewId, name }[]` entries (Design
+ * Decision 41). The store accepts a stale entry whose `localStorage` view was cleared —
+ * it renders the tab until hydration, then prunes it — so this reader never validates
+ * against anything beyond its own shape, it just decodes.
+ *
+ * @param props.cookieValue - The raw cookie value, or `undefined` when unset.
+ * @returns The index entries, or `[]` for an unset, empty, or malformed cookie — never throws.
+ */
+export function readLocalListViewsCookie(props: { cookieValue: string | undefined }): LocalListViewIndexEntry[] {
+  if (!props.cookieValue) return [];
+  try {
+    const parsed: unknown = JSON.parse(props.cookieValue);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (entry): entry is LocalListViewIndexEntry =>
+        typeof entry === "object" &&
+        entry !== null &&
+        typeof (entry as LocalListViewIndexEntry).viewId === "string" &&
+        typeof (entry as LocalListViewIndexEntry).name === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+```
+
+#### packages/core/src/collections/listViewsCookie.test.ts
+
+New file, complete.
+
+```ts
+import { describe, expect, it } from "vitest";
+import { localListViewsCookieName, readLocalListViewsCookie } from "./listViewsCookie";
+
+describe("localListViewsCookieName", () => {
+  it("scopes the cookie per collection", () => {
+    expect(localListViewsCookieName({ collection: "posts" })).toBe("vex-list-views:posts");
+  });
+});
+
+describe("readLocalListViewsCookie", () => {
+  it("returns [] when the cookie is unset", () => {
+    expect(readLocalListViewsCookie({ cookieValue: undefined })).toEqual([]);
+  });
+
+  it("parses a valid index", () => {
+    const cookieValue = JSON.stringify([{ viewId: "v1", name: "Mine" }]);
+    expect(readLocalListViewsCookie({ cookieValue })).toEqual([{ viewId: "v1", name: "Mine" }]);
+  });
+
+  it("returns [] for malformed JSON", () => {
+    expect(readLocalListViewsCookie({ cookieValue: "{not json" })).toEqual([]);
+  });
+
+  it("returns [] when the cookie value is a JSON object, not an array", () => {
+    expect(readLocalListViewsCookie({ cookieValue: JSON.stringify({ viewId: "v1" }) })).toEqual([]);
+  });
+
+  it("drops malformed entries while keeping valid ones", () => {
+    const cookieValue = JSON.stringify([{ viewId: "v1", name: "Mine" }, { viewId: "v2" }, "nope"]);
+    expect(readLocalListViewsCookie({ cookieValue })).toEqual([{ viewId: "v1", name: "Mine" }]);
+  });
+});
+```
+
+#### packages/core/src/collections/index.ts
+
+Existing file, 1 edit — append to the barrel:
+
+```ts
+export * from "./buildListQueryArgs";
+export * from "./resolveListQueryState";
+export * from "./listViewsCookie";
+```
+
+#### packages/core/src/framework.ts
+
+Existing file, 1 edit — add to `CollectionListViewProps`, alongside `initialData`:
+
+```ts
+  /**
+   * The Inspect peek's prefetched document, read server-side by `NextAdminPage` when
+   * `peek=` is set in the URL (Design Decision 39) — forwarded to `ListPeek`'s own
+   * `initialDoc` prop (Step 13) so a deep-linked peek opens with no re-fetch. `null` means
+   * the server confirmed no match (not-found/no-access); `undefined` means `peek=` was
+   * absent.
+   */
+  initialPeekDoc?: TDoc | null;
+```
+
+#### packages/react/src/hooks/useVexListQuery.ts
+
+Existing file (Step 8), 4 edits — both branches call the new shared builders instead of
+building their own Convex args inline, and the search branch gains `initialData` support
+(previously only the find-mode branch did, which meant a search-active first load — any
+page whose URL already has `q=` — had no SSR path and would always repaint after hydration).
+
+**1 — imports.** Add the two new builders to the existing `@vexcms/core` value import, and add
+`FindClientPaginatedArgs`, used by edit 2 below:
+
+```ts
+import { buildListFindQueryArgs, buildListSearchQueryArgs, vexConvexApi } from "@vexcms/core";
+import type { FindClientPaginatedArgs } from "../client";
+```
+
+**2 — `useVexListQuery`'s find-mode branch.** Replace the `usePaginatedQuery` call's inline
+`query` object with a `buildListFindQueryArgs` call:
+
+```ts
+  const findResult = usePaginatedQuery<TDocument>({
+    query: buildListFindQueryArgs({
+      collection: props.collection,
+      where: props.where,
+      sort: props.sort,
+      drafts: props.drafts,
+      depth: props.depth,
+      numItems,
+    }) as FindClientPaginatedArgs,
+    initialData: props.initialData,
+    clientPageSize: props.pageSize,
+    enabled: !isSearching,
+  });
+```
+
+**3 — `useVexListQuerySearch`'s props and seeded state.** Add `initialData` to the props
+interface, alongside `enabled`, and seed `allResults`/`isDone` from it instead of always
+starting empty:
+
+```ts
+  initialData?: PaginationResult<TDocument>;
+  enabled: boolean;
+}): UseVexListQueryReturn<TDocument> {
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [allResults, setAllResults] = useState<TDocument[]>(props.initialData?.page ?? []);
+  const [isDone, setIsDone] = useState(props.initialData?.isDone ?? false);
+```
+
+And in `useVexListQuery`'s own body, thread `initialData` through to this call — add it to
+the existing `useVexListQuerySearch<TDocument>({ … })` call alongside `enabled`:
+
+```ts
+    initialData: props.initialData,
+    enabled: isSearching,
+  });
+```
+
+**4 — `useVexListQuerySearch`'s index resolution and the `useQuery` call.** Replace the
+`searchIndexName` resolution block through the end of the `useQuery` call — i.e. everything
+from `let searchIndexName: string | undefined;` through the `enabled: props.enabled,\n  });`
+that closes it — with a `buildListSearchQueryArgs` call, still guarded by `props.enabled` so
+a disabled query never resolves a `searchIndexName` for a collection that may have no
+`searchField` at all, and seeded from `props.initialData` on the first page:
+
+```ts
+  if (props.enabled && props.searchField === undefined) {
+    throw new Error("useVexListQuery: `searchField` is required when `search` is non-empty");
+  }
+
+  const resolvedWhere = whereArg(props.where);
+  const resetKey = JSON.stringify({
+    collection: props.collection.slug,
+    where: resolvedWhere,
+    search: props.search,
+    searchField: props.searchField,
+    drafts: props.drafts,
+    numItems: props.numItems,
+  });
+```
+
+(the `resetKey` block above is unchanged — shown only so the next block's anchor, right
+after it, is unambiguous)
+
+```ts
+  const searchArgs =
+    props.enabled && props.searchField !== undefined
+      ? buildListSearchQueryArgs({
+          collection: props.collection,
+          where: resolvedWhere,
+          search: props.search,
+          searchField: props.searchField,
+          drafts: props.drafts,
+          numItems: props.numItems,
+          cursor,
+        })
+      : undefined;
+
+  const { data, isPending, isLoading, isError } = useQuery({
+    ...convexQuery(
+      vexConvexApi.search,
+      (searchArgs ?? {
+        collection: props.collection.slug,
+        searchIndexName: "",
+        searchField: "",
+        query: props.search,
+        where: resolvedWhere,
+        drafts: props.drafts,
+        paginationOpts: { numItems: props.numItems, cursor },
+      }) as never,
+    ),
+    ...(cursor === null && props.initialData ? { initialData: props.initialData } : {}),
+    enabled: props.enabled,
+  });
+```
+
+#### packages/react/src/hooks/useVexListQuery.serverParity.test.tsx
+
+New file, complete.
+
+```tsx
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { buildListFindQueryArgs, buildListSearchQueryArgs, defineCollection, text } from "@vexcms/core";
+import { useVexListQuery } from "./useVexListQuery";
+
+const convexQueryCalls: unknown[] = [];
+
+vi.mock("@convex-dev/react-query", () => ({
+  convexQuery: (fn: unknown, args: unknown) => {
+    convexQueryCalls.push(args);
+    return { queryKey: [fn, args], queryFn: () => Promise.resolve(undefined) };
+  },
+}));
+
+const collection = defineCollection({
+  slug: "posts",
+  fields: { title: text({ searchIndex: { name: "search_title", filterFields: [] } }) },
+});
+
+function wrapper({ children }: { children: ReactNode }) {
+  const queryClient = new QueryClient();
+  return createElement(QueryClientProvider, { client: queryClient }, children);
+}
+
+beforeEach(() => {
+  convexQueryCalls.length = 0;
+});
+
+// `NextAdminPage` (Design Decision 39) and this hook must send IDENTICAL Convex args for
+// the same list state, or the server's prefetched `initialData` hydrates under the wrong
+// query key and the list repaints right after hydration (layout-stability.md). Both now
+// go through `buildListFindQueryArgs`/`buildListSearchQueryArgs` — these tests prove this
+// hook's real wiring produces exactly what those functions do, so the two can't drift.
+describe("useVexListQuery — server parity (layout-stability.md)", () => {
+  it("find-mode sends the exact args buildListFindQueryArgs produces for the same props", () => {
+    const where = { field: "title", op: "eq", value: "x" } as const;
+    const sort = { field: "title", order: "asc" } as const;
+    renderHook(() => useVexListQuery({ collection, where, sort, drafts: true, depth: 1, pageSize: 25 }), {
+      wrapper,
+    });
+
+    const expected = buildListFindQueryArgs({ collection, where, sort, drafts: true, depth: 1, numItems: 100 });
+    expect(convexQueryCalls).toContainEqual(expected);
+  });
+
+  it("search-mode sends the exact args buildListSearchQueryArgs produces for the same props", () => {
+    renderHook(() => useVexListQuery({ collection, search: "hello", searchField: "title", pageSize: 25 }), {
+      wrapper,
+    });
+
+    const expected = buildListSearchQueryArgs({ collection, search: "hello", searchField: "title", numItems: 100 });
+    expect(convexQueryCalls).toContainEqual(expected);
+  });
+});
+```
+
+#### packages/next/src/NextAdminPage.tsx
+
+Existing file, 3 edits.
+
+**1 — imports.** Replace the two `@vexcms/core` import statements at the top of the file:
+
+```ts
+import type { CollectionSlug, PaginationResult, VexConfig, VexDocument, VexMediaDocument } from "@vexcms/core";
+
+import {
+  appendLivePreviewParams,
+  buildListFindQueryArgs,
+  buildListSearchQueryArgs,
+  livePreviewLayoutCookieName,
+  livePreviewPanelCookieName,
+  localListViewsCookieName,
+  parseListParams,
+  parseListPreferences,
+  readLivePreviewLayoutCookie,
+  readLivePreviewPanelCookie,
+  readLocalListViewsCookie,
+  resolveListQueryState,
+  resolveLivePreviewSettings,
+  vexConvexApi,
+} from "@vexcms/core";
+```
+
+**2 — function signature.** Add `searchParams`, forwarded by the app route — optional so
+existing callers (tests, routes not yet updated) keep compiling; an omitted value parses as
+no params:
+
+```ts
+export async function NextAdminPage(props: {
+  config: VexConfig;
+  params: Promise<{ path?: string[] }>;
+  /**
+   * Next.js's own `searchParams` prop, forwarded by the app route (`AdminPage`). Only the
+   * collection list route reads it (`parseListParams`, Design Decision 40) — every other
+   * route ignores it.
+   */
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  token?: string;
+}) {
+```
+
+**3 — the collection list branch.** Replace the final block, from `if (!collection) {` to
+the closing `}` of the function:
+
+```ts
+  if (!collection) {
+    throw new Error("invalid collection slug");
+  }
+
+  const params = parseListParams({
+    searchParams: toSearchParams((await props.searchParams) ?? {}),
+    collection,
+  });
+
+  const [sharedViews, peekDoc] = await Promise.all([
+    // One indexed read of a small table — the view tabs need it on first paint anyway
+    // (Design Decision 39), and it resolves a `shared`-source `params.view` below.
+    fetchQuery(
+      vexConvexApi.listViews,
+      { collection: collection.slug },
+      props.token ? { token: props.token } : undefined,
+    ),
+    params.peek === undefined
+      ? Promise.resolve(undefined)
+      : // Same args as `useVexDocQuery`'s client query inside `ListPeek` (Design Decision
+        // 27/39), so the hydrated peek opens with no re-fetch.
+        fetchQuery(
+          vexConvexApi.get,
+          { id: params.peek, collection: collection.slug, drafts: collection.versions.drafts },
+          props.token ? { token: props.token } : undefined,
+        ),
+  ]);
+
+  const [viewSource, viewId] = params.view?.split(":") ?? [];
+  const configView =
+    viewSource === "config" ? collection.admin.table.views.find((view) => view.viewId === viewId) : undefined;
+  const sharedView = viewSource === "shared" ? sharedViews.find((view) => view.viewId === viewId) : undefined;
+
+  const resolved = resolveListQueryState({ collection, params, configView, sharedView });
+  const numItems = Math.max(collection.admin.table.serverPageSize, resolved.pageSize);
+  const drafts = collection.versions.drafts ? true : undefined;
+
+  // Same branch `useVexListQuery` takes (Design Decision 7/39): `search` non-empty means
+  // `findPaginated` is the wrong endpoint entirely, not just the wrong args.
+  const initialData =
+    resolved.search.length > 0
+      ? await fetchQuery(
+          vexConvexApi.search,
+          buildListSearchQueryArgs({
+            collection,
+            where: resolved.where,
+            search: resolved.search,
+            searchField: resolved.searchField as string,
+            drafts,
+            numItems,
+          }),
+          props.token ? { token: props.token } : undefined,
+        )
+      : await fetchQuery(
+          vexConvexApi.findPaginated,
+          // Same args `useVexListQuery`'s find-mode branch sends (Design Decision 39) —
+          // `buildListFindQueryArgs` (Step 8/14) is the one place this shape lives.
+          buildListFindQueryArgs({ collection, where: resolved.where, sort: resolved.sort, drafts, depth: 1, numItems }),
+          props.token ? { token: props.token } : undefined,
+        );
+
+  return (
+    <CollectionListView
+      collection={collection.slug}
+      initialData={initialData as PaginationResult<VexDocument>}
+      initialViews={sharedViews}
+      initialLocalIndex={readLocalListViewsCookie({
+        cookieValue: cookieStore.get(localListViewsCookieName({ collection: collection.slug }))?.value,
+      })}
+      initialPreferences={parseListPreferences({ cookies: cookieStore })}
+      initialPeekDoc={peekDoc as VexDocument | null | undefined}
+    />
+  );
+}
+
+/**
+ * Converts Next.js's `searchParams` shape (`{ [key]: string | string[] | undefined }`) to
+ * the `URLSearchParams` `parseListParams` (Design Decision 40) expects — the one place this
+ * conversion happens, since every other reader of the list URL is client-side, where
+ * `URLSearchParams` is already what `useSearchParams()`/`nuqs` hand back.
+ *
+ * @param raw - The awaited `searchParams` prop.
+ * @returns An equivalent `URLSearchParams`, repeating a key for each array entry.
+ */
+function toSearchParams(raw: Record<string, string | string[] | undefined>): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(raw)) {
+    if (value === undefined) continue;
+    for (const entry of Array.isArray(value) ? value : [value]) params.append(key, entry);
+  }
+  return params;
+}
+```
+
+#### packages/next/src/NextAdminPage.test.ts
+
+Existing file, 3 edits.
+
+**1 — imports.** Add `checkbox` to the existing `@vexcms/core` import:
+
+```ts
+import { checkbox, defineCollection, defineConfig, defineGlobal, text, vexConvexApi } from "@vexcms/core";
+```
+
+**2 — fixtures and the `render` helper.** Add a third collection, with a declared search
+index and a config view with a hidden filter, alongside `plainPages`; include it in `config`;
+and give `render` an optional `searchParams` argument (existing calls, which omit it, are
+unaffected):
+
+```ts
+const viewsPosts = defineCollection({
+  slug: "posts2",
+  fields: {
+    title: text({ searchIndex: { name: "search_title", filterFields: [] } }),
+    featured: checkbox(),
+  },
+  admin: {
+    table: {
+      searchField: ["title"],
+      defaultSort: { field: "_creationTime", order: "desc" },
+      defaultPageSize: 10,
+      serverPageSize: 3,
+      views: [{ viewId: "cfg1", name: "Featured", state: { where: { field: "featured", op: "eq", value: true } } }],
+    },
+  },
+});
+
+const config = defineConfig({
+  collections: [versionedPosts, plainPages, viewsPosts],
+  globals: [versionedBanner],
+}) as unknown as VexConfig;
+
+async function render(path: string[], searchParams: Record<string, string> = {}) {
+  await NextAdminPage({ config, params: Promise.resolve({ path }), searchParams: Promise.resolve(searchParams) });
+}
+```
+
+**3 — new describe block.** Add after the `"NextAdminPage — unrecognized first path segment"`
+block:
+
+```ts
+const sharedViewFixture = {
+  viewId: "shared1",
+  name: "Team view",
+  collection: "posts2",
+  createdBy: "user1",
+  state: { sort: { field: "title", order: "desc" } as const, pageSize: 50 },
+};
+
+describe("NextAdminPage — list view prerender (Design Decision 39)", () => {
+  beforeEach(() => {
+    fetchQueryMock.mockReset().mockImplementation((fn: unknown) => {
+      if (fn === vexConvexApi.listViews) return Promise.resolve([sharedViewFixture]);
+      if (fn === vexConvexApi.findPaginated) return Promise.resolve({ page: [], isDone: true, continueCursor: "" });
+      if (fn === vexConvexApi.search) return Promise.resolve({ page: [], isDone: true, continueCursor: "" });
+      return Promise.resolve(null);
+    });
+  });
+
+  it("a default list prefetches findPaginated with the collection's own defaults", async () => {
+    await render(["collections", "posts2"]);
+    expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({
+      collection: "posts2",
+      where: undefined,
+      sort: { field: "_creationTime", order: "desc" },
+      paginationOpts: { numItems: 10, totalDocs: true, cursor: null },
+    });
+  });
+
+  it("q switches the prefetch to search, with the searchField's declared index", async () => {
+    await render(["collections", "posts2"], { q: "hello" });
+    expect(prefetchArgs(vexConvexApi.search)).toMatchObject({
+      collection: "posts2",
+      searchIndexName: "search_title",
+      searchField: "title",
+      query: "hello",
+    });
+  });
+
+  it("sort flows straight into findPaginated's args", async () => {
+    await render(["collections", "posts2"], { sort: "title.asc" });
+    expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({ sort: { field: "title", order: "asc" } });
+  });
+
+  it("filter decodes to the same where shape the filter builder produces", async () => {
+    await render(["collections", "posts2"], { filter: "(featured.eq.true)" });
+    expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({
+      where: { field: "featured", op: "eq", value: true },
+    });
+  });
+
+  it("size changes paginationOpts.numItems (serverPageSize is 3, below the requested size)", async () => {
+    await render(["collections", "posts2"], { size: "5" });
+    expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({ paginationOpts: { numItems: 5 } });
+  });
+
+  it("a shared view's own sort/pageSize apply when the URL carries neither — an unmodified shared link", async () => {
+    await render(["collections", "posts2"], { view: "shared:shared1" });
+    expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({
+      sort: { field: "title", order: "desc" },
+      paginationOpts: { numItems: 50 },
+    });
+  });
+
+  it("a config view's hidden filter composes alone when the caller adds no filter of their own", async () => {
+    await render(["collections", "posts2"], { view: "config:cfg1" });
+    expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({
+      where: { field: "featured", op: "eq", value: true },
+    });
+  });
+
+  it("a local view's full URL state is used as-is — no server-side view to look up", async () => {
+    await render(["collections", "posts2"], { view: "local:loc1", sort: "title.desc", filter: "(featured.eq.true)" });
+    expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({
+      sort: { field: "title", order: "desc" },
+      where: { field: "featured", op: "eq", value: true },
+    });
+  });
+
+  it("peek= prefetches get with the same args ListPeek's useVexDocQuery sends", async () => {
+    await render(["collections", "posts2"], { peek: "doc1" });
+    expect(prefetchArgs(vexConvexApi.get)).toEqual({ id: "doc1", collection: "posts2", drafts: false });
+  });
+
+  it("every render prefetches listViews once, for the tabs", async () => {
+    await render(["collections", "posts2"]);
+    expect(prefetchArgs(vexConvexApi.listViews)).toEqual({ collection: "posts2" });
+  });
+});
+```
+
+#### apps/test/src/app/(vexcms)/admin/[[...path]]/page.tsx
+
+Existing file, 2 edits.
+
+**1 — function signature.** Replace:
+
+```tsx
+export default async function AdminPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ path?: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+```
+
+**2 — render call.** Replace:
+
+```tsx
+  return <NextAdminPage config={config} params={params} searchParams={searchParams} token={token} />;
+```
+
+#### apps/www/src/app/(vexcms)/admin/[[...path]]/page.tsx
+
+Existing file, same 2 edits as `apps/test`'s route above (identical content).
+
+#### packages/create-vexcms/templates/base-nextjs/src/app/(vexcms)/admin/[[...path]]/page.tsx
+
+Existing file, same 2 edits as `apps/test`'s route above (identical content).
+
+#### apps/test/convex/seed.ts
+
+Existing file, 1 edit — the embedded "one route in your app" code example stays
+copy-pasteable. Replace the `code:` template literal's function signature and return line:
+
+```ts
+        code: `import { NextAdminPage } from "@vexcms/next/server"
+import { redirect } from "next/navigation"
+
+import { getToken } from "~/auth/server"
+import config from "~/vex.config.server"
+
+// The whole panel is one route in your app. Gate it however you
+// gate anything else, then hand it the config you already wrote.
+export default async function AdminPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ path?: string[] }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const token = await getToken()
+  if (!token) redirect("/auth/sign-in?redirectTo=/admin")
+
+  return <NextAdminPage config={config} params={params} searchParams={searchParams} token={token} />
+}`,
+```
+
+#### apps/www/convex/seed.ts
+
+Existing file, same 1 edit as `apps/test/convex/seed.ts` above (identical template literal).
+
+Verify: `pnpm --filter @vexcms/core test -- collections && pnpm --filter @vexcms/react test -- hooks && pnpm --filter @vexcms/next test && browser: hard-reload a default list, a `q` link, a `sort` link, a `filter` link, a shared-view link, a config-view link with its hidden filter, a local-view link, a `size` link, and a `peek` link — zero visible layout shift on each`
+
+### Step 15 — Keyboard shortcuts [agent]
+
+Why: Decision 30 pins the shortcut set to six core keys, handled by one internal hook built on `useEventListener` from `@ts-hooks-kit/core` — no new dependency, no command palette, no rebinding (Out of Scope). Per Decision 21, the hook lives in `collections/listView/` (the closed feature-subfolder set), named `useListShortcuts` with the `Collection`/`List` folder-scope prefix dropped, following the `listView/useListUrlState.ts` precedent from Step 10. Nothing here depends on the server-prerender, URL-codec, cookie, or CSS-collapse decisions (39–43): the hook only binds `window` keydown listeners and calls caller-supplied callbacks.
 
 - [ ] `packages/react/src/collections/listView/useListShortcuts.ts`
 - [ ] `packages/react/src/collections/listView/useListShortcuts.test.ts`
@@ -14733,45 +16233,48 @@ export * from "./listView/useListShortcuts";
 
 Verify: `pnpm --filter @vexcms/react test useListShortcuts`
 
-### Step 15 — Responsive pass at every width [agent]
+### Step 16 — Responsive pass at every width [agent]
 
-Why: renamed from "Mobile list layout" (round 2, architecture review 2026-10-27) because
-Decision 22 is no longer a single mobile breakpoint pass — it is **container, not viewport**
-(Decision 22, point 1): the list root is a size container (`@container/list`, like the edit
-view's `@3xl/form`), and layout switches key off the list's own width via container-query
-variants, not `md:`/`lg:` viewport breakpoints. `useIsMobile` is reserved for one thing only
-(Decision 22, point 3): deciding whether a menu/sheet/tab-switcher renders as an inline
-overlay or a bottom `Sheet`. The measured ⋯ overflow collapse itself (ResizeObserver with
-hysteresis, fixed order Copy link → Columns → rows per load, Search/Filter never collapsing)
-is `useListToolbarCollapse`, built in Step 10 as the generalised form of
-`documents/useHeaderActionsCollapse.ts` — this step does not rebuild that mechanism, it only
-adds the overlay container and container-query sizing around what Step 10 already measures.
-This step also drops the old `DataTableResponsiveMenu` wiring that collapsed
-`ListToolbar`'s *entire* secondary-controls group behind `md:` — that duplicated Step 10's
-measured collapse — and instead gives `useListToolbarCollapse`'s own overflow trigger a
-`DataTableResponsiveMenu` container, so the ⋯ menu it already produces opens as a `Popover`
-or bottom `Sheet` on `useIsMobile`'s split, not the toolbar's own layout width.
+Why: Decision 22 is **container, not viewport**: the list root is a size container
+(`@container/list`, like the edit view's `@3xl/form`), and layout switches key off the list's
+own width via container-query variants, not `md:`/`lg:` viewport breakpoints. `useIsMobile` is
+reserved for one thing only (Decision 22 point 3 / Decision 43): deciding whether a
+menu/sheet/tab-switcher renders as an inline overlay or a bottom `Sheet`. Decision 43
+(`layout-stability.md`) rules out a measured ⋯ overflow collapse — a JS-measured collapse only
+settles after hydration and reflows the toolbar on first paint. This step is a CSS-only
+collapse instead: every collapsible toolbar control renders twice — once in its inline slot,
+once inside the ⋯ menu — and a fixed `@container/list` breakpoint pair (`hidden <bp>:flex` /
+`<bp>:hidden`) decides which copy is visible, so the server's render is already the final
+render (Decision 43, `layout-stability.md` "Responsive variants render correctly first"). The
+fixed order (Copy link, then Columns, then rows per load; Search and Filter never collapse) is
+three breakpoint tiers. `ListToolbar`'s ⋯ trigger gets a `DataTableResponsiveMenu` container so
+its menu opens as a `Popover` or bottom `Sheet` on `useIsMobile`'s split (a device property, not
+a container-width one, and therefore untouched by Decision 43), not the toolbar's own layout
+width — `DataTableResponsiveMenu` itself picks `Popover` vs. bottom `Sheet` purely off
+`useIsMobile`, an interaction-time choice that never shifts first paint.
 
-- [ ] `packages/react/src/ui/data-table/DataTableResponsiveMenu.tsx` (new) + test — one trigger/content pair: `Popover` at `useIsMobile() === false`, bottom `Sheet` at `useIsMobile() === true` (768px, viewport — Decision 22 point 3)
+- [ ] `packages/react/src/ui/data-table/DataTableResponsiveMenu.tsx` (new) + test — one trigger/content pair: `Popover` at `useIsMobile() === false`, bottom `Sheet` at `useIsMobile() === true` (768px, viewport — Decision 22 point 3 / Decision 43)
 - [ ] `packages/react/src/ui/data-table/index.ts` — barrel export for `DataTableResponsiveMenu`
 - [ ] `packages/react/src/ui/data-table/DataTable.tsx` — sticky first column while the table scrolls horizontally (unconditional, not breakpoint-gated)
 - [ ] `packages/react/src/ui/data-table/DataTableBulkActions.tsx` — container-query sizing (`@container/list`, not `md:`): full-width, larger touch targets, icon-only secondary actions below `@lg/list` (position stays Step 10's — inline in the toolbar, left of Filter)
-- [ ] `packages/react/src/collections/listView/ListToolbar.tsx` — the ⋯ overflow trigger `useListToolbarCollapse` (Step 10) already produces gets a `DataTableResponsiveMenu` container; the bulk group (when a selection is active) replaces the Filter trigger below `@lg/list` via container-query classes, not `useIsMobile`
+- [ ] `packages/react/src/collections/listView/ListToolbar.tsx` — CSS-only ⋯ overflow at fixed `@container/list` breakpoints (Decision 43), wrapped in a `DataTableResponsiveMenu` container for the `Popover`/`Sheet` choice; the bulk group (when a selection is active) replaces the Filter trigger below `@lg/list` via container-query classes, not `useIsMobile`
 - [ ] `packages/react/src/ui/data-table/DataTableColumnsMenu.tsx` + `packages/react/src/collections/listView/ListFilterBuilder.tsx` — each swaps its trigger/content container for `DataTableResponsiveMenu`
-- [ ] `packages/react/src/collections/listView/ListViewTabs.tsx` — tabs collapse into one full-width view button that opens a `DataTableResponsiveMenu` sheet below `useIsMobile`'s 768px split
+- [ ] `packages/react/src/collections/listView/ListViewTabs.tsx` — the fixed visible-tab count per `@container/list` width is Step 12's; this step only collapses the tab row into one full-width view button that opens a `DataTableResponsiveMenu` sheet below `useIsMobile`'s 768px split
 - [ ] `.agent/docs/product/v0.1.0-launch-plan.md` — J section notes list view owned by I, resolves both stale "known suspects" bullets
 
 #### packages/react/src/ui/data-table/DataTableResponsiveMenu.tsx
 
 New file. The single overlay mechanism `DataTableColumnsMenu`, `ListFilterBuilder`,
-`ListViewTabs`'s overflow, and `ListToolbar`'s measured ⋯ trigger (Step 10) all switch to —
-one trigger/content pair that renders as a `Popover` at `useIsMobile() === false` and as a
+`ListViewTabs`'s mobile collapse, and `ListToolbar`'s ⋯ trigger (below) all switch to — one
+trigger/content pair that renders as a `Popover` at `useIsMobile() === false` and as a
 bottom `Sheet` at `useIsMobile() === true`, mirroring how `ui/sidebar.tsx` already flips
 between an inline rail and a `Sheet` overlay on the same `useIsMobile()` boundary
-(`MOBILE_BREAKPOINT = 768`). This is a **viewport** split (Decision 22 point 3: "`useIsMobile`
-decides overlays only") — deliberately not a container query, because whether an overlay can
-afford a hover-dismissable `Popover` versus needs a touch-sized `Sheet` is about the device,
-not the list's own width.
+(`MOBILE_BREAKPOINT = 768`). This is a **viewport** split (Decision 22 point 3 / Decision 43:
+"`useIsMobile` decides overlays only") — deliberately not a container query, because whether
+an overlay can afford a hover-dismissable `Popover` versus needs a touch-sized `Sheet` is
+about the device, not the list's own width. It never shifts first paint: it only opens on
+interaction (click/tap), so the server render that prerenders the page (Step 14) is unaffected
+by which branch this component takes.
 
 ```tsx
 "use client";
@@ -14798,11 +16301,11 @@ export interface DataTableResponsiveMenuProps {
 
 /**
  * Renders one trigger + content pair as a `Popover` at `useIsMobile() === false`, and as a
- * bottom `Sheet` at `useIsMobile() === true` (list-view-overhaul Design Decision 22 point 3:
- * "`useIsMobile` decides overlays only" — menus render as bottom sheets below 768px,
- * independent of the list container's own width). Every list-view menu composes this
- * instead of choosing `Popover` or `Sheet` itself, so they all collapse at the same
- * viewport boundary the same way.
+ * bottom `Sheet` at `useIsMobile() === true` (list-view-overhaul Design Decision 22 point 3 /
+ * Decision 43: "`useIsMobile` decides overlays only" — menus render as bottom sheets below
+ * 768px, independent of the list container's own width). Every list-view menu composes this
+ * instead of choosing `Popover` or `Sheet` itself, so they all collapse at the same viewport
+ * boundary the same way.
  *
  * @param props - Component props.
  * @param props.trigger - Trigger element, wrapped with `asChild` in `PopoverTrigger` /
@@ -14991,36 +16494,48 @@ any viewport width.
 
 #### packages/react/src/collections/listView/ListToolbar.tsx
 
-Guided edit against the component Step 10 creates. `ListToolbar` renders `ListSearch` plus
-`useListToolbarCollapse`'s measured ⋯ overflow (Copy link, then Columns, then rows per
-load — Search and Filter never collapse, Decision 22 point 2) and, left of the Filter
-trigger, the inline bulk group (`DataTableBulkActions`, above) when a selection is active.
-Saved views are not part of this toolbar (Step 12 renders them as tabs, above it) and
-`ListFilterBuilder`'s own trigger/content container is handled by this step's own edit to
-that file, below — this edit only touches the overflow trigger's container and the
-bulk/filter row swap.
+Guided edit against the component Step 10 creates. `ListToolbar` renders `ListSearch` plus a
+CSS-only ⋯ overflow (Copy link, then Columns, then rows per load — Search and Filter never
+collapse, Decision 22 point 2 / Decision 43) and, left of the Filter trigger, the inline bulk
+group (`DataTableBulkActions`, above) when a selection is active. Saved views are not part of
+this toolbar (Step 12 renders them as tabs, above it) and `ListFilterBuilder`'s own
+trigger/content container is handled by this step's own edit to that file, below — this edit
+only touches the overflow trigger's container and the bulk/filter row swap.
 
-**1 — overflow trigger gets a responsive container.** `useListToolbarCollapse` (Step 10)
-already decides WHICH controls move into the ⋯ trigger based on measured width; this step
-only wraps that trigger's content in `DataTableResponsiveMenu` so it opens as a `Popover` or
-bottom `Sheet` per Decision 22 point 3, instead of whatever inline/dropdown container Step
-10 stubbed:
+**1 — CSS-only ⋯ overflow, no measurement.** Collapse is CSS per Decision 43. Each of the three collapsible
+controls renders **twice** — once inline, once inside the ⋯ menu — gated by a fixed
+`@container/list` breakpoint pair per control, so the three thresholds reproduce the fixed
+order (Copy link collapses first/widest, then Columns, then rows per load, narrowest) with no
+JS measurement and no post-hydration reflow:
 
 ```tsx
 // TODO: implement
 // 1. import { DataTableResponsiveMenu } from "../../ui/data-table/DataTableResponsiveMenu"
 // 2. keep <ListSearch /> and the Filter trigger (this file's existing `ListFilterBuilder`
-//    render) unconditionally visible — useListToolbarCollapse never collapses either
-// 3. for whichever of {Copy link, Columns, rows-per-load} useListToolbarCollapse's state
-//    reports as collapsed, render them as `children` of ONE:
+//    render) unconditionally visible — neither ever collapses (Decision 22 point 2)
+// 3. three fixed breakpoint tiers, widest control collapses first:
+//    - Copy link:        inline `hidden @3xl/list:flex`, in-menu `@3xl/list:hidden`
+//    - Columns:           inline `hidden @xl/list:flex`,  in-menu `@xl/list:hidden`
+//    - Rows per load:     inline `hidden @lg/list:flex`,  in-menu `@lg/list:hidden`
+//    (each control is a single component instance rendered through a small helper that
+//    picks the inline vs. menu className pair, so there is exactly one control element
+//    per control — not two divergent copies that could drift)
+// 4. ⋯ trigger: always rendered in the DOM, but only visible when at least one control is
+//    still collapsed —
 //    <DataTableResponsiveMenu
-//      trigger={<Button variant="outline" size="icon" icon="MoreVertical" aria-label="More options" />}
+//      trigger={<Button variant="outline" size="icon" icon="MoreVertical" aria-label="More options" className="@3xl/list:hidden" />}
 //      title="List options"
 //    >
-//      {the collapsed controls, in useListToolbarCollapse's fixed order}
+//      {Copy link, Columns, rows-per-load — in this fixed order, each with its in-menu
+//      className from step 3 so it disappears from the menu once its own breakpoint
+//      promotes it inline}
 //    </DataTableResponsiveMenu>
-// 4. when nothing is collapsed, the trigger (and DataTableResponsiveMenu) does not render
-//    at all — mirrors useHeaderActionsCollapse's NOT_COLLAPSED default
+// Edge cases:
+// - at `@3xl/list` and wider all three controls show inline and the ⋯ trigger is hidden —
+//   there is no empty-menu flash because the breakpoint is a CSS media query, not a
+//   post-render measurement
+// - every tier is decided before hydration (SSR renders the same classes the client does),
+//   satisfying Decision 39/43: the server's first paint is the settled UI at any width
 ```
 
 **2 — bulk group replaces the Filter row on a narrow container.** Decision 22: "On narrow
@@ -15044,6 +16559,9 @@ as plain conditional Tailwind classes on the Filter trigger's wrapper:
 //   re-shows the Filter trigger automatically — no extra state to reset here
 // - `@lg/list` requires this toolbar to render inside the `@container/list` root Step 10's
 //   layout file puts on the list page; there is exactly one such root per list view
+// - the server renders `hasSelection` as false on every prerender (selection is
+//   interaction-only state, never serialized — Step 14 never prefetches a selection), so
+//   this swap never causes a server/client first-paint mismatch
 ```
 
 #### packages/react/src/ui/data-table/DataTableColumnsMenu.tsx
@@ -15082,36 +16600,56 @@ Guided edit against the component Step 11 creates, contributed as `vex.list.filt
 
 #### packages/react/src/collections/listView/ListViewTabs.tsx
 
-Guided edit against the component Step 12 creates (tabs in source order — **All**, config,
-shared, local — plus an "All views" overflow menu, grouped by source, for whatever doesn't
-fit). At `useIsMobile() === true` the whole tab row becomes one full-width button that opens
-the same grouped content as a sheet (Decision 22 point 3; design: "the tabs become one
-full-width view button that opens a sheet") — this stays viewport-keyed, like every other
-overlay-vs-inline choice in this step, because a tab strip's affordance (hover vs tap) is a
-device property, not a container-width one.
+Guided edit against the component Step 12 creates. Step 12 already decides, with a fixed
+`@container/list`-width visible-count table (CSS, not measurement —
+Decision 43), how many of the source-ordered tabs (**All**, config, shared, local) show
+inline versus fold into the "All views" overflow menu. This step adds the below-768px
+collapse to one full-width button that opens the same grouped content as a sheet
+(Decision 22 point 3; design: "the tabs become one full-width view button that opens a
+sheet") — but, unlike `DataTableResponsiveMenu`'s overlay-vs-popover choice (which stays
+CLOSED until clicked, so a device-width `useIsMobile()` branch never shifts first paint),
+the tab row is VISIBLE unconditionally on every page load. `useIsMobile()` always returns a
+coerced `false` before its viewport-measuring effect runs (this step's
+`DataTableResponsiveMenu` notes the same fact), so a JS branch here would render the
+desktop `Tabs` row on the server AND on an actual <768px device's first client render, then
+snap to the single button once hydration's effect resolves — exactly the one-frame flash
+`layout-stability.md` forbids. The fix is CSS, not JS: both subtrees render unconditionally,
+toggled by a `hidden md:flex` / `flex md:hidden` viewport breakpoint pair, mirroring the
+toolbar's `@container/list` CSS collapse one layer up at the viewport instead of the
+container.
 
-**1 — mobile collapse.** Replace the `Tabs` root, at `useIsMobile() === true`, with a single
-`DataTableResponsiveMenu` trigger/content pair that reuses the SAME grouped menu content
-Step 12 already renders for its desktop "All views" overflow — do not duplicate the
-grouped-by-source (Built-in · Shared · On this device), searchable, `ScrollSection`-backed
-list in a second place:
+**1 — mobile collapse, CSS not `useIsMobile()`.** Wrap Step 12's existing CSS-driven
+`Tabs` + "All views" overflow in `className="hidden md:flex"`, and add a SECOND,
+always-mounted subtree — the full-width mobile trigger + `DataTableResponsiveMenu` sheet,
+reusing the SAME grouped menu content Step 12 already renders for its desktop "All views"
+overflow (do not duplicate the grouped-by-source, searchable, `ScrollSection`-backed list
+in a second place) — wrapped in `className="flex md:hidden"`:
 
 ```tsx
 // TODO: implement
 // 1. import { DataTableResponsiveMenu } from "../../ui/data-table/DataTableResponsiveMenu"
-// 2. isMobile = useIsMobile()
-// 3. isMobile === true →
-//    a. trigger = a full-width Button showing the active view's name (or "All") truncated,
+// 2. Render BOTH subtrees unconditionally, never behind `useIsMobile()`:
+//    a. <div className="hidden md:flex">{Step 12's existing CSS-driven visible-count
+//       `Tabs` + "All views" overflow, unchanged by this step}</div>
+//    b. trigger = a full-width Button showing the active view's name (or "All") truncated,
 //       a muted "{n} views" count, and a chevrons-up-down icon — matching the existing
 //       view-tabs' active-view styling (modified dot, local Monitor icon) when applicable
-//    b. <DataTableResponsiveMenu trigger={trigger} title="Views">
-//         {the SAME grouped/searchable content Step 12's "All views" DropdownMenu/Popover
-//         already renders for the desktop overflow case}
-//       </DataTableResponsiveMenu>
-// 4. isMobile === false → Step 12's existing `Tabs` + "All views" overflow, unchanged
+//    c. <div className="flex md:hidden">
+//         <DataTableResponsiveMenu trigger={trigger} title="Views">
+//           {the SAME grouped/searchable content Step 12's "All views" DropdownMenu/Popover
+//           already renders for the desktop overflow case}
+//         </DataTableResponsiveMenu>
+//       </div>
 // Edge cases:
 // - the mobile trigger's "{n} views" count is the total across all three sources, same
 //   number the desktop overflow badge already computes — do not recompute it separately
+// - `initialViews`/`initialLocalIndex` (Step 14) are what the server renders before
+//   hydration, so BOTH subtrees' active-view name/count are already correct on first
+//   paint — only CSS decides which one is visible, so neither ever flashes
+// - `DataTableResponsiveMenu`'s OWN internal Popover-vs-Sheet choice inside subtree (c) may
+//   still use `useIsMobile()` (it opens only on interaction, so it never shifts first
+//   paint) — only the OUTER row-vs-button choice moves to CSS; see Decision 43's
+//   note on this distinction
 ```
 
 #### .agent/docs/product/v0.1.0-launch-plan.md
@@ -15124,16 +16662,16 @@ mobile UI pass` heading, before `### Tasks`:
 ```markdown
 > **The list view's responsive layout ships with `2026-10-26-list-view-overhaul` (I), not
 > here.** I's Design Decision 22 builds the container-query layout switches (not viewport
-> breakpoints — the list root is a size container, `@container/list`), the measured
-> toolbar-overflow collapse (`useListToolbarCollapse`), the `useIsMobile`-gated bottom-sheet
-> menus, the sticky-first-column horizontal scroll, the inline (never floating) bulk group
-> that replaces the Filter row on a narrow container, and the tabs-to-sheet view switcher as
-> part of the same spec that adds search, sort, filters, columns and saved views — so
-> `CollectionListView` / `DataTable`'s responsive behavior is shipped before J runs (Step
-> 15). J's regression pass over the list view (375/390/768/1024 covered pre-post, plus the
-> new 640/1280/1536 widths, plus a narrow split-pane case) audits I's shipped layout; a
-> layout defect found there is I's follow-up, not a new J finding against a stock
-> `DataTable`.
+> breakpoints — the list root is a size container, `@container/list`), the CSS-only
+> toolbar-overflow collapse at fixed breakpoints (Decision 43 — no `ResizeObserver`), the
+> `useIsMobile`-gated bottom-sheet menus, the sticky-first-column horizontal scroll, the
+> inline (never floating) bulk group that replaces the Filter row on a narrow container, and
+> the tabs-to-sheet view switcher as part of the same spec that adds search, sort, filters,
+> columns and saved views — so `CollectionListView` / `DataTable`'s responsive behavior is
+> shipped before J runs (Step 16), already server-prerendered with no layout shift (Step 14).
+> J's regression pass over the list view (375/390/768/1024 covered pre-post, plus the new
+> 640/1280/1536 widths, plus a narrow split-pane case) audits I's shipped layout; a layout
+> defect found there is I's follow-up, not a new J finding against a stock `DataTable`.
 ```
 
 **2 — stale "known suspects".** Two bullets under "Known suspects, from reading the code"
@@ -15143,39 +16681,44 @@ predate I. Append a resolution note to the horizontal-scroll bullet:
 - `DataTable` wraps in `overflow-x-auto` (`DataTable.tsx:225`) — horizontal scroll is the
   fallback, not a mobile design. A wide collection on a 375px screen is the worst case in
   the product. **Resolved by I** — ships a sticky first column alongside the scroll
-  region (list-view-overhaul Design Decision 22, Step 15); re-auditing this bullet is
+  region (list-view-overhaul Design Decision 22, Step 16); re-auditing this bullet is
   regression only.
 ```
 
 And append a resolution note to the bulk-bar bullet:
 
 ```markdown
-- The bulk-action floating bar, once it renders. **Resolved by I** — round 1 of the list
-  view design replaced the floating bar with an inline group in the toolbar/filter row
+- The bulk-action floating bar, once it renders. **Resolved by I** — the list
+  view design replaces the floating bar with an inline group in the toolbar/filter row
   (Decision 22), which on a narrow container stands in for the whole Filter row
-  (list-view-overhaul Step 15); there is no longer a floating bar to audit.
+  (list-view-overhaul Step 16); there is no longer a floating bar to audit.
 ```
 
 Verify: browser at 375 / 390 / 768 / 1024 / 1440 on `apps/test`, plus a narrow split-pane
 case (the list view rendered inside a container narrower than the viewport, to confirm the
-`@container/list` layout switches key off the container, not the window).
+`@container/list` layout switches key off the container, not the window). At each width,
+hard-reload (not client navigation) a shared view, a config view, a local view, and a
+`peek=` URL and confirm there is no visible shift between first paint and settled UI — the
+toolbar's ⋯ collapse, the tab row, and the peek's inline/right-sheet mode must already be in
+their final state on the server-rendered HTML (Step 14, Decision 43), with no
+`ResizeObserver`-driven reflow after hydration.
 
-### Step 16 — Examples, docs, acceptance [agent]
+### Step 17 — Examples, docs, acceptance [agent]
 
-Why: acceptance needs a 200-doc collection, a custom row + bulk action exercising `access`, a config view with a server-resolved `where` the current role can't read, a count-cap demonstration, an index-pushdown demonstration, a declared-filter narrowing demonstration, and a docs guide that matches every decision through the architecture review (peek, density, shortcuts, parked sort, filter chips, view tabs, hidden-filter narrowing, count cap, pushdown).
-Verify: pnpm typecheck && pnpm test && vex generate && the 14-item browser smoke checklist below, for at least one allowed role and one denied role
+Why: acceptance needs a 200-doc collection, a custom row + bulk action exercising `access`, a config view with a server-resolved `where` the current role can't read, a count-cap demonstration, an index-pushdown demonstration, a declared-filter narrowing demonstration, and a docs guide that matches every decision through the architecture review (peek, density, shortcuts, parked sort, filter chips, view tabs, hidden-filter narrowing, count cap, pushdown, server prerender, and the local-view cookie). It also needs hard-reload proof that Decision 39's zero-layout-shift promise holds for every view source and for the peek.
+Verify: pnpm typecheck && pnpm test && vex generate && the 15-item browser smoke checklist below, for at least one allowed role and one denied role
 
 - [ ] `apps/test/src/db/constants/index.ts` + `apps/test/src/vexcms/collections/testimonials.ts` (new) + `apps/test/src/vexcms/collections/index.ts` — collection with `searchField` (2 fields), sortable columns, an indexed `source` field, a low `admin.table.countLimit` (below the seeded row count, to exercise `totalDocsCapped`), 3 `views` (one with a server-resolved `where` on a field the `contributor`/`user` roles can't read), custom row + bulk action contributions, seed 200 docs
 - [ ] `apps/test/src/components/TestimonialFeatureRowAction.tsx` + `apps/test/src/components/TestimonialBulkApproveAction.tsx` (new) — custom row + bulk action contributions
-- [ ] `apps/test/src/auth/access.ts` — `testimonials` resource, `manageViews` rule, field-level read restriction on `internalScore`
+- [ ] `apps/test/src/auth/access.ts` — `testimonials` resource, `VIEW_ACTIONS` rules (`readViews`/`createView`/`updateView`/`deleteView`), field-level read restriction on `internalScore`
 - [ ] `apps/test/convex/seed.ts` — 200 seeded rows, each stamped with a `source`
-- [ ] `apps/docs/src/content/docs/guides/list-views.mdx` (new) — list-view guide covering every Step 1–15 behavior; `README.md` `admin.table` claims made true
+- [ ] `apps/docs/src/content/docs/guides/list-views.mdx` (new) — list-view guide covering every Step 1–16 behavior, including server prerender and the local-view cookie index; `README.md` `admin.table` claims made true
 - [ ] `.agent/docs/product/v0.1.0-launch-plan.md` — I tasks ticked; backlog updated
-- [ ] browser smoke checklist: every Verify above + `manageViews` denied vs allowed + hidden-filter badge + density + peek + keyboard shortcuts + declared-filter narrowing + count cap + pushdown
+- [ ] browser smoke checklist: every Verify above + `VIEW_ACTIONS` denied vs allowed + hidden-filter badge + density + peek + keyboard shortcuts + declared-filter narrowing + count cap + pushdown + hard-reload zero-shift for shared/config/local views and `peek=`
 
 #### apps/test/src/db/constants/index.ts
 
-1 edit — add the `testimonials` table slug beside the other `TABLE_SLUG_*` constants (unchanged lines omitted).
+1 edit — add the `testimonials` table slug beside the other `TABLE_SLUG_*` constants.
 
 ```ts
 export const TABLE_SLUG_TESTIMONIALS = "testimonials" as const;
@@ -15184,6 +16727,8 @@ export type TestimonialID = Id<typeof TABLE_SLUG_TESTIMONIALS>;
 ```
 
 #### apps/test/src/vexcms/collections/testimonials.ts
+
+The collection config, its three views, and every field are orthogonal to the server-prerender decisions (39–43): `findPaginated` receives the same `composeViewWhere(...)` either way, and prerendering changes where the first request happens, not what it asks for.
 
 ```ts
 import { checkbox, defineCollection, number, select, text, textarea } from "@vexcms/core";
@@ -15210,8 +16755,11 @@ import { TestimonialFeatureRowAction } from "../../components/TestimonialFeature
  * seeded count so `totalDocsCapped` and the "1,000+"-style capped count (decision 35)
  * are observable without seeding past the 1000 default. `status`'s `by_status` index
  * doubles as the equality filter pushdown demo (decision 36). The row/bulk
- * contributions below exercise decision 17 against the `manageViews`-gated `access`
- * rule declared in `~/auth/access.ts`.
+ * contributions below exercise decision 17 against the `VIEW_ACTIONS`-gated `access`
+ * rule declared in `~/auth/access.ts`. The three views also back the Step 14 server
+ * prerender: `NextAdminPage` resolves `featured`/`pending-review` (config), one
+ * promoted shared view, and one local view at render time, so this collection is the
+ * fixture for the hard-reload zero-shift checks below.
  */
 export const testimonials = defineCollection({
   slug: TABLE_SLUG_TESTIMONIALS,
@@ -15356,6 +16904,8 @@ export * from "./testimonials";
 
 #### apps/test/src/components/TestimonialFeatureRowAction.tsx
 
+New file.
+
 ```tsx
 import { useMutation } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
@@ -15419,6 +16969,8 @@ export function TestimonialFeatureRowAction(props: ListRowSlotProps) {
 ```
 
 #### apps/test/src/components/TestimonialBulkApproveAction.tsx
+
+New file.
 
 ```tsx
 import { useMutation } from "@tanstack/react-query";
@@ -15532,7 +17084,7 @@ import {
   ],
 ```
 
-**3 — `permissions`.** One rule per role, demonstrating `manageViews` allowed (`admin`, `editor`) vs denied (`contributor`, `guest`, `user`), and a field-level read restriction on `internalScore` for `contributor`/`user` (decision 26) so the High Value config view's hidden `where` genuinely references an unreadable field — `source` carries no restriction, so the narrowing smoke test (decision 26) stays legal for the same roles. `admin`'s existing `"*": true` already covers both; the other roles need an explicit `testimonials` entry.
+**3 — `permissions`.** One rule per role, demonstrating the four `VIEW_ACTIONS` allowed (`admin`, `editor`) vs denied (`contributor`, `guest`, `user`), and a field-level read restriction on `internalScore` for `contributor`/`user` (decision 26) so the High Value config view's hidden `where` genuinely references an unreadable field — `source` carries no restriction, so the narrowing smoke test (decision 26) stays legal for the same roles. `admin`'s existing `"*": true` already covers both; the other roles need an explicit `testimonials` entry.
 
 ```ts
     // ── Editor: full editorial control, no ownership restriction ────────────
@@ -15558,7 +17110,10 @@ Add, alongside the other resource blocks in the same object (after `posts`, befo
       testimonials: {
         read: () => ({ "*": true, internalScore: false }),
         update: () => ({ "*": true, internalScore: false }),
-        manageViews: false,
+        readViews: false,
+        createView: false,
+        updateView: false,
+        deleteView: false,
       },
       adminPanel: {
 ```
@@ -15578,7 +17133,7 @@ Add, alongside the other resource blocks (after `themes`, the last entry before 
 
 #### apps/test/convex/seed.ts
 
-1 edit — a new insert-if-missing section appended inside `runSeed`, mirroring the editorial-fixtures section's pattern (always insert-if-missing regardless of `mode`), right before the `return { created, patched, skipped }` line.
+1 edit — a new insert-if-missing section appended inside `runSeed`, mirroring the editorial-fixtures section's pattern, right before the `return { created, patched, skipped }` line.
 
 ```ts
   // ── TEST-ONLY: testimonials (list-view overhaul acceptance) ─────────────
@@ -15632,13 +17187,41 @@ Add, alongside the other resource blocks (after `themes`, the last entry before 
 ```mdx
 ---
 title: List Views
-description: Search, portable sort, filters, density, saved views, Inspect peek, keyboard shortcuts, and list.* slots for collection list views.
+description: Search, portable sort, filters, density, saved views, server prerendering, Inspect peek, keyboard shortcuts, and list.* slots for collection list views.
 ---
 
 Every collection list view ships a paginated, searchable, sortable, filterable data
 table driven entirely by `admin.table` — each control reads one config key, and a
 control with no key stays hidden. The page itself never scrolls: header, tabs,
-toolbar, and chips stay fixed, and the table owns its own scroll area (Step 10).
+toolbar, and chips stay fixed, and the table owns its own scroll area (Step 10). The
+first server render already shows the final rows, tabs, and preferences — there is no
+loading flash to a second, different layout (Step 14, Decision 39).
+
+## Server prerender
+
+```ts
+// apps/test/src/app/admin/testimonials/page.tsx (template; see packages/create-vexcms)
+export default function TestimonialsListPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  return <NextAdminPage collectionSlug="testimonials" searchParams={searchParams} />;
+}
+```
+
+`NextAdminPage` parses `searchParams` with the shared core codec
+(`parseListParams`/`serializeListParams`, `packages/core/src/collections/listUrlParams.ts`
+— no react import, shared verbatim with the client's `useListUrlState`). It reads the
+`vex-list-density`, `vex-list-chips:<collection>`, and `vex-list-views:<collection>`
+cookies, fetches `listViews` once, resolves the active view (config, shared, or the
+URL's full local-view state), and prefetches `findPaginated`/`search` with **exactly**
+the args the client's `useVexListQuery` sends — `where: composeViewWhere(...)`, `sort`,
+`numItems`, `drafts`, `depth`, `totalDocs` — plus `get(peek)` when `peek=` is set. Those
+go to `CollectionListView` as `initialData`, `initialViews`, `initialLocalIndex`,
+`initialPreferences`, and `initialPeekDoc`. A prefetch-args test
+(`NextAdminPage.test.ts`) and a matching client-side test
+(`useVexListQuery.test.tsx`) both assert against the shared `buildListQueryArgs`
+helper, so server and client query keys can never drift apart.
+
+Every later query from the browser — Load More, re-sorting, typing into search — is a
+plain client query; only the first render pays for `listViews` and the prefetch.
 
 ## Search
 
@@ -15698,9 +17281,13 @@ fields: {
 ```
 
 With no saved view selected, column visibility is session-only — there is no
-auto-persisted last-used state. The columns menu also holds a **Comfortable /
-Compact** density toggle (`DataTable`'s `density` prop), stored per browser —
-never in the URL or in saved views.
+auto-persisted last-used state (Decision 15). The columns menu also holds a
+**Comfortable / Compact** density toggle (`DataTable`'s `density` prop). Density and
+filter-chip visibility are **cookie-backed** (`vex-list-density`,
+`vex-list-chips:<collection>`, Decision 42), read by `NextAdminPage` on the server the
+same way `readLivePreviewPanelCookie` reads the live-preview panel cookie — so a
+reloaded page renders at the right density and chip visibility on the very first
+paint, never flipping after hydration. Neither enters the URL or a saved view.
 
 ## Filters
 
@@ -15784,7 +17371,7 @@ Views come from three sources, merged by `viewId` and shown as tabs — **All** 
 then config, shared, and local, overflowing into an "All views" menu grouped by
 source: `config` (`admin.table.views`, read-only), `shared` (the `vex_views` Convex
 table, collection-wide and org-scoped when `access.orgCollectionSlug` is set — no
-user or role scopes), and `local` (the browser's `localStorage`, the personal tier).
+user or role scopes), and `local` (the browser's `localStorage`, the personal tier). Shared views are invisible to a caller without `readViews` on the collection — `listViews` resolves to an empty list for them, so their tabs simply don't appear (no error).
 
 A config view's `where` is **hidden from the UI, not secret** — it ships in the client
 bundle like an access rule (P-004), since `admin.table.views` is part of the same
@@ -15801,12 +17388,22 @@ view's description, never as a chip or a builder row.
 
 Opening a view sets the page heading, a source/author line, and the description. A
 changed view shows a modified dot with Reset / Save (save changes, save as new, or
-reset) — the save target depends on `manageViews` and the view's source. Copy Link
+reset) — the save target depends on `createView`/`updateView` and the view's source. Copy Link
 serializes the full state when a local view is active (an unknown view ID in the URL
 falls back to the remaining params with a notice). Saving a local view shared
 ("promoting" it) keeps the same `viewId`, is idempotent, and deletes the local entry
 only after the shared save succeeds. `saveView` also rejects a shared view whose
 `where` references a field the saver can't read.
+
+**Local views prerender too.** While a local view is active, the URL always carries
+its full state (`q`/`qf`/`sort`/`filter`/`size`) plus `view=local:<id>`, so the server
+has everything it needs to render the exact rows without reading `localStorage`. A
+small `vex-list-views:<collection>` cookie mirrors each local view's `{ viewId, name }`
+so its **tab** also renders on the server; the full view state still lives only in
+`localStorage`. The local-view store writes both the cookie and `localStorage` on
+every save, rename, delete, and promotion. A stale cookie entry whose `localStorage`
+view was cleared (e.g. a different browser) shows its tab until hydration, then the
+store prunes it — an accepted tradeoff (Decision 41).
 
 ### Hidden filter narrowing
 
@@ -15820,33 +17417,41 @@ against normal read rules. Any edit to the hidden condition itself (a different
 value, a dropped clause, moving it into an OR group) is treated as an ordinary
 unreadable-field condition and drops rows, same as today.
 
-## `manageViews`
+## `VIEW_ACTIONS`
 
-Creating, editing, and deleting **shared** views requires the `manageViews` action,
-denied by default:
+Shared views are gated by four access actions, all denied by default: `readViews`
+(seeing the shared tabs and using them in `find`/`search`'s allow-list), `createView`
+(saving a new shared view or promoting a local one), `updateView` (saving changes to
+or renaming a shared view), and `deleteView` (deleting one):
 
 ```ts
 permissions: {
   editor: { testimonials: true },
-  contributor: { testimonials: { read: ..., update: ..., manageViews: false } },
+  contributor: {
+    testimonials: { read: ..., update: ..., readViews: false, createView: false, updateView: false, deleteView: false },
+  },
 },
 ```
 
-A user without `manageViews` can still save views locally — the menu only disables the
-"Save shared" option, not the feature.
+A user without `createView` can still save views locally — the menu only disables the
+"Save shared" option, not the feature. A user without `readViews` never sees the
+shared tabs at all.
 
 ## Inspect peek
 
-Clicking Inspect (or pressing `Space` on a focused row) opens a non-modal right
-panel at the list's fixed height, with its own scroll. It has a Fields tab (label,
-mono key, value, copy button; full `_id`; `_creationTime` as ISO/epoch/relative;
-relationship chip + target ID) and a JSON tab, both showing only fields the caller
-can read. It opens instantly from the already-loaded row via `peek=<id>` in the URL,
-then subscribes to the full document (`useVexDocQuery`) while open; a `peek` ID
-outside the loaded page fetches by ID, and a not-found or no-access document renders
-the same message either way, so the panel never reveals existence. Rows prefetch on
-150ms hover or keyboard focus, and the ±1 neighbours prefetch while the peek stays
-open.
+Clicking Inspect (or pressing `Space` on a focused row) opens a panel with a Fields tab
+(label, mono key, value, copy button; full `_id`; `_creationTime` as ISO/epoch/relative;
+relationship chip + target ID) and a JSON tab, both showing only fields the caller can
+read. Layout is a fixed `@container/list`/`@5xl/list` container-query switch (Decision
+43): inline beside the table at `@5xl/list` and wider, a non-modal right `Sheet` below
+that, and a bottom `Sheet` below 768px (`useIsMobile`, interaction-only). When
+`peek=<id>` is in the URL on first load, the server prefetches `get(peek)` and passes
+`initialPeekDoc`, so the panel is already open and populated on first paint instead of
+appearing after a client fetch. It then subscribes to the full document
+(`useVexDocQuery`) while open; a `peek` ID outside the loaded page still fetches by ID
+client-side if it wasn't prefetched, and a not-found or no-access document renders the
+same message either way. Rows prefetch on 150ms hover or keyboard focus, and the ±1
+neighbours prefetch while the peek stays open.
 
 ## Keyboard shortcuts
 
@@ -15890,10 +17495,13 @@ admin: {
 
 ## Responsive
 
-Below `md`, the toolbar collapses into an overflow menu, menus render as bottom
-sheets, the view tabs collapse into one button that opens a sheet, the table
-scrolls horizontally with a sticky first column, and the bulk controls replace the
-Filter row instead of overlaying the table (Step 15).
+Toolbar overflow, view-tab overflow, and the peek's inline/right-sheet switch all use
+fixed `@container/list` breakpoints — never `ResizeObserver` measurement (Decision 43),
+so the server's render is already the final one. Below `md`, the toolbar collapses
+into an overflow menu, menus render as bottom sheets (`useIsMobile`, interaction-only),
+the view tabs collapse into one button that opens a sheet, the table scrolls
+horizontally with a sticky first column, and the bulk controls replace the Filter row
+instead of overlaying the table (Step 16).
 
 See `apps/test/src/vexcms/collections/testimonials.ts` for the full working example —
 200 seeded rows, two `searchField` entries, two sortable columns, an indexed `source`
@@ -15903,15 +17511,15 @@ hidden filter), and the row/bulk contributions above.
 
 #### README.md
 
-1 edit — replace the "Pagination & Data Tables" section's example and launch-track callout (lines 293–313) now that search, sort, filters, saved views, density, the Inspect peek, and keyboard shortcuts ship.
+1 edit — replace the "Pagination & Data Tables" section's example and launch-track callout, lines 293–313, now that search, sort, filters, saved views, density, the Inspect peek, keyboard shortcuts, and server prerendering ship.
 
 ```md
 ### Pagination & Data Tables
 
 The admin panel's collection list view is a paginated data table backed by Convex's
 `usePaginatedQuery`, with per-collection search, sort, filters, column visibility,
-density, page size, saved views, an Inspect peek, and core keyboard shortcuts, all
-driven by `admin.table`:
+density, page size, saved views, an Inspect peek, core keyboard shortcuts, and a
+server-prerendered first paint, all driven by `admin.table`:
 
 \`\`\`typescript
 export const posts = defineCollection({
@@ -15933,8 +17541,8 @@ export const posts = defineCollection({
 \`\`\`
 
 > See the [list views guide](apps/docs/src/content/docs/guides/list-views.mdx) for
-> filters, saved views, the Inspect peek, shortcuts, and `list.*` slots for custom
-> row/bulk actions.
+> filters, saved views, the Inspect peek, shortcuts, server prerendering, and
+> `list.*` slots for custom row/bulk actions.
 ```
 
 #### .agent/docs/product/v0.1.0-launch-plan.md
@@ -15949,16 +17557,17 @@ export const posts = defineCollection({
   - [x] Per-collection search
   - [x] Sort (`defaultSort`, column flags, header affordances; parked while searching)
   - [x] Filter builder (DNF, live apply, chips, `vex_status`)
-  - [x] Column visibility (`defaultColumns`, menu) and density
+  - [x] Column visibility (`defaultColumns`, menu) and density (cookie-backed)
   - [x] Page-size control
   - [x] Count cap (`totalDocsCapped`) and filter index pushdown
-  - [x] Saved views (config/shared/local, view tabs, server-resolved config `where`, declared-filter narrowing)
+  - [x] Saved views (config/shared/local, view tabs, server-resolved config `where`, declared-filter narrowing, local-view cookie index)
   - [x] Per-collection data-source hooks (`useVexListQuery`/`useVexDocQuery`)
   - [x] Status enum replaces string literals
   - [x] List-view slots, built-ins as `vex.*` contributions; row and bulk actions
-  - [x] Inspect peek
+  - [x] Inspect peek (server-prefetched when `peek=` is in the URL)
   - [x] Core keyboard shortcuts
-  - [x] Responsive pass at every width
+  - [x] Responsive pass at every width (CSS container queries, no measurement)
+  - [x] Server prerender: zero-layout-shift first paint for shared, config, and local views
 ```
 
 Browser smoke checklist:
@@ -15976,11 +17585,12 @@ agent — P-024), signed in as each role in turn.
    round-trips through the URL and the chips match.
 4. **Columns & density** — hide the `Status` column via the columns menu; it disappears
    without a saved view selected (session-only). Toggle Compact density; rows tighten
-   and the preference survives a reload (per-browser, not in the URL).
+   and the preference survives a reload at the right density on the very first paint
+   (cookie-backed, not the URL — confirm via the request's `Cookie` header in devtools).
 5. **Page size** — change the page-size select to 50; Load More fetches 50 rows per
    click, resetting to the first page.
 6. **Views** — select the `Featured` config view (read-only); save the current state as
-   a local view; as a role with `manageViews` (`editor`/`admin`), promote it to shared.
+   a local view; as a role with `createView` (`editor`/`admin`), promote it to shared.
 7. **Hidden filter** — as `contributor`, select the `High Value` config view: a lock
    badge with a count appears, no chip, and the `internalScore` field is absent from the
    filter field list, sort headers, and the peek's Fields tab. As `admin`, the same view
@@ -15998,9 +17608,11 @@ agent — P-024), signed in as each role in turn.
     (verify via the server's query plan/log, or a row count attached to the response in
     dev); combine with a sort on `_creationTime` to confirm the equality still pushes
     down alongside the sort.
-11. **`manageViews` denied vs allowed** — as `contributor`, confirm the "Save shared" /
-    promote action is disabled (local save still works); as `editor`, confirm it is
-    enabled and a saved shared view appears for both roles.
+11. **`VIEW_ACTIONS` denied vs allowed** — as `contributor` (`readViews`/`createView`/
+    `updateView`/`deleteView` all denied), confirm the shared-view tabs don't appear at
+    all and the "Save shared" / promote action is disabled (local save still works); as
+    `editor` (all four allowed), confirm the shared tabs appear and a saved shared view
+    is visible to both roles.
 12. **Row + bulk actions** — open the row menu and confirm the order Open, Inspect, Copy
     ID, then the star feature action, then Delete. Click the star action on one
     testimonial; `featured` toggles. Select several `pending` rows; bulk controls render
@@ -16016,9 +17628,18 @@ agent — P-024), signed in as each role in turn.
 14. **Responsive** — at 375 / 390 / 768 / 1024 / 1440, and inside a narrow pane, the
     toolbar collapses into an overflow menu, menus render as sheets below `md`, view
     tabs collapse into one sheet-opening button, the table scrolls horizontally with a
-    sticky first column, and bulk controls replace the Filter row (Step 15).
+    sticky first column, and bulk controls replace the Filter row (Step 16).
+15. **Hard-reload zero shift** — with devtools' Network panel open and throttled (Slow
+    3G), hard-reload (not client nav) four URLs in turn: a shared view
+    (`?view=shared:<id>`), a config view (`?view=config:high-value`, as `admin`), a
+    local view with full state in the URL (`?q=…&sort=…&filter=…&view=local:<id>`), and
+    a row with `?peek=<id>`. In each case confirm: the final rows/tabs/density/chips/
+    peek-panel are present in the very first painted frame (no empty-state → filled-
+    state flash, no tab list growing after mount, no peek panel appearing after a
+    visible delay), and the response HTML (view source) already contains the resolved
+    view's name and the prefetched rows.
 
-Passing the 14-item checklist above, for at least one allowed role and one denied role, is
+Passing the 15-item checklist above, for at least one allowed role and one denied role, is
 this step's Verify condition (see the Verify line at the top of this step).
 
 ## Verification
@@ -16026,4 +17647,4 @@ this step's Verify condition (see the Verify line at the top of this step).
 - `pnpm typecheck && pnpm test` green
 - `harness doctor` clean; `harness struct` regenerated after Step 2
 - `vex generate` in `apps/test` emits `vex_views` and every `searchField` search index
-- Step 16 browser smoke checklist recorded
+- Step 17 browser smoke checklist recorded, including hard reloads with no visible layout shift

@@ -25,6 +25,12 @@ harness_model_role: slow
 6. Run the codepath-coverage check.
 7. Check every spec edge case is implemented; search the touched files for remaining
    `throw new Error("Not implemented")` stubs.
+7a. Run `pnpm check:vercel` — the pristine-clone build CI and Vercel run. A local
+   `pnpm build` passes on faults a fresh Linux checkout hits (unbuilt package `dist/`,
+   missing hoisted deps, case-only renames git never recorded on macOS), so this is the
+   only local evidence the tree builds in CI. Every failure is **BLOCKING** in the
+   report unless it matches an open `tasks.md` inbox item — then report it as a WARN
+   citing that item. Reviews only: never fix here, list the failing step and error.
 8. Generate lightweight suggestions only (small, low-risk, no new spec required). This is a
    review: never apply changes — suggestions are presented, nothing is edited.
 9. Present findings in the exact output format at the end of the checklist.

@@ -30,7 +30,6 @@
 - Release mechanics before tagging: `changeset pre exit` (15 queued changesets), publish via pnpm, `scripts/verify-scaffold.mjs` green, publish T's release notes
 - Launch — run U's plan
 - Assessed-but-deferred features live in `.agent/docs/product/backlog.md`
-- Fix scripts/vercel-build-check.mjs: since / prerenders via a live vex.query, the placeholder NEXT_PUBLIC_CONVEX_URL makes the pristine build fail on every run (pre-existing at a180967). Pass through a real dev URL when present, or make HomePage degrade when Convex is unreachable
 - F follow-up — spec 2026-09-18-lifecycle-hooks-validation step 8: write `scripts/verify-hooks-wiring.mjs`, add a `createVexMutations` assertion to `scripts/verify-scaffold.mjs`, and write `apps/docs/src/content/docs/guides/lifecycle-hooks.mdx` (apps/test + base-nextjs template wiring, and the marketing-site slug validator, are done)
 - Concurrent-edit conflict detection already assessed — see backlog.md § Concurrent-edit conflict-resolution UX
 
@@ -58,3 +57,4 @@
 - B3 — Backend-neutral query args (spec 2026-10-21-backend-neutral-query-args) — before 0.1.0 tag
 - K — codebase conventions refactor (spec 2026-10-25-codebase-conventions-refactor)
 - 8. H — Edit-view overhaul: unsaved-changes nav guard, duplicate document, duplicate block
+- Fix scripts/vercel-build-check.mjs: since / prerenders via a live vex.query, the placeholder NEXT_PUBLIC_CONVEX_URL makes the pristine build fail on every run (pre-existing at a180967). Pass through a real dev URL when present, or make HomePage degrade when Convex is unreachable

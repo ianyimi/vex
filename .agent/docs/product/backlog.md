@@ -925,3 +925,25 @@ outside the editor.
 
 **Why deferred.** Low priority; the storage saving is small, and ids stay the default because
 they enable those identity features. Revisit whenever document size becomes a user concern.
+
+## Per-view access for saved views (role-scoped views)
+
+**What.** Restrict which roles can see and use a saved view — and therefore its hidden filter —
+instead of every role that can read the collection seeing every view.
+
+**Why.** Technical users build views for specific audiences (support triage, finance review);
+today (spec `2026-10-26-list-view-overhaul`) any role with `readViews` sees every shared and
+config view, and the declared-filter allow-list accepts any view's hidden filter.
+
+**Lift.** Small, because the list-view spec splits view permissions into `readViews` (a
+query action, like `readDrafts`) / `createView` / `updateView` / `deleteView`:
+- Shared views: a `readViews` rule with a `where` over `vex_views` rows (e.g. a `roles` field
+  chosen in the save dialog). `listViews` and `find`'s shared-view allow-list already run through
+  `readViews`, so no new enforcement path.
+- Config views: an optional `access` on `admin.table.views[]`, checked by `toClientViewConfig`
+  consumers and by `matchDeclaredViewFilter` before it trusts a hidden filter.
+- UI: a role picker in the save dialog; hidden tabs for views a role can't read.
+
+**Blocks.** Nothing — lands after the list-view spec.
+
+**Why deferred.** Not needed for v0.1.0; the action split keeps it additive.
