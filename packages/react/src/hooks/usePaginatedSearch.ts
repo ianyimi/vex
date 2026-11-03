@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { useDebounceValue } from "@ts-hooks-kit/core";
+import { useDebouncedValue } from "./useDebouncedValue";
 import type {
   CollectionConfig,
   MediaCollectionConfig,
@@ -84,7 +84,7 @@ export function usePaginatedSearch<
   drafts,
   mimeTypes,
 }: UsePaginatedSearchProps): UsePaginatedSearchReturn<TDocument> {
-  const [debouncedQuery] = useDebounceValue(query, 200);
+  const debouncedQuery = useDebouncedValue(query, 200);
   const titleSearchIndex = resolveTitleSearchIndex({ collection });
   const useSearch = titleSearchIndex !== undefined && debouncedQuery.length > 0;
   const mimeTypesKey = mimeTypes?.join(",") ?? "";

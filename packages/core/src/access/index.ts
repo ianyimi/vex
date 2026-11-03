@@ -12,3 +12,4 @@ export * from "./evaluateQueryConstraint";
 export * from "./buildChecks";
 export * from "./resolveAccessCall";
 export * from "./resolveReadCall";
+export * from "./resolveViewOrganizationScope";

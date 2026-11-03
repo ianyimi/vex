@@ -248,7 +248,7 @@ describe("generateVexTypes — document interfaces", () => {
     expect(result).toContain("links?: { id?: string; \nlabel?: string }[]");
   });
 
-  it("hoists an unnamed tab's fields onto the document interface, nests a named tab as its own sub-object, and drops a ui() field", () => {
+  it("hoists an unnamed tab's fields onto the document interface, nests a named tab as its own sub-object, and emits a ui() field's key as never (developer decision, binding, \"access-system-fields\" — a ui() field has no stored value but IS now a real, gateable field-permission key, so its KEY must exist on the generated interface even though the VALUE type is meaningless)", () => {
     const config = defineServerConfig({ config: defineConfig({
       collections: [
         defineCollection({
@@ -273,7 +273,7 @@ describe("generateVexTypes — document interfaces", () => {
     expect(output).toContain("first: string");
     expect(output).toContain("last: string");
     expect(output).toContain("note?: string");
-    expect(output).not.toContain("helper");
+    expect(output).toContain("helper?: never");
   });
 
   it("hoists a tabs() field nested inside a group's own fields onto the group's interface", () => {
@@ -492,6 +492,7 @@ describe("generateVexTypes — IndexFieldsBySlug", () => {
         defineCollection({
           slug: "pages",
           fields: { slug: text({ index: "by_slug" }) },
+          timestamps: false,
         }),
       ],
     }) })
@@ -509,6 +510,7 @@ describe("generateVexTypes — IndexFieldsBySlug", () => {
             authorId: text({ index: { name: "by_author_category", additionalFields: ["categoryId"] } }),
             categoryId: text(),
           },
+          timestamps: false,
         }),
       ],
     }) })
@@ -526,6 +528,7 @@ describe("generateVexTypes — IndexFieldsBySlug", () => {
             categoryId: text(),
           },
           indexes: [{ name: "by_author_category", fields: ["authorId", "categoryId"] }],
+          timestamps: false,
         }),
       ],
     }) })
@@ -536,10 +539,11 @@ describe("generateVexTypes — IndexFieldsBySlug", () => {
   it("auto-indexes relationship fields as a readonly by_<fieldKey> one-tuple", () => {
     const config = defineServerConfig({ config: defineConfig({
       collections: [
-        defineCollection({ slug: "authors", fields: { name: text() } }),
+        defineCollection({ slug: "authors", fields: { name: text() }, timestamps: false }),
         defineCollection({
           slug: "posts",
           fields: { author: relationship({ collection: { slug: "authors" } }) },
+          timestamps: false,
         }),
       ],
     }) })
@@ -556,6 +560,7 @@ describe("generateVexTypes — IndexFieldsBySlug", () => {
             slug: text({ index: "by_slug" }),
             status: text({ index: "by_status" }),
           },
+          timestamps: false,
         }),
       ],
     }) })
@@ -567,7 +572,7 @@ describe("generateVexTypes — IndexFieldsBySlug", () => {
 
   it("emits '{}' — never 'never' — for a collection with no indexed fields", () => {
     const config = defineServerConfig({ config: defineConfig({
-      collections: [defineCollection({ slug: "pages", fields: { title: text() } })],
+      collections: [defineCollection({ slug: "pages", fields: { title: text() }, timestamps: false })],
     }) })
     const output = generateVexTypes({ config });
     expect(output).toContain(`pages: {}`);
@@ -771,7 +776,7 @@ describe("generateVexTypes - index-less collections", () => {
     // and took down every consumer of the concrete access config in the app.
     // `{}` is the contract: `keyof {}` is `never`, so `IndexNameFor` still widens
     // correctly while the entry stays a valid object type to index into.
-    const bare = defineCollection({ slug: "site_settings", fields: { name: text() } });
+    const bare = defineCollection({ slug: "site_settings", fields: { name: text() }, timestamps: false });
     const config = defineServerConfig({ config: defineConfig({ collections: [bare] }) })
     const output = generateVexTypes({ config });
     expect(output).toContain("site_settings: {}");

@@ -6,6 +6,7 @@ import { TextareaField } from "./textarea";
 import { JsonField } from "./json";
 import { CheckboxField } from "./checkbox";
 import { DateField } from "./date";
+import { CommitTsField } from "./commitTs";
 import { TDocument } from "../documents/types";
 import { CollectionConfig } from "../collections";
 import { SelectField } from "./select";
@@ -32,6 +33,7 @@ export * from "./textarea/types";
 export * from "./json/types";
 export * from "./number/types";
 export * from "./checkbox/types";
+export * from "./commitTs/types";
 export * from "./blocks/types";
 export * from "./tabs/types";
 export * from "./collapsible/types";
@@ -86,6 +88,7 @@ export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
   | NumberField<VexResourceSlug, TFieldMeta>
   | CheckboxField<VexResourceSlug, TFieldMeta>
   | DateField<VexResourceSlug, TFieldMeta>
+  | CommitTsField<VexResourceSlug, TFieldMeta>
   | SelectField<VexResourceSlug, TFieldMeta>
   | UrlField<VexResourceSlug, TFieldMeta>
   | ColorField<VexResourceSlug, TFieldMeta>
@@ -230,4 +233,56 @@ export interface CellComponentProps<
   isTitleField: boolean;
   /** The parent collection config — used by title cells to build the edit link `href`. */
   collection: TCollectionConfig;
+}
+
+/**
+ * Props passed to a field's READ-ONLY display component — one per field
+ * type, registered in `reactAdapter.fields[type].display` (polish round),
+ * beside `field`/`cell`/`filterInput`. Resolved via `fieldToDisplayComponent`,
+ * which falls back to the type's `cell` when no `display` is registered —
+ * simpler than {@link CellComponentProps} on purpose: a read-only display
+ * has no table row, no title-link behavior, and no column key, just the
+ * value, the field it belongs to, and enough document/collection context
+ * to resolve a relationship/upload's related doc or build an edit link.
+ *
+ * @typeParam TField - Narrows `field` to a specific field type.
+ */
+export interface DisplayComponentProps<
+  TField extends AdminDataField = AdminDataField,
+  TData extends TDocument = TDocument,
+  TCollectionConfig extends CollectionConfig = CollectionConfig,
+> {
+  /** The resolved field definition — narrows to the specific field type via `TField`. */
+  field: TField;
+  /** The raw field value from the document — typed to the field's value type. */
+  value: TField["defaultValue"];
+  /** The full document the value belongs to. */
+  document: TData;
+  /** The parent collection config. */
+  collection: TCollectionConfig;
+}
+
+/**
+ * Props passed to a filter row's value control — one per filterable field
+ * type, registered in `reactAdapter.fields[type].filterInput` (Decision
+ * 50) beside `field`/`cell`. `op` is a plain `string`, not the list
+ * view's own `ListViewFilterOp` (`"isEmpty"`/`"isNotEmpty"` included) — this
+ * type lives in core, and the list-view-only op vocabulary is a
+ * `packages/react`-side concern; a control that cares which op is active
+ * (none do today — every registered type renders the same control
+ * regardless of `eq`/`neq`/`gte`/`lte`) can still switch on the string.
+ *
+ * @typeParam TField - Narrows `field` to a specific field type.
+ */
+export interface FilterInputProps<TField extends AdminDataField = AdminDataField> {
+  /** The resolved field definition — narrows to the specific field type via `TField`. */
+  field: TField;
+  /** The row's current raw value — `undefined`/`""` for a not-yet-entered row. */
+  value: unknown;
+  /** The row's current operator, as a plain string (the list view's own `ListViewFilterOp`, stringified). */
+  op: string;
+  /** Replaces the row's value. */
+  onChange: (value: unknown) => void;
+  /** Whether the control is non-interactive — `isEmpty`/`isNotEmpty` rows render no control at all rather than passing `disabled`, so this is for a future caller, not used by `ListViewFilterBuilder` today. */
+  disabled?: boolean;
 }

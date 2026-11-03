@@ -2260,3 +2260,70 @@ describe("constrained rules with no authenticated user", () => {
     ).toBe(false);
   });
 });
+
+// Developer-reported fix (binding): a view action resolving to a field map is
+// now a compile error (`ViewPermissionCheck`), but an untyped/JS config or an
+// `as` cast can still reach this at runtime — `console.warn` mocked (never
+// asserted on directly here; the behavior change IS the assertion) just to
+// keep the test output quiet.
+describe("hasPermission — view action resolves to a field map (developer-reported, binding)", () => {
+  const viewActionMapAccess = {
+    roles: ["editor"],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    enabled: true,
+    defaultPermissionMode: PERMISSION_MODES.deny,
+    resources: [articles],
+    permissions: {
+      editor: {
+        articles: {
+          // A real config would never type-check this (ViewPermissionCheck forbids
+          // a map) — simulating the untyped/JS-config escape hatch via a cast.
+          readViews: (() => ({ "*": false, title: true })) as unknown as boolean,
+          createView: (() => ({ "*": true })) as unknown as boolean,
+        },
+      },
+    },
+  } as never;
+
+  it("fails closed (denies) rather than reading a truthy map as an implicit allow, with scope: \"any\"", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(
+      hasPermission({
+        access: viewActionMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "readViews",
+        scope: PERMISSION_SCOPES.any,
+      }),
+    ).toBe(false);
+    warnSpy.mockRestore();
+  });
+
+  it("fails closed even for a map with \"*\": true — the WHOLE map is invalid here, not just its individual field decisions", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(
+      hasPermission({
+        access: viewActionMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "createView",
+        scope: PERMISSION_SCOPES.any,
+      }),
+    ).toBe(false);
+    warnSpy.mockRestore();
+  });
+
+  it("warns in development when a view action resolves to a map", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    hasPermission({
+      access: viewActionMapAccess,
+      user: asUser("editor"),
+      resource: "articles",
+      action: "readViews",
+      scope: PERMISSION_SCOPES.any,
+    });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("view actions are collection-level"));
+    warnSpy.mockRestore();
+  });
+});

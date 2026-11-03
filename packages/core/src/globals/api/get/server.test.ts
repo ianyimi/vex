@@ -58,6 +58,35 @@ describe("getGlobal (server)", () => {
   });
 });
 
+describe("getGlobal (server) — commitTs ms conversion", () => {
+  const commitTsConfig: VexConfig = {
+    globals: [
+      {
+        slug: "siteSettings",
+        fields: { siteName: { type: "text" }, updatedAt: { type: "commitTs", on: "save" } },
+        labels: { singular: "Site Settings" },
+        versions: { drafts: false },
+      },
+    ],
+  } as unknown as VexConfig;
+
+  it("converts a resolved-bigint commitTs field to a plain ms number", async () => {
+    const t = convexTest(schema, modules);
+    const resolvedNs = BigInt(1_700_000_000_000) * BigInt(1_000_000);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("vex_globals", {
+        slug: "siteSettings",
+        data: { siteName: "My Site", updatedAt: resolvedNs },
+      });
+    });
+    const result = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({ ctx, slug: "siteSettings", config: commitTsConfig }),
+    )) as Record<string, unknown> | null;
+    expect(typeof result?.updatedAt).toBe("number");
+    expect(result?.updatedAt).toBe(1_700_000_000_000);
+  });
+});
+
 describe("getGlobal (server) — field-level read shaping", () => {
   function buildConfig(permissions: Record<string, unknown>): VexConfig {
     return {
@@ -102,7 +131,7 @@ describe("getGlobal (server) — field-level read shaping", () => {
     expect(result?.siteName).toBe("My Site");
   });
 
-  it("never strips _id, _creationTime, or _slug", async () => {
+  it("never strips _id or _slug, but strips _creationTime under a fully-restrictive wildcard (developer decision, binding, \"access-system-fields\")", async () => {
     const config = buildConfig({ editor: { siteSettings: { read: () => ({ "*": false }) } } });
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
@@ -112,9 +141,21 @@ describe("getGlobal (server) — field-level read shaping", () => {
       getGlobal({ ctx, slug: "siteSettings", config, auth: editorAuth }),
     )) as VexDocumentGlobal | null;
     expect(result?._id).toBeDefined();
-    expect(result?._creationTime).toBeDefined();
     expect(result?._slug).toBe("siteSettings");
+    expect(result?._creationTime).toBeUndefined();
     expect(result?.siteName).toBeUndefined();
+  });
+
+  it("keeps _creationTime when the map explicitly allows it, same as any other gateable field", async () => {
+    const config = buildConfig({ editor: { siteSettings: { read: () => ({ "*": false, _creationTime: true }) } } });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("vex_globals", { slug: "siteSettings", data: { siteName: "My Site" } });
+    });
+    const result = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({ ctx, slug: "siteSettings", config, auth: editorAuth }),
+    )) as VexDocumentGlobal | null;
+    expect(result?._creationTime).toBeDefined();
   });
 
   it("strips per document when the map's value is an expression over the document", async () => {

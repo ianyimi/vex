@@ -1,4 +1,3 @@
-import { COLLECTION_SYSTEM_FIELDS } from "../collections/constants";
 import { removeVexFields } from "../versions/removeVexFields";
 import { ADMIN_FIELDS, cloneBlockWithFreshIds, getDataFields } from "../fields";
 import type { AdminField, GenericBlock } from "../fields";
@@ -73,8 +72,7 @@ export function cloneDocumentForDuplicate(props: {
   document: Record<string, unknown>;
 }): Record<string, unknown> {
   const dataFields = getDataFields({ fields: props.fields });
-  const stripped = removeVexFields({ doc: props.document });
-  delete stripped[COLLECTION_SYSTEM_FIELDS.updatedAt.slug];
+  const stripped = removeVexFields({ doc: props.document, fields: props.fields });
 
   const cloned: Record<string, unknown> = { ...stripped };
   for (const [key, field] of Object.entries(dataFields)) {

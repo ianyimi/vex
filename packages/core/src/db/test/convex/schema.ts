@@ -19,12 +19,13 @@ const schema = defineSchema({
     // Only `find`'s "warns once" draftStatus test reads through `by_excerpt`, so
     // the module-level warn-once memory has never seen it when that test runs.
     excerpt: v.optional(v.string()),
-    // Declared because `create`/`update` now stamp it; `convex-test` enforces
-    // this fixture exactly as a real deployment would.
-    updatedAt: v.optional(v.number()),
+    // Declared because `create`/`update` now stamp it (`stampCommitTsFields`);
+    // `convex-test` enforces this fixture exactly as a real deployment would.
+    updatedAt: v.optional(v.commitTs()),
     featured: v.optional(v.boolean()),
     deleted: v.optional(v.boolean()), // For soft delete tests
     author: v.optional(v.array(v.id("authors"))),
+    cover: v.optional(v.array(v.id("images"))), // upload field, for depth-populate tests
     parent: v.optional(v.array(v.id("posts"))), // self-ref for depth tests
     // Versioning columns, matching what `versionFieldsToVexSchema` emits for a
     // collection declaring `versions.drafts: true`. Optional, so every
@@ -51,6 +52,11 @@ const schema = defineSchema({
     // rule: an index name is only shared if every resource declares it, and the field
     // tuples must match or the positional builder terminates at the shortest.
     slug: v.optional(v.string()),
+    // Mirrors `posts.updatedAt` — every real `defineCollection()`-based
+    // table gets this column now (Step 3 cutover); declared here so a
+    // populated `author` relationship target can carry a resolved
+    // `commitTs` value for the ms-conversion tests in `populate.test.ts`.
+    updatedAt: v.optional(v.commitTs()),
     organization: v.optional(v.array(v.id("organizations"))),
     vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
     vex_publishedAt: v.optional(v.number()),
@@ -98,6 +104,31 @@ const schema = defineSchema({
     restoredFrom: v.optional(v.number()),
     publishedAt: v.optional(v.number()),
   }).index("by_document_version", ["collection", "documentId", "version"]),
+
+  vex_views: defineTable({
+    collection: v.string(),
+    viewId: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    state: v.any(),
+    organizationId: v.optional(v.string()),
+    createdBy: v.string(),
+  })
+    .index("by_collection", ["collection"])
+    .index("by_collection_org", ["collection", "organizationId"])
+    .index("by_view_id", ["viewId"]),
+
+  // Media-collection fixture for upload-field depth-populate tests
+  // (`find`/`search`/`get` server tests, `buildDepthPopulate`).
+  images: defineTable({
+    filename: v.string(),
+    alt: v.optional(v.string()),
+    mimeType: v.optional(v.string()),
+    size: v.optional(v.number()),
+    storageId: v.optional(v.string()),
+    src: v.optional(v.string()),
+    deleted: v.optional(v.boolean()),
+  }),
 });
 
 export default schema;

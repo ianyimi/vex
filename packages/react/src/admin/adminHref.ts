@@ -14,6 +14,7 @@ import { MODALS } from "../modals/constants";
  */
 export type AdminHrefTarget =
   | { type: "dashboard" }
+  | { type: "collections" }
   | { type: "collection"; slug: string }
   | { type: "global"; slug: string }
   | { type: "globals" }
@@ -29,12 +30,15 @@ export type AdminHrefTarget =
  * title links (Step 17 audit finding 7) — grep for `adminHref(` to confirm
  * no hand-built admin URL remains outside this file.
  *
- * Collection targets resolve under `/collections/` —
+ * `"collections"` is the collections-only index page at `/{basePath}/collections`
+ * (collections + media collections, permission-filtered — `CollectionsIndexView`),
+ * parallel to the pre-existing `"globals"` index at `/{basePath}/globals`
+ * (`GlobalsListView`). Collection targets resolve under `/collections/` —
  * `/{basePath}/collections/{slug}`, `/{basePath}/collections/{slug}/{id}` —
  * and `/{basePath}/{slug}` 404s (launch spec H, no redirect). Global targets
  * are unchanged: `/{basePath}/globals/{slug}`. The route parser
  * `NextAdminPage.tsx` reads these same two first-segment shapes
- * (`collections/<slug>[/<id>]`, `globals/<slug>`) and `notFound()`s on
+ * (`collections[/<slug>[/<id>]]`, `globals[/<slug>]`) and `notFound()`s on
  * anything else — a separate, pre-existing concern this function does not
  * touch.
  *
@@ -47,6 +51,7 @@ export type AdminHrefTarget =
  * @example
  * ```ts
  * adminHref({ type: "dashboard" }, "/admin");                          // "/admin"
+ * adminHref({ type: "collections" }, "/admin");                        // "/admin/collections"
  * adminHref({ type: "collection", slug: "posts" }, "/admin");          // "/admin/collections/posts"
  * adminHref({ type: "global", slug: "siteSettings" }, "/admin");       // "/admin/globals/siteSettings"
  * adminHref({ type: "document", slug: "posts", id: "abc" }, "/admin"); // "/admin/collections/posts/abc"
@@ -58,6 +63,8 @@ export function adminHref(target: AdminHrefTarget, basePath: string): string {
   switch (target.type) {
     case "dashboard":
       return root;
+    case "collections":
+      return `${root}/collections`;
     case "collection":
       return `${root}/collections/${target.slug}`;
     case "global":

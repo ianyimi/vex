@@ -231,6 +231,35 @@ entirely. `update`'s map permits only `adminTheme`, so `name` and `description` 
 visible (they're readable) but not editable. Nothing else changed — no `fields` sibling on
 the resource entry, no second wiring point, no new `defineAccess` option.
 
+### System and UI fields are gateable too
+
+A field map's keys aren't limited to the fields you declared in `fields: {}`. Three real
+system field names are valid map keys on any collection, typed per collection: `_creationTime`
+(always present), `updatedAt` (present unless the collection sets `timestamps: false`), and
+`vex_status` (only on a collection with `versions.drafts: true`). `ui()`-type fields (a
+client-computed value with no stored column, e.g. a `wordCount` admin-only display) are
+gateable the same way, by their own key.
+
+**`_id` is the one exception — it is never a valid map key, and is always readable.** Every
+document needs a stable identity for links, row keys, and relationship targets regardless of
+role; there is no scenario where hiding it is useful.
+
+Every one of these follows the SAME "hidden unless listed" rule a declared data field already
+does: a partial map that doesn't name `updatedAt`/`vex_status`/a `ui()` field hides it, exactly
+like an unnamed data field. The wildcard key (`"*"`) covers them too — `{ "*": true }` shows
+everything, system and UI fields included.
+
+```ts
+posts: {
+  "*": false,
+  read: () => ({ title: true, slug: true, updatedAt: true }), // vex_status stays hidden
+},
+```
+
+**One carve-out:** sorting by `_creationTime` is always allowed, even for a role whose map
+hides its own value — a list view's default sort has to work regardless of whether the
+timestamp itself is ever shown in a column.
+
 ### Why a map is only ever a callback's return value
 
 A field map is never written directly on an action — only returned from a callback, whether
@@ -404,6 +433,20 @@ and the admin-panel bundle — the same boundary `hasPermission()` already has. 
 Convex function that calls `ctx.db` directly bypasses this the same way it already bypasses
 `hasPermission()`.
 
+### Declared view filters are exempt from the field-read check
+
+A list view's own `where` — declared on `admin.view`/`admin.views` in config, or saved on an
+active, unmodified shared view — still applies server-side even when it names a field the
+current caller can't read (the same treatment `vex_status`'s draft/publish filtering already
+gets). The caller never sees the field's value (no column, filter chip, or peek row for it);
+the view instead shows its "N hidden filter(s)" lock badge. The moment a caller edits a shared
+view's own filter it becomes theirs — fully subject to the read check from then on, like any
+other user-supplied condition.
+
+A user-added filter condition (typed into the filter builder, or carried in a URL/local-view
+link) on a field the caller can't read is dropped before the query reaches the server, with a
+small dismissible notice naming the field.
+
 ### Public API surface
 
 Everything above is built from a small set of exports:
@@ -414,7 +457,9 @@ Everything above is built from a small set of exports:
   before returning it — what `find`/`get`/`search`/`globals.get`/`globals.find` use
   server-side). `VexAccessError` gained an optional `field`, present only on a field-scoped
   denial.
-- **`@vexcms/react`** — `useFieldPermissions` and `useVisibleFields`, both described above.
+- **`@vexcms/react`** — `useFieldPermissions` and `useVisibleFields`, both described above,
+  plus `useCanReadField({ resource })` — checks readability for a system (`_creationTime`/
+  `updatedAt`/`vex_status`) or `ui()`-type field by key, the same way for any field type.
 
 ### What's deferred
 
@@ -446,21 +491,50 @@ export const access = defineAccess({
 ```
 
 `anonRole` only applies when the caller's resolved roles are genuinely empty — an
-authenticated user with a declared role always keeps their own role. A route guard that
-checks admin-panel access, rather than redirecting an anonymous visitor away outright, is
-what makes this work end to end:
+authenticated user with a declared role always keeps their own role. Two gates have to
+agree to let an anonymous visitor through, if your framework adapter puts a session gate
+in front of the route at all (Next.js middleware does): the route itself, and whatever
+runs before it reaches the route.
+
+**The route** checks `canAccessAdminPanel` BEFORE redirecting on a missing session —
+never unconditionally:
 
 ```ts
 import { canAccessAdminPanel } from "@vexcms/core";
 import { redirect } from "next/navigation";
 
-// Inside your admin route, after resolving `auth` server-side. `auth.user` may be
-// `null` here — an anonymous visitor is a valid caller; `anonRole` supplies the
-// fallback role instead of the route redirecting them out.
+// `getToken()`/`getUserOrg()` resolved first, as usual. `auth.user` may be `null` here —
+// an anonymous visitor is a valid caller; `anonRole` supplies the fallback role instead
+// of this redirecting them out purely for having no session.
 if (!canAccessAdminPanel({ access: config.access, user: auth.user, organization: auth.organization })) {
-  redirect("/unauthorized");
+  // Only redirect to sign-in when there was genuinely no token — a signed-in caller
+  // whose own role still fails the check goes to /unauthorized instead.
+  redirect(token ? "/unauthorized" : "/auth/sign-in?redirectTo=/admin");
 }
 ```
+
+**Middleware** (Next.js `proxy.ts`/`middleware.ts`), if your app gates `/admin` at that
+layer, needs the SAME check — a session gate there runs before the route ever executes,
+so fixing only the route still bounces an anonymous visitor before they reach it:
+
+```ts
+import { canAccessAdminPanel } from "@vexcms/core";
+import vexConfig from "~/vex.config";
+
+async function guardAdminRequest(request: NextRequest) {
+  // Pure, synchronous, no I/O — never throws. Skips the session-verification round trip
+  // entirely when `anonRole` already grants `adminPanel.access`.
+  if (canAccessAdminPanel({ access: vexConfig.access, user: null })) {
+    return NextResponse.next();
+  }
+  // ...your existing session check, unchanged for every app that hasn't opted in.
+}
+```
+
+Both checks are pure config decisions: an app that never sets `anonRole` (or sets it
+without granting `adminPanel.access`) gets byte-identical behavior to before — neither
+gate's fast path ever fires, and every unauthenticated request still redirects to sign-in
+exactly as it always did.
 
 A direct mutation attempt from that same anonymous caller is still rejected server-side —
 `guest` never declares `create`/`update`/`delete`, so those actions fall through the
@@ -588,6 +662,34 @@ hasPermission({ resource: "posts", action: "update", data: post });
 
 Either client path is **advisory only** — hiding or disabling a button is a UX affordance,
 not enforcement. The server guard is what actually protects the data.
+
+## Saved-view permissions
+
+`VIEW_ACTIONS` (`readViews`, `createView`, `updateView`, `deleteView`) gate shared-view CRUD
+on the `vex_views` table — a different shape from every other action, because a saved view is
+one whole collection-level row, never read or written per-field or per-document. A view
+action's check is **boolean-only**: a plain `true`/`false`, or a callback returning
+`boolean | undefined`, receiving only `{ user, organization? }` — no `data`, since there's no
+document to inspect, and no field-permission map return value either, since partial read/write
+of a view row makes no sense.
+
+```ts
+posts: {
+  readViews: true,
+  createView: ({ user }) => user.roles.includes("editor"),
+  updateView: ({ user }) => user.roles.includes("editor"),
+  deleteView: false,
+},
+```
+
+A field map or a `{ where, filter, withIndex }` constrained-query object returned for a view
+action is a type error at the config level. If one reaches runtime anyway (an untyped config,
+an `as` cast), it's denied with a dev-only console warning — never read as an implicit allow.
+
+Per-view access (a callback that receives the specific stored view a `createView`/`updateView`
+call targets, for rules narrower than "can this role touch shared views at all") is tracked as
+a backlog item, not built here — the single props-object callback shape is deliberately left
+room to add a `view` property later without another breaking change.
 
 ## Custom actions and resources
 

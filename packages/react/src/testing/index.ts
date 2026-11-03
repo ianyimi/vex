@@ -35,6 +35,17 @@ function isContainerFieldType(fieldType: DataFieldType): fieldType is "array" | 
 }
 
 /**
+ * Field types registered with a real `.field` component in `reactAdapter.fields`, but
+ * whose admin field renders NO editable control at all — `commitTs` is read-only by
+ * design (Interview Decision 4): it has no `renderBareControl`/`useFieldControlOverride`
+ * dispatch, so none of `runFieldInputContractSuite`'s control-driven assertions
+ * (`getControl`, `setControlValue`, the two readOnly-source checks, …) apply. Its own
+ * `fields/commitTs/Field.test.tsx` covers its actual (value-driven, not control-driven)
+ * contract directly.
+ */
+export const NO_CONTROL_FIELD_TYPES: ReadonlySet<DataFieldType> = new Set(["commitTs"]);
+
+/**
  * A representative subset of `fieldFixtures`' keys — one from each category
  * (simple, choice, temporal, network, nested-of-nested) — used as every
  * container's `childFieldTypes` here. Mirrors the exact subset convention the
@@ -52,6 +63,7 @@ const CONTAINER_CHILD_FIELD_TYPES: DataFieldType[] = ["text", "select", "date", 
  */
 const NO_TRUNCATION_FIELD_TYPES: ReadonlySet<DataFieldType> = new Set([
   "date",
+  "commitTs",
   "number",
   "checkbox",
   "color",
@@ -209,6 +221,7 @@ export function runVexReactSuite(options?: {
     for (const fieldType of Object.keys(fieldFixtures) as DataFieldType[]) {
       const fixture = fieldFixtures[fieldType];
       if (!fixture) continue;
+      if (NO_CONTROL_FIELD_TYPES.has(fieldType)) continue;
       const InputComponent = fieldToFieldComponent(fieldType);
       if (!InputComponent) continue;
       // Boundary cast: `fieldToFieldComponent` returns

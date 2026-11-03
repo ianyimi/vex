@@ -86,7 +86,7 @@ import { RenderBlocks } from "@vexcms/react"
 
 ## UI Primitives
 
-Reusable UI primitives re-exported from `@vexcms/react`, including `Accordion`, `Badge`, `Button`, `Card`, `Checkbox`, `Dialog`, `DropdownMenu`, `Input`, `Label`, `Popover`, `ScrollArea`, `Select`, `Separator`, `Sheet`, `Sidebar`, `Skeleton`, `Table`, `Tabs`, `Tooltip`, `VexLink`, and `VexImage`, plus a `DataTable` (TanStack Table integration), date/time pickers, drag-and-drop helpers, and `Icon`/theme utilities (`ThemeProvider`, `ThemeToggle`, `ThemeScript`).
+Reusable UI primitives re-exported from `@vexcms/react`, including `Accordion`, `Badge`, `Button`, `Card`, `Checkbox`, `Dialog`, `DropdownMenu`, `Input`, `Label`, `Popover`, `ScrollArea`, `Select`, `Separator`, `Sheet`, `Sidebar`, `Skeleton`, `Table`, `Tabs`, `Tooltip`, `VexLink`, and `VexImage`, plus a `DataTable` (TanStack Table integration), date/time pickers, drag-and-drop helpers, and `Icon`/theme utilities (`ThemeProvider`, `ThemeToggle`). `ThemeScript` is server-renderable and lives in the `@vexcms/react/server` entry.
 
 ## Config Helpers
 

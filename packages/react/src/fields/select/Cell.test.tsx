@@ -12,6 +12,24 @@ runFieldCellContractSuite({
   extra: (options) => {
     const collection = options.collection ?? testCollection;
 
+    describe("select: empty value", () => {
+      it("renders the em-dash placeholder for an empty selection array (not undefined/null)", () => {
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value: [] });
+        render(
+          withCellConfig(
+            <SelectFieldCell
+              value={[]}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
+        );
+        expect(screen.getByText("—")).toBeInTheDocument();
+      });
+    });
     describe("select: own rendering", () => {
       it("renders a Badge per selected option, using each option's label", () => {
         const row = makeCellRow<TDocument>({ fieldKey: "field", value: options.fixture.valid });

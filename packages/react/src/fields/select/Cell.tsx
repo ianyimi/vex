@@ -11,7 +11,8 @@ import { useVexConfig } from "../../config/VexConfigContext";
  * Select field cell component for the data-table list view.
  *
  * Renders each selected option as a `Badge`. Options not present in the stored
- * value are omitted. Renders an empty `div` when the value is empty or undefined.
+ * value are omitted. Shows an em-dash placeholder when the value is `undefined`,
+ * `null`, or an empty array (no selection).
  *
  * @param props - Component props
  * @param props.value - Array of selected option values from the document
@@ -26,7 +27,7 @@ import { useVexConfig } from "../../config/VexConfigContext";
 export function SelectFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<SelectField, TData>,
 ) {
-  if (props.value === undefined || props.value === null) return <span>—</span>;
+  if (props.value === undefined || props.value === null || props.value.length === 0) return <span>—</span>;
   const config = useVexConfig();
   const fields = props.value
     .map((v) => props.fieldDef.options.find((o) => o.value === v))

@@ -69,6 +69,24 @@ export const CONTENT_STATUS = {
 } as const;
 export type ContentStatus = (typeof CONTENT_STATUS)[keyof typeof CONTENT_STATUS];
 
+export const TABLE_SLUG_TESTIMONIALS = "testimonials" as const;
+export type TestimonialDoc = Doc<typeof TABLE_SLUG_TESTIMONIALS>;
+export type TestimonialID = Id<typeof TABLE_SLUG_TESTIMONIALS>;
+
+/**
+ * Where a testimonial was collected from. Indexed (`by_source`, declared on
+ * the `source` field itself) so the list view can sort/filter by it with
+ * index pushdown instead of a per-document scan — the Step 24 acceptance
+ * demo for `resolveQueryIndex`.
+ */
+export const TESTIMONIAL_SOURCES = {
+  website: "website",
+  import: "import",
+  survey: "survey",
+  referral: "referral",
+} as const;
+export type TestimonialSource = (typeof TESTIMONIAL_SOURCES)[keyof typeof TESTIMONIAL_SOURCES];
+
 export const GLOBAL_SLUG_NAV = "nav" as const;
 export const GLOBAL_SLUG_SITE_SETTINGS = "siteSettings" as const;
 export const GLOBAL_SLUG_ANNOUNCEMENT = "announcement" as const;

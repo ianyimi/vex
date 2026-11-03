@@ -1,4 +1,5 @@
 import { BUILTIN_CONTRIBUTION_IDS, defineCollection, relationship, richtext, text } from "@vexcms/core"
+import { assertUniqueAmongPublished } from "@vexcms/core/server"
 
 import { TABLE_SLUG_ARTICLES, TABLE_SLUG_FIELDS, TABLE_SLUG_IMAGES, TABLE_SLUG_POSTS } from "~/db/constants"
 import { EditorialChecklist } from "~/vexcms/components/EditorialChecklist";
@@ -28,6 +29,9 @@ export const posts = defineCollection({
   },
   admin: {
     useAsTitle: "title",
+    view: {
+      searchFields: ["title", "slug"],
+    },
     icon: "FilePen",
     livePreview: {
       url: (post) => {
@@ -58,12 +62,31 @@ export const posts = defineCollection({
       label: "Title",
       required: true,
       description: "Required — leave empty in a draft to test publish rejection.",
+      searchIndex: { name: "search_posts_title", filterFields: [] },
     }),
-    slug: text({
+    slug: text<typeof TABLE_SLUG_POSTS>({
       label: "Slug",
       required: true,
       index: "by_slug",
       description: "Contributors may not change this in a draft.",
+      searchIndex: { name: "search_posts_slug", filterFields: [] },
+      // Fix D (draft-pair pagination fix): catches the exact gap
+      // "Duplicate" hit on this collection (`defaultStatus: "draft"`) — two
+      // unlinked draft-only clones of the same published post silently
+      // sharing its slug, with no published counterpart yet to collide
+      // with under the narrower, published-only scope.
+      // `assertUniqueAmongPublished` now also treats an unlinked draft-only
+      // row (no `vex_publishedId`) as a real candidate.
+      validate: async ({ value, doc, ctx }) => {
+        await assertUniqueAmongPublished({
+          ctx,
+          collection: TABLE_SLUG_POSTS,
+          indexName: "by_slug",
+          field: "slug",
+          value,
+          excludeId: doc._id,
+        })
+      },
     }),
     body: richtext({
       label: "Body",

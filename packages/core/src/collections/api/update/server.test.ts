@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { ConvexError } from "convex/values";
+import { ConvexError, CommitTsPlaceholder } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { describe, expect, test } from "vitest";
 
@@ -8,7 +8,8 @@ import schema from "../../../db/test/convex/schema";
 import type { VexConfig } from "../../../config";
 import { update } from "./server";
 import { defineAccess } from "../../../access/config";
-import { array, defineCollection, text, checkbox } from "../../../index";
+import type { AdminField } from "../../../fields";
+import { array, commitTs, defineCollection, text, checkbox } from "../../../index";
 import { VexAccessError, WILDCARD_KEY } from "../../../access";
 
 const postsResource = defineCollection({
@@ -573,7 +574,6 @@ describe("update (server) — updatedAt stamp", () => {
   test("stamps updatedAt on patch when the collection declares the field", async () => {
     await withTransaction(async (ctx) => {
       const id = await ctx.db.insert("posts", { slug: "old", title: "Old" });
-      const before = Date.now();
       await update({
         collection: "posts",
         config: stampedConfig,
@@ -582,11 +582,14 @@ describe("update (server) — updatedAt stamp", () => {
         id,
       });
       const doc = await ctx.db.get(id);
-      expect(doc?.updatedAt).toBeGreaterThanOrEqual(before);
+      // `convex-test` never resolves the `commitTs` placeholder (probe §1) —
+      // the real resolved value is only observable against a live Convex
+      // backend (Step 8's dev-deployment smoke check).
+      expect(doc?.updatedAt).toBeInstanceOf(CommitTsPlaceholder);
     });
   });
 
-  test("bumps updatedAt on a later patch, so the value tracks the last write", async () => {
+  test("stamps updatedAt on every patch, including a second one", async () => {
     await withTransaction(async (ctx) => {
       const id = await ctx.db.insert("posts", { slug: "old", title: "Old" });
       await update({
@@ -597,6 +600,7 @@ describe("update (server) — updatedAt stamp", () => {
         id,
       });
       const first = (await ctx.db.get(id))?.updatedAt;
+      expect(first).toBeInstanceOf(CommitTsPlaceholder);
       await update({
         collection: "posts",
         config: stampedConfig,
@@ -605,8 +609,34 @@ describe("update (server) — updatedAt stamp", () => {
         id,
       });
       const second = (await ctx.db.get(id))?.updatedAt;
-      expect(second).toBeGreaterThanOrEqual(first as number);
+      expect(second).toBeInstanceOf(CommitTsPlaceholder);
     });
+  });
+});
+
+describe("update (server) — commitTs on-policy (spec Step 7)", () => {
+  test("an on: 'publish' field is NOT stamped by update()", async () => {
+    const config = {
+      collections: [
+        defineCollection({
+          slug: "posts",
+          fields: {
+            title: text(),
+            slug: text(),
+            updatedAt: commitTs({ on: "publish", meta: { locked: true } }),
+          } as Record<string, AdminField>,
+        }),
+      ],
+    } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "Hello", slug: "hello" }),
+    );
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      update({ ctx, config, collection: "posts", id, data: { title: "Hello 2" } }),
+    );
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id));
+    expect(doc?.updatedAt).toBeUndefined();
   });
 });
 

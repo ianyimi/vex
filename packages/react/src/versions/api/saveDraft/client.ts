@@ -6,16 +6,17 @@ import type { GenericMutationClientParams } from "@vexcms/core";
 import { useConvexMutation } from "@convex-dev/react-query";
 
 /**
- * Client-side args for {@link saveDraft}. A discriminated union: pass
+ * Client-side args for {@link useSaveDraft}. A discriminated union: pass
  * `{ collection, id, data }` for a versioned collection's document, or
  * `{ global, data }` for a versioned global.
  *
  * @example
  * ```tsx
- * import { saveDraft, type SaveDraftClientArgs } from "@vexcms/react/client";
+ * import { useSaveDraft, type SaveDraftClientArgs } from "@vexcms/react/client";
  * import { useMutation } from "@tanstack/react-query";
  *
- * const { mutateAsync } = useMutation({ mutationFn: saveDraft() });
+ * const saveDraftMutationFn = useSaveDraft();
+ * const { mutateAsync } = useMutation({ mutationFn: saveDraftMutationFn });
  * await mutateAsync({ collection: "posts", id: postId, data: { title: "Draft title" } });
  * await mutateAsync({ global: "siteSettings", data: { siteName: "New Name" } });
  * ```
@@ -50,9 +51,14 @@ export type SaveDraftClientArgs<TCollectionSlug extends CollectionSlug = Collect
  * passed in on the first edit of a published document, when the server
  * bootstraps a new draft row.
  *
- * Wraps `useConvexMutation(vexConvexApi.versions.saveDraft)`. Call at the top
- * level of a React component (obeys the Rules of Hooks); pass the return
- * value as `mutationFn` to `useMutation`.
+ * Wraps `useConvexMutation(vexConvexApi.versions.saveDraft)`. A React hook
+ * (the `use` prefix is REQUIRED, not just convention — a non-`use`-prefixed
+ * wrapper around a hook call can be treated as a pure, memoizable function
+ * by the React Compiler, silently dropping the internal hook call on a
+ * later render and causing a hook-order mismatch crash; developer-reported,
+ * confirmed live on the sibling `saveView`/`removeView` helpers). Call at
+ * the top level of a React component, as its own statement, BEFORE
+ * `useMutation` (not inlined as `useMutation`'s own `mutationFn` argument).
  *
  * Import from `@vexcms/react/client`. For the server-side version, import
  * `saveDraft` from `@vexcms/core/server`.
@@ -61,11 +67,12 @@ export type SaveDraftClientArgs<TCollectionSlug extends CollectionSlug = Collect
  * @see {@link SaveDraftClientArgs} for the typed args shape.
  * @example
  * ```tsx
- * import { saveDraft } from "@vexcms/react/client";
+ * import { useSaveDraft } from "@vexcms/react/client";
  * import { useMutation } from "@tanstack/react-query";
  *
  * export function SaveDraftButton({ id, title }: { id: Id<"posts">; title: string }) {
- *   const { mutateAsync, isPending } = useMutation({ mutationFn: saveDraft() });
+ *   const saveDraftMutationFn = useSaveDraft();
+ *   const { mutateAsync, isPending } = useMutation({ mutationFn: saveDraftMutationFn });
  *   return (
  *     <button onClick={() => mutateAsync({ collection: "posts", id, data: { title } })}>
  *       {isPending ? "Saving…" : "Save draft"}
@@ -74,6 +81,6 @@ export type SaveDraftClientArgs<TCollectionSlug extends CollectionSlug = Collect
  * }
  * ```
  */
-export function saveDraft() {
+export function useSaveDraft() {
   return useConvexMutation(vexConvexApi.versions.saveDraft);
 }

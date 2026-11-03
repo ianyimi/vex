@@ -28,7 +28,7 @@ export interface StatusBadgeProps {
  *
  * @example
  * ```tsx
- * <StatusBadge status={isDraftDoc ? "draft" : "published"} />
+ * <StatusBadge status={isDraftDoc ? VERSION_STATUSES.draft.key : VERSION_STATUSES.published.key} />
  * ```
  */
 export function StatusBadge(props: StatusBadgeProps) {

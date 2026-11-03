@@ -4,7 +4,7 @@ import { ConvexError, type GenericId } from "convex/values";
 import type { CollectionSlug, GlobalSlug } from "../../../types/generated";
 import type { VexConfig } from "../../../config";
 import type { AccessCallOptions, VexApiAuth } from "../../../db/types";
-import { DRAFT_ACTIONS } from "../../../access";
+import { DRAFT_ACTIONS, resolveFieldPermissions, stripDeniedFields } from "../../../access";
 import { getVersion } from "../../model";
 import type { VexVersionStatus } from "../../constants";
 import { assertVersionsAccess, resolveHistoryTarget } from "../history/server";
@@ -72,7 +72,7 @@ export async function getVersionSnapshot<DataModel extends GenericDataModel>(
         })
       : await resolveHistoryTarget({ ctx: args.ctx, config: args.config, global: args.global });
 
-  assertVersionsAccess({
+  const resolvedAccess = assertVersionsAccess({
     config: args.config,
     auth: args.auth,
     access: args.access,
@@ -93,5 +93,28 @@ export async function getVersionSnapshot<DataModel extends GenericDataModel>(
     );
   }
 
-  return { snapshot: row.snapshot as Record<string, unknown>, status: row.status };
+  // Developer-reported fix (binding, "access-system-fields"): this endpoint's own
+  // doc comment on `VersionSnapshotResult.snapshot` has always claimed "the
+  // STRIPPED document content" — until now, nothing actually stripped it. The
+  // restore-preview snapshot is a FULL historical document, same shape `get`
+  // returns, so it goes through the SAME `resolveFieldPermissions`/
+  // `stripDeniedFields` pipeline, reusing the exact `{ access, action, resource }`
+  // `assertVersionsAccess` already resolved (and authorized against) above —
+  // never a second, independently-resolved access call that could disagree.
+  let snapshot = row.snapshot as Record<string, unknown>;
+  if (resolvedAccess !== undefined) {
+    snapshot = stripDeniedFields(
+      snapshot,
+      resolveFieldPermissions({
+        access: resolvedAccess.access,
+        user: args.auth?.user ?? null,
+        organization: args.auth?.organization,
+        resource: resolvedAccess.resource,
+        action: resolvedAccess.action,
+        data: snapshot,
+      }),
+    );
+  }
+
+  return { snapshot, status: row.status };
 }

@@ -19,9 +19,11 @@ import { runDataTableSuite } from "./dataTableSuite";
 import { runModalSuite } from "./modalSuite";
 import { runMediaSuite } from "./mediaSuite";
 import { runHooksSuite } from "./hooksSuite";
-import { runVexReactSuite } from "./index";
+import { runVexReactSuite, NO_CONTROL_FIELD_TYPES } from "./index";
 
 const FIELD_TYPE_COUNT = Object.keys(fieldFixtures).length;
+/** `fields` dispatches once per registered field type EXCEPT those with no editable control (`commitTs`) — see `NO_CONTROL_FIELD_TYPES`'s own doc comment. */
+const FIELD_SECTION_DISPATCH_COUNT = FIELD_TYPE_COUNT - NO_CONTROL_FIELD_TYPES.size;
 
 /** Every mocked dispatch target, keyed by the `VexSuiteSection` name that triggers it. */
 const DISPATCH_MOCKS = {
@@ -50,6 +52,7 @@ const PER_TYPE_SECTIONS = new Set<DispatchSection>(["fields", "cells", "columnDe
  * @returns The expected call count.
  */
 function expectedCallCount(section: DispatchSection): number {
+  if (section === "fields") return FIELD_SECTION_DISPATCH_COUNT;
   return PER_TYPE_SECTIONS.has(section) ? FIELD_TYPE_COUNT : 1;
 }
 

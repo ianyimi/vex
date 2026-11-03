@@ -1,4 +1,4 @@
-import type { GenericDataModel } from "convex/server";
+import type { GenericDataModel, GenericDocument } from "convex/server";
 
 import type {
   GlobalSlug,
@@ -9,6 +9,8 @@ import type {
 } from "../../../types/generated";
 import { populateDocs } from "../../../db/populate";
 import { buildDepthPopulate } from "../../../db/depth";
+import { convertCommitTsFieldsToMs } from "../../../db/documents";
+import { ADMIN_FIELDS } from "../../../fields";
 import type { Prettify } from "../../../db/types";
 import {
   CRUD_ACTIONS,
@@ -171,13 +173,28 @@ export async function getGlobal<
     );
   }
 
+  if (globalConfig) {
+    const commitTsKeys = Object.entries(globalConfig.fields)
+      .filter(([, f]) => f.type === ADMIN_FIELDS.commitTs.type)
+      .map(([key]) => key);
+    if (commitTsKeys.length > 0) {
+      // `flat` is `Record<string, unknown>` (`flattenGlobalRow`'s return
+      // type); `GenericDocument` requires a `Value`-typed index signature.
+      // A flattened global row IS a real Convex document structurally —
+      // this bridges the variance gap `unknown` vs `Value` introduces, not
+      // a real type mismatch.
+      const flatAsDoc = flat as GenericDocument;
+      flat = convertCommitTsFieldsToMs({ doc: flatAsDoc, keys: commitTsKeys });
+    }
+  }
+
   // Depth: auto-populate all relationship fields to N levels
   if (props.depth && props.depth > 0 && props.config) {
     const globalConfig = props.config.globals.find((g) => g.slug === props.slug);
     if (globalConfig) {
       const depthPopulate = buildDepthPopulate<TPopulate>(props.config, props.slug, props.depth);
       if (depthPopulate && Object.keys(depthPopulate).length > 0) {
-        const [populated] = await populateDocs(props.ctx, [flat], depthPopulate);
+        const [populated] = await populateDocs(props.ctx, [flat], depthPopulate, undefined, props.config);
         flat = populated as Record<string, unknown>;
       }
     }
@@ -189,6 +206,8 @@ export async function getGlobal<
       props.ctx,
       [flat],
       props.populate as Record<string, unknown>,
+      undefined,
+      props.config,
     );
     flat = populated as Record<string, unknown>;
   }

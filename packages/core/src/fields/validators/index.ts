@@ -6,6 +6,7 @@ import { textareaFieldToValidator } from "../textarea";
 import { numberFieldToValidator } from "../number";
 import { checkboxFieldToValidator } from "../checkbox";
 import { dateFieldToValidator } from "../date";
+import { commitTsFieldToValidator } from "../commitTs";
 import { selectFieldToValidator } from "../select";
 import { urlFieldToValidator } from "../url";
 import { colorFieldToValidator } from "../color";
@@ -55,6 +56,8 @@ export function adminFieldToValidator<TFieldMeta extends {} = {}>(props: {
       return checkboxFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.date.type:
       return dateFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.commitTs.type:
+      return commitTsFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.select.type:
       return selectFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.url.type:

@@ -36,6 +36,7 @@ function SheetOverlay({ className, ...props }: SheetPrimitive.Backdrop.Props) {
 
 function SheetContent({
   className,
+  overlayClassName,
   children,
   side = "right",
   showCloseButton = true,
@@ -43,10 +44,19 @@ function SheetContent({
 }: SheetPrimitive.Popup.Props & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  /**
+   * Extra classes merged onto the backdrop overlay (`SheetOverlay`) alone —
+   * for a caller whose `Sheet` stays `open` across every viewport width
+   * (CSS, not React state, decides when the POPUP itself is visible, e.g.
+   * `className="… md:hidden"`) and needs the overlay to disappear at the
+   * same breakpoint, rather than dimming/blurring the page at every width.
+   * Omit for the default, always-visible-while-open overlay.
+   */
+  overlayClassName?: string
 }) {
   return (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay className={overlayClassName} />
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         data-side={side}

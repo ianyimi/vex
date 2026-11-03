@@ -13,14 +13,14 @@ import { renderWithVexProviders, testCollection } from "./harness/accessFixtures
 import { createFakeConvexClient, type ConvexTestInstance } from "./convex/bridge";
 import schema, { readTable, testModules, type TestDoc } from "./convex/schema";
 import { Modal } from "../modals/BaseModal";
-import { CreateDocumentModal } from "../collections/CreateDocumentModal";
+import { ListViewCreateDocumentModal } from "../collections/listView/create/ListViewCreateDocumentModal";
 import { CreateMediaModal } from "../media/CreateMediaModal";
 import { MODALS } from "../modals/constants";
 import { DialogContent, DialogHeader } from "../ui";
 import { makeFile } from "../fields/upload/testFixture";
 
 /** Member names {@link runModalSuite}'s `only` option accepts. */
-export type ModalSuiteMember = "BaseModal" | "CreateDocumentModal" | "CreateMediaModal";
+export type ModalSuiteMember = "BaseModal" | "ListViewCreateDocumentModal" | "CreateMediaModal";
 
 /** Options for {@link runModalSuite}. */
 export interface RunModalSuiteOptions {
@@ -29,7 +29,7 @@ export interface RunModalSuiteOptions {
   /**
    * RBAC matrix threaded to `renderWithVexProviders` for every render below,
    * for signature consistency with the other section suites. Currently
-   * unexercised: none of `Modal`/`CreateDocumentModal`/`CreateMediaModal`
+   * unexercised: none of `Modal`/`ListViewCreateDocumentModal`/`CreateMediaModal`
    * read `usePermission` themselves — the collection list view that opens
    * them is where `canCreate` gating happens (covered by `runViewSuite`).
    */
@@ -189,7 +189,7 @@ function describeBaseModal(access: VexAccessConfig | undefined) {
 }
 
 /**
- * `testCollection` variant with `status` marked `required`. `CreateDocumentModal`
+ * `testCollection` variant with `status` marked `required`. `ListViewCreateDocumentModal`
  * now renders only a collection's required fields (a quick create — non-required
  * fields keep their configured defaults and are filled in later from the edit
  * view), so reusing `testCollection` as-is (both fields `required: false`) would
@@ -205,7 +205,7 @@ const createModalTestCollection = defineCollection({
 });
 
 /**
- * Registers the `CreateDocumentModal` describe block. Every write assertion
+ * Registers the `ListViewCreateDocumentModal` describe block. Every write assertion
  * reads the `documents` table back out of convex-test rather than spying on a
  * mocked mutation, so the same assertions hold inside a consumer's process.
  *
@@ -213,7 +213,7 @@ const createModalTestCollection = defineCollection({
  * @returns Nothing; registers `describe`/`it` blocks as a side effect.
  */
 function describeCreateDocumentModal(access: VexAccessConfig | undefined) {
-  describe("CreateDocumentModal", () => {
+  describe("ListViewCreateDocumentModal", () => {
     /**
      * Mounts the modal over a fresh convex-test instance.
      *
@@ -232,7 +232,7 @@ function describeCreateDocumentModal(access: VexAccessConfig | undefined) {
               searchParams={options.searchParams}
               onUrlUpdate={options.onUrlUpdate}
             >
-              <CreateDocumentModal collection={createModalTestCollection.slug} />
+              <ListViewCreateDocumentModal collection={createModalTestCollection.slug} />
             </NuqsTestingAdapter>
           </QueryClientProvider>
         </ConvexProvider>,
@@ -571,8 +571,8 @@ function describeCreateMediaModal(access: VexAccessConfig | undefined) {
  */
 export function runModalSuite(props: RunModalSuiteOptions = {}): void {
   const members: ModalSuiteMember[] =
-    props.only ?? ["BaseModal", "CreateDocumentModal", "CreateMediaModal"];
+    props.only ?? ["BaseModal", "ListViewCreateDocumentModal", "CreateMediaModal"];
   if (members.includes("BaseModal")) describeBaseModal(props.access);
-  if (members.includes("CreateDocumentModal")) describeCreateDocumentModal(props.access);
+  if (members.includes("ListViewCreateDocumentModal")) describeCreateDocumentModal(props.access);
   if (members.includes("CreateMediaModal")) describeCreateMediaModal(props.access);
 }

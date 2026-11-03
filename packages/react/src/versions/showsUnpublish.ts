@@ -1,3 +1,4 @@
+import { VERSION_STATUSES } from "@vexcms/core";
 import type { VexDocumentState } from "../documents/VexDocumentContext";
 import type { DocumentEditRuntimeState } from "../documents/DocumentEditRuntimeContext";
 
@@ -17,5 +18,5 @@ export function showsUnpublish(args: {
   runtime: DocumentEditRuntimeState;
 }): boolean {
   const { document, runtime } = args;
-  return document.status === "published" && !document.isDirty && runtime.viewedVersion === null;
+  return document.status === VERSION_STATUSES.published.key && !document.isDirty && runtime.viewedVersion === null;
 }

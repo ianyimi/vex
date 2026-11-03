@@ -37,16 +37,17 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · �
 - ✅ Input masks — `admin.mask` on `text` / `email` / `number` / `url`, with project-wide defaults at `fields.inputMasks.<type>`
 - ✅ Block clipboard — copy/paste blocks across fields, documents, and collections from a localStorage clipboard validated against the target block definition
 - ✅ Admin extension points (experimental) — per-field and project-wide component overrides and additive action-menu contributions, documented in the [admin customization guide](/guides/admin-customization/)
+- ✅ List views — per-collection search, sort, an AND/OR filter builder with per-field filter inputs, column visibility/order/pinning/resizing, page size, local and shared saved views (`admin.view` / `admin.views`), a peek panel, row and bulk actions, server-prerendered first paint. See the [list views guide](/guides/list-views/)
+- ✅ `commitTs()` field — Convex's own commit timestamp, read-only and auto-indexed; the auto-injected `updatedAt` uses it
 
 ## In progress
 
 These are the v0.1.0 launch track, in the order they ship.
 
-- 🔄 Data-table integrity pass — bulk actions and the per-collection `admin.table` options wired end to end
+- 🔄 Data-table integrity pass — bulk actions and the per-collection `admin.view` options wired end to end
 - 🔄 Localization design — the storage model and versioning interaction decided before anyone has data to migrate. Localization ships free in the core
 - 🔄 Field input consistency pass — relationship field and others get consistent interaction and loading patterns
 - 🔄 Edit-view improvements — unsaved-changes guard, duplicate document, duplicate block
-- 🔄 List-view improvements — per-collection search, sorting, column visibility, page size, saved views
 - 🔄 Responsive pass across the admin panel, marketing template, and docs
 
 ## Planned

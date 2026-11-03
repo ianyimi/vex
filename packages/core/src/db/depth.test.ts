@@ -124,4 +124,45 @@ describe("buildDepthPopulate", () => {
       b: { populate: { a: true } },
     });
   });
+
+  it("depth 1 — upload fields become true leaves alongside relationships", () => {
+    const withUpload = makeConfig([
+      {
+        slug: "posts",
+        fields: {
+          title: { type: "text" },
+          author: { type: "relationship", collection: { slug: "authors" } },
+          cover: { type: "upload" },
+        },
+      },
+      { slug: "authors", fields: { name: { type: "text" } } },
+    ]);
+    expect(buildDepthPopulate(withUpload, "posts", 1)).toEqual({ author: true, cover: true });
+  });
+
+  it("depth 2 — an upload field stays a flat leaf, never nested (a media collection has nothing of its own to recurse into)", () => {
+    const withUpload = makeConfig([
+      {
+        slug: "posts",
+        fields: {
+          author: { type: "relationship", collection: { slug: "authors" } },
+          cover: { type: "upload" },
+        },
+      },
+      {
+        slug: "authors",
+        fields: { team: { type: "relationship", collection: { slug: "teams" } } },
+      },
+      { slug: "teams", fields: { name: { type: "text" } } },
+    ]);
+    expect(buildDepthPopulate(withUpload, "posts", 2)).toEqual({
+      author: { populate: { team: true } },
+      cover: true,
+    });
+  });
+
+  it("collection with only an upload field (no relationships) still populates it", () => {
+    const withUpload = makeConfig([{ slug: "images", fields: { file: { type: "upload" } } }]);
+    expect(buildDepthPopulate(withUpload, "images", 1)).toEqual({ file: true });
+  });
 });

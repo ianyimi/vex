@@ -7,7 +7,9 @@ import {
   TABLE_SLUG_FOOTERS,
   TABLE_SLUG_HEADERS,
   TABLE_SLUG_PAGES,
+  TABLE_SLUG_TESTIMONIALS,
   TABLE_SLUG_THEMES,
+  TESTIMONIAL_SOURCES,
 } from "~/db/constants"
 import config from "~/vex.config.server"
 import {
@@ -1145,23 +1147,39 @@ export const featuredPosts = query({
         mediaPosition: ["right"],
         codeFilename: "app/(vexcms)/admin/[[...path]]/page.tsx",
         codeLanguage: ["tsx"],
-        code: `import { NextAdminPage } from "@vexcms/next/server"
+        code: `import { canAccessAdminPanel } from "@vexcms/core"
+import { NextAdminPage } from "@vexcms/next/server"
 import { redirect } from "next/navigation"
 
-import { getToken } from "~/auth/server"
+import { getToken, getUserOrg } from "~/auth/server"
 import config from "~/vex.config.server"
 
 // The whole panel is one route in your app. Gate it however you
 // gate anything else, then hand it the config you already wrote.
 export default async function AdminPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ path?: string[] }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const token = await getToken()
   if (!token) redirect("/auth/sign-in?redirectTo=/admin")
 
-  return <NextAdminPage config={config} params={params} token={token} />
+  const auth = await getUserOrg()
+  if (!canAccessAdminPanel({ access: config.access, user: auth.user, organization: auth.organization })) {
+    redirect("/unauthorized")
+  }
+
+  return (
+    <NextAdminPage
+      config={config}
+      params={params}
+      searchParams={searchParams}
+      tokenPromise={Promise.resolve(token)}
+      authPromise={Promise.resolve(auth)}
+    />
+  )
 }`,
       },
       {
@@ -1731,6 +1749,62 @@ export const testimonials = defineTable({
       authorId: [authorA],
     })
     created.push("comments x2")
+  }
+
+  // ── Testimonials (Step 24, list-view-overhaul) ──────────────────────────
+  // 200 deterministic rows, insert-if-missing as a single batch (checked by
+  // total count, like `comments` above) — `mode: "patch"` never touches this
+  // section, since there is no natural per-row identifier to reconcile
+  // against and the acceptance only needs the 200 rows to exist once.
+  // Deliberately varied on every axis Step 24's collection config exercises:
+  // `source` rotates through all 4 enum values (index pushdown), `rating`
+  // 1-5, `featured`/`approved` each true for roughly 1 in 3 rows (the row/
+  // bulk actions + "Featured" preset view have something to act on),
+  // `contributorId` set for every 3rd row (the "From Contributors" preset
+  // view's relationship filter), and `internalScore` spans 10-99 with every
+  // 4th row landing under 50 (the "Needs Review" hidden-where preset view).
+  const existingTestimonials = await ctx.db.query(TABLE_SLUG_TESTIMONIALS).take(1)
+  if (existingTestimonials.length > 0) {
+    skipped.push("testimonials (already seeded)")
+  } else {
+    const sources = Object.values(TESTIMONIAL_SOURCES)
+    const companies = [
+      "Northwind",
+      "Acme Robotics",
+      "Globex",
+      "Initech",
+      "Umbrella Labs",
+      "Hooli",
+      "Soylent",
+      "Stark Industries",
+    ]
+    const names = [
+      "Alex Rivera",
+      "Jordan Lee",
+      "Sam Patel",
+      "Morgan Chen",
+      "Taylor Brooks",
+      "Casey Nguyen",
+      "Riley Okafor",
+      "Jamie Fischer",
+      "Drew Tanaka",
+      "Avery Costa",
+    ]
+    for (let i = 0; i < 200; i++) {
+      const name = names[i % names.length]
+      await ctx.db.insert(TABLE_SLUG_TESTIMONIALS, {
+        customerName: `${name} ${i}`,
+        company: companies[i % companies.length],
+        quote: `Testimonial #${i} — switching to VexCMS cut our admin workflow time dramatically.`,
+        rating: (i % 5) + 1,
+        source: [sources[i % sources.length]],
+        featured: i % 3 === 0,
+        approved: i % 3 !== 1,
+        contributorId: i % 3 === 0 ? [authorA] : i % 3 === 1 ? [authorB] : [],
+        internalScore: 10 + ((i * 7) % 90),
+      })
+    }
+    created.push("testimonials x200")
   }
 
   return { created, patched, skipped }

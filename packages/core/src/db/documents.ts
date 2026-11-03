@@ -9,47 +9,59 @@ import {
   stripDeniedFields,
   VexAccessConfig,
 } from "../access";
+import { ADMIN_FIELDS, type AdminField } from "../fields";
 import type { VexApiAuth } from "./types";
 
+/** The semantic write events a `commitTs()` field's `on` option can be stamped by. */
+export type CommitTsWriteEvent = "create" | "update" | "publish" | "unpublish" | "draftSave";
+
+/** Which {@link CommitTsWriteEvent}s each `CommitTsFieldOn` policy stamps on. */
+const COMMIT_TS_EVENTS_BY_ON: Record<string, ReadonlySet<CommitTsWriteEvent>> = {
+  save: new Set(["create", "update", "publish", "unpublish"]),
+  publish: new Set(["publish"]),
+  all: new Set(["create", "update", "publish", "unpublish", "draftSave"]),
+};
+
 /**
- * Adds the auto-maintained `updatedAt` timestamp to a write payload, when the
- * target collection carries the field `defineCollection` injects.
+ * Stamps every `commitTs()` field on `fields` whose `on` policy matches one
+ * of `events` with `ctx.db.vars.commitTs` — the unresolved placeholder
+ * Convex resolves to the real commit nanosecond timestamp once this
+ * mutation commits (per the Convex commit-timestamp docs).
  *
- * Shared by `create` and `update` so the two write paths cannot drift on when
- * a document gets stamped.
+ * Replaces `stampUpdatedAt`: unlike `Date.now()`, a `commitTs` value is
+ * never computed by app code — the app must explicitly write the
+ * placeholder into the field for Convex to resolve it at commit, so every
+ * write path that wants a `commitTs` field to advance must call this.
  *
- * Skipped in three cases, all deliberate:
- * - The slug matches no registered collection — nothing declares the column,
- *   and Convex's schema validation would reject the write.
- * - The collection opted out with `{ timestamps: false }`, so `fields` has no
- *   `updatedAt` entry.
- * - The field is `meta.locked` — that is better-auth's OWN `updatedAt`,
- *   populated from the auth table's real schema attribute. Its adapter owns
- *   that value, so vexcms must never write it.
- *
- * @param props - The resolved config, target collection slug, and the payload
- *   exactly as the caller sent it.
- * @returns The payload, with `updatedAt` set to now when the collection
- *   carries an unlocked `updatedAt` field; otherwise the payload unchanged.
+ * @param props - Input props.
+ * @param props.ctx - The active mutation context — `ctx.db.vars.commitTs` is
+ *   mutation-ctx-only (not present on a query ctx).
+ * @param props.fields - The resource's resolved field map (`collection.fields`
+ *   or `target.config.fields` — works for both collections and globals).
+ * @param props.data - The write payload to stamp fields onto.
+ * @param props.events - Every semantic event this one write satisfies (e.g.
+ *   `["create", "publish"]` for creating a non-versioned document, since a
+ *   non-versioned create has no separate publish step and is live immediately).
+ * @returns `props.data`, with every matching `commitTs` field set to the
+ *   placeholder; fields whose `on` policy doesn't match any of `events` are
+ *   left untouched (absent on a true first write, or carrying their
+ *   previously-resolved value on a write that doesn't advance them).
  */
-export function stampUpdatedAt<TData>(props: {
-  collection: CollectionSlug;
-  config: VexConfig;
+export function stampCommitTsFields<TData extends Record<string, unknown>>(props: {
+  ctx: { db: { vars: { commitTs: unknown } } };
+  fields: Record<string, AdminField>;
   data: TData;
+  events: readonly CommitTsWriteEvent[];
 }): TData {
-  const collection = props.config.collections.find((c) => c.slug === props.collection);
-  const field = collection?.fields.updatedAt;
-  if (field === undefined) {
-    return props.data;
+  let data = props.data;
+  for (const [fieldKey, field] of Object.entries(props.fields)) {
+    if (field.type !== ADMIN_FIELDS.commitTs.type) continue;
+    const allowedEvents = COMMIT_TS_EVENTS_BY_ON[field.on] ?? COMMIT_TS_EVENTS_BY_ON.save;
+    if (props.events.some((event) => allowedEvents.has(event))) {
+      data = { ...data, [fieldKey]: props.ctx.db.vars.commitTs };
+    }
   }
-  // `meta` is generic over `TFieldMeta`, so `locked` is not on its static
-  // shape. Read it through a validated boundary rather than asserting: only a
-  // literal `true` counts, anything else stamps.
-  const meta: Record<string, unknown> = field.meta;
-  if (meta.locked === true) {
-    return props.data;
-  }
-  return { ...props.data, updatedAt: Date.now() };
+  return data;
 }
 
 /**
@@ -131,9 +143,15 @@ export function readableDocuments<TDoc extends GenericDocument>(props: {
   resource: string;
   action: string;
   whereFields: readonly string[];
+  fields?: Record<string, AdminField>;
 }): TDoc[] {
   const user = props.auth?.user ?? null;
   const organization = props.auth?.organization;
+  const commitTsKeys = props.fields
+    ? Object.entries(props.fields)
+        .filter(([, field]) => field.type === ADMIN_FIELDS.commitTs.type)
+        .map(([key]) => key)
+    : [];
   const readable: TDoc[] = [];
   for (const doc of props.docs) {
     if (!hasPermission({ access: props.access, resource: props.resource, action: props.action, data: doc, user, organization })) {
@@ -148,7 +166,33 @@ export function readableDocuments<TDoc extends GenericDocument>(props: {
       data: doc,
     });
     if (props.whereFields.some((field) => !isFieldAllowed(fieldPermissions, field))) continue;
-    readable.push(stripDeniedFields(doc, fieldPermissions));
+    const stripped = stripDeniedFields(doc, fieldPermissions);
+    readable.push(commitTsKeys.length === 0 ? stripped : convertCommitTsFieldsToMs({ doc: stripped, keys: commitTsKeys }));
   }
   return readable;
+}
+
+/**
+ * Converts every `commitTs`-typed field named in `keys` from Convex's
+ * resolved nanosecond `bigint` to a plain Unix-ms `number`
+ * (`Number(ns / BigInt(1_000_000))` — lossless for any realistic wall-clock epoch,
+ * per probe §5). Fields that are `undefined` (never stamped yet) or not a
+ * `bigint` (should not happen past schema validation, but defensive against
+ * an un-migrated row) are left untouched.
+ *
+ * @returns `doc`, shallow-copied once per converted field (unmodified when
+ *   no field in `keys` holds a `bigint`).
+ */
+export function convertCommitTsFieldsToMs<TDoc extends GenericDocument>(props: {
+  doc: TDoc;
+  keys: readonly string[];
+}): TDoc {
+  let doc = props.doc;
+  for (const key of props.keys) {
+    const value = doc[key];
+    if (typeof value === "bigint") {
+      doc = { ...doc, [key]: Number(value / BigInt(1_000_000)) };
+    }
+  }
+  return doc;
 }

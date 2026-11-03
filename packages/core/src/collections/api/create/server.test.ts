@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { ConvexError } from "convex/values";
+import { ConvexError, CommitTsPlaceholder } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { describe, expect, test } from "vitest";
 
@@ -9,7 +9,7 @@ import type { VexConfig } from "../../../config";
 import { create } from "./server";
 import { defineAccess } from "../../../access/config";
 import type { AdminField } from "../../../fields";
-import { array, checkbox, defineCollection, number, text } from "../../../index";
+import { array, checkbox, commitTs, defineCollection, number, text } from "../../../index";
 import { VexAccessError, WILDCARD_KEY } from "../../../access";
 
 const postsResource = defineCollection({
@@ -452,7 +452,6 @@ describe("create (server) — updatedAt stamp", () => {
 
   test("stamps updatedAt on insert when the collection declares the field", async () => {
     const t = convexTest(schema, modules);
-    const before = Date.now();
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       const id = await create({
         collection: "posts",
@@ -461,7 +460,10 @@ describe("create (server) — updatedAt stamp", () => {
         data: { slug: "hello", title: "Hello" },
       });
       const doc = await ctx.db.get(id as never);
-      expect(doc?.updatedAt).toBeGreaterThanOrEqual(before);
+      // `convex-test` never resolves the `commitTs` placeholder (probe §1) —
+      // the real resolved value is only observable against a live Convex
+      // backend (Step 8's dev-deployment smoke check).
+      expect(doc?.updatedAt).toBeInstanceOf(CommitTsPlaceholder);
     });
   });
 
@@ -684,5 +686,75 @@ describe("create (server) — versioned collection", () => {
     );
     expect(version?.status).toBe("published");
     expect(version?.publishedAt).toBe(doc?.vex_publishedAt);
+  });
+});
+
+/**
+ * Widened to `Record<string, AdminField>` — same technique as `authFields`
+ * above — so `defineCollection`'s compile-time reserved-key guard (which
+ * only fires for a literal `TFields` shape) doesn't reject a locked
+ * `updatedAt` override declared with a non-default `on` policy.
+ */
+function postsFieldsWithCommitTsOverride(on: "save" | "publish" | "all"): Record<string, AdminField> {
+  return { title: text(), slug: text(), updatedAt: commitTs({ on, meta: { locked: true } }) };
+}
+
+describe("create (server) — commitTs on-policy (spec Step 7)", () => {
+  test("an on: 'publish' field is NOT stamped on a versioned draft create", async () => {
+    const draftPosts = defineCollection({
+      slug: "posts",
+      fields: postsFieldsWithCommitTsOverride("publish"),
+      versions: { drafts: true },
+    });
+    const config = { collections: [draftPosts] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config, collection: "posts", data: { title: "Hello", slug: "hello" } }),
+    );
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc?.vex_status).toBe("draft");
+    expect(doc?.updatedAt).toBeUndefined();
+  });
+
+  test("an on: 'publish' field IS stamped on a non-versioned create", async () => {
+    const nonVersionedPosts = defineCollection({
+      slug: "posts",
+      fields: postsFieldsWithCommitTsOverride("publish"),
+    });
+    const config = { collections: [nonVersionedPosts] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config, collection: "posts", data: { title: "Hello", slug: "hello" } }),
+    );
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc?.updatedAt).toBeInstanceOf(CommitTsPlaceholder);
+  });
+
+  test("an on: 'save' field IS stamped on both a non-versioned create and a versioned draft create", async () => {
+    const t = convexTest(schema, modules);
+
+    const nonVersionedPosts = defineCollection({
+      slug: "posts",
+      fields: postsFieldsWithCommitTsOverride("save"),
+    });
+    const nonVersionedConfig = { collections: [nonVersionedPosts] } as unknown as VexConfig;
+    const plainId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config: nonVersionedConfig, collection: "posts", data: { title: "A", slug: "a" } }),
+    );
+    const plainDoc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(plainId as never));
+    expect(plainDoc?.updatedAt).toBeInstanceOf(CommitTsPlaceholder);
+
+    const draftPosts = defineCollection({
+      slug: "posts",
+      fields: postsFieldsWithCommitTsOverride("save"),
+      versions: { drafts: true },
+    });
+    const draftConfig = { collections: [draftPosts] } as unknown as VexConfig;
+    const draftId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config: draftConfig, collection: "posts", data: { title: "B", slug: "b" } }),
+    );
+    const draftDoc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(draftId as never));
+    expect(draftDoc?.vex_status).toBe("draft");
+    expect(draftDoc?.updatedAt).toBeInstanceOf(CommitTsPlaceholder);
   });
 });

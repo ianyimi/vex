@@ -24,8 +24,8 @@ import {
 } from "@vexcms/core";
 
 import { TABLE_SLUG_FIELDS, TABLE_SLUG_IMAGES, TABLE_SLUG_USERS } from "~/db/constants";
-import { FieldsWordCountCell, FieldsWordCountField } from "~/vexcms/components/FieldsWordCount";
 import { FieldsTitleInputOverride } from "~/vexcms/components/FieldsTitleInput";
+import { FieldsWordCountCell, FieldsWordCountField } from "~/vexcms/components/FieldsWordCount";
 
 /**
  * Nested block used inside `content` below — demonstrates a block whose own
@@ -154,6 +154,9 @@ export const fields = defineCollection({
   },
   admin: {
     useAsTitle: "contactEmail",
+    view: {
+      searchFields: ["title", "contactEmail", "bio"],
+    },
     icon: "FlaskConical",
     livePreview: {
       url: "/",
@@ -175,6 +178,7 @@ export const fields = defineCollection({
       rows: 6,
       max: [280, "Keep it under 280 characters."],
       description: "Demonstrates textarea() with rows and a tuple max.",
+      searchIndex: { name: "search_fields_bio", filterFields: [] },
     }),
 
     // ── json() — arbitrary JSON-serializable value, no fixed shape.
@@ -190,6 +194,7 @@ export const fields = defineCollection({
       min: 3,
       max: [60, "Titles max out at 60 characters."],
       description: "Demonstrates text() with min and a tuple max.",
+      searchIndex: { name: "search_fields_title", filterFields: [] },
       admin: {
         components: {
           Input: [{ id: "apps-test.title-input-override", component: FieldsTitleInputOverride }],

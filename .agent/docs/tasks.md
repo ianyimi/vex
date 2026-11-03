@@ -6,14 +6,11 @@
 - 5. C — Versioning & drafts (spec 2026-08-23-versioning-drafts, 56 tasks, still `draft` — RE-SCOPE FIRST: it predates F and E). Calls F's write pipeline and reuses its lenient validation mode; must pass `changes` to `hasPermission` on draft writes; supplies the draft base layer E's overlay sits on (E needs no change — the overlay already applies to whatever document the consumer's query returned)
 - 6. D — Richtext field: wire the existing 3,219 lines in `richtext-plate`, add `richtext()` + the 2 missing core types, drop 4 `@ts-nocheck`
 - 7. G — Field input consistency pass: relationship field, loading states, media MIME filter, conditional fields
-- 9. I — List-view overhaul: search, sort, column visibility, page size, saved views — reintroduces the config A deleted alongside the controls that consume it
 - Build-time telemetry (spec 2026-10-26-build-time-telemetry)
 
 ## Inbox
 ### v0.1.0 launch track — work in this order (`.agent/docs/product/v0.1.0-launch-plan.md`)
 ### Other
-- 1. A — Data-table integrity & dead config: unreachable bulk delete, bogus `_createdAt` default, `updatedAt` verification, wire `pageSize` options, delete the UI-dependent table config (sorting/columns move to I), README `convex env set` + false sortable/searchable claims, ratify `vex_` table convention
-- 2. B — Public API surface: un-export the 4 migrate stubs + gate `autoMigrate`; localization ADR (decision only, zero production diff)
 - 10. J — Responsive / mobile UI pass — FINAL gate before tagging
 - Rename naming outliers: MediaLibaryGrid.tsx, use-mobile.ts, blocks/logo-cloud.ts
 - Access constraint builder (spec 2026-08-25-access-constraint-builder)
@@ -32,6 +29,8 @@
 - Assessed-but-deferred features live in `.agent/docs/product/backlog.md`
 - F follow-up — spec 2026-09-18-lifecycle-hooks-validation step 8: write `scripts/verify-hooks-wiring.mjs`, add a `createVexMutations` assertion to `scripts/verify-scaffold.mjs`, and write `apps/docs/src/content/docs/guides/lifecycle-hooks.mdx` (apps/test + base-nextjs template wiring, and the marketing-site slug validator, are done)
 - Concurrent-edit conflict detection already assessed — see backlog.md § Concurrent-edit conflict-resolution UX
+- Polish follow-up (list view): `find`'s first-page count reads up to `countLimit + 1` (default 10001) full docs, which hits Convex's 8 MiB query read limit at ~800 B per doc. Documented in pagination.mdx; real fix tracked in backlog.md § Total-count cap for large collections
+- Polish follow-up (list view): `isQueryAffectingViewSwitch` (useListViewUrlState.ts ~450) compares raw URL params, not the effective state, so an external link with an explicit param equal to the target view's default dims once on view switch (P3)
 
 ## Recently Done
 - 4. E — Live preview — shipped `b5263dc`, 2026-09-20 (spec 2026-09-18-live-preview; ADR-012, with a dual `postMessage` + `BroadcastChannel` transport and a cookie-gated public route)
@@ -58,3 +57,6 @@
 - K — codebase conventions refactor (spec 2026-10-25-codebase-conventions-refactor)
 - 8. H — Edit-view overhaul: unsaved-changes nav guard, duplicate document, duplicate block
 - Fix scripts/vercel-build-check.mjs: since / prerenders via a live vex.query, the placeholder NEXT_PUBLIC_CONVEX_URL makes the pristine build fail on every run (pre-existing at a180967). Pass through a real dev URL when present, or make HomePage degrade when Convex is unreachable
+- 9. I — List-view overhaul: search, sort, column visibility, page size, saved views — reintroduces the config A deleted alongside the controls that consume it
+- 1. A — Data-table integrity & dead config: discord-readiness pulled the bulk-selection bar + README items forward; remainder (`pageSize` wiring, `defaultSort` → `_creationTime`, `vex_` table convention, `updatedAt` confirmation) folded into and shipped with I (`naming-conventions.md`, `2026-10-26-list-view-overhaul` Step 1)
+- 2. B — Public API surface: B1 un-exported the migrate stubs (discord-post-readiness step 2), B2 decided as ADR-016, B3 implemented in full (spec 2026-10-21-backend-neutral-query-args, 10 steps, `4d504e7`, ADR-015)

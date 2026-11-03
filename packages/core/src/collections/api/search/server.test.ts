@@ -19,6 +19,7 @@ const fixtureConfig: VexConfig = {
       fields: {
         title: { type: "text" },
         author: { type: "relationship", collection: { slug: "authors" } },
+        cover: { type: "upload", to: "images" },
       },
       labels: { singular: "Post", plural: "Posts" },
       admin: { useAsTitle: "title" },
@@ -154,6 +155,32 @@ describe("search (server)", () => {
   });
 });
 
+describe("search (server) — commitTs ms conversion", () => {
+  const commitTsConfig: VexConfig = {
+    collections: [
+      {
+        slug: "posts",
+        fields: { title: { type: "text" }, updatedAt: { type: "commitTs", on: "save" } },
+        labels: { singular: "Post", plural: "Posts" },
+        admin: { useAsTitle: "title" },
+      },
+    ],
+  } as unknown as VexConfig;
+
+  test("converts a resolved-bigint commitTs field to a plain ms number (.take() path)", async () => {
+    const t = convexTest(schema, modules);
+    const resolvedNs = BigInt(1_700_000_000_000) * BigInt(1_000_000);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Hello", slug: "hello", updatedAt: resolvedNs });
+      return search({ ctx, collection: "posts", config: commitTsConfig, query: "", searchIndexName: "search_title", searchField: "title" });
+    });
+    expect(docs).toHaveLength(1);
+    const result = docs[0] as unknown as Record<string, unknown>;
+    expect(typeof result.updatedAt).toBe("number");
+    expect(result.updatedAt).toBe(1_700_000_000_000);
+  });
+});
+
 describe("search (server) — depth auto-populate", () => {
   test("depth: 1 auto-populates relationships on empty-query (.take() path)", async () => {
     const t = convexTest(schema, modules);
@@ -250,6 +277,24 @@ describe("search (server) — depth auto-populate", () => {
     expect(docs).toHaveLength(3);
     const author = (docs[0].author as DocumentBySlug["authors"][])[0];
     expect(author.name).toBe("Lena");
+  });
+
+  test("depth: 1 auto-populates upload fields (media docs) on the .take() path, the same as relationship fields", async () => {
+    const t = convexTest(schema, modules);
+    const docs = (await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const imageId = await ctx.db.insert("images", { filename: "cover.png" });
+      await ctx.db.insert("posts", { title: "Hello", slug: "hello", cover: [imageId] });
+      return search({
+        ctx,
+        collection: "posts",
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        depth: 1,
+        config: fixtureConfig,
+      } as any);
+    })) as any[];
+    expect((docs[0].cover as { filename: string }[])[0].filename).toBe("cover.png");
   });
 
   // ── Pagination tests ──────────────────────────────────────────────────────
@@ -706,7 +751,8 @@ describe("search (server) — boolean short-circuit from a withIndex/where callb
 // ── Field-level read shaping (Step 5) ───────────────────────────────────────
 const searchFieldMapResource = defineCollection({
   slug: "posts",
-  fields: { title: text(), slug: text() },
+  fields: { title: text({ searchIndex: { name: "search_title", filterFields: [] } }), slug: text() },
+  admin: { view: { searchFields: ["title"] } },
 });
 
 const searchFieldMapAccess = {
@@ -778,7 +824,11 @@ describe("search (server) — field-level read shaping", () => {
     expect((docs[0] as any).title).toBe("Published");
   });
 
-  test("never strips _id or _creationTime", async () => {
+  // `_creationTime` survives HERE because this map's wildcard is `true` and
+  // never explicitly names it — NOT because it's unconditionally exempt like
+  // `_id` (developer decision, binding, "access-system-fields": `_creationTime`
+  // IS a real, gateable field-permission key now).
+  test("_id always survives; _creationTime survives here too, because the wildcard covers it (not because it's exempt)", async () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       await ctx.db.insert("posts", { title: "Published", slug: "public" });
@@ -832,5 +882,611 @@ describe("search (server) — field-level read shaping", () => {
       } as any);
     });
     expect(docs).toHaveLength(1);
+  });
+});
+
+// Developer decision (binding, "access-system-fields"): proves `search`'s own
+// `readableDocuments` pipeline strips `_creationTime`/`updatedAt`/`vex_status`
+// exactly like any other denied field, through the real `search` call.
+describe("search (server) — system field stripping (developer decision, binding, \"access-system-fields\")", () => {
+  const systemFieldPostsResource = defineCollection({
+    slug: "posts",
+    fields: {
+      title: text({ searchIndex: { name: "search_title", filterFields: [] } }),
+      slug: text(),
+    },
+    versions: { drafts: true },
+    admin: { view: { searchFields: ["title"] } },
+  });
+  const systemFieldConfig = {
+    collections: [systemFieldPostsResource],
+    access: defineAccess({
+      roles: ["restricted"] as const,
+      resources: [systemFieldPostsResource],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        restricted: {
+          posts: {
+            read: () => ({ "*": true, _creationTime: false, updatedAt: false, vex_status: false }),
+          },
+        },
+      },
+    }),
+  } as unknown as VexConfig;
+  const restrictedAuth = { user: { _id: "u1", roles: "restricted" } };
+
+  test("strips _creationTime, updatedAt, and vex_status when a map explicitly denies them", async () => {
+    const t = convexTest(schema, modules);
+    const docs = (await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", {
+        title: "Published",
+        slug: "public",
+        updatedAt: 123,
+        vex_status: "published",
+      });
+      return search({
+        ctx,
+        collection: "posts",
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        config: systemFieldConfig,
+        auth: restrictedAuth,
+      });
+    })) as unknown as Record<string, unknown>[];
+    expect(docs).toHaveLength(1);
+    const doc = docs[0] as Record<string, unknown>;
+    expect(doc._id).toBeDefined();
+    expect(doc.title).toBe("Published");
+    expect(doc._creationTime).toBeUndefined();
+    expect(doc.updatedAt).toBeUndefined();
+    expect(doc.vex_status).toBeUndefined();
+  });
+});
+
+// ── Step 6: sort rejection, searchField validation, declared-filter exemption, count cap ──
+describe("search (server) — sort is rejected while searching", () => {
+  test("throws a VexError naming the collection when sort is also supplied", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        search({
+          ctx,
+          collection: "posts",
+          query: "hello",
+          searchIndexName: "search_title",
+          searchField: "title",
+          sort: { field: "title", order: "asc" },
+        } as any),
+      ),
+    ).rejects.toThrow(/"code":"SORT_WHILE_SEARCHING"/);
+  });
+});
+
+describe("search (server) — searchField validated against admin.view.state.searchFields", () => {
+  const searchFieldAllowListBaseResource = defineCollection({
+    slug: "posts",
+    fields: { title: text(), body: text() },
+  });
+  const searchFieldAllowListResource = {
+    ...searchFieldAllowListBaseResource,
+    admin: {
+      ...searchFieldAllowListBaseResource.admin,
+      view: {
+        ...searchFieldAllowListBaseResource.admin?.view,
+        state: { ...searchFieldAllowListBaseResource.admin?.view?.state, searchFields: ["title"] },
+      },
+    },
+  } as unknown as typeof searchFieldAllowListBaseResource;
+  const searchFieldAllowListConfig = { collections: [searchFieldAllowListResource] } as unknown as VexConfig;
+
+  test("an allowed searchField runs normally", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Hello world", slug: "hello" });
+      return search({
+        ctx,
+        collection: "posts",
+        config: searchFieldAllowListConfig,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+      });
+    });
+    expect(docs).toHaveLength(1);
+  });
+
+  test("a searchField outside admin.view.state.searchFields rejects with a VexError naming the list", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        search({
+          ctx,
+          collection: "posts",
+          config: searchFieldAllowListConfig,
+          query: "",
+          searchIndexName: "search_title",
+          searchField: "body",
+        }),
+      ),
+    ).rejects.toThrow(/(?=.*"code":"SEARCH_FIELD_NOT_ALLOWED")(?=.*"searchField":"body")/);
+  });
+});
+
+describe("search (server) — searchField validated against field-read access", () => {
+  const searchFieldAccessResource = defineCollection({
+    slug: "posts",
+    fields: { title: text({ searchIndex: { name: "search_title", filterFields: [] } }), body: text() },
+    admin: { view: { searchFields: ["title"] } },
+  });
+  const searchFieldAccessConfig = {
+    collections: [searchFieldAccessResource],
+    access: defineAccess({
+      roles: ["viewer"] as const,
+      resources: [searchFieldAccessResource],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: { viewer: { posts: { read: () => ({ title: false, "*": true }) } } },
+    }),
+  } as unknown as VexConfig;
+  const searchFieldAccessViewerAuth = { user: { _id: "u1", roles: "viewer" } };
+
+  test("searching on an unreadable field throws VexAccessError", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        search({
+          ctx,
+          collection: "posts",
+          config: searchFieldAccessConfig,
+          auth: searchFieldAccessViewerAuth,
+          query: "",
+          searchIndexName: "search_title",
+          searchField: "title",
+        } as any),
+      ),
+    ).rejects.toThrow(
+      expect.objectContaining({ resource: "posts", action: "read", field: "title" }),
+    );
+  });
+});
+
+const declaredFilterSearchBaseResource = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text({ searchIndex: { name: "search_title", filterFields: [] } }),
+    slug: text(),
+    featured: checkbox(),
+  },
+  admin: { view: { searchFields: ["title"] } },
+});
+const declaredFilterSearchResource = {
+  ...declaredFilterSearchBaseResource,
+  admin: {
+    ...declaredFilterSearchBaseResource.admin,
+    useAsTitle: "title",
+    views: [{ viewId: "featured", name: "Featured", state: { where: { field: "featured", op: "eq", value: true } } }],
+    view: {
+      ...declaredFilterSearchBaseResource.admin?.view,
+      state: { ...declaredFilterSearchBaseResource.admin?.view?.state, searchFields: ["title"] },
+    },
+  },
+} as unknown as typeof declaredFilterSearchBaseResource;
+const declaredFilterSearchAccess = {
+  collections: [declaredFilterSearchResource],
+  access: defineAccess({
+    roles: ["viewer"] as const,
+    resources: [declaredFilterSearchResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: { viewer: { posts: { read: () => ({ featured: false, "*": true }) } } },
+  }),
+} as unknown as VexConfig;
+const declaredFilterSearchViewerAuth = { user: { _id: "u1", roles: "viewer" } };
+// No declared config view (unlike `declaredFilterSearchAccess`) — isolates
+// the shared-view-only exemption path from the config-view path the
+// describe block above exercises.
+const declaredFilterSearchNoViewAccess = {
+  collections: [declaredFilterSearchBaseResource],
+  access: defineAccess({
+    roles: ["viewer"] as const,
+    resources: [declaredFilterSearchBaseResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: { viewer: { posts: { read: () => ({ featured: false, "*": true }) } } },
+  }),
+} as unknown as VexConfig;
+
+describe("search (server) — declared view filter is exempt from the field-read check", () => {
+  test("a where that deep-equals the declared view's where is trusted even though featured is unreadable", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("posts", { title: "Hidden", slug: "hidden", featured: false });
+      return search({
+        ctx,
+        collection: "posts",
+        config: declaredFilterSearchAccess,
+        auth: declaredFilterSearchViewerAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: { field: "featured", op: "eq", value: true },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["shown"]);
+  });
+
+  test("changing the declared filter's value is NOT exempt — the unreadable condition drops every row", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      return search({
+        ctx,
+        collection: "posts",
+        config: declaredFilterSearchAccess,
+        auth: declaredFilterSearchViewerAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: { field: "featured", op: "eq", value: false },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+});
+
+const sharedFilterSearchAccessWithReadViews = {
+  collections: [declaredFilterSearchResource],
+  access: defineAccess({
+    roles: ["editor"] as const,
+    resources: [declaredFilterSearchResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      editor: { posts: { read: () => ({ featured: false, "*": true }), readViews: true } },
+    },
+  }),
+} as unknown as VexConfig;
+const sharedFilterSearchEditorAuth = { user: { _id: "u2", roles: "editor" } };
+
+describe("search (server) — shared-view filter exemption (readViews)", () => {
+  test("does not read vex_views when nothing is unreadable", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      return search({
+        ctx,
+        collection: "posts",
+        config: sharedFilterSearchAccessWithReadViews,
+        auth: sharedFilterSearchEditorAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: { field: "slug", op: "eq", value: "shown" },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["shown"]);
+  });
+
+  test("trusts an exact match against a shared view's where when the caller has readViews", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("posts", { title: "Hidden", slug: "hidden", featured: false });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return search({
+        ctx,
+        collection: "posts",
+        config: sharedFilterSearchAccessWithReadViews,
+        auth: sharedFilterSearchEditorAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: { field: "featured", op: "eq", value: true },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["shown"]);
+  });
+
+  test("does not trust a shared view's where when the caller lacks readViews", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return search({
+        ctx,
+        collection: "posts",
+        config: declaredFilterSearchNoViewAccess,
+        auth: declaredFilterSearchViewerAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: { field: "featured", op: "eq", value: true },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+
+  test("does not trust an altered value against a shared view's where", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return search({
+        ctx,
+        collection: "posts",
+        config: sharedFilterSearchAccessWithReadViews,
+        auth: sharedFilterSearchEditorAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: { field: "featured", op: "eq", value: false },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+});
+
+// ── Access + system fields: declared-filter exemption covers `vex_status`
+// (Published shared view, signed out) — search parity with find ───────────
+const vexStatusSearchResource = defineCollection({
+  slug: "posts",
+  fields: { title: text({ searchIndex: { name: "search_title", filterFields: [] } }), slug: text() },
+  versions: { drafts: true },
+  admin: { view: { searchFields: ["title"] } },
+});
+const vexStatusSearchGuestAccess = {
+  collections: [vexStatusSearchResource],
+  access: defineAccess({
+    roles: ["guest"] as const,
+    anonRole: "guest",
+    resources: [vexStatusSearchResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      guest: {
+        posts: {
+          "*": false,
+          read: () => ({ "*": false, title: true, slug: true }),
+          readViews: true,
+        },
+      },
+    },
+  }),
+} as unknown as VexConfig;
+const vexStatusSearchAnonymousAuth = { user: null };
+const vexStatusSearchPublishedWhere = { field: "vex_status", op: "eq", value: "published" } as const;
+
+describe("search (server) — declared-filter exemption covers vex_status (Published shared view, signed out)", () => {
+  test("an anonymous caller who can't read vex_status still gets rows from a shared view filtering on it", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Pub", slug: "pub", vex_status: "published" });
+      await ctx.db.insert("posts", { title: "Dft", slug: "dft", vex_status: "draft" });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "published",
+        name: "Published",
+        state: { where: vexStatusSearchPublishedWhere },
+        createdBy: "someone-else",
+      });
+      return search({
+        ctx,
+        collection: "posts",
+        config: vexStatusSearchGuestAccess,
+        auth: vexStatusSearchAnonymousAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: vexStatusSearchPublishedWhere,
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["pub"]);
+    expect(docs[0].vex_status).toBeUndefined();
+  });
+
+  test("a user-added filter on vex_status that does NOT match any declared view stays rejected", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Pub", slug: "pub", vex_status: "published" });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "published",
+        name: "Published",
+        state: { where: vexStatusSearchPublishedWhere },
+        createdBy: "someone-else",
+      });
+      return search({
+        ctx,
+        collection: "posts",
+        config: vexStatusSearchGuestAccess,
+        auth: vexStatusSearchAnonymousAuth,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        where: { field: "vex_status", op: "eq", value: "draft" },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+});
+
+const searchCountCapBaseResource = defineCollection({ slug: "posts", fields: { title: text() } });
+const searchCountCapResource = {
+  ...searchCountCapBaseResource,
+  admin: {
+    ...searchCountCapBaseResource.admin,
+    view: {
+      ...searchCountCapBaseResource.admin?.view,
+      state: { ...searchCountCapBaseResource.admin?.view?.state, countLimit: 3, searchFields: ["title"] },
+    },
+  },
+} as unknown as typeof searchCountCapBaseResource;
+const searchCountCapConfig = { collections: [searchCountCapResource] } as unknown as VexConfig;
+
+describe("search (server) — total count cap", () => {
+  test("totalDocsCapped is true and totalDocs stops at countLimit once the real count exceeds it", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      for (let i = 0; i < 6; i++) {
+        await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}` });
+      }
+      return search({
+        ctx,
+        collection: "posts",
+        config: searchCountCapConfig,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        paginationOpts: { numItems: 2, cursor: null, totalDocs: true },
+      } as any);
+    });
+    expect(result.totalDocs).toBe(3);
+    expect(result.totalDocsCapped).toBe(true);
+  });
+
+  test("totalDocsCapped is false and totalDocs is exact when the real count sits under the limit", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "A", slug: "a" });
+      await ctx.db.insert("posts", { title: "B", slug: "b" });
+      return search({
+        ctx,
+        collection: "posts",
+        config: searchCountCapConfig,
+        query: "",
+        searchIndexName: "search_title",
+        searchField: "title",
+        paginationOpts: { numItems: 1, cursor: null, totalDocs: true },
+      } as any);
+    });
+    expect(result.totalDocs).toBe(2);
+    expect(result.totalDocsCapped).toBe(false);
+  });
+});
+
+// ── Draft-pair pagination fix: canonical-row merge (search) ────────────────
+const searchVersionedPostsResource = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text({ searchIndex: { name: "search_title", filterFields: [] } }),
+    slug: text(),
+  },
+  versions: { drafts: true },
+  admin: { view: { searchFields: ["title"] } },
+});
+const searchVersionedAccess = defineAccess({
+  roles: ["editor", "viewer"] as const,
+  resources: [searchVersionedPostsResource],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    editor: { posts: { readDrafts: true } },
+    viewer: { posts: { read: true } },
+  },
+});
+const searchVersionedConfig = {
+  collections: [searchVersionedPostsResource],
+  access: searchVersionedAccess,
+} as unknown as VexConfig;
+const searchEditorAuth = { user: { _id: "u1", roles: "editor" } };
+const searchViewerAuth = { user: { _id: "u2", roles: "viewer" } };
+
+describe("search (server) — draft-pair pagination fix (canonical-row merge)", () => {
+  test("a published+draft pair that both match the query merges into one result, like find", async () => {
+    const t = convexTest(schema, modules);
+    const { draftId, withPermission, withoutPermission } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const publishedId = await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "published",
+        });
+        const draftId = await ctx.db.insert("posts", {
+          title: "Hello (draft edit)",
+          slug: "hello",
+          vex_status: "draft",
+          vex_publishedId: publishedId,
+        });
+        return {
+          draftId,
+          withPermission: await search({
+            ctx,
+            collection: "posts",
+            config: searchVersionedConfig,
+            auth: searchEditorAuth,
+            drafts: true,
+            query: "Hello",
+            searchIndexName: "search_title",
+            searchField: "title",
+          } as any),
+          withoutPermission: await search({
+            ctx,
+            collection: "posts",
+            config: searchVersionedConfig,
+            auth: searchViewerAuth,
+            drafts: true,
+            query: "Hello",
+            searchIndexName: "search_title",
+            searchField: "title",
+          } as any),
+        };
+      },
+    );
+    expect(withPermission).toHaveLength(1);
+    expect((withPermission[0] as any)._id).toBe(draftId);
+    expect((withPermission[0] as any).hasUnpublishedChanges).toBe(true);
+    // Unlike `find`, `search` has no readDrafts-denied-falls-back-to-read
+    // fallback (search/server.ts's own comment, lines 207-213) — a caller
+    // without readDrafts who asks for drafts is denied outright, same as
+    // any other deny-all case: empty, not an error, and never merged.
+    expect(withoutPermission).toEqual([]);
+  });
+});
+
+// ── Polish fix (Decision 9): admin.view.state.searchFields: [] disables
+// search entirely — the server rejects every searchField, not just ones
+// outside a non-empty allow-list ───────────────────────────────────────────
+describe("search (server) — admin.view.state.searchFields: [] disables search (Decision 9)", () => {
+  test("rejects with SEARCH_FIELD_NOT_ALLOWED when the collection declares no searchFields at all", async () => {
+    const noSearchFieldsResource = defineCollection({
+      slug: "posts",
+      fields: { title: text({ searchIndex: { name: "search_title", filterFields: [] } }), slug: text() },
+      // admin.view.searchFields omitted entirely → resolves to `[]`.
+    });
+    const config = { collections: [noSearchFieldsResource] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        search({
+          ctx,
+          collection: "posts",
+          config,
+          query: "hello",
+          searchIndexName: "search_title",
+          searchField: "title",
+        } as any),
+      ),
+    ).rejects.toThrow(/SEARCH_FIELD_NOT_ALLOWED/);
   });
 });

@@ -1,17 +1,19 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { adminCollectionCookieName, parseAdminCollectionCookie } from "@vexcms/core";
 import { useLivePreviewPanelState } from "./useLivePreviewPanelState";
 
 const SLUG = "posts";
-const COOKIE_NAME = `vex-live-preview-panel:${SLUG}`;
+const COOKIE_NAME = adminCollectionCookieName({ collection: SLUG });
 
-/** Reads the panel cookie's raw value, or `undefined` when it has not been written. */
-function cookieValue(): string | undefined {
+/** Reads the panel's `livePreview.panelOpen` value off the consolidated admin collection cookie, or `undefined` when no cookie/field has been written. */
+function panelOpenCookieValue(): boolean | undefined {
   const prefix = `${COOKIE_NAME}=`;
-  return document.cookie
+  const raw = document.cookie
     .split("; ")
     .find((entry) => entry.startsWith(prefix))
     ?.slice(prefix.length);
+  return parseAdminCollectionCookie({ cookieValue: raw }).livePreview?.panelOpen;
 }
 
 function clearCookie() {
@@ -26,7 +28,9 @@ function renderPanelState(initialProps: { initialOpen: boolean; isMobile: boolea
   return renderHook(
     (props: { isMobile: boolean }) =>
       useLivePreviewPanelState({
+        basePath: "/",
         slug: SLUG,
+        scope: "collection",
         initialOpen: initialProps.initialOpen,
         enabled: true,
         isMobile: props.isMobile,
@@ -39,32 +43,32 @@ describe("useLivePreviewPanelState", () => {
   it("toggles open and closed explicitly, writing the cookie each time", () => {
     const { result } = renderPanelState({ initialOpen: false, isMobile: false });
     expect(result.current.isOpen).toBe(false);
-    expect(cookieValue()).toBeUndefined();
+    expect(panelOpenCookieValue()).toBeUndefined();
 
     act(() => result.current.toggle());
     expect(result.current.isOpen).toBe(true);
-    expect(cookieValue()).toBe("1");
+    expect(panelOpenCookieValue()).toBe(true);
 
     act(() => result.current.toggle());
     expect(result.current.isOpen).toBe(false);
-    expect(cookieValue()).toBe("0");
+    expect(panelOpenCookieValue()).toBe(false);
   });
 
   it("auto-closes when narrowing past the breakpoint while open, without writing the cookie", () => {
     const { result, rerender } = renderPanelState({ initialOpen: true, isMobile: false });
     expect(result.current.isOpen).toBe(true);
-    expect(cookieValue()).toBeUndefined();
+    expect(panelOpenCookieValue()).toBeUndefined();
 
     rerender({ isMobile: true });
     expect(result.current.isOpen).toBe(false);
-    expect(cookieValue()).toBeUndefined();
+    expect(panelOpenCookieValue()).toBeUndefined();
   });
 
   it("does nothing on narrowing when already closed", () => {
     const { result, rerender } = renderPanelState({ initialOpen: false, isMobile: false });
     rerender({ isMobile: true });
     expect(result.current.isOpen).toBe(false);
-    expect(cookieValue()).toBeUndefined();
+    expect(panelOpenCookieValue()).toBeUndefined();
   });
 
   it("opens from the mobile overlay via toggle (header button or ⋯ menu), writing the cookie", () => {
@@ -73,20 +77,20 @@ describe("useLivePreviewPanelState", () => {
 
     act(() => result.current.toggle());
     expect(result.current.isOpen).toBe(true);
-    expect(cookieValue()).toBe("1");
+    expect(panelOpenCookieValue()).toBe(true);
   });
 
   it("stays open and switches to the desktop split when widening while the mobile overlay is open", () => {
     const { result, rerender } = renderPanelState({ initialOpen: false, isMobile: true });
     act(() => result.current.toggle());
     expect(result.current.isOpen).toBe(true);
-    const cookieAfterOpen = cookieValue();
+    const cookieAfterOpen = panelOpenCookieValue();
 
     rerender({ isMobile: false });
     expect(result.current.isOpen).toBe(true);
     // Widening an explicitly-open overlay is not an auto transition — the
     // cookie is simply left at whatever the explicit toggle already wrote.
-    expect(cookieValue()).toBe(cookieAfterOpen);
+    expect(panelOpenCookieValue()).toBe(cookieAfterOpen);
   });
 
   it("reopens when widening past the breakpoint after an auto-close, without writing the cookie", () => {
@@ -97,7 +101,7 @@ describe("useLivePreviewPanelState", () => {
 
     rerender({ isMobile: false }); // widen back
     expect(result.current.isOpen).toBe(true);
-    expect(cookieValue()).toBeUndefined();
+    expect(panelOpenCookieValue()).toBeUndefined();
   });
 
   it("stays closed when widening after the user explicitly closes it while narrow (clears the auto-close memory)", () => {

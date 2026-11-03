@@ -5,7 +5,9 @@ import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
 
-import { useIsMobile } from "../hooks/use-mobile"
+import { useIsMobile, useIsMobileAfterOwnMount } from "../hooks/use-mobile"
+import { useVexConfig } from "../config/VexConfigContext"
+import { writeAdminCookie } from "../adminCookie"
 import { cn } from "../utils/cn"
 import { Button } from "./button"
 import { Input } from "./input"
@@ -25,11 +27,33 @@ import {
 } from "./tooltip"
 import { PanelLeftIcon, PanelRightIcon } from "lucide-react"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
+/**
+ * Pixel equivalents of {@link SIDEBAR_WIDTH}/`SIDEBAR_WIDTH_ICON` — exported
+ * for consumers that need a real NUMBER (JS arithmetic, e.g. `ListViewPeek.tsx`'s
+ * own resize clamp accounting for a right-docked sidebar's width), unlike
+ * the CSS custom properties (`--sidebar-width`/`--sidebar-width-icon`,
+ * resolved by the browser, never by JS) consumers doing plain CSS
+ * positioning should prefer instead. Assumes the standard 16px root
+ * font-size (`16rem`/`3rem` → 256px/48px) — a project that overrides it
+ * would see a correspondingly generous/conservative clamp bound, never a
+ * broken one.
+ */
+export const SIDEBAR_WIDTH_PX = 256
+export const SIDEBAR_WIDTH_ICON_PX = 48
+/**
+ * The sidebar's own desktop-gap transition (`ui/sidebar.tsx`'s own `Sidebar`
+ * component, the `data-slot="sidebar-gap"` div — matches its `left,right,width`
+ * properties, 200ms, linear). Exported so a consumer positioned relative to
+ * the sidebar's own edge (`ListViewPeek.tsx`'s right-docked panel, `--peek-sidebar-offset`)
+ * can move in lockstep with it on open/collapse instead of jumping while the
+ * sidebar itself animates — reusing this ONE class/token rather than
+ * independently copying the duration/easing numbers, so the two stay in sync
+ * if the sidebar's own transition ever changes.
+ */
+export const SIDEBAR_TRANSITION_CLASS = "transition-[left,right,width] duration-200 ease-linear"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContextProps = {
@@ -53,6 +77,19 @@ function useSidebar() {
   return context
 }
 
+/**
+ * Same context {@link useSidebar} reads, but `null` outside a
+ * `SidebarProvider` instead of throwing — for a caller that works WITH or
+ * WITHOUT one (`ListViewPeek.tsx`'s own sidebar-aware positioning: every REAL
+ * admin page renders inside `AdminLayout`'s `SidebarProvider`, but the
+ * test harness (`testing/harness/viewHarness.tsx`) doesn't wrap one, and
+ * "no sidebar, no offset" — today's exact behavior — is the correct
+ * fallback there, not a thrown error).
+ */
+export function useSidebarOptional(): SidebarContextProps | null {
+  return React.useContext(SidebarContext)
+}
+
 function SidebarProvider({
   defaultOpen = true,
   open: openProp,
@@ -66,6 +103,7 @@ function SidebarProvider({
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
+  const config = useVexConfig()
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
 
@@ -82,10 +120,12 @@ function SidebarProvider({
         _setOpen(openState)
       }
 
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+      // Decision 51: merges into the consolidated vex-admin cookie's own
+      // sidebarOpen field, path-scoped to the project's basePath, instead
+      // of writing its own dedicated sidebar_state cookie at path=/.
+      writeAdminCookie({ basePath: config.basePath, patch: { sidebarOpen: openState } })
     },
-    [setOpenProp, open]
+    [setOpenProp, open, config.basePath]
   )
 
   // Helper to toggle the sidebar.
@@ -167,6 +207,15 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  // `useIsMobileAfterOwnMount`, not the raw `isMobile` from context: `Sidebar` can be
+  // rendered inside a `<Suspense>` boundary that hydrates on a LATER tick than
+  // `SidebarProvider` above it (`AdminLayout`'s `authPromise`-streamed sidebar, Decision
+  // 44) — if `SidebarProvider`'s own `useIsMobile()` effect has already flipped context to
+  // `true` by the time THIS component gets its first render, branching on the raw value
+  // here would diverge from the server's always-`false` render — a hydration mismatch
+  // (developer-reported, reproduces at 390px on every admin page). See
+  // `useIsMobileAfterOwnMount`'s own doc comment for the full mechanics.
+  const isMobileSafe = useIsMobileAfterOwnMount(isMobile)
 
   if (collapsible === "none") {
     return (
@@ -183,7 +232,7 @@ function Sidebar({
     )
   }
 
-  if (isMobile) {
+  if (isMobileSafe) {
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
@@ -515,6 +564,9 @@ function SidebarMenuButton({
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
   } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const { isMobile, state } = useSidebar()
+  // Same hydration-mismatch hazard as `Sidebar`'s own branch above (see its comment) —
+  // this component can ALSO be rendered inside the same late-hydrating Suspense boundary.
+  const isMobileSafe = useIsMobileAfterOwnMount(isMobile)
   const comp = useRender({
     defaultTagName: "button",
     props: mergeProps<"button">(
@@ -548,7 +600,7 @@ function SidebarMenuButton({
       <TooltipContent
         side="right"
         align="center"
-        hidden={state !== "collapsed" || isMobile}
+        hidden={state !== "collapsed" || isMobileSafe}
         {...tooltip}
       />
     </Tooltip>

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import {
   DRAFT_ACTIONS,
+  VERSION_STATUSES,
   vexConvexApi,
   type CollectionSlug,
   type GlobalSlug,
@@ -187,7 +188,7 @@ export function useVersionHistoryState(
 
   const rows = versions ?? [];
   const publishedVersion = rows
-    .filter((row) => row.status === "published")
+    .filter((row) => row.status === VERSION_STATUSES.published.key)
     .reduce<VersionSummary | undefined>(
       (latest, row) => (latest && (latest.publishedAt ?? 0) >= (row.publishedAt ?? 0) ? latest : row),
       undefined,

@@ -76,6 +76,8 @@ export function group<
       position: "main",
       width: "100%",
       cellAlignment: "left",
+      enableSorting: false,
+      enableHiding: true,
       placeholder: "",
       defaultCollapsed: false,
       ...options?.admin,

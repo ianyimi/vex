@@ -212,6 +212,43 @@ describe("field maps — type level", () => {
     });
   });
 
+  // Developer decision (binding, "access-system-fields"): `_creationTime`/
+  // `updatedAt`/`vex_status` (on a versioned resource) are REAL, gateable
+  // field-permission keys now — `_id` (above) is the ONLY system key that
+  // stays rejected, always readable, never a real map entry.
+  it("accepts _creationTime and updatedAt as real field-permission keys", () => {
+    defineAccess({
+      roles: ["editor"] as const,
+      resources: [posts, users],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        editor: {
+          posts: { update: () => ({ "*": true, _creationTime: false, updatedAt: false }) },
+        },
+      },
+    });
+  });
+
+  // `vex_status` comes from the fixture REGISTRY's own `posts` document shape
+  // (`api/test/convex/schema.ts`'s raw Convex column, per this file's own
+  // header note), not the local `defineCollection` above — valid here
+  // regardless of whether the LOCAL fixture declares `versions.drafts`,
+  // since `FieldPermissionKey<TData>` only ever reads `TData`'s own keys.
+  it("accepts vex_status as a real field-permission key", () => {
+    defineAccess({
+      roles: ["editor"] as const,
+      resources: [posts, users],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        editor: {
+          posts: { update: () => ({ "*": true, vex_status: false }) },
+        },
+      },
+    });
+  });
+
   it("rejects several bad keys at once", () => {
     defineAccess({
       roles: ["editor"] as const,
@@ -301,6 +338,107 @@ describe("field maps — type level", () => {
         editor: { posts: true },
         // @ts-expect-error — "ghost" is not in `roles`
         ghost: { posts: true },
+      },
+    });
+  });
+});
+
+// Developer-reported fix (binding): `readViews`/`createView`/`updateView`/
+// `deleteView` are collection-level — never per-document or per-field — so a
+// field map (or the `{ where, filter, withIndex }` constrained object form,
+// equally document-query-shaped) is now a compile error on every one of
+// them, unlike `read`/`create`/`update`, which keep accepting both.
+describe("view actions — type level (developer-reported, binding)", () => {
+  it("rejects a field map on readViews", () => {
+    defineAccess({
+      roles: ["editor"] as const,
+      resources: [posts, users],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        editor: {
+          // @ts-expect-error — a field map is not assignable to ViewPermissionCheck
+          posts: { readViews: () => ({ "*": false, title: true }) },
+        },
+      },
+    });
+  });
+
+  it("rejects a field map on createView/updateView/deleteView", () => {
+    defineAccess({
+      roles: ["editor"] as const,
+      resources: [posts, users],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        editor: {
+          posts: {
+            // @ts-expect-error — a field map is not assignable to ViewPermissionCheck
+            createView: () => ({ "*": false }),
+            // @ts-expect-error — a field map is not assignable to ViewPermissionCheck
+            updateView: () => ({ "*": true, title: false }),
+            // @ts-expect-error — a field map is not assignable to ViewPermissionCheck
+            deleteView: () => ({ "*": false, title: true }),
+          },
+        },
+      },
+    });
+  });
+
+  it("rejects the { where, filter } constrained object form on a view action — equally document-query-shaped, equally meaningless", () => {
+    defineAccess({
+      roles: ["editor"] as const,
+      resources: [posts, users],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        editor: {
+          posts: {
+            // @ts-expect-error — a { where, filter } object is not assignable to ViewPermissionCheck
+            updateView: { where: { field: "title", op: "eq", value: "x" } },
+          },
+        },
+      },
+    });
+  });
+
+  it("still accepts a plain boolean and a boolean-returning callback on every view action", () => {
+    defineAccess({
+      roles: ["editor"] as const,
+      resources: [posts, users],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        editor: {
+          posts: {
+            readViews: true,
+            createView: ({ user }) => user.name !== undefined,
+            updateView: false,
+            deleteView: ({ user }) => user.roles === "editor",
+          },
+        },
+      },
+    });
+  });
+
+  // Developer decision: a view-action callback takes a SINGLE props object —
+  // `user` (plus `organization` when configured) ONLY, no `data` — matching
+  // every other permission callback's shape, so a `view` property can be
+  // added later without a breaking change. Per-view access (the stored view,
+  // an `updatedBy` field) is deferred to the backlog, not implemented here.
+  it("rejects a callback that reads `data` — view actions have no per-document data to receive", () => {
+    defineAccess({
+      roles: ["editor"] as const,
+      resources: [posts, users],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        editor: {
+          posts: {
+            // @ts-expect-error — `data` does not exist on a view action's callback props
+            updateView: ({ data }) => data?.title === "x",
+          },
+        },
       },
     });
   });

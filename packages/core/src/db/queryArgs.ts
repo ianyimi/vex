@@ -21,7 +21,8 @@ import { createQueryIndexConstraintBuilder, readQueryIndexConstraints } from "..
 import type { AccessDocFor } from "../access/types";
 import type { IndexFieldsBySlug } from "../types/generated";
 import { VexError } from "../errors";
-import { getDataFields, type AdminField } from "../fields";
+import { getDataFields, ADMIN_FIELDS, type AdminField } from "../fields";
+import { VERSION_SYSTEM_FIELDS } from "../versions/constants";
 
 /**
  * Every index a caller may name for collection `S`, as name → field tuple: the
@@ -265,10 +266,26 @@ export function validateWhereNode<S extends string = string>(props: {
       return { not: visit(record.not, `${path}.not`, depth + 1) };
     }
 
-    if (keys.length !== 3 || !("field" in record) || !("op" in record) || !("value" in record)) {
+    const hasValueKey = "value" in record;
+    // A leaf's `value` key can be ABSENT on the wire, not merely `undefined`:
+    // Convex's own argument serialization (`convexToJson`) drops an explicit
+    // `value: undefined` property entirely before the server ever sees it
+    // (confirmed against `convex/values`), the same way `JSON.stringify`
+    // drops `undefined` properties. This is exactly Decision 10's
+    // `isEmpty`/`isNotEmpty` compiled form (`{ op: "eq" | "neq", value:
+    // undefined }`), so a 2-key `{ field, op }` leaf is accepted here and
+    // treated identically to an explicit `value: undefined` — never a
+    // third, unrecognized key.
+    if (
+      (keys.length !== 3 && keys.length !== 2) ||
+      !("field" in record) ||
+      !("op" in record) ||
+      (keys.length === 3 && !hasValueKey)
+    ) {
       invalidWhere(path, "expected { field, op, value } or a single and / or / not key");
     }
-    const { field, op, value } = record;
+    const { field, op } = record;
+    const value = hasValueKey ? record.value : undefined;
     if (typeof field !== "string") invalidWhere(`${path}.field`, "expected a string");
     if (knownFields !== undefined && !knownFields.has(field as string)) {
       invalidWhere(`${path}.field`, `unknown field "${field as string}"`);
@@ -289,7 +306,12 @@ export function validateWhereNode<S extends string = string>(props: {
  * unnamed-tab child is listed under its own key, a named tab under the tab's
  * `name`, and the layout keys themselves and `ui()` entries are absent. Looks
  * through both `collections` and `mediaCollections`. `vex_`-prefixed versioning
- * fields are deliberately excluded; drafts are selected with the `drafts` argument.
+ * fields are deliberately excluded — drafts are selected with the `drafts`
+ * argument — with ONE exception: `vex_status` on a collection with
+ * `versions.drafts: true` is additionally allowed, because Decision 10's
+ * filter builder offers it as a built-in `vex_status` filter field (values
+ * from `VERSION_STATUSES`) and `find`/`search` must accept a `where`
+ * referencing it. A non-versioned collection still rejects it.
  *
  * @param props - Input props.
  * @param props.config - The resolved config; `undefined` when the caller has none.
@@ -298,12 +320,30 @@ export function validateWhereNode<S extends string = string>(props: {
  *   unknown (field names then go unchecked, `validateWhereNode`'s documented fallback).
  */
 export function whereFieldNames(props: {
-  config: { collections: readonly { slug: string; fields: Record<string, AdminField> }[]; mediaCollections?: readonly { slug: string; fields: Record<string, AdminField> }[] } | undefined;
+  config:
+    | {
+        collections: readonly {
+          slug: string;
+          fields: Record<string, AdminField>;
+          versions?: { drafts: boolean };
+        }[];
+        mediaCollections?: readonly {
+          slug: string;
+          fields: Record<string, AdminField>;
+          versions?: { drafts: boolean };
+        }[];
+      }
+    | undefined;
   collection: string;
 }): readonly string[] | undefined {
   const all = [...(props.config?.collections ?? []), ...(props.config?.mediaCollections ?? [])];
   const match = all.find((c) => c.slug === props.collection);
-  return match ? [...Object.keys(getDataFields({ fields: match.fields })), "_id", "_creationTime"] : undefined;
+  if (!match) return undefined;
+  const names = [...Object.keys(getDataFields({ fields: match.fields })), "_id", "_creationTime"];
+  if (match.versions?.drafts) {
+    names.push(VERSION_SYSTEM_FIELDS.status.slug);
+  }
+  return names;
 }
 
 /**
@@ -340,4 +380,53 @@ export function andConvexQueryFilters(props: { filters: readonly (ConvexQueryFil
   if (present.length === 0) return undefined;
   if (present.length === 1) return present[0];
   return (q) => q.and(...present.map((f) => f(q)));
+}
+
+/**
+ * Converts every `commitTs`-typed field's leaf `value` inside a `VexWhereNode`
+ * from a ms `number` (what the client sends — Decision 5) to a ns `bigint`
+ * (what Convex's index-range builder needs to compare against the stored
+ * value). Walks `and`/`or`/`not` recursively; non-`commitTs` leaves and
+ * `isEmpty`/`isNotEmpty` leaves (no `value`) pass through unchanged.
+ *
+ * @param props - Input props.
+ * @param props.where - The caller's `where`, or `undefined`.
+ * @param props.fields - The collection's resolved field map.
+ * @returns A new `VexWhereNode` with every `commitTs` leaf's value
+ *   converted, or `props.where` unchanged if there is nothing to convert.
+ * @throws {VexError} `code: "INVALID_WHERE"` — a `commitTs`-typed leaf's
+ *   `value` is a `number` that is not a finite integer (`where` arrives on
+ *   the wire as `v.any()`, so a float or `NaN`/`Infinity` ms value would
+ *   otherwise crash `BigInt(...)` with an uncaught `RangeError`).
+ */
+export function convertCommitTsWhereToNs<S extends string = string>(props: {
+  where: VexWhereNode<S> | undefined;
+  fields: Record<string, AdminField>;
+}): VexWhereNode<S> | undefined {
+  if (props.where === undefined) return undefined;
+  const commitTsFields = new Set(
+    Object.entries(props.fields)
+      .filter(([, field]) => field.type === ADMIN_FIELDS.commitTs.type)
+      .map(([key]) => key),
+  );
+  function walk(node: VexWhereNode<S>): VexWhereNode<S> {
+    if ("and" in node) return { and: node.and.map(walk) };
+    if ("or" in node) return { or: node.or.map(walk) };
+    if ("not" in node) return { not: walk(node.not) };
+    if (commitTsFields.has(node.field as string) && typeof node.value === "number") {
+      if (!Number.isFinite(node.value) || !Number.isInteger(node.value)) {
+        throw new VexError({
+          code: "INVALID_WHERE",
+          path: `where.${String(node.field)}.value`,
+          message: `Invalid where on commitTs field "${String(node.field)}": value must be a finite integer (ms since epoch), got ${node.value}.`,
+        });
+      }
+      // `ConstraintValue<TDoc, F>` is inferred per-collection from `S`, so
+      // TS cannot know a `commitTs` field's value type admits `bigint` here
+      // — this generic walk only inspects `node.field`'s runtime type.
+      return { ...node, value: BigInt(node.value) * BigInt(1_000_000) } as VexWhereNode<S>;
+    }
+    return node;
+  }
+  return walk(props.where);
 }

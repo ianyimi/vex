@@ -147,6 +147,8 @@ export function blocks<
       position: "main",
       width: "100%",
       cellAlignment: "left",
+      enableSorting: false,
+      enableHiding: true,
       placeholder: "",
       ...options?.admin,
       components: resolveFieldComponents({ components: options?.admin?.components }),

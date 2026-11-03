@@ -7,7 +7,7 @@ import { pageBlocks } from "~/vexcms/blocks/config";
 export const pages = defineCollection({
   slug: TABLE_SLUG_PAGES,
   admin: {
-    table: { defaultColumns: ["title", "slug", "_id"] },
+    view: { sort: { field: "_creationTime", order: "desc" }, columns: ["title", "slug"] },
     useAsTitle: "title",
     icon: "FileText",
     livePreview: {

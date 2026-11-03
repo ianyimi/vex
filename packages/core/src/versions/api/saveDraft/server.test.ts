@@ -1,12 +1,13 @@
 import { convexTest } from "convex-test";
-import type { GenericId } from "convex/values";
+import { CommitTsPlaceholder, type GenericId } from "convex/values";
 import { describe, expect, test } from "vitest";
 
 import * as _generatedApi from "../../../db/test/convex/_generated/api";
 import schema from "../../../db/test/convex/schema";
 import type { VexConfig } from "../../../config";
 import { saveDraft } from "./server";
-import { defineCollection, defineGlobal, text } from "../../../index";
+import { commitTs, defineCollection, defineGlobal, text } from "../../../index";
+import type { AdminField } from "../../../fields";
 import { VexAccessError } from "../../../access";
 
 /**
@@ -69,6 +70,101 @@ describe("saveDraft (server)", () => {
       ]);
       expect(versions[0]?.snapshot).toMatchObject({ title: "Original" });
       expect(versions[1]?.snapshot).toMatchObject({ title: "Edited", slug: "original" });
+    });
+  });
+
+  /**
+   * Polish fix: the legacy published-row snapshot (`saveDraft.ts`'s
+   * "history doesn't already hold this exact content" bootstrap branch)
+   * previously skipped `removeVexFields`, unlike every other snapshot
+   * write post-Decision-10 — a resolved `commitTs` bigint would land in
+   * `vex_versions.snapshot` verbatim. `updatedAt` here is a literal
+   * resolved bigint (not the unresolved placeholder), matching what a real
+   * Convex backend stores post-commit.
+   */
+  test("strips the legacy published-row snapshot's commitTs field before writing it to history", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const resolvedNs = BigInt(1_700_000_000_000) * BigInt(1_000_000);
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+        updatedAt: resolvedNs,
+      });
+
+      await saveDraft({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: publishedId,
+        data: { title: "Edited" },
+      });
+
+      const versions = await ctx.db
+        .query("vex_versions")
+        .withIndex("by_document_version", (q) =>
+          q.eq("collection", "posts").eq("documentId", String(publishedId)),
+        )
+        .collect();
+      const legacySnapshot = versions.find((v) => v.status === "published")?.snapshot as
+        | Record<string, unknown>
+        | undefined;
+      expect(legacySnapshot).toBeDefined();
+      expect(legacySnapshot).not.toHaveProperty("updatedAt");
+      expect(legacySnapshot).toMatchObject({ title: "Original", slug: "original" });
+    });
+  });
+
+  /**
+   * Polish fix, part 2: stripping the legacy snapshot ALSO fixes the
+   * `alreadySnapshotted` dedup — it compares the legacy snapshot against
+   * `publishedFields` with `valuesEqual`; before the fix, an unstripped
+   * `publishedFields` (carrying a resolved commitTs bigint) could never
+   * equal a prior, already-stripped snapshot once the dedup check ran a
+   * second time, so a duplicate "legacy" published-status row was written
+   * on every re-bootstrap. Repro: discard the first draft (simulating a
+   * user abandoning the edit), then save again — the second bootstrap
+   * must NOT add a second published-status history row.
+   */
+  test("a second draft branch after the first is discarded writes no duplicate legacy snapshot", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const resolvedNs = BigInt(1_700_000_000_000) * BigInt(1_000_000);
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+        updatedAt: resolvedNs,
+      });
+
+      const firstDraftId = await saveDraft({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: publishedId,
+        data: { title: "Edited once" },
+      });
+
+      // Discard the draft — the next save re-bootstraps from the published row.
+      await ctx.db.delete(firstDraftId as GenericId<"posts">);
+
+      await saveDraft({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: publishedId,
+        data: { title: "Edited again" },
+      });
+
+      const versions = await ctx.db
+        .query("vex_versions")
+        .withIndex("by_document_version", (q) =>
+          q.eq("collection", "posts").eq("documentId", String(publishedId)),
+        )
+        .collect();
+      expect(versions.filter((v) => v.status === "published")).toHaveLength(1);
+      expect(versions.filter((v) => v.status === "draft")).toHaveLength(2);
     });
   });
 
@@ -447,6 +543,49 @@ describe("saveDraft (server)", () => {
         }),
       ).rejects.toThrow(/Version 99 does not exist/);
       expect((await ctx.db.get(draftId))?.title).toBe("Draft");
+    });
+  });
+});
+
+describe("saveDraft (server) — commitTs on-policy (spec Step 7)", () => {
+  test.each([
+    ["all", true],
+    ["save", false],
+    ["publish", false],
+  ] as const)("an on: '%s' field is%s stamped on saveDraft", async (on, shouldStamp) => {
+    const config = {
+      collections: [
+        defineCollection({
+          slug: "posts",
+          fields: {
+            title: text(),
+            slug: text(),
+            updatedAt: commitTs({ on, meta: { locked: true } }),
+          } as Record<string, AdminField>,
+          versions: { drafts: true },
+        }),
+      ],
+    } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+      });
+      const draftId = await saveDraft({
+        ctx,
+        config,
+        collection: "posts",
+        id: publishedId,
+        data: { title: "Edited" },
+      });
+      const row = await ctx.db.get("posts", draftId as GenericId<"posts">);
+      if (shouldStamp) {
+        expect(row?.updatedAt).toBeInstanceOf(CommitTsPlaceholder);
+      } else {
+        expect(row?.updatedAt).toBeUndefined();
+      }
     });
   });
 });

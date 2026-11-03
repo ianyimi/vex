@@ -123,6 +123,12 @@ export const roadmapBlock = defineBlock({
           status: "in-progress",
         },
         {
+          feature: "List Views",
+          description:
+            "Search, sort, filter builder, pinned and resizable columns, page size, and local or shared saved views — all URL-driven and server-prerendered.",
+          status: "shipped",
+        },
+        {
           feature: "Team Management & API Keys",
           description: "Invite users, assign roles, and issue scoped read-only API tokens for external integrations.",
           status: "planned",

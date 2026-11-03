@@ -1,6 +1,7 @@
 import type { GenericDataModel, GenericDocument, NamedTableInfo, QueryInitializer } from "convex/server";
 
 import type { CollectionSlug } from "../../../types/generated";
+import type { VexConfig } from "../../../config";
 import { buildDepthPopulate } from "../../../db/depth";
 import { populateDocs } from "../../../db/populate";
 import type {
@@ -15,25 +16,32 @@ import type {
   PopulateShape,
 } from "../../../db/types";
 import {
+  AccessDocFieldFor,
   resolveQueryConstraint,
-  resolveQueryIndex,
-  SYSTEM_FIELD_KEYS,
+  resolveQueryIndex as resolveAccessQueryIndex,
 } from "../../../access";
 import { pickConvexQueryIndex } from "../../../access/pickConvexQueryIndex";
 import type { ConvexQueryFilterFn, ConvexQueryIndex } from "../../../access/convexTypes";
 import type { ConstraintResult } from "../../../access/queryConstraintTypes";
 import {
   andConvexQueryFilters,
-  referencedWhereFields,
+  convertCommitTsWhereToNs,
   whereFieldNames,
   whereToConvexQueryFilter,
   withIndexToConvexQueryIndex,
   type VexWhere,
+  type VexWhereNode,
   type VexWithIndex,
 } from "../../../db/queryArgs";
 import { readableDocuments } from "../../../db/documents";
 import { resolveReadCall } from "../../../access/resolveReadCall";
-import { composeStatusQueryConstraint } from "../../../versions";
+import { canonicalRowFilter, composeStatusQueryConstraint } from "../../../versions";
+import { resolveQueryIndex } from "../../query/resolveQueryIndex";
+import { mergeDraftCounterparts } from "../../query/mergeDraftCounterparts";
+import { resolveWhereFields } from "../../query/resolveWhereFields";
+import { resolveTotalDocsCap } from "../../query/resolveTotalDocsCap";
+import type { CollectionTableSort } from "../../types";
+import { VexError } from "../../../errors";
 
 /**
  * Server-side args for `find`. Extends {@link GenericQueryServerParams}
@@ -97,6 +105,32 @@ export interface FindServerArgs<
   withIndex?: VexWithIndex<TCollectionSlug>;
 
   /**
+   * Portable sort — `{ field, order }`. The server resolves `field` to an
+   * index via `resolveQueryIndex`, which also pushes matching equalities
+   * from `where` into that index's range when one is available (Design
+   * Decision 36) — callers never name an index directly (Design Decision
+   * 5). Mutually exclusive with `withIndex` — passing both throws a
+   * `VexError`.
+   *
+   * The resolved index competes for the query's one `withIndex` slot
+   * through the same `pickConvexQueryIndex` arbitration as `withIndex` (an
+   * access-constraint index wins a free slot; a same-named index merges
+   * ranges; a differently-named caller index displaces it and the access
+   * rule falls back to `.filter()`) — `sort` carries no precedence of its
+   * own over an access-contributed index.
+   *
+   * Rejected with a `VexAccessError` when the caller cannot read
+   * `sort.field` (Design Decision 26) — sort order alone would leak the
+   * field's values.
+   *
+   * @example
+   * ```ts
+   * find({ ctx, collection: "posts", sort: { field: "publishedAt", order: "desc" } })
+   * ```
+   */
+  sort?: CollectionTableSort<AccessDocFieldFor<TCollectionSlug>>;
+
+  /**
    * Pagination options. When provided, the function returns a `PaginationResult`
    * with `{ page, continueCursor, isDone }` instead of a plain array.
    *
@@ -153,11 +187,18 @@ export async function find<
 /**
  * Find documents in a collection with optional pagination and total count.
  *
- * When `includeTotalCount=true`, runs `.collect()` on the first page to count all
- * matching documents. Returns `null` if count exceeds 32k documents.
+ * Pass `paginationOpts: { ..., totalDocs: true }` to also count matching
+ * documents on the first page (`cursor: null`) only. Counts with
+ * `take(countLimit + 1)` instead of `.collect()`-ing the whole matching
+ * set (Design Decision 35, default `countLimit` 10000) — `totalDocs` is
+ * the exact count up to that cap, never `null`; `totalDocsCapped: true`
+ * means more matching documents exist beyond the cap and `totalDocs`
+ * equals `countLimit`, a floor rather than an exact count.
  *
  * @param args - Find arguments including filters, sort, pagination, and count options
- * @returns Array of documents or PaginationResult with optional totalCount
+ * @returns Array of documents, or a `PaginationResult` (`{ page,
+ *   continueCursor, isDone }`, plus `totalDocs`/`totalDocsCapped` when the
+ *   first page requested a count) when `paginationOpts` is given
  *
  * @example
  * ```ts
@@ -172,14 +213,13 @@ export async function find<
  * });
  * // result: { page: [...], continueCursor: "...", isDone: false }
  *
- * // With pagination and count (first page only)
+ * // With pagination and a first-page count
  * const result = await find({
  *   ctx,
  *   collection: "posts",
- *   paginationOpts: { numItems: 100, cursor: null },
- *   includeTotalCount: true,
+ *   paginationOpts: { numItems: 100, cursor: null, totalDocs: true },
  * });
- * // result: { page: [...], continueCursor: "...", isDone: false, totalCount: 1523 }
+ * // result: { page: [...], continueCursor: "...", isDone: false, totalDocs: 1523, totalDocsCapped: false }
  * ```
  */
 export async function find<
@@ -201,25 +241,76 @@ export async function find<
     collection: args.collection,
     drafts: args.drafts,
   });
-  const accessIndex = resolveQueryIndex({
+  if (args.sort && args.withIndex) {
+    throw new VexError({
+      code: "SORT_WITH_INDEX",
+      collection: args.collection,
+      message: `find: collection "${args.collection}" was called with both "sort" and "withIndex". Clients send "sort" (portable) or "withIndex" (explicit), never both.`,
+    });
+  }
+  const accessIndex = resolveAccessQueryIndex({
     access,
     user: args.auth?.user ?? null,
     organization: args.auth?.organization,
     resource,
     action,
   });
-  const callerIndex = withIndexToConvexQueryIndex({
-    withIndex: args.withIndex as { name: string; range?: (q: never) => ConstraintResult } | undefined,
+  const collectionConfig = args.config?.collections.find((c) => c.slug === args.collection);
+  const where = convertCommitTsWhereToNs({
+    where: args.where as VexWhereNode<string> | undefined,
+    fields: collectionConfig?.fields ?? {},
   });
+  // Portable sort + filter-index pushdown (Design Decision 36). Skipped
+  // when the caller names an explicit `withIndex` — that index is
+  // authoritative, and automatic pushdown would otherwise compete for the
+  // same query slot.
+  const queryIndexResolution = args.withIndex
+    ? undefined
+    : resolveQueryIndex({
+        config: args.config,
+        collection: args.collection,
+        where: where as VexWhereNode<string> | undefined,
+        sort: args.sort as CollectionTableSort<string> | undefined,
+        drafts: wantsDrafts,
+        access,
+        auth: args.auth,
+        action,
+        resource,
+      });
+  const callerIndex = queryIndexResolution?.indexName
+    ? { name: queryIndexResolution.indexName, range: queryIndexResolution.range }
+    : withIndexToConvexQueryIndex({
+        withIndex: args.withIndex as { name: string; range?: (q: never) => ConstraintResult } | undefined,
+      });
+  // `where` minus whatever Decision 36 pushed into the index's own range —
+  // those equalities are already enforced by `withIndex`, so re-applying
+  // them in `.filter()` would be redundant. The explicit-`withIndex` path
+  // ran no pushdown, so it keeps the caller's full `where`.
+  const pushdownRemainder = args.withIndex
+    ? (where as VexWhereNode<string> | undefined)
+    : queryIndexResolution?.remainder;
   const callerFilter = whereToConvexQueryFilter({
-    where: args.where as VexWhere<string> | undefined,
+    where: pushdownRemainder as VexWhere<string> | undefined,
     fields: whereFieldNames({ config: args.config, collection: args.collection }),
   });
-  // Only enforced reads are guarded; a bypassed read may filter on anything.
-  const whereFields =
-    access !== undefined && args.where !== undefined
-      ? referencedWhereFields({ where: args.where as VexWhere<string> }).filter((field) => !SYSTEM_FIELD_KEYS.has(field))
-      : [];
+  // A request `where` part that deep-equals a config view's own `where` is
+  // trusted server config, exempt from the field-read check below (Design
+  // Decision 26's one exception); only the REMAINING parts of `where`
+  // still need every referenced field to be readable, with a lazy fall
+  // back to a readable shared view's own declared filter (Decision 26's
+  // "Shared views" bullet) — see `resolveWhereFields` for the pipeline,
+  // shared with `search/server.ts`.
+  const whereFields = await resolveWhereFields({
+    ctx: args.ctx,
+    config: args.config as VexConfig,
+    collection: args.collection,
+    collectionConfig,
+    where: where as VexWhereNode<string> | undefined,
+    access,
+    callerAccess: args.access,
+    auth: args.auth,
+    resource,
+  });
   const rbacResolvedIndex = pickConvexQueryIndex({ accessIndex, callerIndex });
   const rbacFilter = resolveQueryConstraint({
     access,
@@ -242,15 +333,31 @@ export async function find<
     resolvedIndex: rbacResolvedIndex,
     accessFilter: rbacFilter,
   });
+  // Draft-pair pagination fix: when this read effectively gets drafts on a
+  // versioned collection, narrow the query to "canonical" rows — one per
+  // logical document — instead of returning a linked draft row as its own
+  // separate row for the client to pair up (`mergeDraftCounterparts`
+  // attaches each linked draft's fields back on per page, below).
+  const draftCanonicalFilter = canonicalRowFilter({
+    config: args.config,
+    collection: args.collection,
+    drafts: wantsDrafts,
+  });
 
+  // `resolveQueryIndex`'s no-`sort` branch always reports `order: "asc"`
+  // (its own default, matching no-pushdown insertion order) — that must
+  // NOT clobber `args.order` when the caller never asked for a `sort` at
+  // all, so the pushdown-resolved order only applies when `sort` was set.
+  const resolvedOrder = args.sort ? (queryIndexResolution?.order ?? args.order) : args.order;
   const findQuery = buildQuery<DataModel, TCollectionSlug, TPopulate, D>({
     ...args,
+    order: resolvedOrder,
     resolvedIndex,
-    filter: andConvexQueryFilters({ filters: [accessFilter, callerFilter] }),
+    filter: andConvexQueryFilters({ filters: [accessFilter, callerFilter, draftCanonicalFilter] }),
   });
 
   const readable = (fetched: readonly GenericDocument[]) =>
-    readableDocuments({ docs: fetched, access, auth: args.auth, resource, action, whereFields });
+    readableDocuments({ docs: fetched, access, auth: args.auth, resource, action, whereFields, fields: collectionConfig?.fields });
 
   // 4. paginate OR take
   let docs;
@@ -262,6 +369,24 @@ export async function find<
     docs = readable(await findQuery.take(args.limit));
   } else {
     docs = readable(await findQuery.collect());
+  }
+
+  // Draft-pair pagination fix: `docs` is already canonical-row-only (via
+  // `draftCanonicalFilter` above); attach each published row's linked
+  // draft counterpart now, before populate, so a populated relationship
+  // reflects the draft's own field values rather than the stale
+  // published ones.
+  if (wantsDrafts && collectionConfig?.versions?.drafts === true) {
+    docs = await mergeDraftCounterparts({
+      ctx: args.ctx,
+      collection: args.collection,
+      docs,
+      access,
+      auth: args.auth,
+      resource,
+      action,
+      fields: collectionConfig?.fields,
+    });
   }
 
   // Explicit populate takes precedence over depth (D11).
@@ -279,40 +404,40 @@ export async function find<
           docs,
           effectivePopulate,
           wantsDrafts,
+          args.config,
         )) as unknown as FindReturn<TCollectionSlug, TPopulate, D>);
 
   if (args.paginationOpts && convexPaginationResult) {
     if (args.paginationOpts.totalDocs && !args.paginationOpts.cursor) {
-      try {
-        if (convexPaginationResult.isDone) {
-          return {
-            ...convexPaginationResult,
-            page: finalDocs,
-            totalDocs: finalDocs.length,
-          };
-        } else {
-          // Build same query (with filters) but collect all to count
-          const countQuery = buildQuery({
-            ...args,
-            resolvedIndex,
-            filter: andConvexQueryFilters({ filters: [accessFilter, callerFilter] }),
-          }); // Same filters as main query
-          const totalDocs = readable(await countQuery.collect());
-          return {
-            ...convexPaginationResult,
-            page: finalDocs,
-            totalDocs: totalDocs.length,
-          };
-        }
-      } catch (error) {
-        // .collect() failed (>32k docs or other limit)
-        console.warn("Failed to collect all documents:", error);
+      if (convexPaginationResult.isDone) {
         return {
           ...convexPaginationResult,
           page: finalDocs,
-          totalDocs: null, // Signals "too large to count"
+          totalDocs: finalDocs.length,
+          totalDocsCapped: false,
         };
       }
+      // Counts at most `countLimit + 1` rows (Design Decision 35) instead
+      // of `.collect()`-ing the whole matching set — the old unbounded
+      // count re-scanned every matching row on each list open and failed
+      // outright above Convex's ~32k-document transaction scan limit. See
+      // `resolveTotalDocsCap` (shared with `search/server.ts`) for why
+      // `totalDocsCapped` is decided on the RAW window length, not the
+      // readable-filtered length.
+      const countLimit = collectionConfig?.admin.view?.state?.countLimit ?? 10000;
+      const countQuery = buildQuery({
+        ...args,
+        order: resolvedOrder,
+        resolvedIndex,
+        filter: andConvexQueryFilters({ filters: [accessFilter, callerFilter, draftCanonicalFilter] }),
+      }); // Same filters as main query
+      const { totalDocs, totalDocsCapped } = await resolveTotalDocsCap({ countQuery, countLimit, readable });
+      return {
+        ...convexPaginationResult,
+        page: finalDocs,
+        totalDocs,
+        totalDocsCapped,
+      };
     }
 
     // Return Convex pagination result directly with populated docs

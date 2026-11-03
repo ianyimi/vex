@@ -88,6 +88,7 @@ describe("GlobalEditView — diff submit", () => {
       },
     );
 
+    await waitFor(() => expect(utils.container.querySelector("#siteName")).not.toBeNull());
     fireEvent.change(utils.container.querySelector("#siteName")!, {
       target: { value: "new name" },
     });
@@ -195,7 +196,7 @@ describe("GlobalEditView — draft toolbar", () => {
       config: versionedConfig,
     });
 
-    expect(utils.getByRole("button", { name: "Save Draft" })).toBeInTheDocument();
+    await waitFor(() => expect(utils.getByRole("button", { name: "Save Draft" })).toBeInTheDocument());
     expect(utils.queryByText("Published")).toBeNull();
     expect(utils.queryByText("Draft")).toBeNull();
   });
@@ -231,6 +232,7 @@ describe("GlobalEditView — draft toolbar", () => {
       config: versionedConfig,
     });
 
+    await waitFor(() => expect(utils.container.querySelector("#siteName")).not.toBeNull());
     fireEvent.change(utils.container.querySelector("#siteName")!, {
       target: { value: "first name" },
     });
@@ -261,7 +263,7 @@ describe("GlobalEditView — draft toolbar", () => {
       config: versionedConfig,
     });
 
-    expect(utils.getByRole("button", { name: "Publish" })).toBeDisabled();
+    await waitFor(() => expect(utils.getByRole("button", { name: "Publish" })).toBeDisabled());
   });
 
   it("shows an enabled Publish (min-w-[100px]) for a draft document, with no Unpublish rendered", async () => {

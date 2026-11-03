@@ -1,11 +1,18 @@
 import type { ComponentType } from "react";
-import { CollectionConfig, TDocument, getUIFieldsWithCell } from "@vexcms/core";
+import {
+  CollectionConfig,
+  TDocument,
+  getUIFieldsWithCell,
+  resolveListViewColumnConfig,
+  type ColumnEntry,
+} from "@vexcms/core";
 import { textFieldToColumnDef } from "./text";
 import { emailFieldToColumnDef } from "./email";
 import { textareaFieldToColumnDef } from "./textarea";
 import { numberFieldToColumnDef } from "./number";
 import { checkboxFieldToColumnDef } from "./checkbox";
 import { dateFieldToColumnDef } from "./date";
+import { commitTsFieldToColumnDef } from "./commitTs";
 import { ADMIN_FIELDS, getDataFields, type AdminFieldType } from "@vexcms/core";
 import { ColumnDef } from "@tanstack/react-table";
 import { selectFieldToColumnDef } from "./select";
@@ -25,6 +32,7 @@ export * from "./textarea";
 export * from "./number";
 export * from "./checkbox";
 export * from "./date";
+export * from "./commitTs";
 export * from "./select";
 export * from "./url";
 export * from "./color";
@@ -36,8 +44,8 @@ export * from "./blocks";
 export * from "./richtext";
 export * from "./json";
 
-import { fieldToFieldComponent, fieldToCellComponent } from "./registry";
-export { fieldToFieldComponent, fieldToCellComponent };
+import { fieldToFieldComponent, fieldToCellComponent, fieldToDisplayComponent, fieldToFilterInputComponent } from "./registry";
+export { fieldToFieldComponent, fieldToCellComponent, fieldToDisplayComponent, fieldToFilterInputComponent };
 
 /**
  * Builds TanStack Table column definitions for every field in a collection.
@@ -49,6 +57,15 @@ export { fieldToFieldComponent, fieldToCellComponent };
  *
  * @param props - Input props.
  * @param props.collection - The collection whose fields drive the column shape.
+ * @param props.columns - The active view's own resolved `columns` array
+ *   (Decision 48) — when provided, each field's `enableSorting`/
+ *   `enableHiding`/pixel width comes from `resolveListViewColumnConfig`'s
+ *   per-field resolution (the view's own column entry `?? field.admin.<attr>
+ *   ?? a global default` — `FIELD_TYPE_DEFAULT_WIDTH[type]` for width)
+ *   instead of `field.admin.<attr>` directly, so a view's entry can
+ *   override any of the three for that field alone (views always win,
+ *   Decision 48). Omitted (or a field absent from it) falls back to
+ *   `field.admin.<attr>` / the type default exactly like before this step.
  * @returns An array of TanStack Table `ColumnDef` objects, one per field.
  *
  * @example
@@ -62,190 +79,89 @@ export function getCollectionColumnDefs<
   TCollectionConfig extends CollectionConfig = CollectionConfig,
 >(props: {
   collection: TCollectionConfig;
+  columns?: ColumnEntry<string>[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }): ColumnDef<TData, any>[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const columnDefs: ColumnDef<TData, any>[] = [];
   const { collection } = props;
+  const resolvedEntryByField = new Map<string, ColumnEntry<string>>();
+  for (const entry of props.columns ?? []) {
+    resolvedEntryByField.set(typeof entry === "string" ? entry : entry.field, entry);
+  }
   for (const [fieldKey, fieldDef] of Object.entries(getDataFields({ fields: collection.fields }))) {
     if (fieldDef.admin.hidden) continue;
     const isTitleField = fieldKey === collection.admin.useAsTitle;
     const fieldType: AdminFieldType = fieldDef.type;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let columnDef: ColumnDef<TData, any> | undefined;
     switch (fieldDef.type) {
       case ADMIN_FIELDS.text.type:
-        columnDefs.push(
-          textFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = textFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.email.type:
-        columnDefs.push(
-          emailFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = emailFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.textarea.type:
-        columnDefs.push(
-          textareaFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = textareaFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.number.type:
-        columnDefs.push(
-          numberFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = numberFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.checkbox.type:
-        columnDefs.push(
-          checkboxFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = checkboxFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.date.type:
-        columnDefs.push(
-          dateFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = dateFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
+        break;
+
+      case ADMIN_FIELDS.commitTs.type:
+        columnDef = commitTsFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.select.type:
-        columnDefs.push(
-          selectFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = selectFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.url.type:
-        columnDefs.push(
-          urlFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = urlFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.color.type:
-        columnDefs.push(
-          colorFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = colorFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.relationship.type:
-        columnDefs.push(
-          relationshipFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = relationshipFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.array.type:
-        columnDefs.push(
-          arrayFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = arrayFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.group.type:
-        columnDefs.push(
-          groupFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = groupFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.blocks.type:
-        columnDefs.push(
-          blocksFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = blocksFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.upload.type:
-        columnDefs.push(
-          uploadFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = uploadFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.richtext.type:
-        columnDefs.push(
-          richTextFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = richTextFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       case ADMIN_FIELDS.json.type:
-        columnDefs.push(
-          jsonFieldToColumnDef<TData>({
-            fieldDef,
-            fieldKey,
-            isTitleField,
-            collection,
-          }),
-        );
+        columnDef = jsonFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       default: {
@@ -253,8 +169,31 @@ export function getCollectionColumnDefs<
         throw new Error(
           `unsupported column def field type: ${fieldType} — ${JSON.stringify(unhandled)}`,
         );
+      }
     }
-  }
+    // The one place `enableSorting`/`enableHiding`/`size` (pixel width) are
+    // made to agree with the active view's OWN resolved per-field config
+    // (Step 4/21 Part B, Decision 48) — every `*FieldToColumnDef` factory
+    // above still returns its own static `enableSorting`/`enableHiding`
+    // (now ignored, overwritten here) and never sets `size` at all, so
+    // none of them need editing. `resolveListViewColumnConfig` is the ONE place
+    // that resolves the view's own column entry (when `props.columns`
+    // carries one for this field) against `fieldDef.admin` — views always
+    // win (Decision 48). `size` feeds TanStack's own `column.getSize()`
+    // directly (`DataTable.tsx` renders every cell's width from THAT, not
+    // a separate `meta.width` — resizing/pinning both need TanStack's own
+    // sizing/pinning state to be the single source of truth).
+    const resolvedConfig = resolveListViewColumnConfig({
+      fieldKey,
+      fieldDef,
+      resolvedColumnEntry: resolvedEntryByField.get(fieldKey),
+    });
+    columnDefs.push({
+      ...columnDef,
+      enableSorting: resolvedConfig.enableSorting,
+      enableHiding: resolvedConfig.enableHiding,
+      size: resolvedConfig.width,
+    });
   }
 
   // `ui()` fields are never in `getDataFields`'s output (it drops them — see
@@ -277,6 +216,13 @@ export function getCollectionColumnDefs<
     }>;
     columnDefs.push({
       id: fieldKey,
+      // `accessorKey` (not just `id`) so `columnFieldKey` (CollectionListView.tsx /
+      // MediaCollectionListView.tsx) resolves a real field key for this column —
+      // previously `undefined`, which made the readability filter's
+      // `key === undefined` short-circuit let every UI field through regardless of
+      // field permissions (access-system-fields plan, part 2a: an ungranted UI
+      // field must render no column, same as a denied data field).
+      accessorKey: fieldKey,
       header: uiField.label || fieldKey,
       cell: ({ row }) => <Cell name={fieldKey} data={row.original as Record<string, unknown>} />,
       enableSorting: false,

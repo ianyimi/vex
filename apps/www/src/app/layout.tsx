@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import { Analytics } from "@vercel/analytics/next";
-import { LivePreviewProvider, ThemeScript } from "@vexcms/react";
+import { LivePreviewProvider } from "@vexcms/react";
+import { ThemeScript } from "@vexcms/react/server";
 import localFont from "next/font/local";
 
 import ClientProviders from "~/components/providers/client";

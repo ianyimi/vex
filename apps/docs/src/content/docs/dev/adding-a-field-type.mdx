@@ -83,6 +83,30 @@ to `buildReactAdapter()`'s `fields` map — `reactAdapter.fields` (consumed by
 one source of truth both the collection edit view and the list view read
 from.
 
+Two more slots on that same map entry are OPTIONAL, unlike `field`/`cell`:
+
+- **`filterInput`** — the list view's filter-row value control
+  (`FilterInputProps<TField>`: `field`, `value`, `op`, `onChange`,
+  `disabled?`). Leave it off for a type with no meaningful single-value
+  comparison (`json`/`richtext`/`array`/`blocks`/`group` register none) —
+  `fieldToFilterInputComponent` returns `undefined` and the filter builder
+  renders a stable placeholder instead of a control.
+- **`display`** — a read-only presentation of the field's value, used
+  anywhere a value needs to be shown without a form around it (e.g. the
+  collection list's row-inspect peek). `DisplayComponentProps<TField>`:
+  `field`, `value`, `document`, `collection` — no `row`/`fieldKey`/
+  `isTitleField`, since a display has no column and never links anywhere
+  on its own. Skip it for a type whose `cell` is already a reasonable
+  read-only presentation (most scalar types) — `fieldToDisplayComponent`
+  falls back to the registered `cell`, adapted, when no `display` is
+  registered, so every data field type still resolves to SOMETHING.
+  Register a dedicated `<Type>FieldDisplay` when the type's value needs
+  more than its (often truncated, column-width-constrained) cell shows —
+  `json`'s own `Display.tsx` reuses the same `JsonEditor` its `Field.tsx`
+  does, just `readOnly`; `group`/`array`/`blocks`'s own recurse through
+  `fieldToDisplayComponent` again for each sub-field, via the shared
+  `fields/DisplayFieldList.tsx` helper.
+
 ## The two override slots
 
 Both halves exist because of the two independent extension points a project

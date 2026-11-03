@@ -12,6 +12,25 @@ runFieldCellContractSuite({
   extra: (options) => {
     const collection = options.collection ?? testCollection;
 
+    describe("text: empty value", () => {
+      it("renders the em-dash placeholder for an empty string (not undefined/null)", () => {
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value: "" });
+        const { container } = render(
+          withCellConfig(
+            <TextFieldCell
+              value=""
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
+        );
+        expect(container).toHaveTextContent("—");
+      });
+    });
+
     describe("text: non-title rendering", () => {
       it("renders the plain value with no link when isTitleField is false", () => {
         const row = makeCellRow<TDocument>({ fieldKey: "field", value: options.fixture.valid });

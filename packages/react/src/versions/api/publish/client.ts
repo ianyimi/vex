@@ -6,16 +6,17 @@ import type { GenericMutationClientParams } from "@vexcms/core";
 import { useConvexMutation } from "@convex-dev/react-query";
 
 /**
- * Client-side args for {@link publish}. A discriminated union: pass
+ * Client-side args for {@link usePublish}. A discriminated union: pass
  * `{ collection, id }` for a versioned collection's active draft, or
  * `{ global }` for a versioned global's.
  *
  * @example
  * ```tsx
- * import { publish, type PublishClientArgs } from "@vexcms/react/client";
+ * import { usePublish, type PublishClientArgs } from "@vexcms/react/client";
  * import { useMutation } from "@tanstack/react-query";
  *
- * const { mutateAsync } = useMutation({ mutationFn: publish() });
+ * const publishMutationFn = usePublish();
+ * const { mutateAsync } = useMutation({ mutationFn: publishMutationFn });
  * await mutateAsync({ collection: "posts", id: draftId });
  * await mutateAsync({ global: "siteSettings" });
  * ```
@@ -47,9 +48,14 @@ export type PublishClientArgs<TCollectionSlug extends CollectionSlug = Collectio
  * Returns a `mutationFn` for publishing a VexCMS versioned collection
  * document's — or versioned global's — active draft.
  *
- * Wraps `useConvexMutation(vexConvexApi.versions.publish)`. Call at the top
- * level of a React component (obeys the Rules of Hooks); pass the return
- * value as `mutationFn` to `useMutation`.
+ * Wraps `useConvexMutation(vexConvexApi.versions.publish)`. A React hook
+ * (the `use` prefix is REQUIRED, not just convention — a non-`use`-prefixed
+ * wrapper around a hook call can be treated as a pure, memoizable function
+ * by the React Compiler, silently dropping the internal hook call on a
+ * later render and causing a hook-order mismatch crash; developer-reported,
+ * confirmed live on the sibling `saveView`/`removeView` helpers). Call at
+ * the top level of a React component, as its own statement, BEFORE
+ * `useMutation` (not inlined as `useMutation`'s own `mutationFn` argument).
  *
  * Import from `@vexcms/react/client`. For the server-side version, import
  * `publish` from `@vexcms/core/server`.
@@ -57,6 +63,6 @@ export type PublishClientArgs<TCollectionSlug extends CollectionSlug = Collectio
  * @returns A mutation function compatible with tanstack-query `useMutation`.
  * @see {@link PublishClientArgs} for the typed args shape.
  */
-export function publish() {
+export function usePublish() {
   return useConvexMutation(vexConvexApi.versions.publish);
 }

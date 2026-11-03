@@ -19,7 +19,7 @@ import {
  * `"use client"` file importing `vex.config` directly, Turbopack's Fast
  * Refresh re-evaluates it when any collection file changes — which updates
  * this context and re-renders all consumers, including `CollectionListView`
- * and `CreateDocumentModal`, without a full page reload.
+ * and `ListViewCreateDocumentModal`, without a full page reload.
  *
  * Default value is `null`, so a consumer rendered outside any provider gets a
  * clear thrown error from `useVexConfig()` instead of a silently empty config.

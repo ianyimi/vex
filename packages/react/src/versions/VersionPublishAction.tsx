@@ -82,7 +82,7 @@ export function VersionPublishAction(props: EditSlotProps) {
     );
   const neverSaved = props.kind === "global" && document.saved === undefined;
 
-  const { mutateAsync: publishMutation } = useVexMutation({
+  const { mutateAsync: publishMutation, isPending: isPublishing } = useVexMutation({
     collection: props.slug,
     errorToast: { message: "Publish failed" },
     getChanges: () => [{ after: { ...(document.saved ?? {}), ...form.state.values } }],
@@ -137,6 +137,7 @@ export function VersionPublishAction(props: EditSlotProps) {
     <Button
       type="button"
       className="min-w-[100px] transition-all duration-300"
+      isPending={isPublishing}
       disabled={disabled}
       onClick={() => void handlePublish()}
     >

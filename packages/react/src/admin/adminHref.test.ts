@@ -19,6 +19,10 @@ describe("adminHref", () => {
     );
   });
 
+  it("builds the collections list URL", () => {
+    expect(adminHref({ type: "collections" }, "/admin")).toBe("/admin/collections");
+  });
+
   it("builds the globals list URL", () => {
     expect(adminHref({ type: "globals" }, "/admin")).toBe("/admin/globals");
   });

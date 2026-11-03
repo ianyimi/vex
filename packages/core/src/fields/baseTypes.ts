@@ -324,6 +324,34 @@ export interface FieldAdminConfigInput<
    * Experimental: breaking changes are still possible before this stabilizes.
    */
   components?: FieldSlotComponentsInput<TComponent>;
+  /**
+   * Allow the list table's column header for this field to sort the table.
+   * The field must lead some declared index (or be `defaultView.sort.field`) —
+   * checked by `validateSavedListViewConfig`.
+   *
+   * Default: `false`
+   */
+  enableSorting?: boolean;
+  /**
+   * Allow this field's column to be hidden from the list table via the
+   * columns menu. Every column is hideable by default (list-view-overhaul
+   * Decision 47, revised) — set `false` to opt a specific field OUT (e.g.
+   * a title/identity column the list should never let a user hide).
+   *
+   * Default: `true`
+   */
+  enableHiding?: boolean;
+  /**
+   * Pixel width of this field's own column in the list table (Decision
+   * 48) — unlike `enableSorting`/`enableHiding`, this has no type-based
+   * resolution here: the default lives only in `resolveListViewColumnConfig`'s
+   * own `FIELD_TYPE_DEFAULT_WIDTH` map, consulted when neither this nor
+   * the active view's own column entry (`ColumnEntry.width`, which always
+   * wins) sets one. Named `columnWidth`, not `width`, to avoid colliding
+   * with this same interface's own `width` (the field's CSS row width in
+   * the EDIT form layout) — a different axis entirely.
+   */
+  columnWidth?: number;
 }
 
 /**
@@ -363,6 +391,12 @@ export interface FieldAdminConfig<
     beforeInput: ComponentContributionInput<TComponent, unknown>[];
     afterInput: ComponentContributionInput<TComponent, unknown>[];
   };
+  /** Whether the list table's column header for this field may sort the table. */
+  enableSorting: boolean;
+  /** Whether this field's column may be hidden from the list table via the columns menu. */
+  enableHiding: boolean;
+  /** Pixel width of this field's own column in the list table. Optional — unlike `enableSorting`/`enableHiding`, the type default lives only in `resolveListViewColumnConfig`'s own `FIELD_TYPE_DEFAULT_WIDTH` map, not here. */
+  columnWidth?: number;
 }
 
 /**

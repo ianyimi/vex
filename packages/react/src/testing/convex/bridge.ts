@@ -9,7 +9,7 @@ import {
 import type { GenericId } from "convex/values";
 import type { TestConvex } from "convex-test";
 import { find, get, search } from "@vexcms/core/server";
-import type { PaginationOptions, PaginationResult } from "@vexcms/core";
+import type { PaginationOptions, PaginationResult, VexConfig, VexWhere } from "@vexcms/core";
 
 import schema, { type TestDataModel, type TestDoc } from "./schema";
 
@@ -77,22 +77,72 @@ function resolveTable(args: Record<string, unknown>): "documents" | "media" {
  * `createFakeConvexClient`'s signature, which is frozen across every step
  * that consumes it — when a later step needs another fake query.
  */
+/**
+ * Per-collection `admin.view.state` overrides the `"vex:find"` fake handler
+ * folds into a minimal `VexConfig` it hands `find()`. Production `find`
+ * resolves `admin.view.state.countLimit` from a server-held `VexConfig`, never
+ * from the wire (Design Decision 35) — this kit otherwise never builds a
+ * `VexConfig` at all (see `FakeMutationHandler`'s own doc comment above),
+ * so a test exercising config-driven server behavior (the count cap) sets
+ * an entry here, keyed by table name, instead of mutating a client-side
+ * `CollectionConfig` fixture the server never sees. Cleared by the test
+ * that sets it once its assertions finish, since this kit has no
+ * `afterEach` hook to do it automatically.
+ */
+export const fakeCollectionAdminViewOverrides: Record<string, { countLimit?: number }> = {};
+
 const QUERY_HANDLERS: Record<string, FakeQueryHandler> = {
   "documents:list": async (ctx) => ctx.db.query("documents").collect(),
-  "vex:search": async (ctx, args) =>
-    search({
-      ctx,
-      collection: resolveTable(args),
-      query: args.query as string,
-      searchIndexName: args.searchIndexName as string,
-      searchField: args.searchField as string,
-    }),
+  "vex:search": async (ctx, args) => {
+    const paginationOpts = args.paginationOpts as PaginationOptions | undefined;
+    const collection = resolveTable(args);
+    const where = args.where as VexWhere<"documents" | "media"> | undefined;
+    const drafts = args.drafts as boolean | undefined;
+    const query = args.query as string;
+    const searchIndexName = args.searchIndexName as string;
+    const searchField = args.searchField as string;
+    return paginationOpts
+      ? search({ ctx, collection, query, searchIndexName, searchField, where, drafts, paginationOpts })
+      : search({ ctx, collection, query, searchIndexName, searchField, where, drafts });
+  },
   "vex:get": async (ctx, args) =>
     get({ ctx, id: args.id as GenericId<"documents">, collection: resolveTable(args) }),
+  // No `vex_globals` table exists in this test schema (every current fixture tests a
+  // global either via `initialData` — never calling this at all, since `initialData`
+  // seeds the cache before `queryFn` would ever run — or specifically tests the "never
+  // saved yet" state) — `getGlobal`'s own real contract is "`null` if not yet saved"
+  // (`globals/api/get/server.ts`), so this mirrors that exactly rather than needing a
+  // schema change. A caller that DOES seed a `vex_globals`-backed row would need a real
+  // table + lookup here instead — none does yet.
+  "vex/globals:get": async () => null,
+  // No `vex_views` table exists in this test schema either — `listViews`'s real
+  // implementation (`collections/api/listViews/server.ts`) queries `vex_views` by
+  // `by_collection`/`by_collection_org`, neither of which this schema defines. Every
+  // caller reading shared views (`useSavedListViews`'s own `listViews({ collection })` query)
+  // needs SOME resolution here — without a registered handler this threw
+  // "no fake query handler registered for 'vex:listViews'" as an UNCAUGHT error with no
+  // error boundary around that Suspense boundary (prior to polish fixes' `QueryErrorBoundary`
+  // wiring), which surfaced as either a crashed render or — combined with React's Suspense
+  // retry/reconciliation around a rejected-but-never-resolved thrown promise — a hang in
+  // `act()`'s flush loop in several test files (`CollectionListView.columnsSync.test.tsx`,
+  // `ListViewPeek.test.tsx`, `testing/viewSuite.ts`, 2026-10-31 investigation). `[]` (no shared
+  // views) matches the real function's own "denied/no rows" contract — the safe default any
+  // caller without a `vex_views`-backed fixture should see; a caller that DOES need to
+  // test real shared-view rows would need a schema change to add that table first.
+  "vex:listViews": async () => [],
   "vex:find": async (ctx, args) => {
     const paginationOpts = args.paginationOpts as PaginationOptions | undefined;
     const collection = resolveTable(args);
-    return paginationOpts ? find({ ctx, collection, paginationOpts }) : find({ ctx, collection });
+    const where = args.where as VexWhere<"documents" | "media"> | undefined;
+    const adminViewOverride = fakeCollectionAdminViewOverrides[collection];
+    const config = adminViewOverride
+      ? ({
+          collections: [{ slug: collection, fields: {}, admin: { view: { state: adminViewOverride } } }],
+        } as unknown as VexConfig)
+      : undefined;
+    return paginationOpts
+      ? find({ ctx, collection, paginationOpts, where, config })
+      : find({ ctx, collection, where, config });
   },
   // The unpublish confirmation dialog loads the version timeline to say which
   // version will be promoted; an empty list reads as "none" (go offline).

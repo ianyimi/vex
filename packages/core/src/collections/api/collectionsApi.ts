@@ -20,6 +20,9 @@ import { search } from "./search/server";
 import { create } from "./create/server";
 import { update } from "./update/server";
 import { remove } from "./remove/server";
+import { listViews } from "./listViews/server";
+import { saveView } from "./saveView/server";
+import { removeView } from "./removeView/server";
 
 /**
  * Registers the full collection CRUD surface — `find`, `get`, `search`,
@@ -146,6 +149,9 @@ export function collectionsApi<
         limit: v.optional(v.number()),
         drafts: v.optional(v.boolean()),
         where: v.optional(v.any()),
+        sort: v.optional(
+          v.object({ field: v.string(), order: v.union(v.literal("asc"), v.literal("desc")) }),
+        ),
         paginationOpts: v.optional(
           paginationOptsValidator.extend({ totalDocs: v.optional(v.boolean()) }),
         ),
@@ -162,6 +168,7 @@ export function collectionsApi<
           limit: args.limit,
           drafts: args.drafts,
           where: args.where,
+          sort: args.sort as never,
           paginationOpts: args.paginationOpts as never,
         });
       },
@@ -280,6 +287,56 @@ export function collectionsApi<
           config,
           ids: args.ids as GenericId<CollectionSlug>[],
           softDelete: args.softDelete,
+        });
+      },
+    }),
+
+    listViews: query({
+      args: {
+        collection: v.string(),
+      },
+      handler: async (ctx, args) => {
+        const auth = await resolveGetAuth({ ctx, config, getAuth });
+        return await listViews({
+          ctx,
+          auth,
+          config,
+          collection: args.collection as CollectionSlug,
+        });
+      },
+    }),
+
+    saveView: mutation({
+      args: {
+        collection: v.string(),
+        view: v.any(),
+      },
+      returns: v.string(),
+      handler: async (ctx, args) => {
+        const auth = await resolveGetAuth({ ctx, config, getAuth });
+        return await saveView({
+          ctx,
+          auth,
+          config,
+          collection: args.collection as CollectionSlug,
+          view: args.view,
+        });
+      },
+    }),
+
+    removeView: mutation({
+      args: {
+        collection: v.string(),
+        viewId: v.string(),
+      },
+      handler: async (ctx, args) => {
+        const auth = await resolveGetAuth({ ctx, config, getAuth });
+        return removeView({
+          ctx,
+          auth,
+          config,
+          collection: args.collection as CollectionSlug,
+          viewId: args.viewId,
         });
       },
     }),

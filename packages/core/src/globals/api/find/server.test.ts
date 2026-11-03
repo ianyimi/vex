@@ -95,7 +95,7 @@ describe("findGlobals (server) — field-level read shaping", () => {
     expect(result[0]?.siteName).toBe("A");
   });
 
-  it("never strips _id, _creationTime, or _slug", async () => {
+  it("never strips _id or _slug, but strips _creationTime under a fully-restrictive wildcard (developer decision, binding, \"access-system-fields\")", async () => {
     const config = buildConfig({ editor: { siteSettings: { read: () => ({ "*": false }) } } });
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
@@ -105,8 +105,20 @@ describe("findGlobals (server) — field-level read shaping", () => {
       findGlobals({ ctx, config, auth: editorAuth }),
     );
     expect(result[0]?._id).toBeDefined();
-    expect(result[0]?._creationTime).toBeDefined();
     expect(result[0]?._slug).toBe("siteSettings");
+    expect(result[0]?._creationTime).toBeUndefined();
+  });
+
+  it("keeps _creationTime when the map explicitly allows it, same as any other gateable field", async () => {
+    const config = buildConfig({ editor: { siteSettings: { read: () => ({ "*": false, _creationTime: true }) } } });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("vex_globals", { slug: "siteSettings", data: { siteName: "A" } });
+    });
+    const result = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      findGlobals({ ctx, config, auth: editorAuth }),
+    );
+    expect(result[0]?._creationTime).toBeDefined();
   });
 
   it("strips per document when the map's value is an expression over the document", async () => {

@@ -8,6 +8,8 @@ import { createAuthClient } from "better-auth/react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
+import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth"
+
 import { env } from "~/env.mjs"
 
 /**
@@ -40,6 +42,15 @@ authClient.$store.listen("$sessionSignal", () => {})
  * navigation. On every session change the Next.js router refreshes to update
  * server-side session data.
  *
+ * Also mounts `VexAdminAuthAdapterProvider` (`@vexcms/next/auth`) so
+ * `AdminTopNav`'s sign-in/out control has a `signInHref`/`signOut` to call —
+ * this provider wraps the WHOLE app (root `layout.tsx`), so it reaches the
+ * admin tree under `/admin` the same as every other route. `signOut` mirrors
+ * `SessionButton.tsx`'s own sequence exactly: sign out, then `router.refresh()`
+ * either way (success or failure — a stale client cache after a failed sign-out
+ * is worse than a redundant refresh) so the admin panel's server-resolved auth
+ * state and route guard re-evaluate.
+ *
  * Must be placed near the root of the app — required by `useSession()` and all
  * components that read auth state.
  *
@@ -65,7 +76,18 @@ export default function BetterAuthClientProvider({ children }: { children: React
       }}
       replace={router.replace}
     >
-      {children}
+      <VexAdminAuthAdapterProvider
+        value={{
+          signInHref: (redirectTo) =>
+            `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}`,
+          signOut: () =>
+            signOut()
+              .then(() => router.refresh())
+              .catch(() => router.refresh()),
+        }}
+      >
+        {children}
+      </VexAdminAuthAdapterProvider>
     </AuthUIProvider>
   )
 }

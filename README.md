@@ -126,7 +126,7 @@ export const posts = defineCollection({
   slug: "posts",
   admin: {
     useAsTitle: "title",
-    table: { defaultColumns: ["title", "category"] },
+    view: { columns: ["title", "category"] },
     group: "Content",
   },
   fields: {
@@ -298,10 +298,10 @@ The admin panel's collection list view is a paginated data table backed by Conve
 export const posts = defineCollection({
   slug: "posts",
   admin: {
-    table: {
-      defaultPageSize: 10,
+    view: {
+      pageSize: 10,
       pageSizeOptions: [10, 25, 50, 100],
-      defaultColumns: ["title", "status"],
+      columns: ["title", "status"],
     },
   },
   fields: {
@@ -309,8 +309,6 @@ export const posts = defineCollection({
   },
 });
 ```
-
-> Per-collection **sorting**, **search**, and **column visibility** are on the v0.1.0 launch track — see the [roadmap](apps/docs/src/content/docs/roadmap.md).
 
 ### Authentication (Better Auth)
 
@@ -371,11 +369,39 @@ A self-hosted Next.js admin panel, mounted directly in your app:
 
 ```tsx
 // app/admin/[[...slug]]/page.tsx
+import { canAccessAdminPanel } from "@vexcms/core";
 import { NextAdminPage } from "@vexcms/next/server";
+import { redirect } from "next/navigation";
+
+import { getToken, getUserOrg } from "~/auth/server";
 import config from "../../../../vex.config.server";
 
-export default function AdminPage({ params }: { params: Promise<{ path?: string[] }> }) {
-  return <NextAdminPage config={config} params={params} />;
+export default async function AdminPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ path?: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const token = await getToken();
+  if (!token) redirect("/auth/sign-in?redirectTo=/admin");
+
+  const auth = await getUserOrg();
+  if (
+    !canAccessAdminPanel({ access: config.access, user: auth.user, organization: auth.organization })
+  ) {
+    redirect("/unauthorized");
+  }
+
+  return (
+    <NextAdminPage
+      config={config}
+      params={params}
+      searchParams={searchParams}
+      tokenPromise={Promise.resolve(token)}
+      authPromise={Promise.resolve(auth)}
+    />
+  );
 }
 ```
 

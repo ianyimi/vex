@@ -61,3 +61,22 @@ export const COLLECTION_SYSTEM_FIELDS = {
  */
 export type CollectionSystemField =
   (typeof COLLECTION_SYSTEM_FIELDS)[keyof typeof COLLECTION_SYSTEM_FIELDS]["slug"];
+
+/**
+ * Where a saved view's state came from, once the four sources (Decision
+ * 11/45/48) are merged by `viewId` for display:
+ *
+ * - `default` — the collection's one built-in "All" view (`admin.view`), fixed `viewId: "default"`, always read-only.
+ * - `config` — declared in code via `admin.views`; always read-only.
+ * - `shared` — a `vex_views` row; readable with `VIEW_ACTIONS.readViews`, editable by callers with `createView`/`updateView`/`deleteView`.
+ * - `local` — kept in the browser's `localStorage`; editable by anyone.
+ */
+export const VEX_VIEW_SOURCES = {
+  default: "default",
+  config: "config",
+  shared: "shared",
+  local: "local",
+} as const;
+
+/** Saved-view source union, derived from {@link VEX_VIEW_SOURCES}. */
+export type VexViewSource = (typeof VEX_VIEW_SOURCES)[keyof typeof VEX_VIEW_SOURCES];

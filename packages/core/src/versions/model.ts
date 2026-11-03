@@ -82,24 +82,6 @@ export async function createVersion<DataModel extends GenericDataModel>(props: {
     publishedAt: props.publishedAt,
   });
   return nextVersion;
-  // TODO: implement
-  // 1. latest = await getLatestVersion({ ctx: props.ctx, collection: props.collection, documentId: props.documentId })
-  //    → the document's current highest version row, or null if it has none.
-  // 2. nextVersion = (latest?.version ?? 0) + 1
-  // 3. await props.ctx.db.insert("vex_versions", {
-  //      collection: props.collection, documentId: props.documentId,
-  //      version: nextVersion, status: props.status, snapshot: props.snapshot,
-  //      createdBy: props.createdBy, parentVersion: props.parentVersion,
-  //      restoredFrom: props.restoredFrom, publishedAt: props.publishedAt,
-  //    })
-  // 4. → return nextVersion.
-  // Edge cases:
-  // - Two concurrent writers computing the same nextVersion for the SAME
-  //   document is a real race in principle, but Convex's OCC retries a
-  //   mutation whose read set (this function's own `getLatestVersion` read)
-  //   is invalidated by a concurrent write — matches `update`/`create`'s
-  //   existing no-extra-locking posture.
-  // throw new Error("Not implemented");
 }
 
 /**
@@ -132,17 +114,6 @@ export async function getLatestVersion<DataModel extends GenericDataModel>(props
     .first();
 
   return (version as unknown as VexVersion) ?? null;
-
-  // TODO: implement
-  // 1. row = await props.ctx.db.query("vex_versions")
-  //      .withIndex("by_document_version", (q) =>
-  //        q.eq("collection", props.collection).eq("documentId", props.documentId))
-  //      .order("desc")
-  //      .first()
-  //    → never `.collect()` — decision 3 ships unbounded history, so a full
-  //    scan here would grow with it on every single write.
-  // 2. → return row ?? null.
-  // throw new Error("Not implemented");
 }
 
 /**
@@ -173,17 +144,6 @@ export async function getVersion<DataModel extends GenericDataModel>(props: {
     )
     .unique();
   return (version as unknown as VexVersion) ?? null;
-  // TODO: implement
-  // 1. row = await props.ctx.db.query("vex_versions")
-  //      .withIndex("by_document_version", (q) =>
-  //        q.eq("collection", props.collection).eq("documentId", props.documentId).eq("version", props.version))
-  //      .unique()
-  //    → `by_document_version` is a 3-field compound index; an exact match
-  //    on all three identifies at most one row. `.unique()` over `.first()`
-  //    turns a duplicate (a bug elsewhere writing two rows at one version)
-  //    into a thrown error instead of a silently wrong pick.
-  // 2. → return row ?? null.
-  // throw new Error("Not implemented");
 }
 
 /**
@@ -217,17 +177,6 @@ export async function listVersions<DataModel extends GenericDataModel>(props: {
   const versions =
     props.limit === undefined ? await query.collect() : await query.take(props.limit);
   return versions as unknown as VexVersion[];
-
-  // TODO: implement
-  // 1. query = props.ctx.db.query("vex_versions")
-  //      .withIndex("by_document_version", (q) =>
-  //        q.eq("collection", props.collection).eq("documentId", props.documentId))
-  //      .order("desc")
-  // 2. rows = props.limit === undefined ? await query.collect() : await query.take(props.limit)
-  //    → `.take()` over `.collect()` + slice when limited, so Convex stops
-  //    reading past the cap instead of scanning the full history first.
-  // 3. → return rows.
-  // throw new Error("Not implemented");
 }
 
 /**
@@ -261,20 +210,4 @@ export async function findDraftRow<
     )
     .unique();
   return (draft as VexVersionDocument) ?? null;
-  // TODO: implement
-  // 1. table = props.collection as TableNamesInDataModel<DataModel> — same
-  //    dynamic-table cast `update`/`create` already use; `collection` is a
-  //    runtime value, so its table can't be a compile-time literal here.
-  // 2. row = await props.ctx.db.query(table)
-  //      .withIndex("by_published", (q) => q.eq("vex_publishedId", props.publishedId))
-  //      .unique()
-  //    → `.unique()`, not `.first()`: the two-row model's invariant is AT
-  //    MOST ONE draft per published row (design-review §2.4) — a second
-  //    match means that invariant already broke elsewhere, and this should
-  //    surface that loudly rather than silently pick one.
-  // 3. → return row ?? null.
-  // Edge cases:
-  // - A never-published document has no published row to look this up BY —
-  //   callers only reach here once a `vex_publishedId` exists.
-  // throw new Error("Not implemented");
 }

@@ -442,7 +442,7 @@ function getLabelNode(container: HTMLElement): HTMLElement | null {
  *
  * A field's control behind a `React.lazy`/`Suspense` boundary (`json`'s
  * `JsonEditor`) still shows its Suspense `fallback` synchronously right
- * after `render()` — the real dynamic `import("./JsonEditorView")` resolves
+ * after `render()` — the real dynamic `import("../ui/JsonEditorView")` resolves
  * only after genuine async module-transform work, not a single microtask, so
  * one `act(async () => {})` isn't enough to observe it settle. Comparing
  * successive snapshots needs no field-type-specific knowledge: a

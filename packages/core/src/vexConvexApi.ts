@@ -13,7 +13,11 @@ import type {
   VexCreateArgs,
   VexUpdateArgs,
   VexRemoveArgs,
+  VexListViewsArgs,
+  VexSaveViewArgs,
+  VexRemoveViewArgs,
 } from "./collections/api/types";
+import type { VexStoredView } from "./collections/types";
 import type {
   VexMediaGenerateUploadUrlArgs,
   VexMediaGenerateUploadUrlReturn,
@@ -134,6 +138,41 @@ export const vexConvexApi = {
    * Permanently deletes a document.
    */
   remove: anyApi.vex.remove as FunctionReference<"mutation", "public", VexRemoveArgs, void>,
+
+  /**
+   * Lists every shared `vex_views` row for a collection the caller may see.
+   * Gated on `readViews` (decision 13) — resolves to `[]`, not a thrown
+   * error, when denied.
+   */
+  listViews: anyApi.vex.listViews as FunctionReference<
+    "query",
+    "public",
+    VexListViewsArgs,
+    VexStoredView[]
+  >,
+
+  /**
+   * Creates or patches a shared view, keyed by `viewId`. An insert requires
+   * `createView`, a patch requires `updateView` (decision 13), and the
+   * server rejects a `where` referencing a field the caller can't read
+   * (decision 26).
+   */
+  saveView: anyApi.vex.saveView as FunctionReference<
+    "mutation",
+    "public",
+    VexSaveViewArgs,
+    string
+  >,
+
+  /**
+   * Permanently deletes a shared view. Requires `deleteView`.
+   */
+  removeView: anyApi.vex.removeView as FunctionReference<
+    "mutation",
+    "public",
+    VexRemoveViewArgs,
+    void
+  >,
 
   media: {
     /**

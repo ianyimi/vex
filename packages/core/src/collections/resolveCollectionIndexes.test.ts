@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { relationship, row, text } from "../fields";
+import { commitTs, relationship, row, text } from "../fields";
 import { resolveCollectionIndexes } from "./resolveCollectionIndexes";
 
 type Collection = Parameters<typeof resolveCollectionIndexes>[0]["collection"];
@@ -54,6 +54,31 @@ describe("resolveCollectionIndexes — precedence", () => {
         indexes: [{ name: "by_author", fields: ["author", "status"] }],
       }),
     ).toEqual([{ name: "by_author", fields: ["author", "status"], source: "collection" }]);
+  });
+});
+
+describe("resolveCollectionIndexes — commitTs auto-index", () => {
+  it("auto-indexes a commitTs field with no explicit index", () => {
+    expect(resolve({ fields: { updatedAt: commitTs() } })).toEqual([
+      { name: "by_updatedAt", fields: ["updatedAt"], source: "commitTs" },
+    ]);
+  });
+
+  it("an explicit field-level index on a commitTs field wins over the auto-default", () => {
+    const resolved = resolve({ fields: { updatedAt: commitTs({ index: "by_updated_desc" }) } });
+    expect(resolved).toEqual([{ name: "by_updated_desc", fields: ["updatedAt"], source: "field" }]);
+    expect(resolved.find((i) => i.name === "by_updatedAt")).toBeUndefined();
+  });
+
+  it("throws when another field's explicit index takes the auto-default name", () => {
+    expect(() =>
+      resolve({
+        fields: {
+          updatedAt: commitTs(),
+          slug: text({ index: "by_updatedAt" }),
+        },
+      }),
+    ).toThrow(/automatic index name of commitTs field "updatedAt"/);
   });
 });
 

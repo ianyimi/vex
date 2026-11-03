@@ -52,6 +52,22 @@ export interface ViewHarnessOptions {
   access?: VexAccessConfig;
   /** The caller to render against. Defaults to `{ user: null }`. */
   auth?: VexApiAuth;
+  /** Initial URL search params (e.g. `"?q=an"`), forwarded to `NuqsTestingAdapter`. Omit for an empty URL. */
+  searchParams?: string;
+  /**
+   * Seeds the view's own `QueryClient` cache directly, BEFORE first render (polish fixes,
+   * Decision 11 — "Non-Next callers prefetch through the query cache like `NextAdminPage`",
+   * replacing the removed `CollectionListViewProps.initialData`/`initialViews`/
+   * `initialPeekDoc` props). Each entry's `queryKey` must match EXACTLY what the real
+   * `convexQuery(fn, args)` call under test would build (same `[fn, args]` shape) — a
+   * mismatched key seeds a cache entry the component never reads, silently falling through
+   * to a live (fake-backend) fetch instead. Use for a fixture the fake backend's own query
+   * handler can't reproduce (e.g. a draft/published pair already merged server-side by
+   * `mergeDraftCounterparts`, which `testing/convex/bridge.ts`'s fake `"vex:find"` handler
+   * doesn't run — its `config` has no `versions` info for `mergeDraftCounterparts`'s own
+   * `collectionConfig?.versions?.drafts === true` gate to pass).
+   */
+  seedQueryData?: Array<{ queryKey: unknown[]; data: unknown }>;
 }
 
 /**
@@ -91,27 +107,29 @@ function ViewConfigProvider(props: { config: VexClientConfig; children: ReactNod
  */
 export function wrapWithViewProviders(
   ui: ReactNode,
-  options: Pick<ViewHarnessOptions, "convex" | "config">,
+  options: Pick<ViewHarnessOptions, "convex" | "config" | "searchParams" | "seedQueryData">,
 ): ReactNode {
   const fakeClient = createFakeConvexClient(options.convex) as ConvexReactClient;
   const convexQueryClient = new ConvexQueryClient(fakeClient);
   const queryClient = new QueryClient({
     defaultOptions: { queries: { queryFn: convexQueryClient.queryFn(), retry: false } },
   });
+  for (const seed of options.seedQueryData ?? []) {
+    queryClient.setQueryData(seed.queryKey, seed.data);
+  }
   return createElement(
     ConvexProvider,
     { client: fakeClient },
     createElement(
       QueryClientProvider,
       { client: queryClient },
-      createElement(
-        NuqsTestingAdapter,
-        null,
-        createElement(ViewConfigProvider, {
+      createElement(NuqsTestingAdapter, {
+        searchParams: options.searchParams,
+        children: createElement(ViewConfigProvider, {
           config: options.config ?? testClientConfig,
           children: ui,
         }),
-      ),
+      }),
     ),
   );
 }

@@ -28,6 +28,7 @@ class ResizeObserverStub {
   unobserve() {}
 }
 
+
 /**
  * Inert `MediaQueryList`: never matches, never fires a change event. Good enough for
  * every current caller (`use-mobile.ts`'s viewport query, `ThemeProvider`'s
@@ -89,6 +90,9 @@ function installLocalStorage(): void {
 export function installDomPolyfills(): void {
   // cmdk observes its list for virtual sizing; jsdom has no ResizeObserver.
   globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+  // (No more `ui/useVisibleOnce.ts` consumer — removed along with the
+  // peek's two-layout design it existed for; `IntersectionObserverStub`
+  // removed alongside it, no other caller needed it.)
   // cmdk scrolls the highlighted item into view; jsdom has no layout.
   Element.prototype.scrollIntoView ??= () => undefined;
   // Base UI's ScrollAreaViewport calls this from a deferred timeout; jsdom

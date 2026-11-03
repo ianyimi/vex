@@ -1,3 +1,4 @@
+import { VERSION_STATUSES } from "@vexcms/core";
 import {
   defineSchema,
   defineTable,
@@ -23,15 +24,25 @@ import type { TestConvex } from "convex-test";
 const schema = defineSchema({
   // `title` is optional and `status` is declared because this table backs BOTH
   // seeded reads (every row this kit inserts sets `title`) and real writes made
-  // by components under test: `CreateDocumentModal` submits `testCollection`'s
+  // by components under test: `ListViewCreateDocumentModal` submits `testCollection`'s
   // own fields — slug "posts", one `status` text field — through the real
   // `vex:create` mutation, and Convex rejects both an undeclared field and a
   // missing required one.
   documents: defineTable({
     status: v.optional(v.string()),
     title: v.optional(v.string()),
-    vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+    vex_status: v.optional(
+      v.union(v.literal(VERSION_STATUSES.draft.key), v.literal(VERSION_STATUSES.published.key)),
+    ),
     vex_publishedId: v.optional(v.id("documents")),
+    // Self-referencing, array-shaped — matches how every `relationship()`
+    // field actually stores its value (`ADMIN_FIELDS.relationship`'s own
+    // `defaultValue: [] as string[]`, regardless of `hasMany`), so a test
+    // can seed a RAW relationship value distinct from a `depth: 1`
+    // POPULATED one (full related docs) without widening this table for
+    // every relationship shape a caller might want — one self-link
+    // covers it, since only the id-vs-object SHAPE matters to a reader.
+    related: v.optional(v.array(v.id("documents"))),
   }).searchIndex("search_title", { searchField: "title", filterFields: [] }),
   // The media counterpart of `documents`: `MediaLibraryGrid`, `FilePreview` and
   // `MediaUploadDropzone` all read `VexMediaDocument`'s own fields
@@ -57,7 +68,7 @@ const schema = defineSchema({
     collection: v.string(),
     documentId: v.string(),
     version: v.number(),
-    status: v.union(v.literal("draft"), v.literal("published")),
+    status: v.union(v.literal(VERSION_STATUSES.draft.key), v.literal(VERSION_STATUSES.published.key)),
     snapshot: v.any(),
     createdBy: v.optional(v.string()),
     parentVersion: v.optional(v.number()),

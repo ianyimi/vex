@@ -325,10 +325,18 @@ not fail because a live deployment wasn't available to enumerate.
 
 ## `updatedAt` and sitemap `lastmod`
 
-`defineCollection` auto-injects an optional `updatedAt: number` field, stamped on every
-`create`/`update`, into every collection that isn't `meta.protected` or an auth-adapter table
-that already owns the column. Opt a collection out explicitly with `{ timestamps: false }` when
-its shape must match something external (an append-only log, a table an auth adapter dictates).
+`defineCollection` auto-injects an optional `updatedAt` field, stamped on `create`/`update`/
+`publish`/`unpublish` (never on an autosave draft), into every collection that isn't
+`meta.protected` or an auth-adapter table that already owns the column. Opt a collection out
+explicitly with `{ timestamps: false }` when its shape must match something external (an
+append-only log, a table an auth adapter dictates).
+
+The field's type is `commitTs()` — Convex's own database-stamped commit timestamp
+(`ctx.db.vars.commitTs`), not a client-computed `Date.now()`. That only changes how the value
+is produced inside `@vexcms/core`: it's always resolved to a plain Unix-ms `number` before it
+reaches app code — `find`/`get`/`search` convert Convex's resolved nanosecond `bigint` to ms
+internally. `createVexSitemap.ts` and every other consumer still just reads a `number`, exactly
+as before.
 
 This is what a sitemap's `getUpdatedAt` (above) reads, and it's collection-only:
 

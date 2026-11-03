@@ -140,6 +140,33 @@ describe("defineAccess — runtime passthrough", () => {
     });
     expect(access.orgCollectionSlug).toBe("organizations");
   });
+
+  it("defaults organizations to false", () => {
+    const access = defineAccess({
+      ...baseInput,
+      permissions: { admin: { [WILDCARD_KEY]: true } },
+    });
+    expect(access.organizations).toBe(false);
+  });
+
+  it("defaults organizations to false even when orgCollectionSlug is set (the apps/test regression — orgCollectionSlug alone never scoped anything)", () => {
+    const access = defineAccess({
+      ...baseInput,
+      orgCollectionSlug: "organizations",
+      permissions: { admin: { [WILDCARD_KEY]: true } },
+    });
+    expect(access.organizations).toBe(false);
+  });
+
+  it("stores organizations: true when explicitly set alongside orgCollectionSlug", () => {
+    const access = defineAccess({
+      ...baseInput,
+      orgCollectionSlug: "organizations",
+      organizations: true,
+      permissions: { admin: { [WILDCARD_KEY]: true } },
+    });
+    expect(access.organizations).toBe(true);
+  });
 });
 
 describe("defineAccess — undeclared-permission posture", () => {
@@ -312,6 +339,35 @@ describe("defineAccess — dev-mode warnings", () => {
       String(msg).includes("orgCollectionSlug"),
     );
     expect(orgWarnings).toHaveLength(1); // once total — not once per role
+    warnSpy.mockRestore();
+  });
+
+  it("warns when organizations is true but orgCollectionSlug isn't set", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    withNodeEnv("development", () => {
+      defineAccess({
+        ...baseInput,
+        organizations: true,
+        permissions: { admin: { [WILDCARD_KEY]: true } },
+      });
+    });
+    const orgWarnings = warnSpy.mock.calls.filter(([msg]) => String(msg).includes("organizations"));
+    expect(orgWarnings).toHaveLength(1);
+    warnSpy.mockRestore();
+  });
+
+  it("does not warn when organizations is true alongside a real orgCollectionSlug", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    withNodeEnv("development", () => {
+      defineAccess({
+        ...baseInput,
+        orgCollectionSlug: "organizations",
+        organizations: true,
+        permissions: { admin: { [WILDCARD_KEY]: true } },
+      });
+    });
+    const orgWarnings = warnSpy.mock.calls.filter(([msg]) => String(msg).includes("organizations: true"));
+    expect(orgWarnings).toHaveLength(0);
     warnSpy.mockRestore();
   });
 

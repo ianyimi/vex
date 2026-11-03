@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { VexClientConfig, TDocument } from "@vexcms/core";
 import { makeCellRow, runFieldCellContractSuite } from "../../testing/fieldCellContract";
 import { testCollection } from "../../testing/harness/accessFixtures";
+import { assertHydratesWithoutMismatch } from "../../testing/ssrHydration";
 import { VexConfigContext } from "../../config/VexConfigContext";
 import { RelationshipFieldCell } from "./Cell";
 import { relationshipFieldFixture, relationshipTargetCollection } from "./testFixture";
@@ -93,6 +94,49 @@ runFieldCellContractSuite({
         expect(
           screen.getByText(`2 ${relationshipTargetCollection.labels.plural}`),
         ).toBeInTheDocument();
+      });
+    });
+
+    // No `isMounted` hydration gate (removed — see Cell.tsx's JSDoc):
+    // `renderToString`'s markup must hydrate cleanly client-side for every
+    // rendering branch — no recoverable hydration error, no "hydrat..."
+    // console warning.
+    describe("relationship: SSR parity (no hydration gate)", () => {
+      function elementFor(value: unknown) {
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value });
+        return withConfig(
+          <RelationshipFieldCell
+            value={value as never}
+            row={row}
+            fieldDef={options.fixture.fieldDef}
+            fieldKey="field"
+            isTitleField={false}
+            collection={collection}
+          />,
+        );
+      }
+
+      it("empty value hydrates cleanly", async () => {
+        await assertHydratesWithoutMismatch(elementFor([]) as ReactElement);
+      });
+
+      it("a single populated doc hydrates cleanly", async () => {
+        await assertHydratesWithoutMismatch(
+          elementFor([{ _id: "doc_a", title: "Hello Relation" }]) as ReactElement,
+        );
+      });
+
+      it("multiple populated docs hydrate cleanly", async () => {
+        await assertHydratesWithoutMismatch(
+          elementFor([
+            { _id: "doc_a", title: "First" },
+            { _id: "doc_b", title: "Second" },
+          ]) as ReactElement,
+        );
+      });
+
+      it("unpopulated raw ids hydrate cleanly", async () => {
+        await assertHydratesWithoutMismatch(elementFor(options.fixture.valid) as ReactElement);
       });
     });
   },

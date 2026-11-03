@@ -2,8 +2,7 @@ import type { ReactNode } from "react";
 
 import { NextAdminLayout } from "@vexcms/next/client";
 
-import { AuthServerProvider } from "~/components/providers/auth";
-import { getCurrentUser } from "~/auth/serverUtils";
+import { getUserOrg } from "~/auth/server";
 import { ThemeLive } from "~/components/ThemeLive";
 import { ThemeStyle } from "~/components/ThemeStyle";
 
@@ -15,16 +14,24 @@ import { ThemeStyle } from "~/components/ThemeStyle";
  * `:root:root`, so it outranks the site theme on admin routes only. Falls
  * back to the site theme when `siteSettings.adminTheme` is empty — see
  * `api.theme.getAdmin`.
+ *
+ * `AuthServerProvider` used to wrap `{children}` here — removed (perf fix, measured): it
+ * `await`s `getToken()`/`getUserOrg()` BEFORE returning its own `{children}`, so React
+ * cannot begin streaming ANYTHING inside it until that resolves. Safe to remove: its own
+ * `AuthContext` (`useAuth()`) has zero consumers inside the admin tree.
  */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const user = await getCurrentUser();
+  // Not awaited — `NextAdminLayout` resolves it inside the sidebar's OWN `<Suspense>`
+  // boundary (`@vexcms/react`'s `AdminLayout`), so `{children}` and this layout's own
+  // static chrome stream immediately instead of waiting on a Convex round trip.
+  const authPromise = getUserOrg();
   return (
     // `VexConfigProvider` is no longer mounted here — the root layout's
     // `ClientProviders` mounts it once for the whole app.
-    <AuthServerProvider>
+    <>
       <ThemeStyle scope="admin" />
       <ThemeLive scope="admin" />
-      <NextAdminLayout user={user ?? undefined}>{children}</NextAdminLayout>
-    </AuthServerProvider>
+      <NextAdminLayout authPromise={authPromise}>{children}</NextAdminLayout>
+    </>
   );
 }

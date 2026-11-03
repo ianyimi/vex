@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import type { AdminField, DateField, NumberField } from "../fields";
+import type { AdminField, CommitTsField, NumberField } from "../fields";
 import { defineCollection, number, text } from "../index";
 import { beforeChangeHook } from "./hooks";
 
 describe("defineCollection — updatedAt injection", () => {
-  it("injects an optional updatedAt date field by default", () => {
+  it("injects an optional updatedAt commitTs field by default", () => {
     const posts = defineCollection({
       slug: "posts",
       fields: { title: text({ required: true }) },
     });
-    const field = posts.fields.updatedAt as DateField | undefined;
+    const field = posts.fields.updatedAt as CommitTsField | undefined;
     expect(field).toBeDefined();
-    expect(field?.type).toBe("date");
+    expect(field?.type).toBe("commitTs");
     expect(field?.required).toBe(false);
+    expect(field?.on).toBe("save");
   });
 
   it("marks the injected field read-only so the form cannot edit it", () => {
@@ -25,16 +26,14 @@ describe("defineCollection — updatedAt injection", () => {
     expect(posts.fields.updatedAt?.admin.position).toBe("sidebar");
   });
 
-  it("resolves the injected field's time config with seconds visible", () => {
+  it("resolves the injected field's admin format and read-only default", () => {
     const posts = defineCollection({
       slug: "posts",
       fields: { title: text({ required: true }) },
     });
-    expect((posts.fields.updatedAt as DateField | undefined)?.time).toEqual({
-      hidden: false,
-      use12HourFormat: true,
-      timePicker: { hour: true, minute: true, second: true },
-    });
+    const field = posts.fields.updatedAt as CommitTsField | undefined;
+    expect(field?.admin.format).toBe("datetime");
+    expect(field?.admin.readOnly).toBe(true);
   });
 
   it("omits updatedAt when timestamps: false", () => {
@@ -353,5 +352,237 @@ describe("defineCollection — draftStatus validation", () => {
       versions: { drafts: true },
     });
     expect(posts.fields.slug?.index).toEqual({ name: "by_slug", draftStatus: true });
+  });
+});
+
+describe("defineCollection — admin.view field-slug typing", () => {
+  it("rejects a searchFields entry that is not one of the collection's own fields", () => {
+    // `validateSavedListViewConfig` also rejects "nope" at runtime (it has no
+    // searchIndex) — this test only exercises the compile-time field-slug
+    // rejection via @ts-expect-error, so the runtime throw is tolerated.
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: text({ required: true }) },
+        admin: {
+          view: {
+            // @ts-expect-error — "nope" is not a field slug on this collection
+            searchFields: ["nope"],
+          },
+        },
+      }),
+    ).toThrow();
+  });
+
+  it("rejects an admin.view.sort.field that is not a field slug or _creationTime, and accepts _creationTime", () => {
+    // `validateSavedListViewConfig` also rejects "nope" at runtime (it leads no
+    // index) — this test only exercises the compile-time field-slug
+    // rejection via @ts-expect-error, so the runtime throw is tolerated.
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: text({ required: true }) },
+        admin: {
+          view: {
+            // @ts-expect-error — "nope" is not a field slug or "_creationTime"
+            sort: { field: "nope", order: "asc" },
+          },
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: text({ required: true }) },
+        admin: { view: { sort: { field: "_creationTime", order: "asc" } } },
+      }),
+    ).not.toThrow();
+  });
+
+  it("rejects an admin.view.columns entry that is not one of the collection's own fields", () => {
+    // `validateSavedListViewConfig` also rejects "nope" at runtime (unknown
+    // column) — this test only exercises the compile-time field-slug
+    // rejection below, so the runtime throw is tolerated.
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: text({ required: true }) },
+        admin: {
+          view: {
+            // @ts-expect-error — "nope" is not a field slug on this collection
+            columns: ["nope"],
+          },
+        },
+      }),
+    ).toThrow();
+  });
+
+  it("defaults admin.view.state.pageSize to 10", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+    });
+    expect(posts.admin.view.state.pageSize).toBe(10);
+  });
+
+  it("accepts an explicit admin.view.pageSize override", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      admin: { view: { pageSize: 25 } },
+    });
+    expect(posts.admin.view.state.pageSize).toBe(25);
+  });
+
+  it("defaults admin.view.state.searchField to admin.view.state.searchFields[0] when unset", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true, searchIndex: { name: "search_title", filterFields: [] } }) },
+      admin: { view: { searchFields: ["title"] } },
+    });
+    expect(posts.admin.view.state.searchField).toBe("title");
+  });
+
+  it("leaves admin.view.state.searchField undefined when admin.view.state.searchFields is unset", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+    });
+    expect(posts.admin.view.state.searchField).toBeUndefined();
+  });
+
+  it("accepts an explicit admin.view.searchField override", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text({ required: true, searchIndex: { name: "search_title", filterFields: [] } }),
+        body: text({ required: true, searchIndex: { name: "search_body", filterFields: [] } }),
+      },
+      admin: { view: { searchFields: ["title", "body"], searchField: "body" } },
+    });
+    expect(posts.admin.view.state.searchField).toBe("body");
+  });
+
+  it("resolves admin.view.viewId to the fixed, reserved \"default\" id and name to \"All\" by default", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+    });
+    expect(posts.admin.view.viewId).toBe("default");
+    expect(posts.admin.view.name).toBe("All");
+  });
+
+  it("accepts an explicit admin.view.name override", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      admin: { view: { name: "Everything" } },
+    });
+    expect(posts.admin.view.name).toBe("Everything");
+  });
+
+  it("defaults admin.views to an empty array", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+    });
+    expect(posts.admin.views).toEqual([]);
+  });
+
+  it("defaults admin.view.state.countLimit to 10000 (Decision 35)", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+    });
+    expect(posts.admin.view.state.countLimit).toBe(10000);
+  });
+
+  it("accepts an explicit admin.view.countLimit override", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      admin: { view: { countLimit: 5000 } },
+    });
+    expect(posts.admin.view.state.countLimit).toBe(5000);
+  });
+
+  it("admin.views[n]'s own collection-wide settings fall back to admin.view's resolved value, then the global default (Decision 45 two-tier fallback)", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      admin: {
+        view: { serverPageSize: 50 },
+        views: [
+          { viewId: "featured", name: "Featured", state: {} },
+          { viewId: "custom", name: "Custom", state: { serverPageSize: 200 } },
+        ],
+      },
+    });
+    expect(posts.admin.views[0]?.state.serverPageSize).toBe(50);
+    expect(posts.admin.views[0]?.state.pageSizeOptions).toEqual([10, 25, 50, 100]);
+    expect(posts.admin.views[1]?.state.serverPageSize).toBe(200);
+  });
+});
+
+describe("defineCollection — admin.components list-slot resolution (list-view-overhaul step 9)", () => {
+  it("defaults every list.* slot to an empty array when admin.components is omitted", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+    });
+    expect(posts.admin.components.headerActions).toEqual([]);
+    expect(posts.admin.components.toolbar).toEqual([]);
+    expect(posts.admin.components.filters).toEqual([]);
+    expect(posts.admin.components.beforeTable).toEqual([]);
+    expect(posts.admin.components.afterTable).toEqual([]);
+    expect(posts.admin.components.rowActions).toEqual([]);
+    expect(posts.admin.components.bulkActions).toEqual([]);
+  });
+
+  it("orders a collection's own list.row.actions contributions by order, ties broken by array position", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      admin: {
+        components: {
+          rowActions: [
+            { id: "acme.b", component: () => null, order: 10 },
+            { id: "acme.a", component: () => null },
+          ],
+        },
+      },
+    });
+    expect(posts.admin.components.rowActions.map((c) => c.id)).toEqual(["acme.a", "acme.b"]);
+  });
+
+  it("throws VexComponentConfigError on a duplicate id within one collection's own list.bulkActions", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: text({ required: true }) },
+        admin: {
+          components: {
+            bulkActions: [
+              { id: "acme.export", component: () => null },
+              { id: "acme.export", component: () => null },
+            ],
+          },
+        },
+      }),
+    ).toThrow();
+  });
+
+  it("keeps the collection-level edit.* components config alongside the resolved list.* slots", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      admin: {
+        components: {
+          edit: { header: { actions: [{ id: "acme.flag", component: () => null }] } },
+        },
+      },
+    });
+    expect(posts.admin.components.edit?.header?.actions?.[0]?.id).toBe("acme.flag");
+    expect(posts.admin.components.headerActions).toEqual([]);
   });
 });

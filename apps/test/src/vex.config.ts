@@ -14,6 +14,7 @@ import {
   images,
   pages,
   posts,
+  testimonials,
   themes,
   users,
 } from "~/vexcms/collections";
@@ -45,9 +46,9 @@ const vexConfig = defineConfig({
   authCollections: betterAuthCollections(authSchema),
   editor: plateEditor(),
   admin: {
-    sidebar: {
-      side: "right",
-    },
+    // sidebar: {
+    //   side: "right",
+    // },
     components: {
       edit: {
         // Dogfoods a root-level `admin.components.edit.actionsMenu.items` contribution,
@@ -118,6 +119,7 @@ const vexConfig = defineConfig({
     comments,
     posts,
     fields,
+    testimonials,
   ],
   mediaCollections: [images],
   globals: [nav, siteSettings, announcement],

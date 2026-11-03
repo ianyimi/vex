@@ -19,7 +19,7 @@ export interface RbacStateOptions {
   scenarios?: RbacScenario[];
   render: (permission: boolean) => ReactNode;
   /** Given the rendered result and which scenario produced it, assert the expected behavior. */
-  assert: (utils: RenderResult, scenario: RbacScenario, permission: boolean) => void;
+  assert: (utils: RenderResult, scenario: RbacScenario, permission: boolean) => void | Promise<void>;
   /**
    * Client config threaded to `renderWithVexProviders`. Omit to use its own default
    * (`defineConfig({ collections: [testCollection], access })`) — pass `testClientConfig`
@@ -66,7 +66,7 @@ export function runRbacStateSuite(options: RbacStateOptions): void {
 
   describe("RBAC state", () => {
     for (const scenario of scenarios) {
-      it(`resolves the "${scenario.name}" scenario`, () => {
+      it(`resolves the "${scenario.name}" scenario`, async () => {
         let permission = false;
         // `renderWithVexProviders` ignores its own `access` option once `config` is
         // supplied (see its doc comment), so the scenario's access matrix is merged
@@ -85,7 +85,10 @@ export function runRbacStateSuite(options: RbacStateOptions): void {
             auth: { user: (scenario.user ?? null) as Record<string, unknown> | null },
           },
         );
-        options.assert(utils, scenario, permission);
+        // `assert` may be async (e.g. a view whose own document fetch suspends and needs a
+        // `waitFor` before its fields exist) — `await`ing a synchronous `void` return is a
+        // no-op, so every EXISTING synchronous `assert` caller is unaffected.
+        await options.assert(utils, scenario, permission);
       });
     }
   });

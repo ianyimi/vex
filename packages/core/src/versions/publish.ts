@@ -5,6 +5,7 @@ import type { VexConfig } from "../config";
 import type { AccessCallOptions, VexApiAuth } from "../db/types";
 import { DRAFT_ACTIONS } from "../access";
 import { prepareEdit } from "../db/prepareEdit";
+import { stampCommitTsFields } from "../db/documents";
 import type { CollectionOrGlobal } from "../types/utils";
 import { assertNoDraftRelationships } from "./assertNoDraftRelationships";
 import { VERSION_STATUSES } from "./constants";
@@ -118,6 +119,16 @@ export async function publishShared<DataModel extends GenericDataModel>(props: {
     access: props.access,
     auth: props.auth,
     storedDoc: (publishedRow ? props.rows.toUserFields(publishedRow) : {}) as never,
+    // Draft-pair pagination fix follow-up: the document's own id, so a
+    // field validator's uniqueness check (e.g. `assertUniqueAmongPublished`,
+    // reading `doc._id`) can exclude THIS document's own row instead of
+    // colliding with itself on every strict (`validateKeys: "all"`)
+    // publish, including an unchanged value. Whichever of the two rows
+    // already exists before publish (a brand-new document's draft-only
+    // row has no `publishedRow` yet) — never the not-yet-inserted id a
+    // global with no rows at all would get, since there is nothing
+    // existing there to collide with regardless.
+    docId: (publishedRow?._id ?? draftRow?._id) as string | undefined,
     changes,
     partial: false,
     validateKeys: "all",
@@ -149,6 +160,12 @@ export async function publishShared<DataModel extends GenericDataModel>(props: {
       } as never,
     ));
   const rowBeforePublish = publishedRow ?? draftRow;
+  const stampedFields = stampCommitTsFields({
+    ctx: props.ctx,
+    fields: props.target.config.fields,
+    data: transformedFields,
+    events: ["publish"],
+  });
 
   if (previous === null && publishedRow !== null) {
     await createVersion({
@@ -156,7 +173,7 @@ export async function publishShared<DataModel extends GenericDataModel>(props: {
       collection: props.rows.historyCollection,
       documentId: props.rows.documentId,
       status: VERSION_STATUSES.published.key,
-      snapshot: props.rows.toUserFields(publishedRow),
+      snapshot: removeVexFields({ doc: props.rows.toUserFields(publishedRow), fields: props.target.config.fields }),
       publishedAt: publishedRow.vex_publishedAt as number | undefined,
     });
     previous = await getLatestVersion({
@@ -169,7 +186,7 @@ export async function publishShared<DataModel extends GenericDataModel>(props: {
   await props.ctx.db.patch(
     rowId as never,
     {
-      ...(rowBeforePublish ? props.rows.buildDraftPatch(rowBeforePublish, transformedFields) : {}),
+      ...(rowBeforePublish ? props.rows.buildDraftPatch(rowBeforePublish, stampedFields) : {}),
       vex_status: VERSION_STATUSES.published.key,
       vex_publishedAt: now,
     } as never,
@@ -192,7 +209,7 @@ export async function publishShared<DataModel extends GenericDataModel>(props: {
       collection: props.rows.historyCollection,
       documentId: props.rows.documentId,
       status: VERSION_STATUSES.published.key,
-      snapshot: removeVexFields({ doc: transformedFields }),
+      snapshot: removeVexFields({ doc: stampedFields, fields: props.target.config.fields }),
       publishedAt: now,
       createdBy,
       parentVersion: previous?.version,
@@ -231,6 +248,7 @@ async function publishFromVersion<DataModel extends GenericDataModel>(props: {
     access: props.access,
     auth: props.auth,
     storedDoc: base.snapshot as never,
+    docId: (props.rows.publishedRow?._id ?? props.rows.draftRow?._id) as string | undefined,
     changes: data,
     partial: false,
     validateKeys: "all",
@@ -243,7 +261,13 @@ async function publishFromVersion<DataModel extends GenericDataModel>(props: {
   });
 
   const now = Date.now();
-  const userFields = removeVexFields({ doc: transformedFields });
+  const stampedFields = stampCommitTsFields({
+    ctx: props.ctx,
+    fields: props.target.config.fields,
+    data: transformedFields,
+    events: ["publish"],
+  });
+  const userFields = removeVexFields({ doc: stampedFields, fields: props.target.config.fields });
   const targetRow = props.rows.publishedRow ?? props.rows.draftRow;
   if (targetRow === null) {
     throw new ConvexError("Nothing to publish: the document has no rows.");

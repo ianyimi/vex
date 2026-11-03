@@ -35,6 +35,7 @@ describe("useCanAccessAdminPanel", () => {
         roles: ["admin", "user"],
         userCollectionSlug: "user",
         userRolesField: "roles",
+        organizations: false,
       } })}><Probe /></VexConfigProvider>,
     );
     expect(screen.getByTestId("probe").textContent).toBe("false");
@@ -50,6 +51,7 @@ describe("useCanAccessAdminPanel", () => {
         roles: ["admin", "user"],
         userCollectionSlug: "user",
         userRolesField: "roles",
+        organizations: false,
       } })}><VexAuthProvider value={{ user: { roles: ["admin"] } }}>
         <Probe />
       </VexAuthProvider></VexConfigProvider>,

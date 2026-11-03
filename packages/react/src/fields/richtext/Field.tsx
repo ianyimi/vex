@@ -5,7 +5,6 @@ import type { AnyFieldApi } from "@tanstack/react-form";
 import { useStore } from "@tanstack/react-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConvexMutation, convexQuery } from "@convex-dev/react-query";
-import { useDebounceValue } from "@ts-hooks-kit/core";
 import {
   vexConvexApi,
   type AdminDataField,
@@ -15,7 +14,7 @@ import {
   type VexEditorComponentProps,
   type VexMediaDocument,
 } from "@vexcms/core";
-import { useVexMutation } from "../../hooks";
+import { useDebouncedValue, useVexMutation } from "../../hooks";
 import { toast } from "sonner";
 import { getVexErrorMessage } from "../../utils/errors";
 import { useFieldContext, useFormContext, isFieldShowingError } from "../../forms";
@@ -72,7 +71,7 @@ function RichTextFieldAdminInner(props: FieldComponentProps<{}, RichTextField>) 
 
   // Media search state, mirroring `MediaLibraryGrid`.
   const [mediaSearchTerm, setMediaSearchTerm] = useState("");
-  const [debouncedSearch] = useDebounceValue(mediaSearchTerm, 200);
+  const debouncedSearch = useDebouncedValue(mediaSearchTerm, 200);
   const [mediaLimit, setMediaLimit] = useState(24);
 
   const { data: allResults = [], isPending: allPending } = useQuery({

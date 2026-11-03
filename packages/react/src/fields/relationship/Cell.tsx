@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import {
   type CellComponentProps,
@@ -27,25 +27,22 @@ import { resolveRelationshipPreview } from "./preview";
  * - > 1 docs → `"{count} {pluralLabel}"` using `targetCollection.labels.plural`.
  * - Unpopulated IDs → `"{count} item(s)"` fallback.
  *
- * **Hydration note:** always renders `—` during SSR and the initial hydration
- * render. The Convex `queryClient` is a module-level singleton that persists
- * across soft navigations; it can push cached subscription data synchronously
- * into TanStack Query's cache during React hydration (via `useSyncExternalStore`),
- * causing a server/client mismatch. By rendering a fixed placeholder until
- * after mount, the first client render always matches the server output.
+ * **No hydration gate:** renders the same output on the server and on every
+ * client render — `row.original[fieldKey]` comes from `useVexListQuery`'s
+ * TanStack Query result, seeded by the server's own `initialData` under the
+ * identical query key (`CollectionListView.serverParity.test.tsx` pins this
+ * parity). An earlier `isMounted` gate here (always rendering `—` until after
+ * mount) was removed: it caused the exact layout shift/visible swap it was
+ * meant to avoid, and the SSR-parity infrastructure it predated already
+ * guarantees the first client render matches the server's markup.
  *
  * @param props - Standard cell component props.
- * @returns A placeholder em-dash before mount; otherwise the resolved preview,
- *   an item count, or an em-dash for an empty relationship.
+ * @returns The resolved preview, an item count, or an em-dash for an empty
+ *   relationship — identical on server and client.
  */
 export function RelationshipFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<RelationshipField, TData>,
 ) {
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
   const { row, fieldDef, fieldKey } = props;
   const config = useVexConfig();
   const href = adminHref(
@@ -54,11 +51,6 @@ export function RelationshipFieldCell<TData extends TDocument = TDocument>(
   );
   const wrap = (content: ReactNode) =>
     props.isTitleField ? <VexLink href={href}>{content}</VexLink> : content;
-
-  // SSR and initial hydration render — consistent placeholder prevents mismatch.
-  if (!isMounted) {
-    return wrap(<span className="text-[13px] text-muted-foreground">—</span>);
-  }
 
   const rawValue = row.original[fieldKey] as unknown[] | undefined;
 

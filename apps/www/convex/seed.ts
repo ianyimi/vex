@@ -982,7 +982,7 @@ export const featuredPosts = query({
           {
             question: "Is it production ready?",
             answer:
-              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation, live preview, versioning and drafts, and the richtext/json/email/textarea fields have all landed; the remaining big ones are the field input consistency pass and the edit/list-view overhauls. The roadmap page has the full list.",
+              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation, live preview, versioning and drafts, the richtext/json/email/textarea fields, and the list-view overhaul have all landed; the remaining big ones are the field input consistency pass and the edit-view overhaul. The roadmap page has the full list.",
           },
           {
             question: "Which frameworks does it support?",
@@ -1142,23 +1142,39 @@ export const featuredPosts = query({
         mediaPosition: ["right"],
         codeFilename: "app/(vexcms)/admin/[[...path]]/page.tsx",
         codeLanguage: ["tsx"],
-        code: `import { NextAdminPage } from "@vexcms/next/server"
+        code: `import { canAccessAdminPanel } from "@vexcms/core"
+import { NextAdminPage } from "@vexcms/next/server"
 import { redirect } from "next/navigation"
 
-import { getToken } from "~/auth/server"
+import { getToken, getUserOrg } from "~/auth/server"
 import config from "~/vex.config.server"
 
 // The whole panel is one route in your app. Gate it however you
 // gate anything else, then hand it the config you already wrote.
 export default async function AdminPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ path?: string[] }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const token = await getToken()
   if (!token) redirect("/auth/sign-in?redirectTo=/admin")
 
-  return <NextAdminPage config={config} params={params} token={token} />
+  const auth = await getUserOrg()
+  if (!canAccessAdminPanel({ access: config.access, user: auth.user, organization: auth.organization })) {
+    redirect("/unauthorized")
+  }
+
+  return (
+    <NextAdminPage
+      config={config}
+      params={params}
+      searchParams={searchParams}
+      tokenPromise={Promise.resolve(token)}
+      authPromise={Promise.resolve(auth)}
+    />
+  )
 }`,
       },
       {
@@ -1436,7 +1452,7 @@ export const testimonials = defineTable({
           {
             feature: "Data-Table Integrity & Config Honesty",
             description:
-              "First in the launch track. Every key under admin.table gets a consumer or gets deleted. No README documents a flag that does nothing.",
+              "First in the launch track. Every key under admin.view gets a consumer or gets deleted. No README documents a flag that does nothing.",
             status: ["planned"],
           },
           {
@@ -1485,7 +1501,7 @@ export const testimonials = defineTable({
             feature: "List-View Overhaul",
             description:
               "Per-collection search, sortable columns, column visibility, page-size control, and saved views. Each control ships together with the config key that drives it.",
-            status: ["planned"],
+            status: ["shipped"],
           },
           {
             feature: "Responsive & Mobile Pass",

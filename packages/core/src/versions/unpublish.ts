@@ -5,6 +5,7 @@ import type { VexConfig } from "../config";
 import type { AccessCallOptions, VexApiAuth } from "../db/types";
 import { resolveAccessCall } from "../access/resolveAccessCall";
 import { DRAFT_ACTIONS, hasPermission } from "../access";
+import { stampCommitTsFields } from "../db/documents";
 import type { CollectionOrGlobal } from "../types/utils";
 import { VERSION_STATUSES } from "./constants";
 import { listVersions, type VexVersion } from "./model";
@@ -113,12 +114,20 @@ export async function unpublishShared<DataModel extends GenericDataModel>(props:
     } as never);
   }
 
+  const stamped = stampCommitTsFields({
+    ctx,
+    fields: target.config.fields,
+    data: {},
+    events: ["unpublish"],
+  });
+
   if (previous !== undefined) {
     // Promote in place: same `_id`, previous content, previous publishedAt;
     // the document stays published. No history row is written — both states
     // already have one.
     await ctx.db.patch(publishedRow._id as never, {
       ...rows.buildDraftReplace(publishedRow, previous.snapshot as Record<string, unknown>),
+      ...stamped,
       vex_publishedAt: previous.publishedAt,
       vex_activeVersion: previous.version,
     } as never);
@@ -126,6 +135,7 @@ export async function unpublishShared<DataModel extends GenericDataModel>(props:
     // Nothing to promote: the document goes offline. The explicit unpublish
     // removes the live row's "was ever live" stamp too.
     await ctx.db.patch(publishedRow._id as never, {
+      ...stamped,
       vex_status: VERSION_STATUSES.draft.key,
       vex_publishedAt: undefined,
       vex_activeVersion: current?.version,

@@ -73,6 +73,14 @@ export const ADMIN_FIELDS = {
     kind: "data",
     inputMasks: false,
   },
+  commitTs: {
+    type: "commitTs",
+    interfaceType: "number",
+    validator: "v.commitTs()",
+    defaultValue: undefined,
+    kind: "data",
+    inputMasks: false,
+  },
   select: {
     type: "select",
     interfaceType: "string[]",
@@ -199,6 +207,9 @@ export type CheckboxFieldType = typeof ADMIN_FIELDS.checkbox.type;
 
 /** Literal type `"date"` — the discriminant value on {@link DateField}. */
 export type DateFieldType = typeof ADMIN_FIELDS.date.type;
+
+/** Literal type `"commitTs"` — the discriminant value on {@link CommitTsField}. */
+export type CommitTsFieldType = typeof ADMIN_FIELDS.commitTs.type;
 
 /** Literal type `"select"` — the discriminant value on {@link SelectField}. */
 export type SelectFieldType = typeof ADMIN_FIELDS.select.type;

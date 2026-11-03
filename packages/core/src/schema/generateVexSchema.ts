@@ -75,6 +75,26 @@ export function generateVexSchema(props: { config: VexClientConfig }): {
     '  .index("by_document_version", ["collection", "documentId", "version"])',
   ].join("\n");
 
+  const vexViewsTable = [
+    "",
+    "/**",
+    " * VEX VIEWS — shared saved views for collection list tables",
+    " **/",
+    "",
+    "export const vex_views = defineTable({",
+    "  collection: v.string(),",
+    "  viewId: v.string(),",
+    "  name: v.string(),",
+    "  description: v.optional(v.string()),",
+    "  state: v.any(),",
+    "  organizationId: v.optional(v.string()),",
+    "  createdBy: v.string(),",
+    "})",
+    '  .index("by_collection", ["collection"])',
+    '  .index("by_collection_org", ["collection", "organizationId"])',
+    '  .index("by_view_id", ["viewId"])',
+  ].join("\n");
+
   let globalsTable = "";
   if (props.config.globals.length > 0) {
     const hasGlobalVersions = props.config.globals.some((global) => global.versions.drafts);
@@ -97,5 +117,7 @@ export function generateVexSchema(props: { config: VexClientConfig }): {
     ].join("\n");
   }
 
-  return success([header, imports, collectionSchemas, vexVersionsTable, globalsTable].join("\n"));
+  return success(
+    [header, imports, collectionSchemas, vexVersionsTable, vexViewsTable, globalsTable].join("\n"),
+  );
 }

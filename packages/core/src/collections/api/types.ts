@@ -17,6 +17,7 @@ import type {
   VexApiAuth,
 } from "../../db/types";
 import type { VexWhereNodeOf } from "../../access/queryConstraintTypes";
+import type { VexViewConfig } from "../types";
 import type { VexVersionStatus } from "../../versions/constants";
 
 // ── Generic args base types ─────────────────────────────────────────────────
@@ -510,4 +511,27 @@ export interface VexRemoveArgs {
   collection: string;
   ids: string[];
   softDelete?: string;
+}
+
+/** Args for `api.vex.listViews`. */
+export interface VexListViewsArgs {
+  [key: string]: unknown;
+  auth?: VexApiAuth;
+  collection: string;
+}
+
+/** Args for `api.vex.saveView`. */
+export interface VexSaveViewArgs {
+  [key: string]: unknown;
+  auth?: VexApiAuth;
+  collection: string;
+  view: VexViewConfig;
+}
+
+/** Args for `api.vex.removeView`. */
+export interface VexRemoveViewArgs {
+  [key: string]: unknown;
+  auth?: VexApiAuth;
+  collection: string;
+  viewId: string;
 }

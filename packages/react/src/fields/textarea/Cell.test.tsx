@@ -12,6 +12,25 @@ runFieldCellContractSuite({
   extra: (options) => {
     const collection = options.collection ?? testCollection;
 
+    describe("textarea: empty value", () => {
+      it("renders the em-dash placeholder for an empty string (not undefined/null)", () => {
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value: "" });
+        const { container } = render(
+          withCellConfig(
+            <TextareaFieldCell
+              value=""
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
+        );
+        expect(container).toHaveTextContent("—");
+      });
+    });
+
     describe("textarea: collapses multi-line content to one line", () => {
       it("renders no raw newlines when the stored value is multi-line", () => {
         const row = makeCellRow<TDocument>({ fieldKey: "field", value: options.fixture.valid });

@@ -82,6 +82,29 @@ export const SLOT_IDS = {
     /** Additive contributions in an edit view's ⋯ actions menu, rendered in a dropdown left of the header action group. Built-ins: revalidate, duplicate. */
     actionsMenu: "edit.actionsMenu",
   },
+  list: {
+    /** Additive contributions rendered beside the built-in "+ New" button. Built-in: `vex.list.create`. */
+    headerActions: "list.header.actions",
+    /** Additive contributions rendered in the toolbar row. Built-ins: `vex.list.search` (Step 10), `vex.list.columns` (Step 10), `vex.list.views` (Step 12). */
+    toolbar: "list.toolbar",
+    /** Additive contributions rendered in the filter row, below the toolbar. Built-in: `vex.list.filters` (Step 11). */
+    filters: "list.filters",
+    /** Additive contributions rendered above the table, below `toolbar`/`filters`. No built-in. */
+    beforeTable: "list.beforeTable",
+    /** Additive contributions rendered below the table. No built-in. */
+    afterTable: "list.afterTable",
+    /**
+     * Rendered as `DropdownMenuItem`s in one per-row ⋯ menu (Decision 28), in order:
+     * `vex.list.row.open`, `vex.list.row.inspect`, `vex.list.row.copyId`, then this
+     * slot's additive contributions, then `vex.list.row.delete` last.
+     */
+    rowActions: "list.row.actions",
+    /**
+     * Additive contributions rendered inline in the toolbar's bulk-selection group
+     * (Decision 22), alongside `vex.list.bulk.delete` — never a floating bar.
+     */
+    bulkActions: "list.bulkActions",
+  },
 } as const;
 
 /** Union of every flat slot id {@link SLOT_IDS} declares. */
@@ -89,7 +112,8 @@ export type SlotId =
   | (typeof SLOT_IDS.field)[keyof typeof SLOT_IDS.field]
   | (typeof SLOT_IDS.blocks)[keyof typeof SLOT_IDS.blocks]
   | (typeof SLOT_IDS.array)[keyof typeof SLOT_IDS.array]
-  | (typeof SLOT_IDS.edit)[keyof typeof SLOT_IDS.edit];
+  | (typeof SLOT_IDS.edit)[keyof typeof SLOT_IDS.edit]
+  | (typeof SLOT_IDS.list)[keyof typeof SLOT_IDS.list];
 
 /**
  * Context passed to a contribution's `access` predicate — a thin RBAC checker bound to the

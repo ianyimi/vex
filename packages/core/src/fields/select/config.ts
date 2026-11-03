@@ -82,6 +82,8 @@ export function select<
       position: "main",
       width: "100%",
       cellAlignment: "left",
+      enableSorting: false,
+      enableHiding: true,
       placeholder: "",
       searchable: false,
       display: SELECT_DISPLAYS.dropdown,

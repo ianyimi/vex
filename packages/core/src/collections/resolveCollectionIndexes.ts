@@ -9,7 +9,7 @@ export interface ResolvedCollectionIndex {
   /** The `draftStatus` of whichever declaration won, if it set one. */
   draftStatus?: true | "both";
   /** Which kind of declaration won. */
-  source: "field" | "collection" | "relationship";
+  source: "field" | "collection" | "relationship" | "commitTs";
 }
 
 /** A field's `index` in one shape. */
@@ -105,6 +105,19 @@ export function resolveCollectionIndexes(props: {
     }
   }
 
+  // 2b. A `commitTs` field without its own `index` gets `by_<fieldKey>` too —
+  //     same auto-index contract as relationship fields (Decision 3).
+  for (const [fieldKey, field] of Object.entries(dataFields)) {
+    if (field.type !== ADMIN_FIELDS.commitTs.type || field.index !== undefined) continue;
+    const explicit = fieldLevel.get(`by_${fieldKey}`);
+    if (explicit !== undefined) {
+      throw new Error(
+        `${at}: field "${explicit.fields[0]}" declares index "by_${fieldKey}", the automatic index name of commitTs field "${fieldKey}". ` +
+          `Rename the index, or give "${fieldKey}" its own index.`,
+      );
+    }
+  }
+
   // 3. Assemble in schema order.
   const resolved: ResolvedCollectionIndex[] = [];
   const collectionLevelNames = new Set<string>();
@@ -126,6 +139,8 @@ export function resolveCollectionIndexes(props: {
       resolved.push(fieldLevel.get(toFieldIndexDeclaration(field.index).name)!);
     } else if (field.type === ADMIN_FIELDS.relationship.type && !collectionLevelNames.has(`by_${fieldKey}`)) {
       resolved.push({ name: `by_${fieldKey}`, fields: [fieldKey], source: "relationship" });
+    } else if (field.type === ADMIN_FIELDS.commitTs.type && !collectionLevelNames.has(`by_${fieldKey}`)) {
+      resolved.push({ name: `by_${fieldKey}`, fields: [fieldKey], source: "commitTs" });
     }
   }
   return resolved;

@@ -3,43 +3,68 @@ import {
   CollectionFieldMeta,
   defineFrameworkAdapter,
   type ComponentHKT,
+  type CommitTsField,
+  type FilterInputProps,
   type FrameworkAdapterInput,
+  type VexResourceSlug,
 } from "@vexcms/core";
 import type { ComponentType } from "react";
 
 import {
   TextFieldAdmin,
   TextFieldCell,
+  TextFieldDisplay,
+  TextFilterInput,
   EmailFieldAdmin,
   EmailFieldCell,
+  EmailFilterInput,
   TextareaFieldAdmin,
   TextareaFieldCell,
+  TextareaFieldDisplay,
+  TextareaFilterInput,
   NumberFieldCell,
   NumberFieldAdmin,
+  NumberFilterInput,
   CheckboxFieldAdmin,
   CheckboxFieldCell,
+  CheckboxFilterInput,
   SelectFieldAdmin,
   SelectFieldCell,
+  SelectFilterInput,
   UrlFieldAdmin,
   UrlFieldCell,
+  UrlFilterInput,
   ColorFieldAdmin,
   ColorFieldCell,
+  ColorFilterInput,
   RelationshipFieldAdmin,
   RelationshipFieldCell,
+  RelationshipFieldDisplay,
+  RelationshipFilterInput,
   DateFieldCell,
   DateFieldAdmin,
+  DateFilterInput,
+  CommitTsFieldCell,
+  CommitTsFieldAdmin,
   ArrayFieldCell,
   ArrayFieldAdmin,
+  ArrayFieldDisplay,
   GroupFieldCell,
   GroupFieldAdmin,
+  GroupFieldDisplay,
   BlocksFieldAdmin,
   BlocksFieldCell,
+  BlocksFieldDisplay,
   UploadFieldAdmin,
   UploadFieldCell,
+  UploadFieldDisplay,
+  UploadFilterInput,
   RichTextFieldAdmin,
   RichTextFieldCell,
+  RichTextFieldDisplay,
   JsonFieldAdmin,
   JsonFieldCell,
+  JsonFieldDisplay,
 } from "./fields";
 import { CollectionEditView, CollectionListView } from "./collections";
 import { DashboardView } from "./admin";
@@ -92,66 +117,106 @@ function buildReactAdapter(): FrameworkAdapterInput<ReactHKT> {
       [ADMIN_FIELDS.text.type]: {
         field: TextFieldAdmin,
         cell: TextFieldCell,
+        display: TextFieldDisplay,
+        filterInput: TextFilterInput,
       },
       [ADMIN_FIELDS.email.type]: {
         field: EmailFieldAdmin,
         cell: EmailFieldCell,
+        filterInput: EmailFilterInput,
       },
       [ADMIN_FIELDS.textarea.type]: {
         field: TextareaFieldAdmin,
         cell: TextareaFieldCell,
+        display: TextareaFieldDisplay,
+        filterInput: TextareaFilterInput,
       },
       [ADMIN_FIELDS.number.type]: {
         field: NumberFieldAdmin,
         cell: NumberFieldCell,
+        filterInput: NumberFilterInput,
       },
       [ADMIN_FIELDS.checkbox.type]: {
         field: CheckboxFieldAdmin,
         cell: CheckboxFieldCell,
+        filterInput: CheckboxFilterInput,
       },
       [ADMIN_FIELDS.date.type]: {
         field: DateFieldAdmin,
         cell: DateFieldCell,
+        filterInput: DateFilterInput,
+      },
+      [ADMIN_FIELDS.commitTs.type]: {
+        field: CommitTsFieldAdmin,
+        cell: CommitTsFieldCell,
+        // Decision 12 (polish): reuses the shared date `DateTimePicker` filter
+        // control directly — identical ms-value behavior, no commitTs-specific
+        // body to maintain (`commitTs/FilterInput.tsx` deleted). Cast needed:
+        // `DateFilterInput` is typed to `FilterInputProps<DateField>` (never
+        // reads `props.field`, only `value`/`onChange`/`disabled`), so it is
+        // runtime-safe for any ms-value field but not structurally assignable
+        // to the `CommitTsField`-narrowed slot the adapter's HKT expects here.
+        // `VexResourceSlug` (not a literal `string`) as the generic arg: an
+        // app's generated types narrow `VexResourceSlug` itself to a union of
+        // its own real collection/global slugs, so `string` stops satisfying
+        // `CommitTsField`'s `TCollectionSlug extends VexResourceSlug`
+        // constraint under that augmentation — `VexResourceSlug` always
+        // satisfies itself, in every app, augmented or not.
+        filterInput: DateFilterInput as unknown as ComponentType<
+          FilterInputProps<CommitTsField<VexResourceSlug, CollectionFieldMeta>>
+        >,
       },
       [ADMIN_FIELDS.select.type]: {
         field: SelectFieldAdmin,
         cell: SelectFieldCell,
+        filterInput: SelectFilterInput,
       },
       [ADMIN_FIELDS.url.type]: {
         field: UrlFieldAdmin,
         cell: UrlFieldCell,
+        filterInput: UrlFilterInput,
       },
       [ADMIN_FIELDS.color.type]: {
         field: ColorFieldAdmin,
         cell: ColorFieldCell,
+        filterInput: ColorFilterInput,
       },
       [ADMIN_FIELDS.relationship.type]: {
         field: RelationshipFieldAdmin,
         cell: RelationshipFieldCell,
+        display: RelationshipFieldDisplay,
+        filterInput: RelationshipFilterInput,
       },
       [ADMIN_FIELDS.array.type]: {
         field: ArrayFieldAdmin,
         cell: ArrayFieldCell,
+        display: ArrayFieldDisplay,
       },
       [ADMIN_FIELDS.group.type]: {
         field: GroupFieldAdmin,
         cell: GroupFieldCell,
+        display: GroupFieldDisplay,
       },
       [ADMIN_FIELDS.blocks.type]: {
         field: BlocksFieldAdmin,
         cell: BlocksFieldCell,
+        display: BlocksFieldDisplay,
       },
       [ADMIN_FIELDS.upload.type]: {
         field: UploadFieldAdmin,
         cell: UploadFieldCell,
+        display: UploadFieldDisplay,
+        filterInput: UploadFilterInput,
       },
       [ADMIN_FIELDS.richtext.type]: {
         field: RichTextFieldAdmin,
         cell: RichTextFieldCell,
+        display: RichTextFieldDisplay,
       },
       [ADMIN_FIELDS.json.type]: {
         field: JsonFieldAdmin,
         cell: JsonFieldCell,
+        display: JsonFieldDisplay,
       },
     },
     views: {

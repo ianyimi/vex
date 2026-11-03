@@ -110,17 +110,17 @@ export const layoutData = query({
 
 ## Editing a global
 
-The built-in admin edit view calls `updateGlobal()` internally — reach for it directly only
-when building a custom editing UI:
+Reach for `useUpdateGlobal` when building a custom editing UI:
 
 ```tsx
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { updateGlobal } from "@vexcms/react/client";
+import { useUpdateGlobal } from "@vexcms/react/client";
 
 function SiteNameForm() {
-  const mutation = useMutation({ mutationFn: updateGlobal() });
+  const updateGlobalMutationFn = useUpdateGlobal();
+  const mutation = useMutation({ mutationFn: updateGlobalMutationFn });
 
   return (
     <button

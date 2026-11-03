@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { cloneDocumentForDuplicate } from "./cloneDocumentForDuplicate";
-import { text, group, array, blocks, tabs, defineBlock } from "../fields";
+import { text, group, array, blocks, tabs, defineBlock, commitTs } from "../fields";
 import type { AdminField } from "../fields";
 
 const itemBlock = defineBlock({
@@ -19,7 +19,7 @@ const galleryBlock = defineBlock({
 
 describe("cloneDocumentForDuplicate", () => {
   it("strips _id, _creationTime and updatedAt, keeping every other field as-is", () => {
-    const fields: Record<string, AdminField> = { title: text(), slug: text() };
+    const fields: Record<string, AdminField> = { title: text(), slug: text(), updatedAt: commitTs() };
     const document = {
       _id: "doc1",
       _creationTime: 1700000000000,

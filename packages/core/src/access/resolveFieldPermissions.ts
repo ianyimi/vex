@@ -4,11 +4,35 @@ import { resolveRolePermissions } from "./hasPermission";
 import type { FieldPermissionMap, VexAccessConfig } from "./types";
 
 /**
- * Document keys Convex owns, which a field map can neither gate nor strip.
- * Declared here and imported by `hasPermission.ts` so the write path and the
- * read path cannot disagree about which keys are ungateable.
+ * Document keys Convex owns that a caller can never WRITE (never present in
+ * an insert/patch payload, so the write-path field-permission diff skips
+ * them unconditionally — `hasPermission.ts`), and that a declared `where`
+ * clause referencing them never needs a read-permission check for
+ * (`matchDeclaredSavedListViewFilter.ts`/`saveView/server.ts`) — same reasoning
+ * `resolveQueryIndex.ts`'s own `_creationTime` SORT carve-out already
+ * establishes: a comparison against one of these doesn't reveal the stored
+ * value the way returning it in a document would.
+ *
+ * Deliberately NOT the same set {@link stripDeniedFields}/
+ * `warnOnUndeclaredFields` use for READ gating — see
+ * {@link ALWAYS_READABLE_FIELD_KEYS} for that narrower set. `_creationTime`
+ * is a REAL gateable field-permission key for READS (developer decision,
+ * binding, "access-system-fields") but stays write-immutable and
+ * where-clause-exempt here; the two concerns are independent axes.
  */
 export const SYSTEM_FIELD_KEYS = new Set(["_id", "_creationTime", "_slug"]);
+
+/**
+ * Document keys a field map can neither gate nor strip for READS — always
+ * readable, regardless of any permission rule. Used by {@link stripDeniedFields}
+ * (never deletes these) and `warnOnUndeclaredFields` (warns rather than
+ * silently accepting one as a real per-field decision). Narrower than
+ * {@link SYSTEM_FIELD_KEYS} — `_creationTime` is excluded (it IS gateable for
+ * reads now); `_id`/`_slug` stay excluded from field-level gating entirely,
+ * the same set `access/types.ts`'s `SystemFieldKey` type enforces at compile
+ * time.
+ */
+export const ALWAYS_READABLE_FIELD_KEYS = new Set(["_id", "_slug"]);
 
 /**
  * A caller's merged per-field decision for one resource + action.
@@ -73,13 +97,27 @@ function warnOnUndeclaredFields(props: {
     if (key === WILDCARD_KEY) continue;
     if (key in declaredFields) continue;
 
-    if (SYSTEM_FIELD_KEYS.has(key)) {
+    if (ALWAYS_READABLE_FIELD_KEYS.has(key)) {
       console.warn(
         `[vexcms] Field map for "${props.resource}.${props.action}" names system field ` +
           `"${key}", which is never gateable and is always retained — the entry is ignored.`,
       );
       continue;
     }
+
+    // `vex_status` is a real, gateable field-permission key on a VERSIONED
+    // resource (developer decision, binding, "access-system-fields") — it is
+    // never a `declaredFields` entry (Convex column injected by the versioning
+    // system, not a `CollectionConfig.fields` entry), so without this check a
+    // legitimate `vex_status` map entry would misfire the generic "undeclared
+    // field" warning below on every versioned collection.
+    const isVersioned =
+      key === "vex_status" &&
+      typeof resourceEntry === "object" &&
+      resourceEntry !== null &&
+      "versions" in resourceEntry &&
+      (resourceEntry as { versions?: { drafts?: boolean } }).versions?.drafts === true;
+    if (isVersioned) continue;
 
     console.warn(
       `[vexcms] Field map for "${props.resource}.${props.action}" returns a field not ` +
@@ -211,8 +249,11 @@ export function isFieldAllowed(resolved: ResolvedFieldPermissions, field: string
  * Shallow-copies `doc` and deletes every key the caller may not read. Used by
  * the read paths to shape responses; never mutates what Convex returned.
  *
- * System keys are always retained — stripping `_id` would break `populateDocs`,
- * admin row keys, and every `update({ id })` round trip.
+ * `_id`/`_slug` are always retained — stripping `_id` would break
+ * `populateDocs`, admin row keys, and every `update({ id })` round trip.
+ * `_creationTime` is NOT exempted here (developer decision, binding,
+ * "access-system-fields") — it is a real gateable field-permission key for
+ * reads now, stripped like any other field a resolved map denies.
  *
  * @param doc - The document Convex returned.
  * @param resolved - Result of {@link resolveFieldPermissions}.
@@ -229,7 +270,7 @@ export function stripDeniedFields<TDoc extends Record<string, unknown>>(
 
   const stripped = { ...doc };
   for (const key of Object.keys(stripped)) {
-    if (SYSTEM_FIELD_KEYS.has(key)) continue;
+    if (ALWAYS_READABLE_FIELD_KEYS.has(key)) continue;
     if (!isFieldAllowed(resolved, key)) {
       delete stripped[key];
     }

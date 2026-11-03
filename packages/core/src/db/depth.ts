@@ -3,14 +3,16 @@ import type { VexConfig } from "../config";
 import { PopulateShape } from "./types";
 
 /**
- * Builds a `PopulateShape`-compatible object covering every relationship field
- * on `slug`'s collection down to `depth` levels.
+ * Builds a `PopulateShape`-compatible object covering every relationship AND
+ * upload field on `slug`'s collection down to `depth` levels.
  *
  * This is the runtime counterpart of the compile-time `DepthPopulate<TCollectionSlug, D>`
  * type. The returned object can be passed directly to `populateDocs` because it
  * matches the `PopulateShape` structure:
- * - Leaf fields (at the requested depth, or targets with no relationships) → `true`
- * - Intermediate fields → `{ populate: <nested result> }`
+ * - Leaf fields (at the requested depth, targets with no relationships, or any
+ *   upload field — media collections never carry further relationship/upload
+ *   fields of their own) → `true`
+ * - Intermediate relationship fields → `{ populate: <nested result> }`
  *
  * The function relies on the live `VexConfig` available in the `queryApi`
  * closure. It never touches the database — it only walks the in-memory config.
@@ -53,6 +55,15 @@ export function buildDepthPopulate<TPopulate extends PopulateShape = PopulateSha
   const result: TPopulate = {} as TPopulate;
 
   for (const [key, field] of Object.entries(source.fields as Record<string, AdminField>)) {
+    if (field.type === "upload") {
+      // Media collections (the only valid `to` target) carry no
+      // relationship/upload fields of their own to recurse into, so an
+      // upload field is always a leaf — same `true` shape a leaf
+      // relationship field collapses to below.
+      result[key as keyof TPopulate] = true as TPopulate[keyof TPopulate];
+      continue;
+    }
+
     if (field.type !== "relationship") continue;
 
     const targetSlug = (field as Extract<AdminField, { type: "relationship" }>).collection.slug;

@@ -12,7 +12,7 @@ const TRUNCATE_LENGTH = 77;
  * Collapses the multi-line value down to a single line (newlines and
  * repeated whitespace collapsed to a single space) before truncating —
  * a data-table row must never grow taller than one line for this field.
- * Null/undefined values show an em-dash placeholder. The full raw value is
+ * Null/undefined/empty-string values show an em-dash placeholder. The full raw value is
  * kept on the `title` attribute for hover.
  *
  * @param props - Component props
@@ -29,7 +29,7 @@ export function TextareaFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<TextareaField, TData>,
 ) {
   const config = useVexConfig();
-  if (props.value === undefined || props.value === null) return <span>—</span>;
+  if (props.value === undefined || props.value === null || props.value === "") return <span>—</span>;
 
   const singleLine = props.value.replace(/\s+/g, " ").trim();
   const display =

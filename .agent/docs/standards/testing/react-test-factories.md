@@ -91,7 +91,7 @@ applies_to: ["packages/react/src/testing/**", "packages/react/src/components/fie
   falling back from `label` to the field key, `meta.align` from `admin.cellAlignment`, and
   cell-renderer identity with props forwarded.
 - `testing/dataTableSuite.tsx`'s `runDataTableSuite(options?: { only?: Array<"DataTable" |
-  "DataTablePagination" | "DataTableBulkActions" | "DeleteManyModal"> })` is the first of the
+  "DataTablePagination" | "DataTableBulkActions" | "DataTableBulkDeleteModal"> })` is the first of the
   single-call-per-section suites: called ONCE, its default `only` covers all four
   `ui/data-table/*` files together — row/header rendering and Load More, pagination wired to
   a real `usePagination`, bulk selection wired to a real `useTableSelection`, and the
@@ -134,7 +134,7 @@ applies_to: ["packages/react/src/testing/**", "packages/react/src/components/fie
   documented there — never silently widen that disabled-rules list without a comment stating
   which real limitation (not a real defect) it's working around.
 - `testing/modalSuite.tsx`'s `runModalSuite(options?: { only?: Array<"BaseModal" |
-  "CreateDocumentModal" | "CreateMediaModal">; access?: VexAccessConfig })` and
+  "ListViewCreateDocumentModal" | "CreateMediaModal">; access?: VexAccessConfig })` and
   `testing/mediaSuite.tsx`'s `runMediaSuite(options?: { only?: Array<"FilePreview" |
   "MediaLibaryGrid" | "MediaUploadDropzone">; access?: VexAccessConfig })` follow the same
   `only`-filtered, single-call-per-section shape as `runViewSuite`/`runShellSuite`/

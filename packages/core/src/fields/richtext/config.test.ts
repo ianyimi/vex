@@ -27,6 +27,8 @@ describe("richtext", () => {
       position: "main",
       width: "100%",
       cellAlignment: "left",
+      enableSorting: false,
+      enableHiding: true,
       placeholder: "",
       components: {
         Input: [],

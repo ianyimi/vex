@@ -31,15 +31,16 @@ the breakpoint reopens it, unless you explicitly opened or closed it while narro
 below the breakpoint — the header button or the ⋯ menu's "Preview" item — instead
 shows it as a bottom sheet that slides up and covers the screen except a thin strip of
 the page at the top; Esc, a tap outside, or its own close button all dismiss it. None
-of these width-driven transitions touch the `vex-live-preview-panel:<slug>` cookie —
+of these width-driven transitions touch the saved panel-open preference —
 only an explicit toggle does, so a refresh at desktop width always respects your last
 deliberate choice.
 
-Both panel preferences — open/closed (`vex-live-preview-panel:<slug>`) and the handle
-position (`vex-live-preview-layout:<slug>`) — persist in cookies rather than
-localStorage, scoped per collection or global. The admin page reads them on the server,
-so a refresh paints the split at the width you left it at instead of snapping to it
-after hydration.
+Both panel preferences — open/closed and the handle position — persist in a
+consolidated, `basePath`-scoped admin cookie (`vex-admin`/`vex-admin:<collection>`)
+rather than localStorage, scoped per collection or global. The admin page reads them
+on the server, so a refresh paints the split at the width you left it at instead of
+snapping to it after hydration. See [Admin cookies](/guides/admin-cookies) for the
+full cookie layout.
 
 Lifecycle hooks never run on preview data — you see exactly what you typed, before
 `beforeChange` would transform it.

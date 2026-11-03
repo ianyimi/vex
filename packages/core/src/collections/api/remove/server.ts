@@ -138,6 +138,7 @@ export async function remove<
         doc: doc as never,
         collection,
         ctx: args.ctx,
+        commitTs: args.ctx.db.vars.commitTs,
       });
     }
 

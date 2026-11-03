@@ -37,16 +37,20 @@ export default defineConfig([
       "@vexcms/core",
       "@vexcms/react",
       "@vexcms/react/testing",
-      // Keep the client leaf as a separate module so its "use client" banner
-      // survives — do not inline it into the server bundle.
+      // Keep the client leaves as separate modules so their "use client" banners
+      // survive — do not inline them into the server bundle.
       "./NextAdminLayoutClient",
       /NextAdminLayoutClient/,
+      "./HydrationBoundaryClient",
+      /HydrationBoundaryClient/,
     ],
   },
   // Client components — needs "use client" banner.
   {
     entry: {
       NextAdminLayoutClient: "src/NextAdminLayoutClient.tsx",
+      HydrationBoundaryClient: "src/HydrationBoundaryClient.tsx",
+      "auth/index": "src/auth/index.ts",
     },
     format: ["esm"],
     tsconfig: "tsconfig.build.json",

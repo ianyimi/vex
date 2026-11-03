@@ -103,7 +103,7 @@ export function AppForm(props: {
               e.preventDefault();
               e.stopPropagation();
               // A rejected `handleSubmit()` (an `onSubmit` that rethrows after applying
-              // a server field error, e.g. `CreateDocumentForm`'s) already updated the
+              // a server field error, e.g. `ListViewCreateDocumentForm`'s) already updated the
               // form's own error state — `isSubmitSuccessful: false` is exactly what the
               // `failedSubmitAttempt` effect above reacts to. This `.catch` only stops
               // that rejection from surfacing as an unhandled promise rejection.

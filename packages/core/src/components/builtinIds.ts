@@ -38,4 +38,16 @@ export const BUILTIN_CONTRIBUTION_IDS = {
     livePreview: "vex.livePreview",
     cancel: "vex.cancel",
   },
+  list: {
+    create: "vex.list.create",
+    search: "vex.list.search",
+    filters: "vex.list.filters",
+    columns: "vex.list.columns",
+    views: "vex.list.views",
+    rowOpen: "vex.list.row.open",
+    rowInspect: "vex.list.row.inspect",
+    rowCopyId: "vex.list.row.copyId",
+    rowDelete: "vex.list.row.delete",
+    bulkDelete: "vex.list.bulk.delete",
+  },
 } as const;

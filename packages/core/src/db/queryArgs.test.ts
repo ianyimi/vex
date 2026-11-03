@@ -6,9 +6,10 @@ import type { ConstraintBuilder, FilterConstraintBuilder } from "../access/query
 import { VexError } from "../errors";
 import * as _generatedApi from "./test/convex/_generated/api";
 import schema from "./test/convex/schema";
-import { checkbox, row, tabs, text } from "../fields";
+import { checkbox, commitTs, row, tabs, text } from "../fields";
 import {
   andConvexQueryFilters,
+  convertCommitTsWhereToNs,
   referencedWhereFields,
   validateWhereNode,
   WHERE_DEPTH_LIMIT,
@@ -146,6 +147,28 @@ describe("validateWhereNode", () => {
     expect(() => validateWhereNode({ node: wide })).toThrow(VexError);
     expect(() => validateWhereNode({ node: deep })).toThrow(VexError);
   });
+
+  test("accepts a leaf missing the `value` key as value: undefined (Decision 10's isEmpty/isNotEmpty wire form)", () => {
+    // Convex's own argument serialization drops an explicit `value: undefined`
+    // property before the server ever sees it, so a stored `{ op: "eq", value:
+    // undefined }` leaf (an `isEmpty` row) crosses the wire as `{ field, op }`
+    // with no `value` key at all — this must round-trip identically to an
+    // explicit `value: undefined`, not throw.
+    expect(validateWhereNode({ node: { field: "title", op: "eq" } })).toEqual({
+      field: "title",
+      op: "eq",
+      value: undefined,
+    });
+    expect(validateWhereNode({ node: { field: "title", op: "neq" } })).toEqual({
+      field: "title",
+      op: "neq",
+      value: undefined,
+    });
+  });
+
+  test("still rejects a leaf missing `op` even with only two keys", () => {
+    expect(() => validateWhereNode({ node: { field: "title", value: "x" } })).toThrow(VexError);
+  });
 });
 
 describe("whereToNode", () => {
@@ -210,6 +233,22 @@ describe("whereFieldNames", () => {
     };
     expect(whereFieldNames({ config, collection: "posts" })).toEqual(["first", "last", "seo", "_id", "_creationTime"]);
   });
+
+  test("additionally allows vex_status on a versioned collection, never a non-versioned one", () => {
+    const config = {
+      collections: [
+        { slug: "posts", fields: { title: text() }, versions: { drafts: true } },
+        { slug: "pages", fields: { title: text() } },
+      ],
+    };
+    expect(whereFieldNames({ config, collection: "posts" })).toEqual([
+      "title",
+      "_id",
+      "_creationTime",
+      "vex_status",
+    ]);
+    expect(whereFieldNames({ config, collection: "pages" })).toEqual(["title", "_id", "_creationTime"]);
+  });
 });
 
 describe("referencedWhereFields", () => {
@@ -217,5 +256,80 @@ describe("referencedWhereFields", () => {
     const node = { and: [{ field: "a", op: "eq", value: 1 }, { or: [{ field: "b", op: "eq", value: 2 }, { not: { field: "a", op: "eq", value: 3 } }] }] };
     expect(referencedWhereFields({ where: node as never })).toEqual(["a", "b"]);
     expect(referencedWhereFields({ where: ((q: any) => q.or(q.eq("a", 1), q.not(q.eq("b", 2)))) as never })).toEqual(["a", "b"]);
+  });
+});
+
+describe("convertCommitTsWhereToNs", () => {
+  const fields = { publishedAt: commitTs(), title: text() };
+
+  test("converts a commitTs leaf's ms value to ns bigint", () => {
+    const result = convertCommitTsWhereToNs({
+      where: { field: "publishedAt", op: "gte", value: 1735689600000 },
+      fields,
+    });
+    expect(result).toEqual({ field: "publishedAt", op: "gte", value: 1735689600000n * 1_000_000n });
+  });
+
+  test("leaves a non-commitTs leaf untouched", () => {
+    const where = { field: "title", op: "eq", value: "hi" } as const;
+    expect(convertCommitTsWhereToNs({ where, fields })).toEqual(where);
+  });
+
+  test("recurses through and/or/not", () => {
+    const result = convertCommitTsWhereToNs({
+      where: { and: [{ field: "publishedAt", op: "gte", value: 1000 }, { field: "title", op: "eq", value: "hi" }] },
+      fields,
+    });
+    expect(result).toEqual({
+      and: [{ field: "publishedAt", op: "gte", value: 1000n * 1_000_000n }, { field: "title", op: "eq", value: "hi" }],
+    });
+  });
+
+  test("passes isEmpty/isNotEmpty leaves through (no value to convert)", () => {
+    const where = { field: "publishedAt", op: "isEmpty" } as const;
+    expect(convertCommitTsWhereToNs({ where: where as never, fields })).toEqual(where);
+  });
+
+  /**
+   * Polish fix (Decision 4): `where` arrives on the wire as `v.any()`, so a
+   * float or `NaN`/`Infinity` ms value on a `commitTs` field would
+   * otherwise crash `BigInt(...)` with an uncaught `RangeError`. Converted
+   * to a clear, caller-facing `VexError({ code: "INVALID_WHERE" })` naming
+   * the field instead.
+   */
+  test("throws INVALID_WHERE naming the field for a non-integer number", () => {
+    expect(() =>
+      convertCommitTsWhereToNs({
+        where: { field: "publishedAt", op: "gte", value: 1.5 },
+        fields,
+      }),
+    ).toThrow(/Invalid where on commitTs field.*publishedAt/);
+  });
+
+  test("throws INVALID_WHERE naming the field for NaN/Infinity", () => {
+    expect(() =>
+      convertCommitTsWhereToNs({ where: { field: "publishedAt", op: "gte", value: NaN }, fields }),
+    ).toThrow(/Invalid where on commitTs field.*publishedAt/);
+    expect(() =>
+      convertCommitTsWhereToNs({
+        where: { field: "publishedAt", op: "gte", value: Infinity },
+        fields,
+      }),
+    ).toThrow(/Invalid where on commitTs field.*publishedAt/);
+  });
+
+  test("the thrown error carries code: INVALID_WHERE", () => {
+    try {
+      convertCommitTsWhereToNs({ where: { field: "publishedAt", op: "gte", value: 1.5 }, fields });
+      expect.unreachable("should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(VexError);
+      expect((err as VexError).data).toMatchObject({ code: "INVALID_WHERE" });
+    }
+  });
+
+  test("a non-integer value on a non-commitTs field is left untouched (out of scope)", () => {
+    const where = { field: "title", op: "eq", value: 1.5 } as const;
+    expect(convertCommitTsWhereToNs({ where: where as never, fields })).toEqual(where);
   });
 });

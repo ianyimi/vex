@@ -11,7 +11,7 @@ import type { CollectionSlug } from "../../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS } from "../../../access";
 import { prepareEdit } from "../../../db/prepareEdit";
-import { stampUpdatedAt } from "../../../db/documents";
+import { stampCommitTsFields } from "../../../db/documents";
 import { TDocument } from "../../../documents/types";
 import { createVersion, removeVexFields, VERSION_STATUSES } from "../../../versions";
 
@@ -94,12 +94,18 @@ export async function update<
     access: args.access,
     auth: args.auth,
     storedDoc: (doc ?? undefined) as TDocument | undefined,
+    docId: args.id as string,
     changes: args.data as Partial<TDocument>,
     partial: true,
     validateKeys: "changed",
   });
 
-  const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: patch });
+  const data = stampCommitTsFields({
+    ctx: args.ctx,
+    fields: collection.fields,
+    data: patch,
+    events: ["update"],
+  });
   await args.ctx.db.patch(args.id, data as never);
 
   if (collection.versions.drafts) {
@@ -108,7 +114,7 @@ export async function update<
       collection: args.collection,
       documentId: String(args.id),
       status: VERSION_STATUSES.published.key,
-      snapshot: removeVexFields({ doc: transformedFields }),
+      snapshot: removeVexFields({ doc: transformedFields, fields: collection.fields }),
       publishedAt: (doc as TDocument | null)?.vex_publishedAt as number | undefined,
     });
   }

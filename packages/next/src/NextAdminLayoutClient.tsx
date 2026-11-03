@@ -2,8 +2,9 @@
 // "use client" is injected by the tsup build banner for this entry (see
 // tsup.config.ts) so the emitted module carries the client boundary.
 import type { ReactNode } from "react";
+import type { VexApiAuth } from "@vexcms/core";
 
-import { AdminLayout, type AdminUser } from "@vexcms/react";
+import { AdminLayout } from "@vexcms/react";
 import NextImage from "next/image";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
@@ -11,6 +12,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 import { useNextNavigationBlocker } from "./navigation/useNextNavigationBlocker";
 import { useNextNavigate } from "./navigation/useNextNavigate";
+import { useVexAdminAuthAdapter } from "./auth/VexAdminAuthAdapterContext";
 
 /**
  * Client leaf for the Next.js admin layout.
@@ -22,6 +24,11 @@ import { useNextNavigate } from "./navigation/useNextNavigate";
  *   admin routes.
  * - `NextLink` / `NextImage` passed as framework components so every
  *   `VexLink`/`VexImage` uses Next.js routing and image optimisation.
+ * - `useVexAdminAuthAdapter()` (`./auth/VexAdminAuthAdapterContext`) read here and
+ *   forwarded into `components.auth`, so `AdminTopNav`'s sign-in/out control picks up
+ *   whatever adapter the app mounted via `VexAdminAuthAdapterProvider`
+ *   (`@vexcms/next/auth`) — `undefined` when the app hasn't mounted one, same as the
+ *   control simply not rendering.
  *
  * Config reaches `AdminLayout`'s children through the app's own
  * `VexConfigProvider` mount, not through a prop on this component — this
@@ -32,18 +39,20 @@ import { useNextNavigate } from "./navigation/useNextNavigate";
  *
  * @param props - Layout props.
  * @param props.children - The page content from `[[...slug]]/page.tsx`.
- * @param props.user - Current user for the admin shell.
+ * @param props.authPromise - The in-flight `{ user, organization }` fetch (Decision 44),
+ *   forwarded to `AdminLayout` so the sidebar resolves it in its OWN `<Suspense>` boundary —
+ *   a slow auth round trip streams in the sidebar nav without blocking `children`.
  * @returns The admin shell rendered from `children`, wrapped in `NuqsAdapter`
  * and the shared `AdminLayout`, wired with the active slug/document id derived
  * from `usePathname()` and Next.js `Link`/`Image` components.
  */
 export function NextAdminLayoutClient(props: {
   children: ReactNode;
-  organization?: Record<string, unknown>;
+  authPromise?: Promise<VexApiAuth>;
   sidebarOpen?: boolean;
-  user?: AdminUser;
 }) {
   const pathname = usePathname();
+  const auth = useVexAdminAuthAdapter();
   // pathname: "/admin", "/admin/collections/posts[/<id>]", "/admin/globals[/<slug>]"
   // Split on "/" and read the segments after "admin". Collections report their
   // slug + document id; globals keep the "globals" section as the active slug
@@ -57,16 +66,15 @@ export function NextAdminLayoutClient(props: {
       <AdminLayout
         activeDocID={activeDocID}
         activeSlug={activeSlug}
+        authPromise={props.authPromise}
         components={{
           Link: NextLink,
           Image: NextImage,
           navigationBlocker: { useBlocker: useNextNavigationBlocker },
           useNavigate: useNextNavigate,
+          auth,
         }}
-        organization={props.organization}
-        pathname={pathname}
         sidebarOpen={props.sidebarOpen}
-        user={props.user}
       >
         {props.children}
       </AdminLayout>

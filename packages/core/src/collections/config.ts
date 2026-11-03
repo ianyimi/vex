@@ -1,14 +1,20 @@
 import pluralize from "pluralize-esm";
 
-import { AdminField, CollectionFieldMeta, date, getDataFields } from "../fields";
-import { ComponentHKT } from "../components/types";
+import { AdminField, CollectionFieldMeta, commitTs, getDataFields } from "../fields";
+import { ComponentHKT, resolveComponentContributions, SLOT_IDS } from "../components";
 import { CollectionSlug } from "../types";
 import { toTitleCase } from "../utils";
 import { COLLECTION_SYSTEM_FIELDS, CollectionSystemField } from "./constants";
-import { AdminCollectionConfig, CollectionConfig, CollectionConfigInput } from "./types";
+import {
+  AdminCollectionConfig,
+  CollectionConfig,
+  CollectionConfigInput,
+  type CollectionDataFieldSlug,
+} from "./types";
 import type { CollectionHooks } from "./hooks";
 import { slugToPascalCase } from "./utils";
 import { resolveCollectionIndexes } from "./resolveCollectionIndexes";
+import { validateSavedListViewConfig } from "./savedListViews/validateSavedListViewConfig";
 import {
   DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   VERSION_STATUSES,
@@ -23,6 +29,7 @@ function populateCollectionFieldMeta<
   TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
   TDrafts extends boolean = boolean,
+  TTimestamps extends boolean = boolean,
 >({
   config,
 }: {
@@ -32,18 +39,25 @@ function populateCollectionFieldMeta<
     TCollectionSlug,
     TFields,
     TComponent,
-    TDrafts
+    TDrafts,
+    TTimestamps
   >;
 }): Record<string, AdminField<TFieldMeta & CollectionFieldMeta>> {
   const fields: Record<string, AdminField<TFieldMeta & { collectionSlug: string }>> = {};
   Object.entries(config.fields).forEach(([fieldSlug, field]) => {
+    const typedField = field as AdminField<TFieldMeta & CollectionFieldMeta>;
     fields[fieldSlug] = {
-      ...(field as AdminField<TFieldMeta & CollectionFieldMeta>),
+      ...typedField,
+      admin: {
+        enableSorting: false,
+        enableHiding: true,
+        ...typedField.admin,
+      },
       meta: {
-        ...(field as AdminField<TFieldMeta & CollectionFieldMeta>)?.meta,
+        ...typedField?.meta,
         collectionSlug: config.slug,
       },
-    };
+    } as AdminField<TFieldMeta & CollectionFieldMeta>;
   });
   return fields;
 }
@@ -79,6 +93,7 @@ export function defineCollection<
   TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
   const TDrafts extends boolean = false,
+  const TTimestamps extends boolean = true,
 >(
   // `string extends keyof TFields` is the escape hatch for callers whose `fields`
   // is a widened `Record<string, AdminField<...>>` rather than an object
@@ -86,22 +101,32 @@ export function defineCollection<
   // it, `string & "updatedAt"` collapses to `"updatedAt"` (not `never`), so the
   // auth adapter's own call would hit the reserved-key branch and fail to compile.
   config: string extends keyof TFields
-    ? CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent, TDrafts>
+    ? CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent, TDrafts, TTimestamps>
     : [keyof TFields & (CollectionSystemField | VersionSystemField)] extends [never]
-      ? CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent, TDrafts>
+      ? CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent, TDrafts, TTimestamps>
       : {
           fields: {
             [K in keyof TFields & (CollectionSystemField | VersionSystemField)]: 'Field name is reserved — defineCollection injects "updatedAt" automatically; opt out with { timestamps: false }';
           };
         },
-): CollectionConfig<TFieldMeta & CollectionFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent, TDrafts> {
+): CollectionConfig<
+  TFieldMeta & CollectionFieldMeta,
+  TCollectionMeta,
+  TCollectionSlug,
+  TFields,
+  TComponent,
+  TDrafts,
+  TTimestamps,
+  CollectionDataFieldSlug<TFields, TTimestamps>
+> {
   const input = config as CollectionConfigInput<
     TFieldMeta,
     TCollectionMeta,
     TCollectionSlug,
     TFields,
     TComponent,
-    TDrafts
+    TDrafts,
+    TTimestamps
   >;
 
   // Runtime guard for JS consumers — reserved keys are rejected on the RAW
@@ -182,16 +207,10 @@ export function defineCollection<
     ? input.fields
     : {
         ...input.fields,
-        updatedAt: date({
+        updatedAt: commitTs({
           label: "Updated At",
-          required: false,
-          // `date()`'s own default is already `undefined` (`ADMIN_FIELDS.date.defaultValue`);
-          // stated explicitly so the intent reads at the call site — an unsaved document has
-          // no update time, and epoch is a lie. `getFieldsDefaultValues` yields `undefined`
-          // on create and the stored value on edit.
-          defaultValue: undefined,
-          admin: { position: "sidebar", readOnly: true },
-          time: { timePicker: { hour: true, minute: true, second: true } },
+          on: "save",
+          admin: { position: "sidebar" },
         }) as AdminField<TFieldMeta>,
       };
 
@@ -202,11 +221,22 @@ export function defineCollection<
   resolveCollectionIndexes({ collection: { ...input, fields: fieldsWithTimestamp } });
 
   // Runs the injected field through the same `collectionSlug` meta-stamping as
-  // every other field.
+  // every other field, and defaults enableSorting/enableHiding.
   const fields = populateCollectionFieldMeta({
     config: { ...input, fields: fieldsWithTimestamp },
   });
-  return {
+
+  // `view.columns` falls back to every non-hidden data field, in field
+  // declaration order, when the project doesn't specify one (Step 4's
+  // original `defaultColumns` fallback, unchanged logic, new home under
+  // `admin.view` — Decision 45/48).
+  const defaultViewColumns =
+    input.admin?.view?.columns ??
+    Object.entries(getDataFields({ fields: fieldsWithTimestamp }))
+      .filter(([, field]) => field.admin?.hidden !== true)
+      .map(([fieldKey]) => fieldKey);
+
+  const collection = {
     interfaceName: slugToPascalCase({ slug: input.slug }) + "Document",
     ...input,
     // `populateCollectionFieldMeta`'s return widens to `Record<string, AdminField<...>>`;
@@ -221,22 +251,65 @@ export function defineCollection<
     admin: {
       useAsTitle: "_id",
       ...input.admin,
-      table: {
-        defaultPageSize: 10,
-        serverPageSize: 100,
-        pageSizeOptions: [10, 25, 50, 100],
-        defaultColumns: [],
-        ...input.admin?.table,
-        bulkActions: {
-          delete: true,
-          ...input.admin?.table?.bulkActions,
-        },
-        defaultSort: {
-          field: "_creationTime",
-          order: "desc",
-          ...input.admin?.table?.defaultSort,
+      // Decision 45 FINAL: `admin.table` is gone entirely — every
+      // collection-wide list setting that used to live there now resolves
+      // as part of `admin.view` itself (the same object the per-view
+      // query-state defaults below resolve into), and falls back to
+      // `admin.views[n]` below it, one level deeper, before the global
+      // default here.
+      view: {
+        viewId: "default",
+        name: input.admin?.view?.name ?? "All",
+        description: input.admin?.view?.description,
+        state: {
+          where: input.admin?.view?.where,
+          sort: {
+            field: "_creationTime",
+            order: "desc",
+            ...input.admin?.view?.sort,
+          },
+          columns: defaultViewColumns,
+          pageSize: input.admin?.view?.pageSize ?? 10,
+          searchField: input.admin?.view?.searchField ?? input.admin?.view?.searchFields?.[0],
+          searchFields: input.admin?.view?.searchFields ?? [],
+          pageSizeOptions: input.admin?.view?.pageSizeOptions ?? [10, 25, 50, 100],
+          // Decision 35: caps the first-page total-count scan.
+          countLimit: input.admin?.view?.countLimit ?? 10000,
+          serverPageSize: input.admin?.view?.serverPageSize ?? 100,
+          bulkActions: {
+            delete: true,
+            ...input.admin?.view?.bulkActions,
+          },
         },
       },
+      // Decision 45 (developer answer — "admin.views entries accept the
+      // same settings as admin.view"): every `admin.views[n]`'s own
+      // collection-wide keys (`searchFields`/`pageSizeOptions`/
+      // `countLimit`/`serverPageSize`/`bulkActions`), when unset, fall back
+      // to `admin.view`'s own just-resolved value — the same two-tier
+      // fallback `admin.view` itself already uses against the global
+      // default above, one level deeper. The per-view query state
+      // (`where`/`sort`/`search`/`searchField`/`columns`/`pageSize`) stays
+      // exactly as declared, unresolved here — `resolveListViewQueryState`'s
+      // own existing three-tier chain (URL → active view → `admin.view`)
+      // already handles THAT fallback lazily, at query time, unchanged by
+      // this step. Supersedes the old `admin.table.views` (clean cutover).
+      views: (input.admin?.views ?? []).map((view) => ({
+        ...view,
+        state: {
+          ...view.state,
+          searchFields: view.state.searchFields ?? input.admin?.view?.searchFields ?? [],
+          pageSizeOptions:
+            view.state.pageSizeOptions ?? input.admin?.view?.pageSizeOptions ?? [10, 25, 50, 100],
+          countLimit: view.state.countLimit ?? input.admin?.view?.countLimit ?? 10000,
+          serverPageSize: view.state.serverPageSize ?? input.admin?.view?.serverPageSize ?? 100,
+          bulkActions: {
+            delete: true,
+            ...input.admin?.view?.bulkActions,
+            ...view.state.bulkActions,
+          },
+        },
+      })),
       // One boundary cast: `CollectionConfigInput` widens `TCollectionSlug` to
       // `string`, so its resolver's doc type is the conditional form TS cannot
       // reduce against `CollectionConfig`'s already-narrowed parameter. Same
@@ -250,6 +323,42 @@ export function defineCollection<
         ComponentHKT,
         TCollectionSlug
       >["livePreview"],
+      // Decision 17/18/37 (list-view-overhaul spec, step 9): the seven `list.*` slots are flat
+      // and additive with no override chains, so each one resolves here exactly like the root
+      // project-wide `admin.components.blocks`/`array` lists (`config/config.ts`) — order/before/
+      // after/hide directives applied now, built-ins merged in later by `SlotOutlet` at render
+      // time. `edit` passes through via the `...input.admin?.components` spread, untouched.
+      components: {
+        ...input.admin?.components,
+        headerActions: resolveComponentContributions({
+          slotId: SLOT_IDS.list.headerActions,
+          contributions: input.admin?.components?.headerActions ?? [],
+        }),
+        toolbar: resolveComponentContributions({
+          slotId: SLOT_IDS.list.toolbar,
+          contributions: input.admin?.components?.toolbar ?? [],
+        }),
+        filters: resolveComponentContributions({
+          slotId: SLOT_IDS.list.filters,
+          contributions: input.admin?.components?.filters ?? [],
+        }),
+        beforeTable: resolveComponentContributions({
+          slotId: SLOT_IDS.list.beforeTable,
+          contributions: input.admin?.components?.beforeTable ?? [],
+        }),
+        afterTable: resolveComponentContributions({
+          slotId: SLOT_IDS.list.afterTable,
+          contributions: input.admin?.components?.afterTable ?? [],
+        }),
+        rowActions: resolveComponentContributions({
+          slotId: SLOT_IDS.list.rowActions,
+          contributions: input.admin?.components?.rowActions ?? [],
+        }),
+        bulkActions: resolveComponentContributions({
+          slotId: SLOT_IDS.list.bulkActions,
+          contributions: input.admin?.components?.bulkActions ?? [],
+        }),
+      },
     },
     labels: {
       singular: toTitleCase(pluralize.singular(input.slug)),
@@ -270,5 +379,25 @@ export function defineCollection<
         ...input.versions?.autosave,
       },
     },
-  };
+  } as CollectionConfig<
+    TFieldMeta & CollectionFieldMeta,
+    TCollectionMeta,
+    TCollectionSlug,
+    TFields,
+    TComponent,
+    TDrafts,
+    TTimestamps,
+    CollectionDataFieldSlug<TFields, TTimestamps>
+  >;
+
+  // Config-time guard for Decisions 3 & 6: a `searchField` entry with no
+  // `searchIndex`, or a sortable field with no leading index, is a project
+  // bug caught here rather than surfacing as a broken control in the browser.
+  // Every per-view check (Decision 25/45/48) — unique `viewId` (including the
+  // reserved `"default"`), `where`/sort/searchField/columns — also runs here,
+  // inside `validateSavedListViewConfig` (Step 5, revised Step 18, renamed Step 21), over
+  // `[collection.admin.view, ...collection.admin.views]` uniformly.
+  validateSavedListViewConfig({ collection });
+
+  return collection;
 }

@@ -93,8 +93,10 @@ describe("MediaCollectionEditView — diff submit", () => {
 describe("MediaCollectionEditView — document appearing after a missing prefetch", () => {
   const t = convexTest(schema, testModules);
 
-  // Regression: same hook-order hazard as `CollectionEditView` — the view
-  // returned "Document not found" before its form hooks.
+  // Regression: same hook-order hazard as `CollectionEditView` — the view used to return
+  // "Document not found" before its form hooks — structurally impossible now (shell-
+  // streaming follow-up, Part 3): the Suspense-gated data component is a SEPARATE instance
+  // per mount. This test still proves no hook-order error occurs.
   it("renders the form without a hook-order error when the client query finds the document", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const doc = await t.run((ctx) =>
@@ -118,8 +120,8 @@ describe("MediaCollectionEditView — document appearing after a missing prefetc
       { convex: t },
     );
 
-    // No prefetched document: the first render has none, the query then finds it.
-    expect(utils.getByText("Document not found.")).toBeInTheDocument();
+    // No prefetched document: the first render suspends (the skeleton fallback), the query
+    // then finds it.
     await waitFor(() => expect(utils.container.querySelector("#alt")).not.toBeNull());
     expect((utils.container.querySelector("#alt") as HTMLInputElement).value).toBe("found alt");
 

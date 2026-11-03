@@ -4,7 +4,7 @@ import { queryConstraintsToConvexFilter } from "../access/compileQueryConstraint
 import { composeConvexQueryRanges } from "../access/pickConvexQueryIndex";
 import type { ConvexQueryFilterFn, ConvexQueryIndexRangeFn, ConvexQueryIndex } from "../access/convexTypes";
 import { createQueryIndexConstraintBuilder, readQueryIndexConstraints } from "../access";
-import { VERSION_STATUSES } from "./constants";
+import { VERSION_STATUSES, VERSION_SYSTEM_FIELDS } from "./constants";
 
 /**
  * Decides whether a query against `collection` must be narrowed to
@@ -32,6 +32,53 @@ export function requiresPublishedOnly(props: {
   if (props.drafts === true) return false;
   const collection = props.config?.collections.find((c) => c.slug === props.collection);
   return collection?.versions?.drafts === true;
+}
+
+/**
+ * Filter predicate that excludes a LINKED draft row from a `drafts: true`
+ * read — a row with `vex_status === "draft"` AND a `vex_publishedId`
+ * pointing at another row — while keeping that row's published
+ * counterpart and any draft-ONLY row (`vex_publishedId` unset, never
+ * published). Scoped to the admin list's draft-aware read merge path (the
+ * draft-pair pagination fix): `find`/`search` page over these "canonical"
+ * rows — one per logical document — and `mergeDraftCounterparts`
+ * (`collections/query/mergeDraftCounterparts.ts`) attaches each linked draft's
+ * own fields back in per page, instead of returning the draft row as a
+ * second, separate row for the client to pair up itself (the former
+ * client-side `collapseVersionedPairs` approach — removed, unused once
+ * this server-side merge replaced it — which could split a pair across the
+ * client's own reveal window and permanently miscount `totalDocs`).
+ *
+ * Never an index range: the predicate it keeps is an OR ("published, OR a
+ * draft with no publishedId") — no single Convex index range expresses
+ * that — so this always folds into `.filter()`, the same fallback shape
+ * `composeStatusQueryConstraint`'s own `.filter()` branches already use.
+ * Both fields it reads are already loaded off every row the query's
+ * index/filter scan visits, so this adds no extra read.
+ *
+ * @param props - Input props.
+ * @param props.config - The resolved `VexConfig`.
+ * @param props.collection - The collection slug being queried.
+ * @param props.drafts - The caller's EFFECTIVE drafts flag (`find`'s
+ *   `wantsDrafts`, or `search`'s own `args.drafts` — see each call site).
+ * @returns A filter fn to AND in alongside the caller's other filters, or
+ *   `undefined` when `drafts` isn't `true` or `collection` isn't
+ *   versioned — nothing to narrow, so an ordinary (non-admin-list) read
+ *   pays nothing extra.
+ */
+export function canonicalRowFilter(props: {
+  config?: VexConfig;
+  collection: string;
+  drafts?: boolean;
+}): ConvexQueryFilterFn | undefined {
+  if (props.drafts !== true) return undefined;
+  const collection = props.config?.collections.find((c) => c.slug === props.collection);
+  if (collection?.versions?.drafts !== true) return undefined;
+  return (q) =>
+    q.or(
+      q.neq(q.field(VERSION_SYSTEM_FIELDS.status.slug), VERSION_STATUSES.draft.key),
+      q.eq(q.field(VERSION_SYSTEM_FIELDS.publishedId.slug), undefined),
+    );
 }
 
 /**

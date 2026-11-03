@@ -13,9 +13,17 @@ import {
   GlobalEditViewProps,
   resolveLivePreviewSettings,
   SLOT_IDS,
+  VERSION_STATUSES,
   vexConvexApi,
+  buildGlobalGetArgs,
 } from "@vexcms/core";
-import type { EditComponentsConfig, EditComponentsConfigInput } from "@vexcms/core";
+import type {
+  EditComponentsConfig,
+  EditComponentsConfigInput,
+  GlobalConfig,
+  VexDocumentGlobal,
+  VexVersionStatus,
+} from "@vexcms/core";
 import type { ReactHKT } from "../adapter";
 import { AppForm } from "../forms";
 import { useFieldsForm } from "../fields/useFieldsForm";
@@ -41,6 +49,7 @@ import { DocumentTimestamps } from "../versions/DocumentTimestamps";
 import { applyFieldPermissionReadOnly } from "../fields/applyFieldPermissionReadOnly";
 import { useVexConfig } from "../config/VexConfigContext";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
+import { InlineQueryError } from "../ui/InlineQueryError";
 import { useIsMobile } from "../hooks/use-mobile";
 import {
   useLivePreviewPanelMinSize,
@@ -82,16 +91,110 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   const config = useVexConfig();
   const global = config.globals.find((g) => g.slug === props.global);
 
-  // Resolved before any hook that reads `global.slug`/`global.fields`: unlike the old
-  // destructured-prop version (where this check sat after 4 hooks, verifying a value
-  // TypeScript already guaranteed truthy), `global` here comes from a runtime `.find()`
-  // and can genuinely be `undefined` — deferring the check would dereference `.slug` on
-  // `undefined` inside the `useQuery` call below.
+  // Resolved before any hook that reads `global.slug`/`global.fields` (same reasoning the
+  // old single-component version had): `global` comes from a runtime `.find()` and can
+  // genuinely be `undefined` — deferring the check would dereference `.slug` on `undefined`
+  // inside the data-fetching half below.
   if (!global) {
     // TODO: add proper not found component or screen
     return <p>Global document not found.</p>;
   }
 
+  return (
+    <GlobalEditViewData
+      global={global}
+      initialData={props.initialData}
+      initialPreviewPanelOpen={props.initialPreviewPanelOpen}
+      initialPreviewPanelSize={props.initialPreviewPanelSize}
+      initialPreviewUrl={props.initialPreviewUrl}
+    />
+  );
+}
+
+/**
+ * The data-resolving half of {@link GlobalEditView} — fetches the global's document and
+ * handles a failed fetch. Split from {@link GlobalEditForm} (which holds every other hook)
+ * for the same hooks-order reason `CollectionEditView`'s own `CollectionEditViewData`/
+ * `CollectionEditForm` split exists: this component returns early on error, and React
+ * requires the same hooks in the same order on every render of one component — a mid-body
+ * early return would skip `GlobalEditForm`'s many hooks on an error render but not on a
+ * retry's success render.
+ *
+ * Globals have no separate "create" view (a global's row may legitimately not exist yet,
+ * `globalDoc === undefined` after the query settles, not an error state — see
+ * `GlobalEditForm`'s `onSubmit`'s own "no separate create view" comment), so unlike
+ * `CollectionEditView`'s split there is no not-found early return here, only the error one —
+ * the form always renders once the fetch itself succeeds.
+ *
+ * Plain `useQuery` (developer-reported regression fix, reverting the shell-streaming
+ * follow-up's `<Suspense>`+`useSuspenseQuery` split here specifically) — the edit view's own
+ * primary document is essential and cheap to fetch, so `NextAdminPage.tsx` now AWAITS it
+ * server-side and passes the resolved value as `initialData`, so `globalDocOrNull` is NEVER
+ * `undefined` on the very first render — the whole form renders at once. No whole-form
+ * Suspense fallback; only individual fields that fetch their OWN data show their own loading
+ * states. Runtime slug (`global.slug`) — uses the generic endpoint rather than the per-slug
+ * `getGlobal()` wrapper, same as `CollectionEditView`.
+ *
+ * @param props - The resolved global, plus the preview-panel/SSR props passed through
+ *   unchanged from {@link GlobalEditView}.
+ * @returns An inline query error when the fetch fails, otherwise the edit form (globals have
+ *   no not-found state — an unset global simply renders a blank form).
+ */
+function GlobalEditViewData(
+  props: Pick<
+    GlobalEditViewProps,
+    "initialData" | "initialPreviewPanelOpen" | "initialPreviewPanelSize" | "initialPreviewUrl"
+  > & { global: GlobalConfig },
+) {
+  const { global } = props;
+  const {
+    data: globalDocOrNull,
+    error: globalDocError,
+    refetch: refetchGlobalDoc,
+  } = useQuery({
+    ...convexQuery(vexConvexApi.globals.get, buildGlobalGetArgs({ global })),
+    initialData: props.initialData,
+  });
+
+  // A failed fetch (permission denial, network failure) also leaves `globalDocOrNull`
+  // `undefined`, which `GlobalEditForm` would otherwise silently treat as "never saved yet"
+  // and render a blank form instead of surfacing the failure (polish fixes, Decision 1/2).
+  if (globalDocError) {
+    return (
+      <InlineQueryError error={globalDocError} subject="this global" onRetry={refetchGlobalDoc} />
+    );
+  }
+
+  return (
+    <GlobalEditForm
+      global={global}
+      globalDoc={globalDocOrNull ?? undefined}
+      initialPreviewPanelOpen={props.initialPreviewPanelOpen}
+      initialPreviewPanelSize={props.initialPreviewPanelSize}
+      initialPreviewUrl={props.initialPreviewUrl}
+    />
+  );
+}
+
+/**
+ * The edit form for one loaded (or never-saved) global. Split from {@link GlobalEditViewData}
+ * — see that component's doc comment for why. Every hook in this component runs
+ * unconditionally on every render; this component only mounts once the primary fetch has
+ * settled without error.
+ *
+ * @param props - The resolved global config, its document (`undefined` = never saved, a
+ *   legitimate state, NOT an error — the caller already handled that), and the live-preview
+ *   SSR props.
+ * @returns The edit form.
+ */
+function GlobalEditForm(
+  props: Pick<
+    GlobalEditViewProps,
+    "initialPreviewPanelOpen" | "initialPreviewPanelSize" | "initialPreviewUrl"
+  > & { global: GlobalConfig; globalDoc: VexDocumentGlobal | undefined },
+) {
+  const config = useVexConfig();
+  const { global, globalDoc } = props;
   // Root-level `edit.*` config is type-erased to the base `ComponentHKT` (declared outside a
   // framework-typed context); the collection-level config, one more layer down, carries the
   // same erasure. Every call site here renders through React.
@@ -99,16 +202,6 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   const resourceEdit = global.admin.components?.edit as unknown as
     | EditComponentsConfigInput<ReactHKT>
     | undefined;
-  // Runtime slug (`global.slug`) — uses the generic endpoint rather than the
-  // per-slug `getGlobal()` wrapper. See the note in `CollectionEditView`.
-  const { data: globalDoc } = useQuery({
-    ...convexQuery(vexConvexApi.globals.get, {
-      slug: global.slug,
-      drafts: global.versions.drafts,
-    }),
-    initialData: props.initialData,
-  });
-
   const isVersioned = global.versions.drafts;
 
   const [viewedVersion, setViewedVersion] = useState<ViewedVersion | null>(null);
@@ -173,7 +266,8 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   });
 
   const isDraftDoc =
-    (globalDoc as { vex_status?: "draft" | "published" } | undefined)?.vex_status === "draft";
+    (globalDoc as { vex_status?: VexVersionStatus } | undefined)?.vex_status ===
+    VERSION_STATUSES.draft.key;
 
   const viewedVersionNumber = viewedVersion?.version ?? null;
   const lastViewedVersionRef = useRef(viewedVersionNumber);
@@ -219,7 +313,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     admin: global.admin.livePreview,
   });
   const previewPanel = useLivePreviewPanelState({
+    basePath: config.basePath,
     slug: global.slug,
+    scope: "global",
     initialOpen: props.initialPreviewPanelOpen ?? false,
     enabled: livePreview !== undefined,
     isMobile,
@@ -271,7 +367,11 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   );
   const showSidebar = hasSidebarFields || globalDoc !== undefined;
   const documentStatus =
-    isVersioned && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined;
+    isVersioned && globalDoc
+      ? isDraftDoc
+        ? VERSION_STATUSES.draft.key
+        : VERSION_STATUSES.published.key
+      : undefined;
   const renderedFields = applyFieldPermissionReadOnly({
     fields: global.fields,
     fieldPermissions,
@@ -358,7 +458,11 @@ export function GlobalEditView(props: GlobalEditViewProps) {
           slug: global.slug,
           saved: globalDoc as Record<string, unknown> | undefined,
           isDirty: !useStore(form.store, (state) => state.isDefaultValue),
-          status: isVersioned && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined,
+          status: isVersioned && globalDoc
+            ? isDraftDoc
+              ? VERSION_STATUSES.draft.key
+              : VERSION_STATUSES.published.key
+            : undefined,
           canEdit,
         }}
       >
@@ -422,7 +526,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                 contributedProps={{ ...slotProps, placement: "menu" as const }}
               />
               {isVersioned && globalDoc && (
-                <StatusBadge status={isDraftDoc ? "draft" : "published"} />
+                <StatusBadge
+                  status={isDraftDoc ? VERSION_STATUSES.draft.key : VERSION_STATUSES.published.key}
+                />
               )}
               <DocumentEditSlotOutlet
                 slotId={SLOT_IDS.edit.headerActions}
@@ -467,7 +573,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                 className="min-h-0 flex-1"
                 onLayout={([formPanelSize]) => {
                   if (formPanelSize !== undefined) {
-                    writeLivePreviewLayoutCookie({ slug: global.slug, formPanelSize });
+                    writeLivePreviewLayoutCookie({ basePath: config.basePath, slug: global.slug, scope: "global", formPanelSize });
                   }
                 }}
               >

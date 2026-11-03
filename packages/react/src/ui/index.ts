@@ -19,6 +19,7 @@ export * from "./VexLink";
 export * from "./VexImage";
 export * from "./tooltip";
 export * from "./scroll-area";
+export * from "./ScrollSection";
 export * from "./skeleton";
 export * from "./separator";
 export * from "./popover";
@@ -28,8 +29,9 @@ export * from "./sonner";
 export * from "./field";
 export * from "./ActionsMenu";
 export * from "./InputTag";
+export * from "./InlineQueryError";
+export * from "./QueryErrorBoundary";
 
 export * from "./Icon";
 export * from "./ThemeProvider";
 export * from "./ThemeToggle";
-export * from "./ThemeScript";

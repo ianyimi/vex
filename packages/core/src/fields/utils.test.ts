@@ -4,8 +4,10 @@ import {
   andFieldConditions,
   getDataFields,
   getFieldsInputSchema,
+  getUIFieldKeys,
   getUIFieldsWithCell,
   hasFieldConditions,
+  isDisplayValueEmpty,
   isFieldConditionMet,
   resolveFieldComponents,
   resolveFieldLimit,
@@ -530,5 +532,94 @@ describe("getUIFieldsWithCell", () => {
       }),
     };
     expect(Object.keys(getUIFieldsWithCell({ fields }))).toEqual([]);
+  });
+});
+
+describe("getUIFieldKeys", () => {
+  it("collects a top-level ui() field regardless of whether it has a Cell component", () => {
+    const fields = { helper: ui({ admin: { components: { Field: () => null } } }) };
+    expect(getUIFieldKeys({ fields })).toEqual(["helper"]);
+  });
+
+  it("collects a top-level ui() field whose admin.components.Cell is also set", () => {
+    const Field = () => null;
+    const Cell = () => null;
+    const fields = { wordCount: ui({ admin: { components: { Field, Cell } } }) };
+    expect(getUIFieldKeys({ fields })).toEqual(["wordCount"]);
+  });
+
+  it("hoists a ui() field out of an unnamed tab/row/collapsible, unprefixed", () => {
+    const fields = {
+      info: tabs({
+        tabs: [
+          {
+            label: "Content",
+            fields: {
+              layout: row({
+                fields: {
+                  details: collapsible({
+                    label: "Details",
+                    fields: {
+                      wordCount: ui({ admin: { components: { Field: () => null } } }),
+                    },
+                  }),
+                },
+              }),
+            },
+          },
+        ],
+      }),
+    };
+    expect(getUIFieldKeys({ fields })).toEqual(["wordCount"]);
+  });
+
+  it("keys a named tab's ui() field as '<tabName>.<key>'", () => {
+    const fields = {
+      info: tabs({
+        tabs: [
+          {
+            label: "SEO",
+            name: "seo",
+            fields: { wordCount: ui({ admin: { components: { Field: () => null } } }) },
+          },
+        ],
+      }),
+    };
+    expect(getUIFieldKeys({ fields })).toEqual(["seo.wordCount"]);
+  });
+
+  it("does not descend into a group()/array()/blocks() field's own sub-fields", () => {
+    const fields = {
+      seo: group({
+        label: "SEO",
+        fields: { wordCount: ui({ admin: { components: { Field: () => null } } }) },
+      }),
+    };
+    expect(getUIFieldKeys({ fields })).toEqual([]);
+  });
+
+  it("returns an empty array for a field set with no ui() fields at all", () => {
+    const fields = { title: text() };
+    expect(getUIFieldKeys({ fields })).toEqual([]);
+  });
+});
+
+describe("isDisplayValueEmpty", () => {
+  it("treats undefined, null, empty string, and empty array as empty", () => {
+    expect(isDisplayValueEmpty(undefined)).toBe(true);
+    expect(isDisplayValueEmpty(null)).toBe(true);
+    expect(isDisplayValueEmpty("")).toBe(true);
+    expect(isDisplayValueEmpty([])).toBe(true);
+  });
+
+  it("does NOT treat 0 or false as empty — legitimate number/checkbox values", () => {
+    expect(isDisplayValueEmpty(0)).toBe(false);
+    expect(isDisplayValueEmpty(false)).toBe(false);
+  });
+
+  it("does not treat a non-empty string, array, or object as empty", () => {
+    expect(isDisplayValueEmpty("hello")).toBe(false);
+    expect(isDisplayValueEmpty([1])).toBe(false);
+    expect(isDisplayValueEmpty({})).toBe(false);
   });
 });

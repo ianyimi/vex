@@ -19,6 +19,7 @@ const fixtureConfig: VexConfig = {
       fields: {
         title: { type: "text" },
         author: { type: "relationship", collection: { slug: "authors" } },
+        cover: { type: "upload", to: "images" },
       },
       labels: { singular: "Post", plural: "Posts" },
       admin: { useAsTitle: "title" },
@@ -114,6 +115,20 @@ describe("get (server) — depth auto-populate", () => {
     const author = (doc.author as DocumentBySlug["authors"][])[0];
     expect(author.name).toBe("Lena");
     expect(typeof author._id).toBe("string");
+  });
+
+  test("depth: 1 auto-populates an upload field (media doc) on a single doc, the same as relationship fields", async () => {
+    const t = convexTest(schema, modules);
+    const doc = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const imageId = await ctx.db.insert("images", { filename: "cover.png" });
+        const postId = await ctx.db.insert("posts", { title: "Hi", slug: "hi", cover: [imageId] });
+        return get({ ctx, id: postId, collection: "posts", depth: 1, config: fixtureConfig } as any);
+      },
+    ) as any;
+    const cover = doc.cover as { filename: string; _id: string }[];
+    expect(cover[0].filename).toBe("cover.png");
+    expect(typeof cover[0]._id).toBe("string");
   });
 
   test("depth: 1 returns null when doc is missing", async () => {
@@ -618,14 +633,65 @@ describe("get (server) — field-level read shaping", () => {
     expect(doc).toMatchObject({ title: "Public", slug: "public" });
   });
 
-  test("never strips _id or _creationTime", async () => {
+  // `_creationTime` survives HERE because this map's wildcard is `true` and
+  // never explicitly names it — NOT because it's unconditionally exempt like
+  // `_id` (developer decision, binding, "access-system-fields": `_creationTime`
+  // IS a real, gateable field-permission key now). The companion test below
+  // proves it actually strips once a map explicitly denies it.
+  test("_id always survives; _creationTime survives here too, because the wildcard covers it (not because it's exempt)", async () => {
     const t = convexTest(schema, modules);
-    const doc = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+    const doc = (await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       const id = await ctx.db.insert("posts", { title: "Public", slug: "public" });
-      return get({ ctx, id, collection: "posts", config: fieldMapRbacConfig, auth: editorAuth } as any);
-    });
-    expect((doc as any)._id).toBeDefined();
-    expect((doc as any)._creationTime).toBeDefined();
+      return get({
+        ctx,
+        id,
+        collection: "posts",
+        config: fieldMapRbacConfig,
+        auth: editorAuth,
+      } as unknown as Parameters<typeof get>[0]);
+    })) as Record<string, unknown>;
+    expect(doc._id).toBeDefined();
+    expect(doc._creationTime).toBeDefined();
+  });
+
+  test("strips _creationTime, updatedAt, and vex_status when a map explicitly denies them, exactly like any other field (developer decision, binding, \"access-system-fields\")", async () => {
+    const systemFieldsDeniedConfig = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          editor: {
+            posts: {
+              read: () => ({ "*": true, _creationTime: false, updatedAt: false, vex_status: false }),
+            },
+          },
+        },
+      }),
+    } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const doc = (await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", {
+        title: "Public",
+        slug: "public",
+        updatedAt: 123,
+        vex_status: "published",
+      });
+      return get({
+        ctx,
+        id,
+        collection: "posts",
+        config: systemFieldsDeniedConfig,
+        auth: editorAuth,
+      } as unknown as Parameters<typeof get>[0]);
+    })) as Record<string, unknown>;
+    expect(doc._id).toBeDefined();
+    expect(doc.title).toBe("Public");
+    expect(doc._creationTime).toBeUndefined();
+    expect(doc.updatedAt).toBeUndefined();
+    expect(doc.vex_status).toBeUndefined();
   });
 
   test("strips per document when the map's value is an expression over the document", async () => {
@@ -722,5 +788,31 @@ describe("get (server) — drafts fallback", () => {
       return get({ ctx, id: draftId, collection: "posts", config: draftsConfig, auth: editorAuth, drafts: true });
     });
     expect(doc?.title).toBe("Draft");
+  });
+});
+
+describe("get (server) — commitTs ms conversion", () => {
+  const commitTsConfig: VexConfig = {
+    collections: [
+      {
+        slug: "posts",
+        fields: { title: { type: "text" }, updatedAt: { type: "commitTs", on: "save" } },
+        labels: { singular: "Post", plural: "Posts" },
+        admin: { useAsTitle: "title" },
+      },
+    ],
+  } as unknown as VexConfig;
+
+  test("converts a resolved-bigint commitTs field to a plain ms number", async () => {
+    const t = convexTest(schema, modules);
+    const resolvedNs = BigInt(1_700_000_000_000) * BigInt(1_000_000);
+    const { id, doc } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", { title: "Hello", slug: "hello", updatedAt: resolvedNs });
+      return { id, doc: await get({ ctx, id, collection: "posts", config: commitTsConfig }) };
+    });
+    expect(id).toBeDefined();
+    const result = doc as unknown as Record<string, unknown>;
+    expect(typeof result.updatedAt).toBe("number");
+    expect(result.updatedAt).toBe(1_700_000_000_000);
   });
 });

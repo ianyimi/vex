@@ -14,9 +14,11 @@ import {
   themes,
   verification,
   vex_versions,
+  vex_views,
 } from "./vex.schema"
 
 export default defineSchema({
+  vex_views,
   vex_versions,
   pages,
   headers,

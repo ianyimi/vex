@@ -5,7 +5,7 @@ import type { VexConfig } from "../config";
 import type { AccessCallOptions, VexApiAuth } from "./types";
 import type { TDocument } from "../documents/types";
 import { CRUD_ACTIONS, DRAFT_ACTIONS, hasPermission } from "../access";
-import { assignArrayItemIds, getFieldsInputSchema, validateFields } from "../fields";
+import { ADMIN_FIELDS, assignArrayItemIds, getFieldsInputSchema, validateFields } from "../fields";
 import { resolveAccessCall } from "../access/resolveAccessCall";
 import { toVexMutationCtx } from "./context";
 import { valuesEqual } from "../utils/valuesEqual";
@@ -59,6 +59,23 @@ export interface PrepareEditProps<DataModel extends GenericDataModel> {
    * every path.
    */
   storedDoc?: TDocument | undefined;
+  /**
+   * The document's own id, attached as `_id` on the object passed to each
+   * field's `validate()` (`validateFields`'s `doc` param) — `storedDoc`
+   * itself is pre-stripped of `_id` by every caller before reaching here
+   * (a draft/published row's own `toUserFields`/`removeVexFields`, or a
+   * `vex_versions` snapshot, neither of which ever carries one; `update`'s
+   * raw `ctx.db.get` result does, but `prepareEdit`'s own merge step below
+   * destructures `_id` straight out of `storedDoc` and never forwards it
+   * either way). Without this, a validator reading `doc._id` to exclude
+   * the document's OWN row from a collision check (`assertUniqueAmongPublished`'s
+   * documented pattern) always sees `undefined`, so it can never exclude
+   * anything — the document then collides with its own row whenever that
+   * field's `validate()` runs despite an unchanged value (`validateKeys:
+   * "all"`, i.e. `publish`/`create`'s strict pass). `undefined` for a
+   * brand-new `create` — nothing existing to exclude.
+   */
+  docId?: string;
   /** The caller's raw incoming payload — what `hasPermission`'s `changes` argument checks. */
   changes: Partial<TDocument>;
   /** `true` for lenient validation (`update`, `saveDraft` — a draft may be incomplete); `false` for strict, `create`-strength validation (`publish`). */
@@ -125,19 +142,27 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
   }) as TDocument;
 
   const operation = props.action === CRUD_ACTIONS.create ? "create" : "update";
+  const docForHooks = Object.fromEntries(
+    Object.entries(mergedFields).filter(([key]) => {
+      const fieldDef = props.target.config.fields[key];
+      return fieldDef === undefined || fieldDef.type !== ADMIN_FIELDS.commitTs.type;
+    }),
+  ) as TDocument;
   let transformedFields = mergedFields;
   if (props.target.kind === "collection" && props.target.config.hooks.beforeChange) {
     transformedFields = (await props.target.config.hooks.beforeChange({
       operation,
-      doc: mergedFields as never,
+      doc: docForHooks as never,
       ctx: props.ctx,
+      commitTs: props.ctx.db.vars.commitTs,
       collection: props.target.config,
     })) as TDocument;
   } else if (props.target.kind === "global" && props.target.config.hooks.beforeChange) {
     transformedFields = (await props.target.config.hooks.beforeChange({
       operation,
-      doc: mergedFields as never,
+      doc: docForHooks as never,
       ctx: props.ctx,
+      commitTs: props.ctx.db.vars.commitTs,
       global: props.target.config,
     })) as TDocument;
   }
@@ -161,7 +186,9 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
     props.validateKeys === "changed" ? changedKeys : new Set(Object.keys(transformedFields));
   await validateFields({
     fields: props.target.config.fields,
-    doc: transformedFields,
+    doc: (props.docId !== undefined
+      ? { ...transformedFields, _id: props.docId }
+      : transformedFields) as TDocument,
     keys: writeKeys,
     ctx: toVexMutationCtx(props.ctx),
     config: props.config,

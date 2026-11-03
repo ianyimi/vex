@@ -206,6 +206,67 @@ describe("prepareEdit", () => {
     expect(calls.sort()).toEqual(["slug", "title"]);
   });
 
+  test("docId is attached as doc._id for field validators, so a uniqueness check can exclude the document's own row", async () => {
+    const seenIds: (unknown | undefined)[] = [];
+    const postsWithIdAwareValidator = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text({ required: true }),
+        slug: text({
+          validate: ({ doc }) => {
+            const id = typeof doc === "object" && doc !== null && "_id" in doc ? doc._id : undefined;
+            seenIds.push(id);
+          },
+        }),
+      },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const stored = { title: "Original", slug: "original" };
+      await prepareEdit({
+        ctx,
+        config: fixtureConfig,
+        target: { kind: "collection", config: postsWithIdAwareValidator },
+        action: CRUD_ACTIONS.update,
+        storedDoc: stored as never,
+        docId: "doc-123",
+        changes: { slug: "changed" },
+        partial: true,
+        validateKeys: "all",
+      });
+    });
+    expect(seenIds).toEqual(["doc-123"]);
+  });
+
+  test("doc._id is undefined when docId is omitted (create: nothing existing to exclude)", async () => {
+    const seenIds: (unknown | undefined)[] = [];
+    const postsWithIdAwareValidator = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text({ required: true }),
+        slug: text({
+          validate: ({ doc }) => {
+            const id = typeof doc === "object" && doc !== null && "_id" in doc ? doc._id : undefined;
+            seenIds.push(id);
+          },
+        }),
+      },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await prepareEdit({
+        ctx,
+        config: fixtureConfig,
+        target: { kind: "collection", config: postsWithIdAwareValidator },
+        action: CRUD_ACTIONS.create,
+        changes: { title: "New", slug: "new" },
+        partial: false,
+        validateKeys: "all",
+      });
+    });
+    expect(seenIds).toEqual([undefined]);
+  });
+
   test("an access denial throws VexAccessError before beforeChange or validation run", async () => {
     let beforeChangeCalled = false;
     const guardedPosts = defineCollection({

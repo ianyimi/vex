@@ -10,6 +10,7 @@ import { urlFieldFixture } from "../../fields/url/testFixture";
 import { colorFieldFixture } from "../../fields/color/testFixture";
 import { selectFieldFixture } from "../../fields/select/testFixture";
 import { dateFieldFixture } from "../../fields/date/testFixture";
+import { commitTsFieldFixture } from "../../fields/commitTs/testFixture";
 import { uploadFieldFixture } from "../../fields/upload/testFixture";
 import { relationshipFieldFixture } from "../../fields/relationship/testFixture";
 import { arrayFieldFixture } from "../../fields/array/testFixture";
@@ -42,6 +43,7 @@ export const fieldFixtures: Record<DataFieldType, FieldFixture> = {
   color: colorFieldFixture,
   select: selectFieldFixture,
   date: dateFieldFixture,
+  commitTs: commitTsFieldFixture,
   upload: uploadFieldFixture,
   relationship: relationshipFieldFixture,
   array: arrayFieldFixture,

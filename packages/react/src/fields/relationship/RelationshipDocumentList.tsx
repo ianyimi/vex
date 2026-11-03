@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useDebounceValue } from "@ts-hooks-kit/core";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import type {
   CollectionConfig,
   RelationshipField,
@@ -50,7 +50,7 @@ export function RelationshipDocumentList({
   onSelectionChange,
 }: RelationshipDocumentListProps) {
   const [search, setSearch] = useState("");
-  const [debouncedSearch] = useDebounceValue(search, 200);
+  const debouncedSearch = useDebouncedValue(search, 200);
 
   const {
     documents,

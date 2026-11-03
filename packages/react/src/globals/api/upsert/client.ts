@@ -7,8 +7,16 @@ import { vexConvexApi } from "@vexcms/core";
  *
  * The mutation accepts `{ slug: string, data: Record<string, unknown> }`.
  * Pass user field values in `data` — system keys (`_id`, `_creationTime`, `_slug`)
- * are stripped server-side if they accidentally appear. `GlobalEditView` calls
- * this internally after stripping system keys from the flat form state.
+ * are stripped server-side if they accidentally appear.
+ *
+ * A React hook (the `use` prefix is REQUIRED, not just convention — a
+ * non-`use`-prefixed wrapper around a hook call can be treated as a pure,
+ * memoizable function by the React Compiler, silently dropping the
+ * internal hook call on a later render and causing a hook-order mismatch
+ * crash; developer-reported, confirmed live on the sibling `saveView`/
+ * `removeView` helpers). Call at the top level of a React component, as
+ * its own statement, BEFORE `useMutation` (not inlined as `useMutation`'s
+ * own `mutationFn` argument).
  *
  * Import from `@vexcms/react/client`.
  *
@@ -16,13 +24,14 @@ import { vexConvexApi } from "@vexcms/core";
  *
  * @example
  * ```tsx
- * import { globals } from "@vexcms/react/client";
+ * import { useUpdateGlobal } from "@vexcms/react/client";
  * import { useMutation } from "@tanstack/react-query";
  *
- * const mutation = useMutation({ mutationFn: globals.update() });
+ * const updateGlobalMutationFn = useUpdateGlobal();
+ * const mutation = useMutation({ mutationFn: updateGlobalMutationFn });
  * mutation.mutate({ slug: "siteSettings", data: { siteName: "New Name" } });
  * ```
  */
-export function updateGlobal() {
+export function useUpdateGlobal() {
   return useConvexMutation(vexConvexApi.globals.upsert);
 }

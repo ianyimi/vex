@@ -5,7 +5,6 @@ export * from "./VersionHistoryMenuItem";
 export * from "./DocumentTimestamps";
 export * from "./useAutosave";
 export * from "./useResetWhenSaved";
-export * from "./utils";
 export * from "./VersionPublishAction";
 export * from "./VersionUnpublishAction";
 export * from "./showsUnpublish";

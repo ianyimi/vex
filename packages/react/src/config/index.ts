@@ -13,6 +13,7 @@ export type {
   VexLinkProps,
   VexImageProps,
   FrameworkComponents,
+  FrameworkAuthAdapter,
   NavigationBlockerAdapter,
 } from "./useFrameworkComponents";
 export { useVexNavigate } from "./useVexNavigate";

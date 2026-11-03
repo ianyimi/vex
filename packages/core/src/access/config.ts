@@ -41,6 +41,8 @@ import {
  *   (`string` or `string[]` value); `hasPermission` reads roles from it.
  * @param props.orgCollectionSlug - Optional org collection slug enabling
  *   org-scoped callbacks.
+ * @param props.organizations - Default `false`. Enforces saved-view CRUD as
+ *   scoped to the caller's own organization; `orgCollectionSlug` alone does not.
  * @param props.permissions - Role → subject → check matrix (see `RolePermissions`).
  * @returns Frozen `VexAccessConfig` carrying the `SubjectMap` phantom for inference.
  * @throws {VexAccessConfigError} When `userCollectionSlug` or `userRolesField` is
@@ -175,6 +177,9 @@ export function defineAccess<
     if (props.orgCollectionSlug !== undefined && props.orgCollectionSlug.length === 0) {
       console.warn(`orgCollectionSlug must not be empty`);
     }
+    if (props.organizations === true && props.orgCollectionSlug === undefined) {
+      console.warn(`organizations: true has no effect without orgCollectionSlug also set`);
+    }
   }
 
   return Object.freeze({
@@ -190,6 +195,7 @@ export function defineAccess<
     userCollectionSlug: props.userCollectionSlug,
     userRolesField: props.userRolesField,
     orgCollectionSlug: props.orgCollectionSlug,
+    organizations: props.organizations ?? false,
     permissions: props.permissions,
   });
 }

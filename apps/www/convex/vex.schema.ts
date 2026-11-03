@@ -443,6 +443,23 @@ export const vex_versions = defineTable({
 }).index("by_document_version", ["collection", "documentId", "version"])
 
 /**
+ * VEX VIEWS — shared saved views for collection list tables
+ **/
+
+export const vex_views = defineTable({
+  collection: v.string(),
+  viewId: v.string(),
+  name: v.string(),
+  description: v.optional(v.string()),
+  state: v.any(),
+  organizationId: v.optional(v.string()),
+  createdBy: v.string(),
+})
+  .index("by_collection", ["collection"])
+  .index("by_collection_org", ["collection", "organizationId"])
+  .index("by_view_id", ["viewId"])
+
+/**
  * VEX GLOBALS — singleton documents, one row per registered global slug
  **/
 

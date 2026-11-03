@@ -17,13 +17,20 @@ const posts = defineCollection({
 });
 
 const access = defineAccess({
-  roles: ["editor", "viewer"] as const,
+  roles: ["editor", "viewer", "restrictedEditor"] as const,
   resources: [posts],
   userCollectionSlug: "users",
   userRolesField: "roles",
   permissions: {
     editor: { posts: { readDrafts: true } },
     viewer: { posts: { read: true } },
+    // Developer decision (binding, "access-system-fields"): proves
+    // `getVersionSnapshot` actually strips a denied field from the restore-
+    // preview snapshot — its own doc comment has always claimed "the
+    // STRIPPED document content," but nothing enforced it before this.
+    restrictedEditor: {
+      posts: { readDrafts: () => ({ "*": true, title: false, _creationTime: false }) },
+    },
   },
 });
 
@@ -35,6 +42,7 @@ const modules: Record<string, () => Promise<unknown>> = {
 
 const editorUser = { _id: "u1", roles: ["editor"] };
 const viewerUser = { _id: "u2", roles: ["viewer"] };
+const restrictedEditorUser = { _id: "u3", roles: ["restrictedEditor"] };
 
 describe("getVersionSnapshot (server) — collection target", () => {
   test("returns the snapshot and status for a caller with readDrafts", async () => {
@@ -67,6 +75,37 @@ describe("getVersionSnapshot (server) — collection target", () => {
       snapshot: { title: "Draft body" },
       status: "draft",
     });
+  });
+
+  test("strips a denied field, including a system field, from the restore-preview snapshot (developer-reported fix, binding, \"access-system-fields\" — the snapshot's own doc comment has always claimed it's stripped; nothing enforced it before this)", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
+      await ctx.db.insert("vex_versions", {
+        collection: "posts",
+        documentId: id,
+        version: 1,
+        status: "draft",
+        snapshot: { title: "Draft body", _creationTime: 999 },
+      });
+
+      return getVersionSnapshot({
+        ctx,
+        config: fixtureConfig,
+        auth: { user: restrictedEditorUser },
+        collection: "posts",
+        id,
+        version: 1,
+      });
+    });
+
+    expect(result.snapshot.title).toBeUndefined();
+    expect(result.snapshot._creationTime).toBeUndefined();
+    expect(result.status).toBe("draft");
   });
 
   test("throws for a caller without readDrafts — no draft content escapes the rejection", async () => {

@@ -6,7 +6,31 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      // Deliberately NOT a scroll container of its own (no `overflow-x`/`overflow-y`
+      // here) — `DataTable.tsx`'s `ScrollArea` now owns BOTH axes of scrolling on
+      // its own `Viewport` (a horizontal `ScrollBar` sits alongside the existing
+      // vertical one there). Two earlier bugs both traced back to this div being
+      // its own competing scroll container:
+      // (1) `overflow-x-auto` alone computes `overflow-y` to `auto` too (CSS
+      //     Overflow's "visible converts to auto when the other axis isn't
+      //     visible" rule), silently making this div its own (never-actually-
+      //     scrolling, since its height is auto = content height) vertical scroll
+      //     container — `TableHeader`'s `sticky top-0` resolved against THIS
+      //     never-scrolling div instead of the real vertical scroller one level up,
+      //     so the header just scrolled away with the body instead of sticking
+      //     (developer-reported).
+      // (2) the horizontal scrollING itself then happened on THIS div, with a
+      //     native browser scrollbar positioned at ITS OWN bottom edge — i.e. right
+      //     after the last row, not pinned to the visible viewport's bottom. Since
+      //     this div (and that trailing scrollbar) scrolls vertically along with
+      //     the rest of the table inside `ScrollArea`'s own real vertical scroll,
+      //     the horizontal scrollbar was only ever visible once scrolled all the
+      //     way to the bottom — effectively hidden behind the rows the rest of the
+      //     time (developer-reported). `ScrollArea`'s own styled horizontal
+      //     `ScrollBar`, absolutely positioned against `ScrollArea.Root`, stays
+      //     pinned to the viewport's bottom edge regardless of vertical scroll
+      //     position instead.
+      className="relative w-full"
     >
       <table
         data-slot="table"
@@ -55,7 +79,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        "group/row border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=highlighted]:!bg-primary/10 data-[state=selected]:bg-muted",
         className
       )}
       {...props}

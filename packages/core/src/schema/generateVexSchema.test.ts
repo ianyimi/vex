@@ -290,6 +290,7 @@ describe("generateVexSchema — indexes", () => {
         defineCollection({
           slug: "posts",
           fields: { title: url({ required: true }) },
+          timestamps: false,
         }),
       ],
     });
@@ -502,6 +503,27 @@ describe("generateVexSchema — versioned collections", () => {
     expect(contents).toContain(
       '.index("by_document_version", ["collection", "documentId", "version"])',
     );
+  });
+});
+
+describe("generateVexSchema — vex_views", () => {
+  it("emits vex_views unconditionally, even when no collection declares admin.views", () => {
+    const config = defineConfig({
+      collections: [defineCollection({ slug: "posts", fields: { title: text() } })],
+    });
+    const { contents } = generateVexSchema({ config });
+
+    expect(contents).toContain("export const vex_views = defineTable({");
+    expect(contents).toContain("collection: v.string(),");
+    expect(contents).toContain("viewId: v.string(),");
+    expect(contents).toContain("name: v.string(),");
+    expect(contents).toContain("description: v.optional(v.string()),");
+    expect(contents).toContain("state: v.any(),");
+    expect(contents).toContain("organizationId: v.optional(v.string()),");
+    expect(contents).toContain("createdBy: v.string(),");
+    expect(contents).toContain('.index("by_collection", ["collection"])');
+    expect(contents).toContain('.index("by_collection_org", ["collection", "organizationId"])');
+    expect(contents).toContain('.index("by_view_id", ["viewId"])');
   });
 });
 

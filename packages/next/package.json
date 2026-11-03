@@ -43,6 +43,11 @@
       "import": "./dist/NextAdminLayout.js",
       "types": "./dist/NextAdminLayout.d.ts"
     },
+    "./auth": {
+      "source": "./src/auth/index.ts",
+      "import": "./dist/auth/index.js",
+      "types": "./dist/auth/index.d.ts"
+    },
     "./cache": {
       "source": "./src/cache/index.ts",
       "import": "./dist/cache/index.js",

@@ -12,6 +12,25 @@ runFieldCellContractSuite({
   extra: (options) => {
     const collection = options.collection ?? testCollection;
 
+    describe("array: empty value", () => {
+      it("renders the em-dash placeholder for an empty array (not undefined/null)", () => {
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value: [] });
+        const { container } = render(
+          withCellConfig(
+            <ArrayFieldCell
+              value={[]}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
+        );
+        expect(container).toHaveTextContent("—");
+      });
+    });
+
     describe("array: own rendering", () => {
       it("renders the item count with the items field's singular label and a descriptive title", () => {
         const single = [options.fixture.valid[0]!];

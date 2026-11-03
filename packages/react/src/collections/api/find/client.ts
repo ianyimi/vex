@@ -6,6 +6,7 @@ import { whereArg } from "../whereArg";
 import { vexConvexApi, type VexFindArgs, type VexFindPaginatedArgs, type VexWhere } from "@vexcms/core";
 import type { CollectionSlug } from "@vexcms/core";
 import type {
+  CollectionTableSort,
   DocReturnItem,
   FindReturn,
   FindReturnPaginated,
@@ -35,6 +36,11 @@ export interface FindClientArgs<
    * The callback is converted to a node before it is sent.
    */
   where?: VexWhere<TCollectionSlug>;
+  /**
+   * Portable sort — never an index name (Design Decision 5). Rejected
+   * server-side together with a `search` call (Design Decision 7).
+   */
+  sort?: CollectionTableSort<string>;
   paginationOpts?: PaginationOptions;
 }
 
@@ -58,6 +64,11 @@ export interface FindClientPaginatedArgs<
    * The callback is converted to a node before it is sent.
    */
   where?: VexWhere<TCollectionSlug>;
+  /**
+   * Portable sort — never an index name (Design Decision 5). Rejected
+   * server-side together with a `search` call (Design Decision 7).
+   */
+  sort?: CollectionTableSort<string>;
   paginationOpts: PaginationOptions;
 }
 

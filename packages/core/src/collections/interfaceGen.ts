@@ -33,7 +33,14 @@ export function collectionConfigToInterface(props: { collection: CollectionConfi
   const dataFields = getDataFields({ fields: collection.fields });
   const fieldInterfaces = getFieldInterfaces(dataFields);
   const interfaceStart = `export interface ${collection.interfaceName} extends VexDocument {\n
-    \t_id: Id<"${collection.slug}">`;
+    \t_id: Id<"${collection.slug}">${
+      // Developer decision (binding, "access-system-fields"): `vex_status` is a
+      // real, gateable field-permission key on a versioned collection, but it is
+      // a Convex column the versioning system injects (`VERSION_SYSTEM_FIELDS`),
+      // never a `collection.fields` entry — so unlike every other field here it
+      // has to be emitted explicitly, not discovered via `getDataFields`.
+      collection.versions.drafts ? '\n    \tvex_status?: "draft" | "published"' : ""
+    }`;
 
   const collectionSubTypes: string[] = [];
   const interfaceFields = Object.entries(dataFields)
@@ -83,11 +90,29 @@ export function collectionConfigToInterface(props: { collection: CollectionConfi
     })
     .join("\n");
 
+  // Developer decision (binding, "access-system-fields"): a `ui()` field
+  // (e.g. a computed "Word Count" sidebar display) has no stored value —
+  // `getDataFields` above deliberately excludes it (`kind: "ui"` is not
+  // `kind: "data"`) — but it IS now a real, gateable field-permission key
+  // (ungranted → no column/edit-view widget/peek row, Step10/Step13's own
+  // rendering gate), so its KEY needs to exist on the generated interface
+  // even though the VALUE type is meaningless (`never`, mirroring the
+  // field's own `ADMIN_FIELDS.ui.interfaceType`). `row`/`collapsible`/`tabs`
+  // (the OTHER `kind: "ui"` types) are pure layout containers with no
+  // readable value of their own — gating one would hide its CHILDREN too,
+  // which already gate individually — so only the literal `type: "ui"`
+  // field is emitted here.
+  const uiFieldKeys = Object.entries(collection.fields)
+    .filter(([, field]) => field.type === ADMIN_FIELDS.ui.type)
+    .map(([fieldKey]) => `\t${fieldKey}?: never`)
+    .join("\n");
+
   return [
     fieldInterfaces.join("\n\n"),
     collectionSubTypes.join("\n"),
     interfaceStart,
     interfaceFields,
+    uiFieldKeys,
     "}",
   ].join("\n");
 }

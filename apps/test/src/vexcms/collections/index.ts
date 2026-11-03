@@ -9,5 +9,6 @@ export * from "./headers";
 export * from "./images";
 export * from "./pages";
 export * from "./posts";
+export * from "./testimonials";
 export * from "./themes";
 export * from "./users";

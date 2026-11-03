@@ -11,7 +11,7 @@ import type { CollectionSlug } from "../../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import type { VexVersionStatus } from "../../../versions";
 import { CRUD_ACTIONS, DRAFT_ACTIONS, hasPermission } from "../../../access";
-import { stampUpdatedAt } from "../../../db/documents";
+import { stampCommitTsFields } from "../../../db/documents";
 import { createVersion, removeVexFields, VERSION_STATUSES } from "../../../versions";
 import { prepareEdit } from "../../../db/prepareEdit";
 
@@ -86,7 +86,15 @@ export async function create<
     changes: args.data,
   });
 
-  const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: patch });
+  const willPublishImmediately =
+    !collection.versions.drafts ||
+    (args.status ?? collection.versions.defaultStatus) === VERSION_STATUSES.published.key;
+  const data = stampCommitTsFields({
+    ctx: args.ctx,
+    fields: collection.fields,
+    data: patch,
+    events: willPublishImmediately ? ["create", "publish"] : ["create"],
+  });
 
   if (collection.versions.drafts) {
     const status = args.status ?? collection.versions.defaultStatus;
@@ -113,7 +121,7 @@ export async function create<
       collection: args.collection,
       documentId: id,
       status,
-      snapshot: removeVexFields({ doc: data }),
+      snapshot: removeVexFields({ doc: data, fields: collection.fields }),
       publishedAt: insertData.vex_publishedAt,
     });
     await args.ctx.db.patch(id as never, { vex_activeVersion: version } as never);

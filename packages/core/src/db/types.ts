@@ -124,7 +124,7 @@ export type TextKeysOf<TCollectionSlug extends CollectionSlug> = FieldKeysOfType
 
 /**
  * Field keys on `TCollectionSlug` that are sortable in list views (text, number, date,
- * checkbox, select). Used by future `defaultSort` typing and the data-table
+ * checkbox, select). Used by future `defaultView.sort` typing and the data-table
  * column registry.
  */
 export type SortableKeysOf<TCollectionSlug extends CollectionSlug> = FieldKeysOfType<
@@ -215,12 +215,12 @@ export type Populated<
  */
 export type PaginationOptions = ConvexPaginationOptions & {
   /**
-   * Whether to include total document count in the response.
+   * Whether to include a total document count in the response.
    *
-   * Only runs on the first page (when cursor is null) to avoid wasteful re-counting.
-   * Counts all documents matching the current filters/search query.
-   *
-   * Returns `null` if the count exceeds Convex transaction limits (>32k documents).
+   * Only runs on the first page (when cursor is null) to avoid wasteful
+   * re-counting. Counts at most `admin.view.state.countLimit + 1` matching
+   * documents (default 10000; `search` clamps to 1023, Convex's search-result ceiling) — see `PaginationResult.totalDocsCapped`
+   * (Design Decision 35).
    *
    * @default false
    */
@@ -228,21 +228,17 @@ export type PaginationOptions = ConvexPaginationOptions & {
 };
 
 /**
- * Pagination result from Convex query.
- *
- * Re-exported from `convex/server`. Returned by queries using `.paginate(opts)`.
- *
- * Includes:
- * - `page: T[]` — Current page of results
- * - `isDone: boolean` — Whether this is the last page
- * - `continueCursor: string` — Cursor to fetch next page
- * - `splitCursor?: string | null` — Cursor to split large pages (optional)
- * - `pageStatus?: "SplitRecommended" | "SplitRequired" | null` — Indicates when to split (optional)
- *
- * @see https://docs.convex.dev/database/pagination
+ * `totalDocs` / `totalDocsCapped` are only present on the first page
+ * (`cursor: null`) of a call that requested `paginationOpts.totalDocs:
+ * true` — `find` / `search` count at most `admin.view.state.countLimit + 1`
+ * rows (default 10000) instead of `.collect()`-ing every matching row
+ * (Design Decision 35). `totalDocsCapped: true` means the real count is AT
+ * LEAST `totalDocs` — the UI renders "Showing 25 of 10,000+" rather than an
+ * exact number past the cap.
  */
 export type PaginationResult<T> = ConvexPaginationResult<T> & {
-  totalDocs?: number | null;
+  totalDocs?: number;
+  totalDocsCapped?: boolean;
 };
 
 /**

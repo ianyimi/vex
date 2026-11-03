@@ -1,0 +1,157 @@
+{
+  "version": 1,
+  "slug": "2026-10-28-committs-field",
+  "updated": "2026-11-03T02:03:48.476Z",
+  "groups": {
+    "Step 1": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run -- fields/commitTs",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  142 passed (142)",
+        "      Tests  2010 passed | 1 skipped (2011)",
+        "   Start at  11:48:22",
+        "   Duration  3.15s (transform 5.68s, setup 0ms, import 23.59s, tests 1.32s, environment 4.26s)"
+      ]
+    },
+    "Step 2": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run -- collections/resolveCollectionIndexes",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  142 passed (142)",
+        "      Tests  2013 passed | 1 skipped (2014)",
+        "   Start at  11:49:24",
+        "   Duration  3.26s (transform 6.72s, setup 0ms, import 23.98s, tests 1.42s, environment 4.67s)"
+      ]
+    },
+    "Step 3": {
+      "attempts": 3,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run -- db/documents collections/config versions",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  142 passed (142)",
+        "      Tests  2023 passed | 1 skipped (2024)",
+        "   Start at  12:01:01",
+        "   Duration  2.73s (transform 5.37s, setup 0ms, import 19.95s, tests 1.06s, environment 3.89s)"
+      ]
+    },
+    "Step 4": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run -- db/documents collections/api/find collections/api/get collections/api/search",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  142 passed (142)",
+        "      Tests  2023 passed | 1 skipped (2024)",
+        "   Start at  12:01:05",
+        "   Duration  2.71s (transform 5.43s, setup 0ms, import 19.63s, tests 1.07s, environment 3.89s)"
+      ]
+    },
+    "Step 5": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/react@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run -- fields/commitTs collections/listView/ListFilterBuilder collections/listUrlParams",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  207 passed (207)",
+        "      Tests  2370 passed | 1 skipped (2371)",
+        "   Start at  19:22:44",
+        "   Duration  74.54s (transform 14.86s, setup 29.38s, import 727.04s, tests 90.62s, environment 68.95s)"
+      ]
+    },
+    "Step 6": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "@vexcms/react:test:  ✓ src/fields/useFieldsForm.test.ts (5 tests) 73ms",
+        "@vexcms/react:test:  ✓ src/fields/ui/Field.test.tsx (1 test) 58ms",
+        "@vexcms/react:test:  ✓ src/versions/utils.test.ts (5 tests) 8ms",
+        "@vexcms/react:test:  ✓ src/admin/UnauthorizedView.test.tsx (2 tests) 55ms",
+        "@vexcms/react:test:  ✓ src/fields/index.test.tsx (8 tests) 14ms",
+        "@vexcms/react:test:  ✓ src/fields/email/columnDef.test.ts (4 tests) 18ms",
+        "@vexcms/react:test:  ✓ src/fields/select/columnDef.test.ts (4 tests) 18ms",
+        "@vexcms/react:test:  ✓ src/fields/upload/columnDef.test.ts (4 tests) 13ms",
+        "@vexcms/react:test:  ✓ src/fields/textarea/columnDef.test.ts (4 tests) 31ms",
+        "@vexcms/react:test:  ✓ src/fields/text/columnDef.test.ts (4 tests) 70ms",
+        "@vexcms/react:test:  ✓ src/fields/richtext/columnDef.test.ts (4 tests) 13ms",
+        "@vexcms/react:test:  ✓ src/fields/date/columnDef.test.ts (4 tests) 10ms",
+        "@vexcms/react:test:  ✓ src/testing/fixtures/index.test.tsx (1 test) 5ms",
+        "@vexcms/react:test:  ✓ src/livePreview/livePreviewProtocol.test.ts (7 tests) 10ms",
+        "@vexcms/react:test:  ✓ src/admin/adminHref.test.ts (8 tests) 5ms",
+        "@vexcms/react:test:  ✓ src/testing/index.test.ts (20 tests) 9ms",
+        "@vexcms/react:test:  ✓ src/fields/url/columnDef.test.ts (4 tests) 8ms",
+        "@vexcms/react:test:  ✓ src/fields/date/utils.test.ts (5 tests) 5ms",
+        "@vexcms/react:test:  ✓ src/fields/json/utils.test.ts (9 tests) 9ms",
+        "@vexcms/react:test:  ✓ src/livePreview/LivePreviewPanel.test.tsx (13 tests) 6ms",
+        "@vexcms/react:test:  ✓ src/fields/json/columnDef.test.ts (4 tests) 9ms",
+        "@vexcms/react:test:  ✓ src/fields/blocks/columnDef.test.ts (4 tests) 10ms",
+        "@vexcms/react:test:  ✓ src/fields/number/columnDef.test.ts (4 tests) 8ms",
+        "@vexcms/react:test:  ✓ src/fields/group/columnDef.test.ts (4 tests) 11ms",
+        "@vexcms/react:test:  ✓ src/fields/color/columnDef.test.ts (4 tests) 6ms",
+        "@vexcms/react:test:  ✓ src/fields/checkbox/columnDef.test.ts (4 tests) 4ms",
+        "@vexcms/react:test:  ✓ src/fields/relationship/columnDef.test.ts (4 tests) 5ms",
+        "@vexcms/react:test:  ✓ src/fields/array/columnDef.test.ts (4 tests) 5ms",
+        "@vexcms/react:test:  ✓ src/collections/listView/ListLayout.test.tsx (2 tests) 3ms",
+        "@vexcms/react:test:  ✓ src/collections/listView/ListToolbar.test.tsx (1 test) 2ms",
+        "@vexcms/react:test:  ✓ src/fields/commitTs/columnDef.test.ts (4 tests) 4ms",
+        "@vexcms/react:test: ",
+        "@vexcms/react:test:  Test Files  207 passed (207)",
+        "@vexcms/react:test:       Tests  2370 passed | 1 skipped (2371)",
+        "@vexcms/react:test:    Start at  19:50:59",
+        "@vexcms/react:test:    Duration  78.30s (transform 12.82s, setup 30.58s, import 761.50s, tests 90.80s, environment 78.42s)",
+        "@vexcms/react:test: ",
+        " Tasks:    16 successful, 16 total",
+        "Cached:    7 cached, 16 total",
+        "  Time:    1m19.07s "
+      ]
+    },
+    "Step 7": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  143 passed (143)",
+        "      Tests  2047 passed | 1 skipped (2048)",
+        "   Start at  13:02:59",
+        "   Duration  3.94s (transform 6.72s, setup 0ms, import 30.83s, tests 1.36s, environment 5.08s)",
+        "> @vexcms/react@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  207 passed (207)",
+        "      Tests  2370 passed | 1 skipped (2371)",
+        "   Start at  20:03:03",
+        "   Duration  87.71s (transform 17.73s, setup 38.47s, import 852.65s, tests 110.94s, environment 83.78s)"
+      ]
+    },
+    "Step 8": {
+      "attempts": 3,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    }
+  }
+}

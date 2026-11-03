@@ -10,19 +10,29 @@ import { vexConvexApi } from "@vexcms/core";
  * (Step 18) hides its delete affordance under the same action so the throw
  * path is rarely hit.
  *
+ * A React hook (the `use` prefix is REQUIRED, not just convention — a
+ * non-`use`-prefixed wrapper around a hook call can be treated as a pure,
+ * memoizable function by the React Compiler, silently dropping the
+ * internal hook call on a later render and causing a hook-order mismatch
+ * crash; developer-reported, confirmed live on the sibling `saveView`/
+ * `removeView` helpers). Call at the top level of a React component, as
+ * its own statement, BEFORE `useMutation` (not inlined as `useMutation`'s
+ * own `mutationFn` argument).
+ *
  * Import from `@vexcms/react/client`.
  *
  * @returns A `useConvexMutation`-compatible mutation function.
  * @example
  * ```tsx
- * import { deleteVersion } from "@vexcms/react/client";
+ * import { useDeleteVersion } from "@vexcms/react/client";
  * import { useMutation } from "@tanstack/react-query";
  *
- * const { mutateAsync } = useMutation({ mutationFn: deleteVersion() });
+ * const deleteVersionMutationFn = useDeleteVersion();
+ * const { mutateAsync } = useMutation({ mutationFn: deleteVersionMutationFn });
  * await mutateAsync({ collection: "posts", id: postId, version: 3 });
  * await mutateAsync({ global: "banner", version: 2 });
  * ```
  */
-export function deleteVersion() {
+export function useDeleteVersion() {
   return useConvexMutation(vexConvexApi.versions.deleteVersion);
 }

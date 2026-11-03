@@ -156,7 +156,14 @@ interface DashboardProps {}
 
 interface CollectionListViewProps<TCollectionSlug extends CollectionSlug = CollectionSlug> {
   collection: TCollectionSlug;
-  initialData?: PaginationResult<VexDocument>;
+  // Optional server-resolved first-paint hints read from the `vex-admin:<collection>` cookie
+  // (density, local view tabs, skeleton row count/footer, filter-chip titles). Document data
+  // itself is never a prop — prefetch it into the TanStack Query cache instead.
+  initialPreferences?: ListViewConfigCookieValues;
+  initialLocalIndex?: LocalSavedListViewsIndexEntry[];
+  initialSkeletonRowCount?: number;
+  initialSkeletonDone?: boolean;
+  initialFilterValueTitles?: Record<string, string | null>;
 }
 
 interface CollectionEditViewProps<TCollectionSlug extends CollectionSlug = CollectionSlug> {
@@ -271,26 +278,40 @@ The page component handles routing within the `/admin` area, fetches initial dat
 | URL | View |
 |---|---|
 | `/admin` | `DashboardView` |
-| `/admin/:collectionSlug` | `CollectionListView` |
-| `/admin/:collectionSlug/new` | `CollectionEditView` (empty) |
-| `/admin/:collectionSlug/:documentId` | `CollectionEditView` (editing) |
+| `/admin/collections` | `CollectionsIndexView` (collections-only index) |
+| `/admin/collections/:slug` | `CollectionListView` (or `MediaCollectionListView` for a media collection) |
+| `/admin/collections/:slug/new` | `CollectionEditView` (empty) |
+| `/admin/collections/:slug/:documentId` | `CollectionEditView` (editing), or `MediaCollectionEditView` |
+| `/admin/globals` | `GlobalsListView` (permission-filtered — only globals the caller can read) |
+| `/admin/globals/:slug` | `GlobalEditView` |
+
+An unknown first segment (anything besides `collections`/`globals`) is a 404. An unknown
+`:slug` under either section renders `AdminNotFound` instead of 404ing the whole route, so the
+rest of the shell (sidebar, top bar) still renders.
 
 **Next.js implementation pattern:**
 
 ```tsx
-// app/admin/[[...slug]]/page.tsx
+// app/admin/[[...path]]/page.tsx
 import { fetchQuery } from "convex/nextjs";
 import { vexConvexApi } from "@vexcms/core";
-import { DashboardView, CollectionListView, CollectionEditView } from "@vexcms/react";
+import { DashboardView, CollectionsIndexView, GlobalsListView, CollectionListView, CollectionEditView } from "@vexcms/react";
 
 export async function NextAdminPage(props: {
   config: VexConfig;
-  params: Promise<{ slug?: string[] }>;
+  params: Promise<{ path?: string[] }>;
 }) {
-  const { slug = [] } = await props.params;
-  const [collectionSlug, documentId] = slug;
+  const { path = [] } = await props.params;
+  const [section, collectionSlug, documentId] = path;
 
-  if (!collectionSlug) return <DashboardView />;
+  if (path.length === 0) return <DashboardView />;
+  if (section !== "collections" && section !== "globals") return <p>Not found.</p>;
+  if (section === "globals") {
+    if (!collectionSlug) return <GlobalsListView />;
+    // ...render GlobalEditView for /admin/globals/:slug, omitted for brevity
+  }
+
+  if (!collectionSlug) return <CollectionsIndexView />;
 
   const collection = props.config.collections.find(c => c.slug === collectionSlug);
   if (!collection) return <p>Collection not found.</p>;
@@ -303,14 +324,17 @@ export async function NextAdminPage(props: {
     return <CollectionEditView collection={collectionSlug} documentId={documentId} initialData={initialData} />;
   }
 
-  const initialData = await fetchQuery(vexConvexApi.list, { collection: collectionSlug });
-  return <CollectionListView collection={collectionSlug} initialData={initialData} />;
+  return <CollectionListView collection={collectionSlug} />;
 }
 ```
 
-The `initialData` pattern works because `CollectionListView` and `CollectionEditView` pass it to TanStack Query as `initialData`, so the list renders immediately without a loading state on first load. Subsequent navigations use the live Convex subscription.
+`CollectionEditView` passes `initialData` to TanStack Query as `initialData`, so the document renders immediately without a loading state on first load. `CollectionListView` takes no data prop: the real `NextAdminPage` prefetches the list query on the server (via `useVexListQuery`'s query key) into a `QueryClient` and hydrates it with a `HydrationBoundary`, so the table's first paint is server-rendered. Subsequent navigations use the live Convex subscription.
 
-**The `[[...slug]]` catch-all:** The optional catch-all route param is named `slug` (not `vex`, not `collection`) — this matches Next.js convention. The directory is `app/admin/[[...slug]]/page.tsx`.
+**The `[[...path]]` catch-all:** the optional catch-all route param is named `path` — this
+matches `NextAdminPage`'s own `params: Promise<{ path?: string[] }>` type (required, not just
+convention — a mismatched param name produces a compile error against the real signature).
+The directory is `app/admin/[[...path]]/page.tsx`.
+
 
 ---
 
@@ -432,6 +456,80 @@ API. A framework with no client-side router (full page loads only) has no in-app
 intercept and no programmatic navigation to wrap — omit both; `beforeunload` alone still
 covers it, since that is handled outside the adapter.
 
+## Step 10 — Implement the auth capability (optional)
+
+`AdminTopNav` renders a sign-in/out control at the opposite edge of the bar from the
+sidebar-trigger/breadcrumbs/"View site" cluster — but only when the adapter configures it:
+
+```ts
+auth?: {
+  signInHref: (redirectTo: string) => string;
+  signOut: () => Promise<void>;
+};
+```
+
+Omitted (the default), the control renders nothing — identical to before this capability
+existed.
+
+The signed-in/signed-out determination itself does NOT come from this adapter — it comes
+from `useVexAuth()`, the same server-resolved `{ user, organization }` every other
+RBAC-aware component in the tree reads, so there is no client-only flash. `user === null`
+or `user.isAnonymous === true` (Better Auth's `anonymous()` plugin convention — relevant
+once you have configured `anonRole` for read-only public admin access, see the Access
+Control guide) both render "Sign in"; anything else renders "Sign out".
+
+`signInHref` receives the current admin URL (no query string) as `redirectTo`, and must
+return the full sign-in route URL to link to — typically appending it as a query param
+your sign-in page/route-level auth guard already reads (the same convention a `redirect()`
+to the sign-in page from a server component gate should already be using, see
+`app/admin/[[...path]]/page.tsx` above). `signOut` must perform the ENTIRE sign-out
+sequence your framework needs (your auth client's own sign-out call AND whatever
+server-aware refresh makes the server-resolved auth state and route guard re-evaluate on
+return — Next.js: `router.refresh()`), not just the auth-client call — `AdminTopNav` shows
+a pending state for exactly as long as the returned promise takes to settle, and only
+calls it once per click (a second click while pending is a no-op, the control disables
+itself).
+
+Provide it through the same framework-components mechanism as `Link`/`Image`/
+`navigationBlocker`/`useNavigate` — `@vexcms/next` supplies this one differently, though:
+`NextAdminLayout`/your admin `layout.tsx` are both server components, so a `signOut`
+closure over your app's own auth client cannot reach them as a prop. Instead,
+`@vexcms/next/auth` exports `VexAdminAuthAdapterProvider` — a context provider you mount
+anywhere above `NextAdminLayout` in your own CLIENT tree (both ends are client components,
+so the boundary that blocks a prop does not apply to a context). The template projects
+mount it inside their own Better Auth client provider:
+
+```tsx
+// components/providers/client.tsx or auth/client.tsx ("use client")
+import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth";
+import { useRouter } from "next/navigation";
+import { signOut } from "~/auth/client";
+
+function AuthAdapterProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  return (
+    <VexAdminAuthAdapterProvider
+      value={{
+        signInHref: (redirectTo) => `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}`,
+        signOut: () =>
+          signOut()
+            .then(() => router.refresh())
+            .catch(() => router.refresh()), // refresh either way — a stale client
+            // cache after a failed sign-out is worse than a redundant refresh.
+      }}
+    >
+      {children}
+    </VexAdminAuthAdapterProvider>
+  );
+}
+```
+
+**For non-React or server-rendered frameworks:** implement `signInHref` against your own
+sign-in route's URL scheme, and `signOut` against your auth library's own sign-out call
+plus whatever "make the server re-check auth state" mechanism your framework offers (a
+full reload is always a safe fallback). A framework with no sign-in/out concept at all —
+omit `auth` entirely; the control simply does not render.
+
 ## Wiring it into an app
 
 Here is the minimal setup for the Next.js adapter:
@@ -489,17 +587,44 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 }
 ```
 
-**`app/admin/[[...slug]]/page.tsx`**:
+**`app/admin/[[...path]]/page.tsx`**:
 ```tsx
+import { canAccessAdminPanel } from "@vexcms/core";
 import { NextAdminPage } from "@vexcms/next/server";
+import { redirect } from "next/navigation";
+
+import { getToken, getUserOrg } from "~/auth/server";
 import config from "../../../../vex.config.server";
 
-export default function AdminPage({
+export default async function AdminPage({
   params,
+  searchParams,
 }: {
-  params: Promise<{ slug?: string[] }>;
+  params: Promise<{ path?: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  return <NextAdminPage config={config} params={params} />;
+  const token = await getToken();
+  const auth = await getUserOrg();
+  if (
+    !canAccessAdminPanel({ access: config.access, user: auth.user, organization: auth.organization })
+  ) {
+    // Only redirect to sign-in when there was genuinely no token — a signed-in caller
+    // whose own role still fails the check goes to /unauthorized instead. Don't
+    // hard-redirect on a missing token before this check: an app whose `anonRole`
+    // grants `adminPanel.access` (see the Access Control guide's "Read-only public
+    // admin via anonRole" section) needs this check to run for an anonymous caller too.
+    redirect(token ? "/unauthorized" : "/auth/sign-in?redirectTo=/admin");
+  }
+
+  return (
+    <NextAdminPage
+      config={config}
+      params={params}
+      searchParams={searchParams}
+      tokenPromise={Promise.resolve(token)}
+      authPromise={Promise.resolve(auth)}
+    />
+  );
 }
 ```
 
@@ -528,7 +653,6 @@ The collection slug in `vex.config.ts` must match the Convex table name in your 
 
 The following are planned but not yet built:
 
-- **Data table** — `CollectionListView` shows a document count but not a real table. TanStack Table with column definitions derived from field config is planned.
 - **Form submission** — `CollectionEditView` renders the form but the Save button is a no-op. Create/update mutations will be wired in a future spec.
 - **Additional field types** — only `text` is implemented. Number, checkbox, select, textarea, and date are planned.
 - **Auth** — no authentication layer yet. The admin panel is currently unprotected.

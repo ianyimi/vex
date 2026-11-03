@@ -241,7 +241,7 @@ export const pages = defineTable({
       ogImage: v.optional(v.string()),
     })
   ),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   vex_publishedAt: v.optional(v.number()),
   vex_publishedId: v.optional(v.id("pages")),
@@ -250,6 +250,7 @@ export const pages = defineTable({
   .index("by_slug_title", ["slug", "title"])
   .index("by_slug", ["slug"])
   .index("by_themes", ["themes"])
+  .index("by_updatedAt", ["updatedAt"])
   .index("by_status", ["vex_status"])
   .index("by_published", ["vex_publishedId"])
 
@@ -304,8 +305,10 @@ export const headers = defineTable({
       })
     )
   ),
-  updatedAt: v.optional(v.number()),
-}).index("by_name", ["name"])
+  updatedAt: v.optional(v.commitTs()),
+})
+  .index("by_name", ["name"])
+  .index("by_updatedAt", ["updatedAt"])
 
 export const footers = defineTable({
   name: v.string(),
@@ -334,8 +337,10 @@ export const footers = defineTable({
       })
     )
   ),
-  updatedAt: v.optional(v.number()),
-}).index("by_name", ["name"])
+  updatedAt: v.optional(v.commitTs()),
+})
+  .index("by_name", ["name"])
+  .index("by_updatedAt", ["updatedAt"])
 
 export const themes = defineTable({
   name: v.string(),
@@ -413,9 +418,10 @@ export const themes = defineTable({
       sidebarRing: v.optional(v.string()),
     })
   ),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
 })
   .index("by_name", ["name"])
+  .index("by_updatedAt", ["updatedAt"])
   .searchIndex("search_name", {
     searchField: "name",
 
@@ -435,12 +441,13 @@ export const articles = defineTable({
   readingMinutes: v.optional(v.number()),
   featured: v.optional(v.boolean()),
   coverImage: v.optional(v.array(v.id("images"))),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
 })
   .index("by_slug", ["slug"])
   .index("by_author", ["authorId"])
   .index("by_status", ["status"])
   .index("by_coverImage", ["coverImage"])
+  .index("by_updatedAt", ["updatedAt"])
   .searchIndex("search_title", {
     searchField: "title",
 
@@ -461,11 +468,12 @@ export const case_studies = defineTable({
   clientUrl: v.optional(v.string()),
   outcomeSummary: v.optional(v.string()),
   contractValue: v.optional(v.number()),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
 })
   .index("by_slug", ["slug"])
   .index("by_author", ["authorId"])
   .index("by_status", ["status"])
+  .index("by_updatedAt", ["updatedAt"])
 
 export const changelog = defineTable({
   title: v.string(),
@@ -482,22 +490,24 @@ export const changelog = defineTable({
   ),
   breaking: v.optional(v.boolean()),
   notes: v.optional(v.string()),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
 })
   .index("by_slug", ["slug"])
   .index("by_author", ["authorId"])
   .index("by_status", ["status"])
   .index("by_version", ["version"])
+  .index("by_updatedAt", ["updatedAt"])
 
 export const comments = defineTable({
   authorId: v.array(v.id("user")),
   body: v.string(),
   article: v.array(v.id("articles")),
   approved: v.optional(v.boolean()),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
 })
   .index("by_author", ["authorId"])
   .index("by_article", ["article"])
+  .index("by_updatedAt", ["updatedAt"])
 
 export const posts = defineTable({
   title: v.string(),
@@ -506,7 +516,7 @@ export const posts = defineTable({
   relatedPost: v.optional(v.array(v.id("posts"))),
   relatedArticle: v.optional(v.array(v.id("articles"))),
   relatedField: v.optional(v.array(v.id("fields"))),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   vex_publishedAt: v.optional(v.number()),
   vex_publishedId: v.optional(v.id("posts")),
@@ -516,11 +526,15 @@ export const posts = defineTable({
   .index("by_relatedPost", ["relatedPost"])
   .index("by_relatedArticle", ["relatedArticle"])
   .index("by_relatedField", ["relatedField"])
+  .index("by_updatedAt", ["updatedAt"])
   .index("by_status", ["vex_status"])
   .index("by_published", ["vex_publishedId"])
-  .searchIndex("search_title", {
+  .searchIndex("search_posts_title", {
     searchField: "title",
-
+    filterFields: [],
+  })
+  .searchIndex("search_posts_slug", {
+    searchField: "slug",
     filterFields: [],
   })
 
@@ -652,12 +666,49 @@ export const fields = defineTable({
       })
     )
   ),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
 })
   .index("by_relatedUser", ["relatedUser"])
   .index("by_relatedUsers", ["relatedUsers"])
+  .index("by_updatedAt", ["updatedAt"])
   .searchIndex("search_fields_contactEmail", {
     searchField: "contactEmail",
+    filterFields: [],
+  })
+  .searchIndex("search_fields_bio", {
+    searchField: "bio",
+    filterFields: [],
+  })
+  .searchIndex("search_fields_title", {
+    searchField: "title",
+    filterFields: [],
+  })
+
+export const testimonials = defineTable({
+  customerName: v.string(),
+  company: v.optional(v.string()),
+  quote: v.string(),
+  rating: v.number(),
+  source: v.array(
+    v.union(v.literal("website"), v.literal("import"), v.literal("survey"), v.literal("referral"))
+  ),
+  featured: v.optional(v.boolean()),
+  approved: v.optional(v.boolean()),
+  contributorId: v.optional(v.array(v.id("user"))),
+  avatar: v.optional(v.array(v.id("images"))),
+  internalScore: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
+})
+  .index("by_source", ["source"])
+  .index("by_contributorId", ["contributorId"])
+  .index("by_avatar", ["avatar"])
+  .index("by_updatedAt", ["updatedAt"])
+  .searchIndex("search_testimonials_customer_name", {
+    searchField: "customerName",
+    filterFields: [],
+  })
+  .searchIndex("search_testimonials_company", {
+    searchField: "company",
     filterFields: [],
   })
 
@@ -790,9 +841,10 @@ export const images = defineTable({
   src: v.string(),
   width: v.optional(v.number()),
   height: v.optional(v.number()),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
 })
   .index("by_deleted", ["deleted"])
+  .index("by_updatedAt", ["updatedAt"])
   .searchIndex("search_filename", {
     searchField: "filename",
     filterFields: ["alt"],
@@ -813,6 +865,23 @@ export const vex_versions = defineTable({
   restoredFrom: v.optional(v.number()),
   publishedAt: v.optional(v.number()),
 }).index("by_document_version", ["collection", "documentId", "version"])
+
+/**
+ * VEX VIEWS — shared saved views for collection list tables
+ **/
+
+export const vex_views = defineTable({
+  collection: v.string(),
+  viewId: v.string(),
+  name: v.string(),
+  description: v.optional(v.string()),
+  state: v.any(),
+  organizationId: v.optional(v.string()),
+  createdBy: v.string(),
+})
+  .index("by_collection", ["collection"])
+  .index("by_collection_org", ["collection", "organizationId"])
+  .index("by_view_id", ["viewId"])
 
 /**
  * VEX GLOBALS — singleton documents, one row per registered global slug

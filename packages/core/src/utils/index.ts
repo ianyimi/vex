@@ -1,6 +1,7 @@
 import type { GeneratedVexTypes } from "../types/generated";
 
 export * from "./valuesEqual";
+export * from "./isPlainObject";
 
 /**
  * Icon name accepted by `admin.icon` on collections, globals, blocks, and live

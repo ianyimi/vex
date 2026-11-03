@@ -79,12 +79,12 @@ sanctioned, not violations to fix.
 
 ```
 access/        # usePermission, useVexPermissions, useFieldPermissions, useCanAccessAdminPanel
-admin/         # AdminLayout, AdminSidebar, AdminTopNav, DashboardView, UnauthorizedView
+admin/         # AdminLayout, AdminSidebar, AdminTopNav, DashboardView, CollectionsIndexView, AdminCardSection, UnauthorizedView
 auth/          # VexAuthContext
 client/        # the ./client entry — collections/globals/versions query+mutation factories
-collections/   # CollectionEditView, CollectionListView, CreateDocumentForm/Modal
+collections/   # editView/ (CollectionEditView + actions), listView/ (CollectionListView, toolbar/, create/, savedListViews/, filters/, peek/, rowActions/), api/
 config/        # VexConfigContext, useFrameworkComponents
-fields/        # one folder per field type (admin half) + registry.ts + AdminFieldBinding.tsx
+fields/        # one folder per field type (admin half: Field, Cell, Display, FilterInput) + registry.tsx + AdminFieldBinding.tsx
 forms/         # the exported app form — @vexcms/react/form
 globals/       # GlobalEditView, GlobalsListView
 hooks/         # cross-domain hooks — usePaginatedQuery, usePaginatedSearch, useTableSelection, useVexMutation, use-mobile

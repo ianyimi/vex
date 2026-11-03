@@ -12,7 +12,7 @@ import { useVexConfig } from "../config";
 /**
  * Modal for uploading media into a media collection.
  *
- * The media counterpart to {@link CreateDocumentModal}. Instead of rendering
+ * The media counterpart to {@link ListViewCreateDocumentModal}. Instead of rendering
  * field inputs, it hosts a {@link MediaUploadDropzone} that uploads files via
  * the collection's storage adapter (`generateUploadUrl` → POST → create media
  * document). Opens when `?upload=true` is in the URL (see `MODALS.uploadMedia`).

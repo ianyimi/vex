@@ -3,6 +3,7 @@ import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { describe, expect, test, vi } from "vitest";
 
 import type { VexConfig } from "../../../config";
+import type { VexWhere } from "../../../db/queryArgs";
 import type { DocumentBySlug } from "../../../types/generated";
 import * as _generatedApi from "../../../db/test/convex/_generated/api";
 import schema from "../../../db/test/convex/schema";
@@ -21,6 +22,7 @@ const fixtureConfig: VexConfig = {
         title: { type: "text" },
         author: { type: "relationship", collection: { slug: "authors" } },
         parent: { type: "relationship", collection: { slug: "posts" } },
+        cover: { type: "upload", to: "images" },
       },
       labels: { singular: "Post", plural: "Posts" },
       admin: { useAsTitle: "title" },
@@ -445,6 +447,34 @@ describe("find (server) — depth auto-populate", () => {
     // author should still be a raw ID array, not populated docs.
     expect(Array.isArray(docs[0].author)).toBe(true);
     expect(typeof docs[0].author[0]).toBe("string");
+  });
+
+  test("depth: 1 auto-populates upload fields (media docs), the same as relationship fields", async () => {
+    const t = convexTest(schema, modules);
+    const docs = (await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const imageId = await ctx.db.insert("images", { filename: "cover.png" });
+      await ctx.db.insert("posts", {
+        title: "Hi",
+        slug: "hi",
+        cover: [imageId],
+      });
+      return find({ ctx, collection: "posts", depth: 1, config: fixtureConfig } as any);
+    })) as any[];
+    const cover = docs[0].cover as { filename: string; _id: string }[];
+    expect(cover[0].filename).toBe("cover.png");
+    expect(typeof cover[0]._id).toBe("string");
+  });
+
+  test("depth: 1 populates BOTH a relationship and an upload field on the same doc", async () => {
+    const t = convexTest(schema, modules);
+    const docs = (await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const authorId = await ctx.db.insert("authors", { name: "Lena" });
+      const imageId = await ctx.db.insert("images", { filename: "cover.png" });
+      await ctx.db.insert("posts", { title: "Hi", slug: "hi", author: [authorId], cover: [imageId] });
+      return find({ ctx, collection: "posts", depth: 1, config: fixtureConfig } as any);
+    })) as any[];
+    expect((docs[0].author as { name: string }[])[0].name).toBe("Lena");
+    expect((docs[0].cover as { filename: string }[])[0].filename).toBe("cover.png");
   });
 
   test("depth without config returns raw docs (effectivePopulate is undefined)", async () => {
@@ -1572,7 +1602,12 @@ describe("find (server) — field-level read shaping", () => {
     expect((docs[0] as any).title).toBe("Published");
   });
 
-  test("never strips _id or _creationTime", async () => {
+  // `_creationTime` survives HERE because this map's wildcard is `true` and
+  // never explicitly names it — NOT because it's unconditionally exempt like
+  // `_id` (developer decision, binding, "access-system-fields": `_creationTime`
+  // IS a real, gateable field-permission key now). The dedicated describe
+  // block below proves it actually strips once a map explicitly denies it.
+  test("_id always survives; _creationTime survives here too, because the wildcard covers it (not because it's exempt)", async () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       await ctx.db.insert("posts", { title: "Published", slug: "public" });
@@ -1602,6 +1637,61 @@ describe("find (server) — field-level read shaping", () => {
       return find({ ctx, collection: "posts", config: fieldMapAccess, auth: fieldMapAuth } as any);
     });
     expect(docs).toHaveLength(1);
+  });
+});
+
+// Developer decision (binding, "access-system-fields"): `_creationTime`/
+// `updatedAt`/`vex_status` are real, gateable field-permission keys now —
+// proves `find`'s own `readableDocuments` pipeline strips them exactly like
+// any other denied field, server-side, through the real `find` call (not just
+// the isolated `resolveFieldPermissions`/`stripDeniedFields` unit).
+describe("find (server) — system field stripping (developer decision, binding, \"access-system-fields\")", () => {
+  const systemFieldPostsResource = defineCollection({
+    slug: "posts",
+    fields: { title: text(), slug: text() },
+    versions: { drafts: true },
+  });
+  const systemFieldConfig = {
+    collections: [systemFieldPostsResource],
+    access: defineAccess({
+      roles: ["restricted"] as const,
+      resources: [systemFieldPostsResource],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        restricted: {
+          posts: {
+            read: () => ({ "*": true, _creationTime: false, updatedAt: false, vex_status: false }),
+          },
+        },
+      },
+    }),
+  } as unknown as VexConfig;
+  const restrictedAuth = { user: { _id: "u1", roles: "restricted" } };
+
+  test("strips _creationTime, updatedAt, and vex_status when a map explicitly denies them", async () => {
+    const t = convexTest(schema, modules);
+    const docs = (await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", {
+        title: "Published",
+        slug: "public",
+        updatedAt: 123,
+        vex_status: "published",
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: systemFieldConfig,
+        auth: restrictedAuth,
+      });
+    })) as unknown as Record<string, unknown>[];
+    expect(docs).toHaveLength(1);
+    const doc = docs[0] as Record<string, unknown>;
+    expect(doc._id).toBeDefined();
+    expect(doc.title).toBe("Published");
+    expect(doc._creationTime).toBeUndefined();
+    expect(doc.updatedAt).toBeUndefined();
+    expect(doc.vex_status).toBeUndefined();
   });
 });
 
@@ -1689,8 +1779,15 @@ describe("find (server) — versioned collection status filtering", () => {
    * status narrowing for a caller who may read drafts. A caller without
    * `readDrafts` falls back to the published-only read: no draft content, and
    * no empty result either, so one set of args serves every caller.
+   *
+   * Draft-pair pagination fix: a caller who CAN read drafts no longer gets
+   * the draft as a second, separate row — `find` pages over canonical rows
+   * and merges the linked draft back onto its published row per page
+   * (`mergeDraftCounterparts`), so there is exactly one row per logical
+   * document, carrying the draft's own `_id`/fields and
+   * `hasUnpublishedChanges: true`.
    */
-  test("drafts: true with readDrafts returns both rows; without it, falls back to the published row only", async () => {
+  test("drafts: true with readDrafts returns one merged row; without it, falls back to the published row only", async () => {
     const t = convexTest(schema, modules);
     const { publishedId, draftId, withPermission, withoutPermission } = await t.run(
       async (ctx: GenericMutationCtx<GenericDataModel>) => {
@@ -1727,9 +1824,54 @@ describe("find (server) — versioned collection status filtering", () => {
       },
     );
 
-    expect(withPermission).toHaveLength(2);
-    expect(withPermission.map((doc: any) => doc._id).sort()).toEqual([publishedId, draftId].sort());
+    expect(withPermission).toHaveLength(1);
+    expect((withPermission[0] as any)._id).toBe(draftId);
+    expect((withPermission[0] as any).title).toBe("Hello (draft edit)");
+    expect((withPermission[0] as any).hasUnpublishedChanges).toBe(true);
     expect(withoutPermission.map((doc) => doc._id)).toEqual([publishedId]);
+  });
+
+  /**
+   * Regression repro (Main's report): `mergeDraftCounterparts` re-reads the
+   * linked DRAFT row directly from the DB, bypassing the caller's own
+   * `readableDocuments` ms-conversion pass entirely — without threading
+   * `fields` through to its own inner `readableDocuments` call, a resolved
+   * `commitTs` bigint on the merged-in draft reached the client raw,
+   * crashing `formatCommitTsFieldValue` ("Cannot convert a BigInt value to
+   * a number"). `updatedAt` here is a literal resolved bigint (never a
+   * placeholder — simulates what a real Convex backend stores post-commit,
+   * per probe §5's "hand-built resolved-bigint fixtures" testing layer),
+   * inserted directly on the DRAFT row, not the published one.
+   */
+  test("a merged draft counterpart's commitTs field is converted to ms, not left as a raw bigint", async () => {
+    const t = convexTest(schema, modules);
+    const resolvedNs = BigInt(1_700_000_000_000) * BigInt(1_000_000);
+    const result = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
+      await ctx.db.insert("posts", {
+        title: "Hello (draft edit)",
+        slug: "hello",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+        updatedAt: resolvedNs,
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: versionedConfigWithAccess,
+        auth: editorAuth,
+        drafts: true,
+      });
+    });
+    expect(result).toHaveLength(1);
+    const merged = result[0] as unknown as Record<string, unknown>;
+    expect(merged.hasUnpublishedChanges).toBe(true);
+    expect(typeof merged.updatedAt).toBe("number");
+    expect(merged.updatedAt).toBe(1_700_000_000_000);
   });
 
   /**
@@ -2013,3 +2155,910 @@ describe("find (server) — per-index draftStatus composition", () => {
     warnSpy.mockRestore();
   });
 });
+
+// ── List-view-overhaul Step 11: `vex_status` as a built-in filter field,
+// and the isEmpty/isNotEmpty wire shape (a leaf missing `value` entirely —
+// Convex's own argument serialization drops an explicit `value: undefined`
+// property before the server ever sees it) ─────────────────────────────────
+const emptyCheckPostsResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), body: text({ required: false }) },
+});
+const emptyCheckConfig = { collections: [emptyCheckPostsResource] } as unknown as VexConfig;
+
+describe("find (server) — vex_status where filtering and the isEmpty/isNotEmpty wire shape", () => {
+  test("a where on vex_status narrows a versioned collection to the matching status, merging its linked draft (Fix A)", async () => {
+    const t = convexTest(schema, modules);
+    const { draftId, docs } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
+      const draftId = await ctx.db.insert("posts", {
+        title: "Hello (draft edit)",
+        slug: "hello",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      });
+      return {
+        draftId,
+        docs: await find({
+          ctx,
+          collection: "posts",
+          config: versionedConfigWithAccess,
+          auth: editorAuth,
+          drafts: true,
+          where: { field: "vex_status", op: "eq", value: "published" },
+        }),
+      };
+    });
+    // The where filter decides WHICH canonical document qualifies (the
+    // published one) — exactly as before. `find` then still merges that
+    // canonical row's linked draft back on (Fix A, same as an ordinary
+    // field filter — see Test 5 of the draft-pair pagination fix suite),
+    // so the returned row carries the draft's own `_id`/fields.
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?._id).toBe(draftId);
+    expect((docs[0] as any).hasUnpublishedChanges).toBe(true);
+  });
+
+  test("a where on vex_status still narrows correctly alongside the default _creationTime sort (Decision 36 pushdown has no declared index to push vex_status into, so it falls through to .filter() unchanged)", async () => {
+    const t = convexTest(schema, modules);
+    const { draftId, docs } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
+      const draftId = await ctx.db.insert("posts", {
+        title: "Hello (draft edit)",
+        slug: "hello",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      });
+      return {
+        draftId,
+        docs: await find({
+          ctx,
+          collection: "posts",
+          config: versionedConfigWithAccess,
+          auth: editorAuth,
+          drafts: true,
+          where: { field: "vex_status", op: "eq", value: "published" },
+          sort: { field: "_creationTime", order: "desc" },
+        }),
+      };
+    });
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?._id).toBe(draftId);
+    expect((docs[0] as any).hasUnpublishedChanges).toBe(true);
+  });
+
+  test("a where on vex_status is rejected (INVALID_WHERE) for a non-versioned collection", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        find({
+          ctx,
+          collection: "authors",
+          config: versionedConfig,
+          where: { field: "vex_status", op: "eq", value: "published" },
+        }),
+      ),
+    ).rejects.toThrow();
+  });
+
+  test("isEmpty/isNotEmpty reach the server as a leaf with no `value` key, and filter correctly", async () => {
+    const t = convexTest(schema, modules);
+    const { withBodyId, noBodyId, isEmptyDocs, isNotEmptyDocs } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const withBodyId = await ctx.db.insert("posts", { title: "A", slug: "a", body: "has body" });
+        const noBodyId = await ctx.db.insert("posts", { title: "B", slug: "b" });
+        return {
+          withBodyId,
+          noBodyId,
+          // `{ field, op }` with no `value` key at all — the exact shape Convex's
+          // own `convexToJson` produces for a stored `{ op: "eq", value: undefined }`
+          // leaf (an `isEmpty` row); never `value: undefined` explicitly, since that
+          // key would already have been dropped before this function ever runs. Cast
+          // through `VexWhere<"posts">`: the real Convex RPC boundary receives this
+          // exact shape as `unknown`, never through this compile-time literal check.
+          isEmptyDocs: await find({
+            ctx,
+            collection: "posts",
+            config: emptyCheckConfig,
+            where: { field: "body", op: "eq" } as unknown as VexWhere<"posts">,
+          }),
+          isNotEmptyDocs: await find({
+            ctx,
+            collection: "posts",
+            config: emptyCheckConfig,
+            where: { field: "body", op: "neq" } as unknown as VexWhere<"posts">,
+          }),
+        };
+      },
+    );
+    expect(isEmptyDocs.map((d) => d._id)).toEqual([noBodyId]);
+    expect(isNotEmptyDocs.map((d) => d._id)).toEqual([withBodyId]);
+  });
+});
+
+// ── Step 6: portable sort + index pushdown ──────────────────────────────────
+const sortPushdownResource = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text({ index: "by_title" }),
+    slug: text({ index: "by_slug" }),
+    body: text(),
+    featured: checkbox({ index: "by_featured" }),
+  },
+});
+const sortPushdownConfig = { collections: [sortPushdownResource] } as unknown as VexConfig;
+
+describe("find (server) — sort", () => {
+  test("sort.field resolves to the index whose first field matches, ordering through it", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Zeta", slug: "z" });
+      await ctx.db.insert("posts", { title: "Alpha", slug: "a" });
+      await ctx.db.insert("posts", { title: "Mid", slug: "m" });
+    });
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      find({ ctx, collection: "posts", config: sortPushdownConfig, sort: { field: "slug", order: "asc" } } as any),
+    );
+    expect(docs.map((d: any) => d.slug)).toEqual(["a", "m", "z"]);
+  });
+
+  test('sort.field: "_creationTime" needs no index — orders by insertion order', async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "First", slug: "first" });
+      await ctx.db.insert("posts", { title: "Second", slug: "second" });
+    });
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      find({
+        ctx,
+        collection: "posts",
+        config: sortPushdownConfig,
+        sort: { field: "_creationTime", order: "desc" },
+      } as any),
+    );
+    expect(docs.map((d: any) => d.slug)).toEqual(["second", "first"]);
+  });
+
+  test("an unindexed sort.field rejects with a VexError naming the field", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        find({ ctx, collection: "posts", config: sortPushdownConfig, sort: { field: "body", order: "asc" } } as any),
+      ),
+    ).rejects.toThrow(/(?=.*"code":"UNINDEXED_SORT")(?=.*"field":"body")/);
+  });
+
+  test("sort and withIndex together reject — clients send one or the other, never both", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        find({
+          ctx,
+          collection: "posts",
+          config: sortPushdownConfig,
+          sort: { field: "slug", order: "asc" },
+          withIndex: { name: "by_slug" },
+        } as any),
+      ),
+    ).rejects.toThrow(/"code":"SORT_WITH_INDEX"/);
+  });
+
+  test("an eq condition on the sorted field's own index is pushed into its range, dropping it from .filter()", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "A", slug: "a", featured: true });
+      await ctx.db.insert("posts", { title: "B", slug: "b", featured: false });
+      await ctx.db.insert("posts", { title: "C", slug: "c", featured: true });
+      return find({
+        ctx,
+        collection: "posts",
+        config: sortPushdownConfig,
+        where: { field: "featured", op: "eq", value: true },
+        sort: { field: "_creationTime", order: "asc" },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["a", "c"]);
+  });
+});
+
+describe("find (server) — sort competes for the index slot like withIndex", () => {
+  const sortVsAccessResource = defineCollection({
+    slug: "posts",
+    fields: { title: text({ index: "by_title" }), slug: text(), featured: checkbox({ index: "by_featured" }) },
+  });
+  const sortVsAccessConfig = {
+    collections: [sortVsAccessResource],
+    access: defineAccess({
+      roles: ["contributor"] as const,
+      resources: [sortVsAccessResource],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        contributor: {
+          posts: { read: { withIndex: { name: "by_featured", range: (ix) => ix.eq("featured", true) } } },
+        },
+      },
+    }),
+  } as unknown as VexConfig;
+  const pushdownContributorAuth = { user: { _id: "u1", roles: "contributor" } };
+
+  test("sort names a DIFFERENT field than the access index: sort's resolved index wins the slot, access still filters", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "a", slug: "a", featured: false });
+      await ctx.db.insert("posts", { title: "b", slug: "b", featured: true });
+      await ctx.db.insert("posts", { title: "c", slug: "c", featured: true });
+      return find({
+        ctx,
+        collection: "posts",
+        config: sortVsAccessConfig,
+        auth: pushdownContributorAuth,
+        // Sorts by "title" rather than "slug" — the access rule's own
+        // `by_featured` index is already exercised against a `by_slug`
+        // displacement elsewhere in this file (the dev warning dedupes per
+        // index-name pair for the life of the process), so this test picks
+        // a different displacing index to independently prove the warning
+        // fires for ITS pair too.
+        sort: { field: "title", order: "asc" },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["b", "c"]);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Access index "by_featured" cannot be applied'));
+    warnSpy.mockRestore();
+  });
+});
+
+// ── Step 6: declared config-view filter is exempt from the field-read check ─
+const declaredFilterBaseResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text(), featured: checkbox() },
+});
+const declaredFilterResource = {
+  ...declaredFilterBaseResource,
+  admin: {
+    ...declaredFilterBaseResource.admin,
+    useAsTitle: "title",
+    views: [{ viewId: "featured", name: "Featured", state: { where: { field: "featured", op: "eq", value: true } } }],
+  },
+} as unknown as typeof declaredFilterBaseResource;
+const declaredFilterAccess = {
+  collections: [declaredFilterResource],
+  access: defineAccess({
+    roles: ["viewer"] as const,
+    resources: [declaredFilterResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      viewer: {
+        posts: { read: () => ({ featured: false, "*": true }) },
+      },
+    },
+  }),
+} as unknown as VexConfig;
+const declaredFilterViewerAuth = { user: { _id: "u1", roles: "viewer" } };
+// No declared config view (unlike `declaredFilterAccess`) — isolates the
+// shared-view-only exemption path from the config-view path the describe
+// block above exercises, so "lacks readViews" genuinely has no OTHER route
+// to trust.
+const declaredFilterNoViewAccess = {
+  collections: [declaredFilterBaseResource],
+  access: defineAccess({
+    roles: ["viewer"] as const,
+    resources: [declaredFilterBaseResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      viewer: {
+        posts: { read: () => ({ featured: false, "*": true }) },
+      },
+    },
+  }),
+} as unknown as VexConfig;
+
+describe("find (server) — declared view filter is exempt from the field-read check", () => {
+  test("a where that deep-equals the declared view's where is trusted even though featured is unreadable", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("posts", { title: "Hidden", slug: "hidden", featured: false });
+      return find({
+        ctx,
+        collection: "posts",
+        config: declaredFilterAccess,
+        auth: declaredFilterViewerAuth,
+        where: { field: "featured", op: "eq", value: true },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["shown"]);
+  });
+
+  test("the caller may narrow a declared view with their own readable-field condition", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("posts", { title: "Also featured", slug: "also-featured", featured: true });
+      return find({
+        ctx,
+        collection: "posts",
+        config: declaredFilterAccess,
+        auth: declaredFilterViewerAuth,
+        where: {
+          and: [
+            { field: "featured", op: "eq", value: true },
+            { field: "slug", op: "eq", value: "shown" },
+          ],
+        },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["shown"]);
+  });
+
+  test("changing the declared filter's value is NOT exempt — the unreadable condition drops every row", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      return find({
+        ctx,
+        collection: "posts",
+        config: declaredFilterAccess,
+        auth: declaredFilterViewerAuth,
+        where: { field: "featured", op: "eq", value: false },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+});
+
+// ── Step 6 / Decision 26: shared-view filter exemption (readViews) ──────────
+const sharedFilterAccessWithReadViews = {
+  collections: [declaredFilterResource],
+  access: defineAccess({
+    roles: ["editor"] as const,
+    resources: [declaredFilterResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      editor: {
+        posts: { read: () => ({ featured: false, "*": true }), readViews: true },
+      },
+    },
+  }),
+} as unknown as VexConfig;
+const sharedFilterEditorAuth = { user: { _id: "u2", roles: "editor" } };
+
+describe("find (server) — shared-view filter exemption (readViews)", () => {
+  test("does not read vex_views when nothing is unreadable", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      return find({
+        ctx,
+        collection: "posts",
+        config: sharedFilterAccessWithReadViews,
+        auth: sharedFilterEditorAuth,
+        where: { field: "slug", op: "eq", value: "shown" },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["shown"]);
+  });
+
+  test("trusts an exact match against a shared view's where when the caller has readViews", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("posts", { title: "Hidden", slug: "hidden", featured: false });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: sharedFilterAccessWithReadViews,
+        auth: sharedFilterEditorAuth,
+        where: { field: "featured", op: "eq", value: true },
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["shown"]);
+  });
+
+  test("does not trust a shared view's where when the caller lacks readViews", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: declaredFilterNoViewAccess,
+        auth: declaredFilterViewerAuth,
+        where: { field: "featured", op: "eq", value: true },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+
+  test("does not trust an altered value against a shared view's where", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Shown", slug: "shown", featured: true });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "shared-featured",
+        name: "Shared featured",
+        state: { where: { field: "featured", op: "eq", value: true } },
+        createdBy: "u2",
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: sharedFilterAccessWithReadViews,
+        auth: sharedFilterEditorAuth,
+        where: { field: "featured", op: "eq", value: false },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+});
+
+// ── Access + system fields: declared-filter exemption covers `vex_status`
+// (Published shared view, signed-out guest regression) ─────────────────────
+const vexStatusFilterVersionedResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text() },
+  versions: { drafts: true },
+});
+const vexStatusFilterGuestAccess = {
+  collections: [vexStatusFilterVersionedResource],
+  access: defineAccess({
+    roles: ["guest"] as const,
+    anonRole: "guest",
+    resources: [vexStatusFilterVersionedResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      guest: {
+        posts: {
+          "*": false,
+          read: () => ({ "*": false, title: true, slug: true }),
+          readViews: true,
+        },
+      },
+    },
+  }),
+} as unknown as VexConfig;
+const vexStatusFilterAnonymousAuth = { user: null };
+const vexStatusFilterPublishedWhere = { field: "vex_status", op: "eq", value: "published" } as const;
+
+describe("find (server) — declared-filter exemption covers vex_status (Published shared view, signed out)", () => {
+  test("an anonymous caller who can't read vex_status still gets rows from a shared view filtering on it", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Pub", slug: "pub", vex_status: "published" });
+      await ctx.db.insert("posts", { title: "Dft", slug: "dft", vex_status: "draft" });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "published",
+        name: "Published",
+        state: { where: vexStatusFilterPublishedWhere },
+        createdBy: "someone-else",
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: vexStatusFilterGuestAccess,
+        auth: vexStatusFilterAnonymousAuth,
+        where: vexStatusFilterPublishedWhere,
+      } as any);
+    });
+    expect(docs.map((d: any) => d.slug)).toEqual(["pub"]);
+    // The exemption makes the FILTER work without ever making the FIELD
+    // readable (Decision 11) — `vex_status` itself must not come back.
+    expect(docs[0].vex_status).toBeUndefined();
+  });
+
+  test("a user-added filter on vex_status that does NOT match any declared view stays rejected", async () => {
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Pub", slug: "pub", vex_status: "published" });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "published",
+        name: "Published",
+        state: { where: vexStatusFilterPublishedWhere },
+        createdBy: "someone-else",
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: vexStatusFilterGuestAccess,
+        auth: vexStatusFilterAnonymousAuth,
+        // Same FIELD as the declared view, a DIFFERENT value — not a
+        // deep-equal match, so the exemption does not apply.
+        where: { field: "vex_status", op: "eq", value: "draft" },
+      } as any);
+    });
+    expect(docs).toEqual([]);
+  });
+
+  test("the exemption still works alongside the draft-pair merge for a role with readDrafts but no vex_status read", async () => {
+    const contributorAccess = {
+      collections: [vexStatusFilterVersionedResource],
+      access: defineAccess({
+        roles: ["contributor"] as const,
+        resources: [vexStatusFilterVersionedResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          contributor: {
+            posts: {
+              "*": false,
+              read: () => ({ "*": false, title: true, slug: true }),
+              readDrafts: true,
+              readViews: true,
+            },
+          },
+        },
+      }),
+    } as unknown as VexConfig;
+    const contributorAuth = { user: { _id: "u3", roles: "contributor" } };
+    const t = convexTest(schema, modules);
+    const docs: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", { title: "Pub", slug: "pub", vex_status: "published" });
+      await ctx.db.insert("posts", {
+        title: "Pub (draft edit)",
+        slug: "pub",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      });
+      await ctx.db.insert("vex_views", {
+        collection: "posts",
+        viewId: "published",
+        name: "Published",
+        state: { where: vexStatusFilterPublishedWhere },
+        createdBy: "someone-else",
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: contributorAccess,
+        auth: contributorAuth,
+        drafts: true,
+        where: vexStatusFilterPublishedWhere,
+      } as any);
+    });
+    expect(docs).toHaveLength(1);
+    expect(docs[0].title).toBe("Pub (draft edit)");
+    expect(docs[0].hasUnpublishedChanges).toBe(true);
+  });
+});
+
+// ── Step 6: total count cap ──────────────────────────────────────────────────
+const countCapBaseResource = defineCollection({ slug: "posts", fields: { title: text() } });
+const countCapResource = {
+  ...countCapBaseResource,
+  admin: {
+    ...countCapBaseResource.admin,
+    view: { ...countCapBaseResource.admin?.view, state: { ...countCapBaseResource.admin?.view?.state, countLimit: 3 } },
+  },
+} as unknown as typeof countCapBaseResource;
+const countCapConfig = { collections: [countCapResource] } as unknown as VexConfig;
+
+describe("find (server) — total count cap", () => {
+  test("totalDocsCapped is true and totalDocs stops at countLimit once the real count exceeds it", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      for (let i = 0; i < 6; i++) {
+        await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}` });
+      }
+      return find({
+        ctx,
+        collection: "posts",
+        config: countCapConfig,
+        paginationOpts: { numItems: 2, cursor: null, totalDocs: true },
+      } as any);
+    });
+    expect(result.totalDocs).toBe(3);
+    expect(result.totalDocsCapped).toBe(true);
+  });
+
+  test("totalDocsCapped is false and totalDocs is exact when the real count sits under the limit", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "A", slug: "a" });
+      await ctx.db.insert("posts", { title: "B", slug: "b" });
+      return find({
+        ctx,
+        collection: "posts",
+        config: countCapConfig,
+        paginationOpts: { numItems: 1, cursor: null, totalDocs: true },
+      } as any);
+    });
+    expect(result.totalDocs).toBe(2);
+    expect(result.totalDocsCapped).toBe(false);
+  });
+
+  test("the isDone fast path (no countQuery needed) also reports totalDocsCapped: false", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Only one", slug: "only-one" });
+      return find({
+        ctx,
+        collection: "posts",
+        config: countCapConfig,
+        paginationOpts: { numItems: 10, cursor: null, totalDocs: true },
+      } as any);
+    });
+    expect(result.totalDocs).toBe(1);
+    expect(result.totalDocsCapped).toBe(false);
+  });
+});
+
+// ── Draft-pair pagination fix: canonical-row merge (find) ───────────────────
+describe("find (server) — draft-pair pagination fix (canonical-row merge)", () => {
+  /**
+   * Test 1 (findings §"test cases"): a pair must never be split across a
+   * page, even at the smallest possible page size — proving the merge
+   * doesn't depend on both raw rows co-residing in the same fetched page.
+   * `numItems: 1` only has room for ONE canonical row; the linked draft is
+   * never a canonical row (`canonicalRowFilter` excludes it), so it is
+   * never competing for that one slot — the published row's merge lookup
+   * (`mergeDraftCounterparts`) runs regardless of page size.
+   */
+  test("the first page, even with numItems: 1, already returns the merged pair (never split)", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
+      const draftId = await ctx.db.insert("posts", {
+        title: "Hello (draft edit)",
+        slug: "hello",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      });
+      return {
+        draftId,
+        page1: await find({
+          ctx,
+          collection: "posts",
+          config: versionedConfigWithAccess,
+          auth: editorAuth,
+          drafts: true,
+          paginationOpts: { numItems: 1, cursor: null },
+        } as any),
+      };
+    });
+    expect(result.page1.page).toHaveLength(1);
+    expect(result.page1.page[0]._id).toBe(result.draftId);
+    expect(result.page1.page[0].hasUnpublishedChanges).toBe(true);
+    // Not asserting `isDone` here: Convex's `.filter()`-based pagination
+    // can report `isDone: false` even with exactly one true match, since
+    // it scanned (and filtered out) the excluded linked-draft row without
+    // yet knowing whether a THIRD row exists beyond it — an artifact of
+    // `.filter()` scans generally, unrelated to this fix. The merged
+    // content/id on page 1 (asserted above) is what this test proves.
+  });
+
+  /**
+   * Test 2: totals count logical documents, not raw rows — a merged pair
+   * counts once, and an unrelated draft-only row (no `vex_publishedId`)
+   * counts as its own extra logical document. `numItems: 1` forces the
+   * separate count-query path (page 1 alone isn't `isDone`).
+   */
+  test("totalDocs counts canonical (logical) documents, not raw rows", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "A",
+        slug: "a",
+        vex_status: "published",
+      });
+      await ctx.db.insert("posts", {
+        title: "A (draft edit)",
+        slug: "a",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      });
+      await ctx.db.insert("posts", { title: "B", slug: "b", vex_status: "published" });
+      await ctx.db.insert("posts", { title: "C (unpublished)", slug: "c", vex_status: "draft" });
+      return find({
+        ctx,
+        collection: "posts",
+        config: versionedConfigWithAccess,
+        auth: editorAuth,
+        drafts: true,
+        paginationOpts: { numItems: 1, cursor: null, totalDocs: true },
+      } as any);
+    });
+    // 4 raw rows, 3 logical documents (A's pair merges to one).
+    expect(result.totalDocs).toBe(3);
+    expect(result.totalDocsCapped).toBe(false);
+  });
+
+  /**
+   * Test 3: a rendered row never changes appearance once Load More fetches
+   * a later page. Re-running page 1's own fetch, unchanged, after page 2
+   * has been fetched must return an identical result — no shared
+   * cross-page state for the merge to drift.
+   */
+  test("Load More never changes an already-rendered row's appearance", async () => {
+    const t = convexTest(schema, modules);
+    const { page1Again, page1First } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const publishedId = await ctx.db.insert("posts", {
+          title: "A",
+          slug: "a",
+          vex_status: "published",
+        });
+        await ctx.db.insert("posts", {
+          title: "A (draft edit)",
+          slug: "a",
+          vex_status: "draft",
+          vex_publishedId: publishedId,
+        });
+        await ctx.db.insert("posts", { title: "B", slug: "b", vex_status: "published" });
+
+        const args = {
+          ctx,
+          collection: "posts",
+          config: versionedConfigWithAccess,
+          auth: editorAuth,
+          drafts: true,
+          paginationOpts: { numItems: 1, cursor: null },
+        } as any;
+        const page1First: any = await find(args);
+        const page2: any = await find({
+          ...args,
+          paginationOpts: { numItems: 10, cursor: page1First.continueCursor },
+        });
+        const page1Again: any = await find(args);
+        return { page1First, page2, page1Again };
+      },
+    );
+    expect((page1Again as any).page).toEqual((page1First as any).page);
+    expect((page1Again as any).page[0].hasUnpublishedChanges).toBe(true);
+  });
+
+  /**
+   * Test 5: sort order follows the CANONICAL (published) row's own field
+   * value, while the displayed field still shows the draft's pending
+   * value — the same divergence the former client-side
+   * `collapseVersionedPairs` used to produce, now produced server-side by
+   * `mergeDraftCounterparts` (`collapseVersionedPairs` itself is gone,
+   * unused once this server-side merge replaced it) and pinned down
+   * explicitly so a future change to it is deliberate, not an accident.
+   */
+  test("sort position follows the published value; the displayed field still shows the draft's", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Zeta",
+        slug: "zeta",
+        vex_status: "published",
+      });
+      await ctx.db.insert("posts", {
+        title: "Alpha",
+        slug: "zeta",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      });
+      await ctx.db.insert("posts", { title: "Mango", slug: "mango", vex_status: "published" });
+      return find({
+        ctx,
+        collection: "posts",
+        config: versionedConfigWithAccess,
+        auth: editorAuth,
+        drafts: true,
+        order: "asc",
+        withIndex: { name: "by_title", range: (q: any) => q.gte("title", "") },
+      } as any);
+    });
+    // Published values sort Mango ("M") before Zeta ("Z") — the pair's own
+    // position follows "Zeta", not the draft's "Alpha" ("A", which would
+    // sort first if the draft's value were used instead).
+    expect(result.map((d: any) => d.title)).toEqual(["Mango", "Alpha"]);
+    expect(result[1].hasUnpublishedChanges).toBe(true);
+  });
+
+  /**
+   * Test 6: a caller without `readDrafts` never performs the draft
+   * counterpart lookup — `wantsDrafts` is `false` for them, so
+   * `mergeDraftCounterparts` is skipped entirely and the published row
+   * carries no `hasUnpublishedChanges` property at all (never merged).
+   */
+  test("a caller without readDrafts never merges a draft counterpart in", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
+      await ctx.db.insert("posts", {
+        title: "Hello (draft edit)",
+        slug: "hello",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      });
+      return find({
+        ctx,
+        collection: "posts",
+        config: versionedConfigWithAccess,
+        auth: viewerAuth,
+        drafts: true,
+      });
+    });
+    expect(result).toHaveLength(1);
+    expect((result[0] as any).hasUnpublishedChanges).toBeUndefined();
+  });
+});
+
+// ── Polish fix: count cap must not under-report when rows are dropped at
+// the raw window's edge by read access (not by the `where` the caller sent) ──
+const undercountPostsResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text(), featured: checkbox() },
+  admin: { view: { countLimit: 2 } },
+});
+const undercountConfig = {
+  collections: [undercountPostsResource],
+  access: defineAccess({
+    roles: ["viewer"] as const,
+    resources: [undercountPostsResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      viewer: {
+        posts: { read: ({ data }: { data?: { featured?: boolean } }) => data?.featured !== true },
+      },
+    },
+  }),
+} as unknown as VexConfig;
+const undercountViewerAuth = { user: { _id: "u1", roles: "viewer" } };
+
+describe("find (server) — total count cap, undercount regression", () => {
+  test("totalDocsCapped reflects the RAW window, not the readable-filtered length, when a row inside it is dropped by access", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      // countLimit: 2 → the raw count window is take(3). Three matching
+      // rows exist, one of which `viewer` can't read — the raw window is
+      // FULL (3 rows, countLimit + 1) but the readable-filtered length is
+      // only 2 (<= countLimit), which the old code mistook for an exact,
+      // uncapped total instead of a floor.
+      await ctx.db.insert("posts", { title: "A", slug: "a", featured: false });
+      await ctx.db.insert("posts", { title: "B", slug: "b", featured: true });
+      await ctx.db.insert("posts", { title: "C", slug: "c", featured: false });
+      return find({
+        ctx,
+        collection: "posts",
+        config: undercountConfig,
+        auth: undercountViewerAuth,
+        paginationOpts: { numItems: 1, cursor: null, totalDocs: true },
+      } as any);
+    });
+    expect(result.totalDocsCapped).toBe(true);
+    expect(result.totalDocs).toBe(2);
+  });
+});
+

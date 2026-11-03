@@ -13,7 +13,7 @@ import {
   TabsTrigger,
 } from "../../ui";
 import { RelationshipDocumentList } from "./RelationshipDocumentList";
-import { CreateDocumentForm } from "../../collections/CreateDocumentForm";
+import { ListViewCreateDocumentForm } from "../../collections/listView/create/ListViewCreateDocumentForm";
 
 /**
  * Props for {@link RelationshipPicker}.
@@ -44,8 +44,8 @@ export interface RelationshipPickerProps {
  * true auto-selects it and returns to the Select tab instead of closing;
  * single-select calls `onSelect` immediately (Decision 9 — a created document
  * is auto-selected). The dialog refuses to close (Escape/backdrop/Cancel)
- * while `CreateDocumentForm` reports an in-flight submit via
- * `onSubmittingChange`, same guard `CreateDocumentModal` applies.
+ * while `ListViewCreateDocumentForm` reports an in-flight submit via
+ * `onSubmittingChange`, same guard `ListViewCreateDocumentModal` applies.
  *
  * @param props - Component props.
  * @returns A `Dialog` with Select/Create tabs.
@@ -151,7 +151,7 @@ export function RelationshipPicker({
           </TabsContent>
 
           <TabsContent value="create" className="mt-0">
-            <CreateDocumentForm
+            <ListViewCreateDocumentForm
               collection={targetCollection}
               onCreated={handleCreated}
               onCancel={handleCancel}

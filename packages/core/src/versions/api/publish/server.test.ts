@@ -1,14 +1,16 @@
 import { convexTest } from "convex-test";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
-import { ConvexError } from "convex/values";
+import { CommitTsPlaceholder, ConvexError, type GenericId } from "convex/values";
 import { describe, expect, test } from "vitest";
 
 import * as _generatedApi from "../../../db/test/convex/_generated/api";
 import schema from "../../../db/test/convex/schema";
 import type { VexConfig } from "../../../config";
 import { saveDraft } from "../saveDraft/server";
+import { assertUniqueAmongPublished } from "../../assertUniqueAmongPublished";
 import { publish } from "./server";
-import { defineCollection, defineGlobal, relationship, text } from "../../../index";
+import { commitTs, defineCollection, defineGlobal, relationship, text } from "../../../index";
+import type { AdminField } from "../../../fields";
 
 const versionedPosts = defineCollection({
   slug: "posts",
@@ -17,6 +19,37 @@ const versionedPosts = defineCollection({
 });
 
 const fixtureConfig = { collections: [versionedPosts] } as unknown as VexConfig;
+
+// ── Draft-pair pagination fix follow-up: publish must not collide with its
+// own row (`docId` threaded through `prepareEdit` to `publishShared`, and
+// `assertUniqueAmongPublished` excluding both the published row and its
+// linked draft via `vex_publishedId`) ─────────────────────────────────────
+const versionedPostsWithUniqueSlug = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text(),
+    slug: text({
+      required: true,
+      validate: async ({ value, doc, ctx }) => {
+        // `doc` is narrowed only to "has an _id key" above — cast the
+        // value itself to the id type `assertUniqueAmongPublished` expects.
+        const docId = (
+          typeof doc === "object" && doc !== null && "_id" in doc ? doc._id : undefined
+        ) as GenericId<"posts"> | undefined;
+        await assertUniqueAmongPublished({
+          ctx,
+          collection: "posts",
+          indexName: "by_slug",
+          field: "slug",
+          value,
+          excludeId: docId,
+        });
+      },
+    }),
+  },
+  versions: { drafts: true },
+});
+const uniqueSlugConfig = { collections: [versionedPostsWithUniqueSlug] } as unknown as VexConfig;
 
 const versionedBanner = defineGlobal({
   slug: "banner",
@@ -486,6 +519,92 @@ describe("publish (server)", () => {
   });
 });
 
+describe("publish (server) — regression: publish must not collide with its own row (Fix D follow-up)", () => {
+  test("first publish of a brand-new draft succeeds (the draft's own unlinked row must exclude itself)", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const draftId = await ctx.db.insert("posts", {
+        title: "Smoke test",
+        slug: "committs-smoke-test",
+        vex_status: "draft",
+      });
+      const publishedId = await publish({
+        ctx,
+        config: uniqueSlugConfig,
+        collection: "posts",
+        id: draftId,
+      });
+      expect(publishedId).toBe(draftId);
+      expect((await ctx.db.get(draftId))?.vex_status).toBe("published");
+    });
+  });
+
+  test("re-publishing an already-published doc with an unchanged slug succeeds", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "same-slug",
+        vex_status: "published",
+      });
+      const draftId = await saveDraft({
+        ctx,
+        config: uniqueSlugConfig,
+        collection: "posts",
+        id: publishedId,
+        data: { title: "Edited" },
+      });
+      const returnedId = await publish({
+        ctx,
+        config: uniqueSlugConfig,
+        collection: "posts",
+        id: draftId as never,
+      });
+      expect(returnedId).toBe(publishedId);
+      expect((await ctx.db.get(publishedId))?.title).toBe("Edited");
+      expect((await ctx.db.get(publishedId))?.slug).toBe("same-slug");
+    });
+  });
+
+  test("publishing with a slug already taken by ANOTHER published doc still fails", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", {
+        title: "Taken",
+        slug: "taken-slug",
+        vex_status: "published",
+      });
+      const draftId = await ctx.db.insert("posts", {
+        title: "New",
+        slug: "taken-slug",
+        vex_status: "draft",
+      });
+      await expect(
+        publish({ ctx, config: uniqueSlugConfig, collection: "posts", id: draftId }),
+      ).rejects.toThrow();
+    });
+  });
+
+  test("publishing with a slug already taken by another UNLINKED draft still fails (Fix D's own intent)", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", {
+        title: "Other unlinked draft",
+        slug: "shared-slug",
+        vex_status: "draft",
+      });
+      const draftId = await ctx.db.insert("posts", {
+        title: "New",
+        slug: "shared-slug",
+        vex_status: "draft",
+      });
+      await expect(
+        publish({ ctx, config: uniqueSlugConfig, collection: "posts", id: draftId }),
+      ).rejects.toThrow();
+    });
+  });
+});
+
 describe("publish (server) — global target", () => {
   test("throws when there is no draft and no data", async () => {
     const t = convexTest(schema, modules);
@@ -731,4 +850,36 @@ describe("publish (server) — global target", () => {
     );
     expect(versions).toHaveLength(2);
   });
+});
+
+describe("publish (server) — commitTs on-policy (spec Step 7)", () => {
+  test.each(["save", "publish", "all"] as const)(
+    "an on: '%s' field is stamped with a CommitTsPlaceholder on publish",
+    async (on) => {
+      const config = {
+        collections: [
+          defineCollection({
+            slug: "posts",
+            fields: {
+              title: text(),
+              slug: text({ required: true }),
+              updatedAt: commitTs({ on, meta: { locked: true } }),
+            } as Record<string, AdminField>,
+            versions: { drafts: true },
+          }),
+        ],
+      } as unknown as VexConfig;
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const draftId = await ctx.db.insert("posts", {
+          title: "Draft",
+          slug: "draft",
+          vex_status: "draft",
+        });
+        await publish({ ctx, config, collection: "posts", id: draftId });
+        const row = await ctx.db.get(draftId);
+        expect(row?.updatedAt).toBeInstanceOf(CommitTsPlaceholder);
+      });
+    },
+  );
 });

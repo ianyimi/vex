@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
-import { ConvexError } from "convex/values";
+import { CommitTsPlaceholder, ConvexError } from "convex/values";
 import { describe, expect, test } from "vitest";
 
 import * as _generatedApi from "../../../db/test/convex/_generated/api";
@@ -8,7 +8,8 @@ import schema from "../../../db/test/convex/schema";
 import type { VexConfig } from "../../../config";
 import { saveDraft } from "../saveDraft/server";
 import { unpublish } from "./server";
-import { defineCollection, defineGlobal, text } from "../../../index";
+import { commitTs, defineCollection, defineGlobal, text } from "../../../index";
+import type { AdminField } from "../../../fields";
 
 const versionedPosts = defineCollection({
   slug: "posts",
@@ -266,5 +267,43 @@ describe("unpublish (server) — global target", () => {
         unpublish({ ctx, config: globalFixtureConfig, global: "banner" }),
       ),
     ).rejects.toThrow(ConvexError);
+  });
+});
+
+describe("unpublish (server) — commitTs on-policy (spec Step 7)", () => {
+  test.each([
+    ["save", true],
+    ["all", true],
+    ["publish", false],
+  ] as const)("an on: '%s' field is%s stamped on unpublish", async (on, shouldStamp) => {
+    const config = {
+      collections: [
+        defineCollection({
+          slug: "posts",
+          fields: {
+            title: text(),
+            slug: text(),
+            updatedAt: commitTs({ on, meta: { locked: true } }),
+          } as Record<string, AdminField>,
+          versions: { drafts: true },
+        }),
+      ],
+      globals: [],
+    } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+      });
+      await unpublish({ ctx, config, collection: "posts", id: publishedId });
+      const row = await ctx.db.get(publishedId);
+      if (shouldStamp) {
+        expect(row?.updatedAt).toBeInstanceOf(CommitTsPlaceholder);
+      } else {
+        expect(row?.updatedAt).toBeUndefined();
+      }
+    });
   });
 });

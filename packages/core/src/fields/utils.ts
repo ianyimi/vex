@@ -222,6 +222,7 @@ export function getFieldsInputSchema(props: {
   const res: Record<string, ZodType> = {};
   for (const [fieldKey, fieldDef] of Object.entries(getDataFields({ fields: props.fields }))) {
     if (fieldDef.admin.hidden) continue;
+    if (fieldDef.type === ADMIN_FIELDS.commitTs.type) continue;
     res[fieldKey] = adminFieldToInputSchema({
       field: fieldDef,
       ignoreRequired: props.ignoreRequired,
@@ -607,4 +608,75 @@ export function getUIFieldsWithCell(props: {
   };
   walk(props.fields, undefined);
   return result;
+}
+
+/**
+ * Collects every `ui()` field's resolved key, reachable by hoisting through
+ * `tabs()`/`row()`/`collapsible()` nesting — the general counterpart of
+ * {@link getUIFieldsWithCell} (which additionally requires an
+ * `admin.components.Cell`, for list-column generation specifically). A
+ * caller that needs to know about EVERY `ui()` field a collection
+ * declares — not just the ones with a list column — uses this instead
+ * (access-system-fields plan: UI fields are gateable in a
+ * `FieldPermissionMap` "under the same rule" as data fields, so a caller
+ * counting hidden fields, e.g. the Inspect peek's own notice, needs the
+ * FULL set, `Cell` or not).
+ *
+ * Same scope/traversal as {@link getUIFieldsWithCell}: does not descend
+ * into `group()`/`array()`/`blocks()` (their own `ui()` sub-fields never
+ * surface as a top-level column OR a top-level peek row either — both
+ * consumers only ever ask about TOP-LEVEL UI fields); a named tab's
+ * `ui()` field is keyed `"<tabName>.<key>"`, matching how a DATA field in
+ * the same named tab is addressed (`getDataFields`'s own group-shaped key).
+ *
+ * @see {@link getUIFieldsWithCell} for the Cell-only counterpart this mirrors.
+ * @returns Every `ui()` field's resolved key.
+ */
+export function getUIFieldKeys(props: { fields: Record<string, AdminField> }): string[] {
+  const result: string[] = [];
+  const walk = (fields: Record<string, AdminField>, prefix: string | undefined): void => {
+    for (const [key, field] of Object.entries(fields)) {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+      if (field.type === ADMIN_FIELDS.ui.type) {
+        result.push(fullKey);
+        continue;
+      }
+      switch (field.type) {
+        case ADMIN_FIELDS.row.type:
+        case ADMIN_FIELDS.collapsible.type:
+          walk(field.fields, prefix);
+          continue;
+        case ADMIN_FIELDS.tabs.type:
+          for (const tab of field.tabs) {
+            const tabPrefix =
+              tab.name !== undefined ? (prefix ? `${prefix}.${tab.name}` : tab.name) : prefix;
+            walk(tab.fields, tabPrefix);
+          }
+          continue;
+        default:
+          continue;
+      }
+    }
+  };
+  walk(props.fields, undefined);
+  return result;
+}
+
+/**
+ * Whether a field's value counts as empty for a READ-ONLY display's own
+ * "—" placeholder and its copy button's disabled state — `undefined`,
+ * `null`, `""`, or an empty array. Deliberately narrower than JS
+ * truthiness: `0` and `false` are legitimate non-empty values for a
+ * `number`/`checkbox` field, so neither counts as empty here.
+ *
+ * Shared by every `Display` component's own "—" check and the peek's
+ * copy button (polish round) — one rule, not two definitions of
+ * "nothing to show" that could drift apart.
+ *
+ * @param value - The raw field value to test.
+ * @returns `true` for `undefined`/`null`/`""`/`[]`, `false` otherwise.
+ */
+export function isDisplayValueEmpty(value: unknown): boolean {
+  if (value === undefined || value === null || value === "") return true;
+  return Array.isArray(value) && value.length === 0;
 }

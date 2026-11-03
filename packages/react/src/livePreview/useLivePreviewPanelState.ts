@@ -2,11 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ADMIN_COOKIE_NAME,
+  adminCollectionCookieName,
   DEFAULT_LIVE_PREVIEW_PANEL_MIN_SIZE,
-  livePreviewLayoutCookieName,
-  livePreviewPanelCookieName,
+  parseAdminCollectionCookie,
+  parseAdminCookie,
   resolveLivePreviewPanelMinSize,
+  type AdminCookieLivePreview,
 } from "@vexcms/core";
+import { writeAdminCollectionCookie, writeAdminCookie } from "../adminCookie";
+
+/** Whether a live-preview panel's cookie state belongs to a collection's own `vex-admin:<collection>` cookie, or the single shared `vex-admin` cookie (one global edit view is open at a time, Decision 51). */
+export type LivePreviewPanelScope = "collection" | "global";
 
 /** The two split columns' minimum shares, in percent. */
 export interface LivePreviewPanelMinSizes {
@@ -87,7 +94,13 @@ export function useLivePreviewPanelMinSize(): {
  * `readLivePreviewPanelCookie` from `@vexcms/core` — that helper cannot live in
  * this module, which is client-only.
  *
+ * @param props.basePath - The project's `config.basePath` — the cookie's `Path` attribute.
  * @param props.slug - Scopes the cookie per collection/global.
+ * @param props.scope - `"collection"` writes into `vex-admin:<slug>`'s own
+ *   `livePreview` field; `"global"` writes into the single shared
+ *   `vex-admin` cookie's `livePreview` field instead (Decision 51 — only
+ *   one global edit view is ever open at a time, so globals share one
+ *   live-preview panel state rather than each getting its own cookie).
  * @param props.initialOpen - The server-read cookie-or-default value, threaded
  *   down from `NextAdminPage`.
  * @param props.enabled - Whether live preview is configured for this slug.
@@ -99,7 +112,9 @@ export function useLivePreviewPanelMinSize(): {
  * @returns `isOpen` and a `toggle` function that flips it and rewrites the cookie.
  */
 export function useLivePreviewPanelState(props: {
+  basePath: string;
   slug: string;
+  scope: LivePreviewPanelScope;
   initialOpen: boolean;
   enabled: boolean;
   isMobile: boolean;
@@ -150,48 +165,70 @@ export function useLivePreviewPanelState(props: {
     if (props.enabled) return;
     setIsOpen(false);
     autoClosedRef.current = false;
-    if (readCookie(livePreviewPanelCookieName({ slug: props.slug })) === "1") {
-      writeLivePreviewPanelCookie({ slug: props.slug, isOpen: false });
+    if (readCurrentLivePreview({ slug: props.slug, scope: props.scope })?.panelOpen === true) {
+      writeLivePreviewPanelCookie({ basePath: props.basePath, slug: props.slug, scope: props.scope, isOpen: false });
     }
-  }, [props.enabled, props.slug]);
+  }, [props.enabled, props.slug, props.scope]);
 
   const toggle = useCallback(() => {
     autoClosedRef.current = false;
     setIsOpen((prev) => {
       const next = prev === false;
-      writeLivePreviewPanelCookie({ slug: props.slug, isOpen: next });
+      writeLivePreviewPanelCookie({ basePath: props.basePath, slug: props.slug, scope: props.scope, isOpen: next });
       return next;
     });
-  }, [props.slug]);
+  }, [props.basePath, props.slug, props.scope]);
 
   return { isOpen, toggle };
 }
 
 /**
- * Reads one preference cookie's raw value client-side — names and values are
- * written unencoded by `writePreferenceCookie`, so they are read the same way.
+ * Reads one cookie's raw value out of `document.cookie`'s own semicolon-separated string.
  *
- * @param name - Cookie name.
- * @returns The value, or `undefined` when absent or outside a browser.
+ * @param name - The cookie's name (regex-escaped internally before matching).
+ * @returns The cookie's decoded-as-is raw value, or `undefined` if `document`
+ *   is unavailable (SSR) or no cookie with that name is present.
  */
-function readCookie(name: string): string | undefined {
+function readCookieValue(name: string): string | undefined {
   if (typeof document === "undefined") return undefined;
-  const prefix = `${name}=`;
-  const entry = document.cookie.split("; ").find((c) => c.startsWith(prefix));
-  return entry?.slice(prefix.length);
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=([^;]*)`));
+  return match?.[1];
 }
 
 /**
- * Writes the panel's open/closed cookie client-side.
+ * Reads the CURRENT `livePreview` sub-object off the relevant consolidated
+ * admin cookie (Decision 51) — the global `vex-admin` cookie for
+ * `scope: "global"`, or `vex-admin:<slug>` for `scope: "collection"` —
+ * needed before a write so `panelOpen`/`panelSize` can be merged into it
+ * individually rather than overwriting each other.
+ * @returns The cookie's `livePreview` sub-object, or `undefined` if the
+ *   cookie is absent/unparseable or has no `livePreview` field set.
+ */
+function readCurrentLivePreview(props: { slug: string; scope: LivePreviewPanelScope }): AdminCookieLivePreview | undefined {
+  if (props.scope === "global") {
+    return parseAdminCookie({ cookieValue: readCookieValue(ADMIN_COOKIE_NAME) }).livePreview;
+  }
+  return parseAdminCollectionCookie({
+    cookieValue: readCookieValue(adminCollectionCookieName({ collection: props.slug })),
+  }).livePreview;
+}
+
+/**
+ * Writes the panel's open/closed cookie client-side, merging into the
+ * relevant consolidated admin cookie's `livePreview.panelOpen` field.
  *
+ * @param props.basePath - The project's `config.basePath` — the cookie's `Path` attribute.
  * @param props.slug - The collection or global the choice applies to.
+ * @param props.scope - See {@link useLivePreviewPanelState}'s own doc comment.
  * @param props.isOpen - The new open state to persist.
  */
-function writeLivePreviewPanelCookie(props: { slug: string; isOpen: boolean }): void {
-  writePreferenceCookie({
-    name: livePreviewPanelCookieName({ slug: props.slug }),
-    value: props.isOpen ? "1" : "0",
-  });
+function writeLivePreviewPanelCookie(props: {
+  basePath: string;
+  slug: string;
+  scope: LivePreviewPanelScope;
+  isOpen: boolean;
+}): void {
+  writeLivePreviewField({ basePath: props.basePath, slug: props.slug, scope: props.scope, patch: { panelOpen: props.isOpen } });
 }
 
 /**
@@ -199,34 +236,48 @@ function writeLivePreviewPanelCookie(props: { slug: string; isOpen: boolean }): 
  * pane — so a refresh renders at that width server-side instead of snapping to
  * it after hydration. Called from the panel group's `onLayout`.
  *
+ * @param props.basePath - The project's `config.basePath` — the cookie's `Path` attribute.
  * @param props.slug - The collection or global the split belongs to.
+ * @param props.scope - See {@link useLivePreviewPanelState}'s own doc comment.
  * @param props.formPanelSize - The form column's new share of the split.
  */
 export function writeLivePreviewLayoutCookie(props: {
+  basePath: string;
   slug: string;
+  scope: LivePreviewPanelScope;
   formPanelSize: number;
 }): void {
-  writePreferenceCookie({
-    name: livePreviewLayoutCookieName({ slug: props.slug }),
+  writeLivePreviewField({
+    basePath: props.basePath,
+    slug: props.slug,
+    scope: props.scope,
     // Whole percent: the sub-pixel precision react-resizable-panels reports is
     // noise in a cookie that only seeds the first paint.
-    value: String(Math.round(props.formPanelSize)),
+    patch: { panelSize: Math.round(props.formPanelSize) },
   });
 }
 
 /**
- * Writes one long-lived UI preference cookie, guarded the way
- * `ThemeProvider.tsx`'s `writeStoredTheme` guards `localStorage`.
- *
- * @param props.name - Cookie name.
- * @param props.value - Cookie value.
+ * Merges `props.patch` into the relevant consolidated admin cookie's
+ * `livePreview` sub-object (reading its CURRENT value first, so setting
+ * `panelOpen` never clobbers an already-persisted `panelSize` and vice
+ * versa), then writes it back via {@link writeAdminCookie}/
+ * {@link writeAdminCollectionCookie} — both already guard a
+ * blocked/unavailable `document.cookie` (Safari private mode / strict
+ * cookie settings); losing a UI preference is not worth crashing the view.
  */
-function writePreferenceCookie(props: { name: string; value: string }): void {
-  try {
-    const oneYearInSeconds = 60 * 60 * 24 * 365;
-    document.cookie = `${props.name}=${props.value}; path=/; max-age=${oneYearInSeconds}; samesite=lax`;
-  } catch {
-    // document.cookie can throw under Safari private mode / strict cookie
-    // settings; losing a UI preference is not worth crashing the view.
+function writeLivePreviewField(props: {
+  basePath: string;
+  slug: string;
+  scope: LivePreviewPanelScope;
+  patch: Partial<AdminCookieLivePreview>;
+}): void {
+  const current = readCurrentLivePreview({ slug: props.slug, scope: props.scope }) ?? {};
+  const nextLivePreview: AdminCookieLivePreview = { ...current, ...props.patch };
+  if (props.scope === "global") {
+    writeAdminCookie({ basePath: props.basePath, patch: { livePreview: nextLivePreview } });
+  } else {
+    writeAdminCollectionCookie({ basePath: props.basePath, collection: props.slug, patch: { livePreview: nextLivePreview } });
   }
 }
+

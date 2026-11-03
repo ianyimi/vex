@@ -1,5 +1,5 @@
 ---
-status: draft
+status: done
 spec_id: 2026-10-26-list-view-overhaul
 touches:
   - ".agent/docs/product/v0.1.0-launch-plan.md"
@@ -9,7 +9,9 @@ touches:
   - "README.md"
   - "apps/docs/src/content/docs/guides/caching-and-seo.mdx"
   - "apps/docs/src/content/docs/guides/list-views.mdx"
+  - "apps/docs/src/content/docs/guides/admin-cookies.mdx"
   - "apps/test/convex/seed.ts"
+  - "apps/test/src/vexcms/collections/pages.ts"
   - "apps/test/src/auth/access.ts"
   - "apps/test/src/components/TestimonialBulkApproveAction.tsx"
   - "apps/test/src/components/TestimonialFeatureRowAction.tsx"
@@ -19,6 +21,14 @@ touches:
   - "packages/core/src/access/constants.ts"
   - "packages/core/src/access/types.ts"
   - "packages/core/src/collections/api/collectionsApi.ts"
+  - "packages/core/src/adminCookie.test.ts"
+  - "packages/core/src/adminCookie.ts"
+  - "packages/core/src/collections/collectRelationshipFilterValues.test.ts"
+  - "packages/core/src/collections/collectRelationshipFilterValues.ts"
+  - "packages/core/src/collections/listRowCountCookie.test.ts"
+  - "packages/core/src/collections/listRowCountCookie.ts"
+  - "packages/core/src/fields/types.ts"
+  - "packages/core/src/livePreview/panelCookie.ts"
   - "packages/core/src/collections/api/find/server.test.ts"
   - "packages/core/src/collections/api/find/server.ts"
   - "packages/core/src/collections/api/listViews/server.test.ts"
@@ -40,6 +50,8 @@ touches:
   - "packages/core/src/collections/matchDeclaredViewFilter.ts"
   - "packages/core/src/collections/buildListQueryArgs.test.ts"
   - "packages/core/src/collections/buildListQueryArgs.ts"
+  - "packages/core/src/collections/completeColumnOrder.test.ts"
+  - "packages/core/src/collections/completeColumnOrder.ts"
   - "packages/core/src/collections/listPreferenceCookies.test.ts"
   - "packages/core/src/collections/listPreferenceCookies.ts"
   - "packages/core/src/collections/listUrlParams.test.ts"
@@ -55,6 +67,10 @@ touches:
   - "packages/core/src/collections/types.ts"
   - "packages/core/src/collections/validateTableConfig.test.ts"
   - "packages/core/src/collections/validateTableConfig.ts"
+  - "packages/core/src/collections/validateViewConfig.test.ts"
+  - "packages/core/src/collections/validateViewConfig.ts"
+  - "packages/core/src/collections/resolveColumnConfig.test.ts"
+  - "packages/core/src/collections/resolveColumnConfig.ts"
   - "packages/core/src/collections/validator.test.ts"
   - "packages/core/src/components/builtinIds.ts"
   - "packages/core/src/components/types.ts"
@@ -69,9 +85,14 @@ touches:
   - "packages/next/src/NextAdminPage.tsx"
   - "packages/react/src/client/index.ts"
   - "apps/test/src/app/(vexcms)/admin/[[...path]]/page.tsx"
+  - "apps/test/src/app/(vexcms)/admin/layout.tsx"
   - "apps/www/convex/seed.ts"
   - "apps/www/src/app/(vexcms)/admin/[[...path]]/page.tsx"
+  - "apps/www/src/app/(vexcms)/admin/layout.tsx"
+  - "apps/www/src/vexcms/collections/pages.ts"
   - "packages/create-vexcms/templates/base-nextjs/src/app/(vexcms)/admin/[[...path]]/page.tsx"
+  - "packages/create-vexcms/templates/base-nextjs/src/app/(vexcms)/admin/layout.tsx"
+  - "packages/create-vexcms/templates/marketing-site/src/vexcms/collections/pages.ts"
   - "packages/react/src/collections/CollectionDeleteAction.tsx"
   - "packages/react/src/collections/CollectionDuplicateMenuItem.tsx"
   - "packages/react/src/collections/CollectionEditView.test.tsx"
@@ -91,6 +112,10 @@ touches:
   - "packages/react/src/collections/editView/CollectionEditView.test.tsx"
   - "packages/react/src/collections/editView/CollectionEditView.tsx"
   - "packages/react/src/collections/editView/useDuplicateCollectionDocument.ts"
+  - "packages/react/src/adapter.ts"
+  - "packages/react/src/adminCookie.test.ts"
+  - "packages/react/src/adminCookie.ts"
+  - "packages/react/src/admin/AdminLayout.tsx"
   - "packages/react/src/collections/index.ts"
   - "packages/react/src/collections/listView/CollectionListContext.tsx"
   - "packages/react/src/collections/listView/CollectionListView.test.tsx"
@@ -140,8 +165,11 @@ touches:
   - "packages/react/src/collections/listView/listViewStore.ts"
   - "packages/react/src/collections/listView/listPreferenceCookies.test.ts"
   - "packages/react/src/collections/listView/listPreferenceCookies.ts"
+  - "packages/react/src/livePreview/useLivePreviewPanelState.ts"
   - "packages/react/src/collections/listView/useListPeekPrefetch.test.ts"
   - "packages/react/src/collections/listView/useListPeekPrefetch.ts"
+  - "packages/react/src/collections/listView/useListViewPrefetch.test.ts"
+  - "packages/react/src/collections/listView/useListViewPrefetch.ts"
   - "packages/react/src/collections/listView/useListShortcuts.test.ts"
   - "packages/react/src/collections/listView/useListShortcuts.ts"
   - "packages/react/src/collections/listView/useListUrlState.test.tsx"
@@ -152,6 +180,30 @@ touches:
   - "packages/react/src/collections/listView/whereDnf.ts"
   - "packages/react/src/collections/useDuplicateCollectionDocument.ts"
   - "packages/react/src/fields/index.tsx"
+  - "packages/react/src/fields/registry.ts"
+  - "packages/react/src/fields/text/FilterInput.test.tsx"
+  - "packages/react/src/fields/text/FilterInput.tsx"
+  - "packages/react/src/fields/email/FilterInput.test.tsx"
+  - "packages/react/src/fields/email/FilterInput.tsx"
+  - "packages/react/src/fields/url/FilterInput.test.tsx"
+  - "packages/react/src/fields/url/FilterInput.tsx"
+  - "packages/react/src/fields/textarea/FilterInput.test.tsx"
+  - "packages/react/src/fields/textarea/FilterInput.tsx"
+  - "packages/react/src/fields/number/FilterInput.test.tsx"
+  - "packages/react/src/fields/number/FilterInput.tsx"
+  - "packages/react/src/fields/checkbox/FilterInput.test.tsx"
+  - "packages/react/src/fields/checkbox/FilterInput.tsx"
+  - "packages/react/src/fields/date/FilterInput.test.tsx"
+  - "packages/react/src/fields/date/FilterInput.tsx"
+  - "packages/react/src/fields/select/FilterInput.test.tsx"
+  - "packages/react/src/fields/select/FilterInput.tsx"
+  - "packages/react/src/fields/color/FilterInput.test.tsx"
+  - "packages/react/src/fields/color/FilterInput.tsx"
+  - "packages/react/src/fields/relationship/FilterInput.test.tsx"
+  - "packages/react/src/fields/relationship/FilterInput.tsx"
+  - "packages/react/src/fields/upload/FilterInput.test.tsx"
+  - "packages/react/src/fields/upload/FilterInput.tsx"
+  - "packages/react/src/ui/sidebar.tsx"
   - "packages/react/src/fields/relationship/RelationshipPicker.test.tsx"
   - "packages/react/src/fields/relationship/RelationshipPicker.tsx"
   - "packages/react/src/globals/GlobalEditView.tsx"
@@ -197,8 +249,8 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
 
 ## Design Decisions
 
-1. **One spec, 17 ordered steps, all `[agent]`.** Step bodies are mixed: Steps 3, 4, 5, 8, and 12 ship full code; the rest ship guided stubs (signatures, JSDoc, numbered `// TODO: implement` pseudocode). The designs are a UX reference, not a pixel target: every element is built from existing `packages/react/src/ui` components, with no custom Tailwind added to `ui/` to match mockups. The spec follows the conventions in the developer's outstanding edit-view overhaul (`2026-10-26-edit-view-overhaul`).
-2. **`admin.table.searchField: readonly TFieldSlug[]`.** It is typed to the collection's own field slugs. Array order is the picker order, and the first entry is the default when the user starts typing. With no `searchField`, the search bar is not rendered. Why: Convex `withSearchIndex` queries one index and field per query, and collections can have several searchable fields.
+1. **One spec, 24 ordered steps, all `[agent]`.** Step bodies are mixed: Steps 3, 4, 5, 8, and 12 ship full code; the rest (including Steps 17–23, added 2026-10-28/29) ship guided stubs (signatures, JSDoc, numbered `// TODO: implement` pseudocode). The designs are a UX reference, not a pixel target: every element is built from existing `packages/react/src/ui` components, with no custom Tailwind added to `ui/` to match mockups. The spec follows the conventions in the developer's outstanding edit-view overhaul (`2026-10-26-edit-view-overhaul`).
+2. **`admin.table.searchField: readonly TFieldSlug[]`.** It is typed to the collection's own field slugs. Array order is the picker order, and the first entry is the default when the user starts typing. With no `searchField`, the search bar is not rendered. Why: Convex `withSearchIndex` queries one index and field per query, and collections can have several searchable fields. **Revised 2026-10-29, developer:** moves to `admin.view.searchFields` (renamed plural, Decision 45's FINAL revision — `admin.table` no longer exists). Same shape, same validation, new location.
 3. **`searchField` entries must declare a search index.** `defineConfig` throws a `VexConfigError` naming the field and the `searchIndex` to add. Schema generation emits the search index for every `searchField` entry, which drops the old "only when a collection points here" condition for those fields. Why: fail at config time, not in the browser.
 4. **Sort is `{ field, order: "asc" | "desc" }` everywhere**: `defaultSort`, the `find` args, the URL, and views. Why: it keeps the existing `defaultSort` shape, and `order` matches Convex `.order()`.
 5. **Sort is portable, not an index.** Clients send `sort`, never `withIndex` (B3 Decision 14). The server resolves it to the index whose first field is `field` (`resolveCollectionIndexes`, draftStatus-aware) and applies `order`. `_creationTime` needs no index. Why: stored views and URLs stay backend-neutral.
@@ -207,22 +259,40 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
 8. **Pagination stays cursor Load More, plus a page-size select** driven by `pageSizeOptions` and labelled "Rows per load". Changing the size resets the list to the first page at the new size, without re-chunking the loaded rows. Earlier pages stay subscribed (`usePaginatedQuery` keeps every page live). There is no auto-load on scroll. Why: search, sort, and filters meet the navigability acceptance; numbered pages would cost O(n) scans on Convex.
 9. **URL state uses the design's compact params:** `q`, `qf` (omitted when it is the default field), `sort=<field>.<asc|desc>`, `filter=(<field>.<op>.<value>,…)|(…)` (rows comma-separated inside a group, groups joined by `|`), `size` (omitted at the default), `view=<config|shared|local>:<id>`, and `peek=<id>`. Values are typed by field: numbers raw, booleans `true`/`false`, dates ISO, relationships by ID, strings URI-encoded. A typed parser/serializer round-trips the plain `VexWhereNode`. Invalid params or rows are dropped, never thrown. Typing updates the URL with `replace`; discrete actions (sort, view switch, Enter in search) `push`. With a view active, only params that differ from the saved view appear. Load More never touches the URL. Columns and density are not in the URL.
 10. **Filter builder: AND rows within groups, OR between groups (one level, DNF).**
-    - Operators come from `eq neq gt gte lt lte` plus two **list-only** operators, `isEmpty` and `isNotEmpty`. These compile to `{ op: "eq" | "neq", value: undefined }`; core `FilterOp` is unchanged, so access rules are unaffected. Operators are offered by field type: number and date get all six comparisons, while text, boolean, select, and relationship get `eq`/`neq`. Every type gets the empty operators.
+    - Operators come from `eq neq gt gte lt lte` plus two **list-only** operators, `isEmpty` and `isNotEmpty`. These compile to `{ op: "eq" | "neq", value: undefined }`; core `FilterOp` is unchanged, so access rules, the URL codec, and a stored saved view are unaffected by anything below — only the BUILDER's own new-row choices narrow.
     - `vex_status` is a built-in filter field on versioned collections, with values from `VERSION_STATUSES`.
     - The field list excludes fields the user can't read (`useFieldPermissions`).
     - The builder applies live: a row counts once it is complete, and incomplete rows are muted and ignored. Text `eq` hints "Exact match. Use search for partial text."
     - Active filters show as chips (clear one / clear all). A per-browser toggle hides the chip row.
     - Why: it covers multi-value, empty-value, and triage use cases without a tree editor.
+    - **Revised 2026-10-27, developer:**
+      - **Operator picker notation.** The operator `Select` shows a symbol plus the op code, identically in the option list, as the selected value, and in a chip: `= eq`, `≠ neq`, `> gt`, `≥ gte`, `< lt`, `≤ lte`, `∅ empty`, `!∅ empty` (the `isEmpty`/`isNotEmpty` labels drop the "is"/"Not" words, further revised 2026-10-27 — the `!` prefix already reads as a negation on its own, so the operator column can stay the row's narrowest grid track). One shared label map (`FILTER_BUILDER_OP_LABELS`) backs the picker and the chips, so the notation can't drift between them.
+      - **Minimal op set — no derivable duplicates.** The builder no longer OFFERS `gt`/`lt` as new-row choices (their `gte`/`lte` siblings cover the same comparison without a redundant inverse pair). Core `FilterOp` is unchanged: a `where` built before this revision, a hand-authored saved view, or an old URL carrying `gt`/`lt` still parses, still queries, and still renders in the builder with its OWN op code in the picker (added to that row's own option list on top of the type's normal choices) — never silently relabelled or dropped.
+      - **Per-field-type operator matrix** (one exported constant, `FILTER_BUILDER_OPS_BY_FIELD_TYPE`, keyed by `AdminDataField["type"]`, plus a `vex_status`-by-field-key special case):
+        - `number` → `eq neq gte lte isEmpty isNotEmpty`.
+        - `date` → `gte lte isEmpty isNotEmpty` only — no `eq`/`neq`: an exact-millisecond match on a timestamp is never what a user means. The value control is a date-plus-time picker, reusing the date field's own picker component; the stored/sent value is the same Unix-ms number the date field itself stores; the value is always DISPLAYED formatted as date/time (the date field's own formatter) in the builder's trigger, in chips, and in a saved view's summary — never a raw ISO string.
+        - `text`/`email`/`textarea`/`url`/`select`/`checkbox`/`relationship` (every other declared type) → `eq neq isEmpty isNotEmpty`. No ordering comparisons — "greater than" has no meaning for these.
+        - `vex_status` → `eq neq` only, looked up by field KEY rather than type (it is typed `"select"` but is not a real `select` field): a version status is always set (never empty) and has no ordering, so `isEmpty`/`isNotEmpty` would never match anything and are not offered.
+      - **Opens with a row already there.** With no filter, opening the builder immediately shows one empty row (first group, first row) ready to edit — no "Add filter" click first. The row stays incomplete (muted, excluded from `onWhereChange`) until filled, so opening the builder alone never changes the query or the URL. "Add filter" / "OR conditions" / "AND condition" remain for every row or group beyond that first one. **Revised 2026-10-31, developer:** "Add condition" renamed "AND condition" and "Add OR group" renamed "OR conditions" (same `+` icon), so the two buttons read "+ AND condition" / "+ OR conditions".
+      - **Grouped Filter + eye control (further revised same day).** The chip-row visibility toggle (eye/crossed-eye) renders directly beside the "Filter" trigger as one control, not inside the chip row itself — lifted to their common ancestor (`ListLayout`) and threaded through the `list.filters` slot's `contributedProps` so the trigger and the separate chip row below share one visibility boolean. The toggle is `variant="ghost"` (no button background, matching Copy link's own style) via the `Button` `icon` prop — never a hand-rendered icon child, and never disabled. With NO active filter in the current view, it is NOT RENDERED AT ALL (the "Filter" trigger keeps its position — no layout shift on first paint, since the server already knows whether `filter` is set). With an active filter: `Eye` when chips are shown, `EyeOff` when hidden (filters still apply to the results either way — only the chip row's visibility changes). It is a plain sibling button, never part of the Popover/Sheet's own trigger — only "Filter" opens the overlay.
+      - **Copy link is icon-only.** The toolbar's inline Copy-link button drops its "Copy link" text (icon only, via the `Button` `icon` prop, `variant="ghost"`), keeping `aria-label="Copy link"` for accessibility. Its `placement="menu"` form (the ⋯ overflow) keeps the visible label — only the inline toolbar copy is icon-only.
+      - **Fixed-grid row layout (further revised same day).** Every row in every group uses the SAME fixed 4-column CSS grid (`FILTER_BUILDER_ROW_GRID_COLS`, `grid-cols-[minmax(0,1fr)_6rem_minmax(0,1fr)_auto]`) — field and value are equal `1fr` tracks (`min-w-0`-truncating rather than widening the row), the operator column is a fixed `6rem` (the narrowest of the four, sized to the longest op label), and remove is `auto` (one constant-size icon button). A row no longer sizes itself by its own content — every field/op/value/× sits at the identical x position across every row and group, whatever the field type or operator. The value cell ALWAYS renders something, even an invisible placeholder `div` for `isEmpty`/`isNotEmpty` — a 4-column grid with no explicit per-cell `grid-column` relies on exactly 4 children in DOM order per row for the browser's auto-placement to land each control in its own column; skipping the value cell would shift "remove" into the value column instead of its own. The date picker fills its cell the same way every other value control does (`w-full min-w-0`, no more fixed `w-48`) — `date-picker.tsx`'s own trigger (already `min-w-0`/`truncate`-capable from the earlier date-row-layout fix) keeps the row one line even when the grid cell ends up narrower than the formatted date+time text. Mobile's two-line split (field+op / value+×) uses the SAME `6rem` operator column and `1fr`/`auto` rule, just split across two grids instead of one, so the alignment rule stays identical whether a row renders as one line or two.
 11. **Saved views come from three sources, merged by `viewId`:** `config` (`admin.table.views`, read-only, fully typed to the collection), `shared` (the `vex_views` table), and `local` (localStorage). A view stores `{ where, sort, search, searchField, columns, pageSize }` plus an optional `description`.
     - The UI shows views as tabs: **All** (no view) first, then config, shared, and local. When the tabs overflow, the rest collapse into an "All views" menu grouped by source.
     - Opening a view makes its name the page heading, with a source/author line and the description.
+    - **Revised 2026-10-28, developer:** the page heading is ALWAYS the collection name — opening a view never replaces it. The view context instead reads as its own line, below the heading: `<Source label> - <view name>` (source labels: config views "Preset view", local views "Local view", shared views "Shared view"), then the view's description when it has one. Both the heading row (title + header actions, on one line, unconditionally aligned) and the view-context line keep fixed-height reserved slots (`layout-stability.md`) so switching between All and a view, or between two views, never shifts the header actions, the tab row, or the table below.
+    - **Revised 2026-10-29, developer (supersedes the reserved view-context line above):** the active view's name renders INLINE in the heading itself — `"<Collection plural> - <view name>"` (a dash surrounded by spaces, not a colon) — instead of on its own line below. The source label ("Preset view"/"Local view"/"Shared view") sits absolutely positioned just ABOVE the view name, small text; the description (when present) sits absolutely positioned just BELOW it. Both anchor to the view NAME's own left edge specifically — the `" - "` separator stays OUTSIDE the relatively-positioned span that wraps only the name, so the label and description never appear to hang off the separator character instead. `position: absolute` removes both from layout flow entirely (zero width/height contribution), so the heading row's height, and every row below it, stays BYTE-IDENTICAL with or without an active view — verified via `getBoundingClientRect`: the h1/tab-row/table tops are pixel-identical across All and multiple saved views, and the source label's/view name's/description's own `left` values are identical to each other. No gap is reserved between the heading row and the tab row, or between the tab row and the toolbar/table — the whole column uses one uniform small gap so the page reads dense with no active view. A fallback idea (not implemented): render nothing extra at all, relying on the active `TabsTrigger` alone to indicate the view.
     - A changed view shows a modified dot and a "Modified: …" summary (a diff of URL state against the saved view), with Reset and Save (save changes / save as new / reset). The save target depends on the view actions (Decision 13) and the view source.
+    - **Revised 2026-10-29, developer (FINAL — supersedes every earlier attempt at an inline/reserved-slot view heading, including the 2026-10-28 revision and the two same-day 2026-10-29 attempts above):** the page heading is ALWAYS just the collection's plural label, in every state — no view name, separator, badge, or description anywhere in the title. The active `TabsTrigger` alone indicates which view is open. A view's own description (when it has one) surfaces as a hover tooltip on its tab (`ui/tooltip`'s `delay={1000}`, ~1s, matching `DataTableSortHeader`'s own established tooltip convention) — not rendered anywhere else. The modified-state controls (dot, "Modified: …", Reset, Save) move OUT of the reserved row below the tab strip entirely, into `ListToolbar`'s own row, immediately right of the Filter+eye control group — they render nothing at all (not even an invisible placeholder) when there's no active view or nothing has changed, and share the toolbar's own control height so the row never changes height when they appear. The whole `ListLayout` column (title row, tab strip, toolbar, chips, table) now shares one uniform small gap — no height or gap anywhere varies with view state, so the zero-shift guarantee holds trivially (there is nothing left that COULD shift).
     - Copy link, when a local view is active, serializes the full state instead of `view=local:…`. An unknown view ID in the URL falls back to the remaining params, with a notice.
-12. **Shared views are collection-wide**, plus scoped to the organization when `access.orgCollectionSlug` is set. There are no user or role scopes. Why: localStorage is the personal tier.
+    - **Revised 2026-10-29, developer (Decision 45 redesign):** the view sources are now `default` (the collection's own `admin.view`, ALWAYS present — even fully undeclared, it resolves to `{ name: "All", sort: _creationTime desc, every non-hidden column }`), `config` (`admin.views`, was `admin.table.views`, preset, read-only), `shared`, and `local`. The default view is no longer a bare "no view selected" placeholder: it has a real, fixed `viewId` (`"default"`, never written to `view=` — the URL still has no `view=` param while it's active, same visible behavior as before), participates in `useListViews`' merged list, and is diffable/resettable exactly like a preset view (its own `where`, when declared, shows the SAME hidden-filter lock badge a preset view's does, Decision 25/26). Promotion/rename/delete stay unavailable for it (it is config-declared, like a preset view) — only Reset (back to `admin.view`'s own state) and "Save as new" (local) apply.
+    - **Revised 2026-10-29, developer (`admin.table` removed entirely):** the `admin.table.views`/`admin.table` phrases in this decision's own original text (above) are historical — `admin.table` no longer exists at all; see Decision 45's FINAL revision for the current `admin.view`/`admin.views` shape, and Decision 48's redesign for the unified `columns` array (order/visibility/pin/width in one place) this decision's own `columns` field now stores.
+12. **Shared views are collection-wide**, plus scoped to the organization when `access.organizations: true` (requires `orgCollectionSlug` too — Decision 54's FINAL revision; merely setting `orgCollectionSlug` alone no longer scopes anything, since that flag also serves an unrelated permission-callback purpose). There are no user or role scopes. Why: localStorage is the personal tier.
 13. **Shared views get four access actions, mirroring the draft actions** (`VIEW_ACTIONS` in `access/constants.ts`):
     - `readViews` is a query action (added to `QUERY_ACTIONS` like `readDrafts`). It gates `listViews`, the use of shared views, and `find`'s shared-view allow-list (Decision 26).
     - `createView` gates saving a new shared view and promoting a local view.
     - `updateView` gates saving changes to and renaming a shared view.
+    - **Revised 2026-10-29, developer:** the modified-state "Save" control (Decision 11) no longer disappears when the caller may not overwrite the active view in place — a local view always saves in place (no permission needed); a shared view saves in place only when the caller has `updateView`; a shared view WITHOUT `updateView`, or any config view (never updatable, full stop), instead opens the save dialog pre-filled as a NEW LOCAL view named `"<view name> (copy)"` from the current state. A config view's hidden filter (Decision 25) is never part of that state to begin with — it is composed server-side by `activeViewId`, never stored in the URL/`currentState` — so the copy never carries it forward.
     - `deleteView` gates deleting a shared view.
     - All four are denied by default (P-007), so shared views are invisible until a project grants `readViews`. The docs, `apps/test`, and the templates grant them explicitly.
     - Users without `createView` can still save views locally. The UI gates each menu item by its own action.
@@ -248,6 +318,30 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
     - **Fixed height.** The list page never scrolls. The header, tabs, toolbar, and chips are `shrink-0`; the table is `flex-1 min-h-0` inside its own `ScrollArea`, with a sticky header and a pinned footer. Load More appends inside the scroll area and keeps the scroll position.
     - **Bulk controls** sit inline in the toolbar, left of Filter (count, "Select all N loaded", the `list.bulkActions` slot, Delete, clear), and never overlay the table. On narrow containers they replace the Filter row.
     - **Table.** It scrolls horizontally with a sticky first column on narrow containers.
+      **Revised 2026-10-28, developer (Step 16, after 4 verification rounds):** the sticky
+      column is specifically the selection (checkbox) column — `column.id === "select"`,
+      never generically "whatever the first column happens to be" (a fixed-width sticky
+      divider on an arbitrary data column like Title would truncate it). It is `position:
+      sticky; left: 0`, fixed `w-12 min-w-12 max-w-12`, `px-0` with the checkbox centered
+      via a wrapping `flex items-center justify-center` div (not cell padding, which
+      produced asymmetric left/right gaps when the column had no explicit width). The
+      `<Table>` element uses `border-separate border-spacing-0` with an explicit
+      `border-b` on every header/body cell (not `TableRow`'s own `border-b`, which does
+      not render under `border-separate` per the CSS separated-borders model) — `border-
+      collapse: collapse` (Tailwind preflight's table default) is incompatible with
+      `position: sticky` on a cell, producing a detached/misaligned divider. The divider
+      itself is a plain `border-r` (safe once the table is `border-separate`), always
+      visible, never scroll-gated. The sticky cell's background is opaque in every row
+      state — default (`bg-background`), hover, and selected — read off `TableRow`'s own
+      `group/row` name (`group-hover/row:`/`group-data-[state=selected]/row:`) with an
+      **opaque equivalent** for hover specifically (`TableRow`'s own `hover:bg-muted/50`
+      is translucent by design for the rest of the row, but a sticky cell has scrolled
+      content passing underneath it specifically, so a translucent background lets it
+      show through — fixed with a solid `color-mix()` of `--muted`/`--background` instead
+      of the `/50` opacity utility). The header's own selection cell additionally needs
+      `z-20` (not the body cells' `z-10`): it is sticky in both axes at once (pinned left
+      via this column, pinned top via `TableHeader`'s own `sticky top-0 z-10`), so it must
+      out-rank every single-axis sticky element to stay on top during a diagonal scroll.
     - **Peek.** It follows live preview's `isSplit` model (Decision 27).
 23. **`RevalidateButton` stays outside the `list.*` slots.** `CollectionListView` renders it itself, beside `ListLayout`'s output, not as a `list.header.actions` contribution — it isn't named in Decision 17's built-in list or Decision 18's slot list. Why: slotting it is a later decision, not an assumption to bake in silently.
 24. **Shared-view `organizationId` is resolved and stamped server-side** from the caller's session (`auth.organization`), never accepted as a client-supplied arg on `listViews`/`saveView` — taking it from the client would let a caller read or write another organization's views. `db/test/convex/schema.ts`, `@vexcms/core`'s own hand-maintained test fixture (separate from `generateVexSchema.ts`'s generated output), also gains a `vex_views` table so Step 6's tests compile.
@@ -258,10 +352,12 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
     - The UI shows hidden filters only as a lock badge with a count and the view description, never as chips or builder rows. The hidden `where` is never user-editable state.
     - "Save as new view" from a config view saves only the user's own `filter`/`sort`/`search`/`columns`/`pageSize`. The hidden filter is not carried over.
     - The `views` JSDoc and the list-views guide warn: "Config view filters are hidden from the UI, not secret. The condition (field names, operators, values) ships in the client bundle like access rules; the values of fields a viewer can't read are never sent."
+    - **Revised 2026-10-29, developer (Decision 45 redesign):** `admin.table.views[].where` moves to `admin.views[].where` (preset) and the collection's own `admin.view.where` (default) — both treated identically, a declared hidden filter. `composeViewWhere`/`toClientViewConfig`/`matchDeclaredViewFilter` were already written against a `VexViewConfig`-shaped value, not the `admin.table.views` PATH specifically, so neither needs a signature change — only the call sites that READ `collection.admin.table.views`/a bare default move to `collection.admin.views`/`collection.admin.view`.
+    - **Revised 2026-10-29, developer (`admin.table` removed entirely):** `admin.table` no longer exists at all — the `admin.table.views` phrase above is historical; see Decision 45's FINAL revision.
 26. **Field read access gates every list control, with one exception for declared view filters.**
     - **Client:** unreadable fields are hidden from the filter field list, the search field picker, sortable headers, the columns menu, and the peek (`useFieldPermissions`).
     - **Server, sort/search:** `resolveQueryIndex` and `search` **reject** sort or search on an unreadable field with `VexAccessError`. Sort order alone would leak values.
-    - **Server, caller `where`:** a condition on an unreadable field drops those rows (`readableDocuments`). The one exception is `matchDeclaredViewFilter({ collection, where })` (Step 6). If a top-level AND part of the request `where` **deep-equals the full `where` of a config view** on that collection, that part is trusted, and the field-read check runs only on the remaining parts. Every remaining condition must use readable fields, so users may narrow a config view with their own readable-field filters.
+    - **Server, caller `where`:** a condition on an unreadable field drops those rows (`readableDocuments`). The one exception is `matchDeclaredViewFilter({ collection, where })` (Step 6). If a top-level AND part of the request `where` **deep-equals the full `where` of a config view** on that collection — either the collection's own `admin.view` (default) or one of its `admin.views` presets, both declare `where` the same way (Decision 25 revised) — that part is trusted, and the field-read check runs only on the remaining parts. Every remaining condition must use readable fields, so users may narrow a config view with their own readable-field filters.
     - **What still fails:** any change to the declared filter (dropping a condition, changing a value, putting it in an OR group), or any other unreadable condition, drops rows as today.
     - **Why:** a fixed, developer-declared condition exposes one yes/no per row by design. Arbitrary conditions would let a user guess hidden values by repeating filters.
     - **Shared views:** when a request `where` still has an unreadable condition after the config-view match, `find` (and `search`) reads that collection's `vex_views` rows (indexed by collection, filtered by the caller's `readViews` rule) **in the same query transaction**. The same exact-match rule applies to them. The read happens only when an unreadable condition exists, so ordinary queries cost nothing extra.
@@ -281,6 +377,7 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
     - A `peek` ID that isn't loaded fetches by ID. Not-found and no-access render the same message.
     - It shows only readable fields.
 28. **Built-in row actions, in order:** Open, Inspect (`vex.list.row.inspect`), Copy ID (`vex.list.row.copyId`), the `list.row.actions` contributions, then Delete last (only when permitted). Admin links use `adminHref` with the edit view's `/admin/collections/<slug>[/<id>]` routes. Bulk "Select all" always means *all loaded* rows and is labelled "Select all N loaded".
+    - **Revised 2026-10-31, developer:** the first action's label is "Edit", not "Open" (matches the peek header's own edit-page link, renamed the same way, Polish Decision 74) — order, icon, destination, and `ListRowOpenAction`'s own component/contribution-id names (`vex.list.row.open`) are all unchanged, only the rendered text.
 29. **Density is Comfortable or Compact**, stored per browser and set in the columns menu.
 30. **Keyboard shortcuts are the core set only**, handled by an internal `useCollectionListShortcuts` hook built on `useEventListener` from `@ts-hooks-kit/core`, with no new dependency.
     - `/` focuses search. `Esc` closes the top overlay, then clears the selection, then blurs search. `↑`/`↓` move row focus. `Enter` opens the row. `Space` toggles the peek. `X` toggles selection, and `Shift+X` selects a range.
@@ -295,7 +392,7 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
 33. **Shared-view scope copy says "Everyone with access", not "Everyone at {Org}".** `useVexAuth()`'s `organization` carries no display-name field this spec can read, and fetching one would add a query this spec doesn't otherwise need. Why: ship copy that's true for every project, scoped or not, rather than block the save dialog on a field that doesn't exist yet.
 34. **The Inspect peek's shared not-found/no-access copy is pinned here, not left to a later design pass:** `COLLECTION_LIST_PEEK_UNAVAILABLE_TITLE` = "Can't show this document" / `COLLECTION_LIST_PEEK_UNAVAILABLE_DESCRIPTION` = "It may have been deleted, or you may not have access to it." `DESIGN-NOTES.md` §5 doesn't give wording for this state; Decision 27 only requires the not-found and no-access cases to read identically. Why: a peek that silently reveals whether a hidden document exists defeats Decision 27's point, so the copy ships with the feature rather than waiting on a design review.
 
-35. **Total count is capped.** The first page counts with `take(countLimit + 1)` instead of `.collect()`. `admin.table.countLimit` defaults to 1000. `find` returns `totalDocs` plus `totalDocsCapped: boolean`, and the UI shows "Showing 25 of 1,000+". Why: the old `.collect()` scanned every matching row on each list open and re-ran on every write while the list was open; it failed above 32k documents.
+35. **Total count is capped.** The first page counts with `take(countLimit + 1)` instead of `.collect()`. `admin.table.countLimit` defaults to 1000. `find` returns `totalDocs` plus `totalDocsCapped: boolean`, and the UI shows "Showing 25 of 1,000+". Why: the old `.collect()` scanned every matching row on each list open and re-ran on every write while the list was open; it failed above 32k documents. **Revised 2026-10-29, developer:** `admin.table.countLimit` moves to `admin.view.countLimit` — same default, new location, `admin.table` no longer exists.
   36. **Filter index pushdown.** `resolveQueryIndex({ collection, where, sort, drafts })` picks one index for both:
     - It prefers an index whose leading fields are matched by **equalities** in the AND part of `where`, followed by the sort field when a sort is set (draftStatus-aware via `resolveCollectionIndexes`).
     - Those equalities become `withIndex` range conditions and are removed from `.filter`. Everything else stays in `.filter`.
@@ -328,12 +425,92 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
     - `useIsMobile` still chooses bottom `Sheet` vs. `Popover` CONTENT for overlays that start closed (they open only on interaction, so they never shift first paint) — this does not cover a control that can already be visible/open on first paint without interaction (the view-tab row itself, and the Inspect peek when `peek=` is in the URL), which use CSS instead.
     - This deliberately deviates from `useHeaderActionsCollapse`'s measured approach, per `standards/frontend/layout-stability.md`.
 
+44. **One `auth` source for the whole admin shell: `getUserOrg` everywhere, including the sidebar — `auth` itself OPTIONAL, fail-closed when access is enabled but it's missing (developer decision, 2026-10-28, revised 2026-10-28, revised again 2026-10-28).** Every app's admin route (`apps/test`, `apps/www`, `base-nextjs`, `marketing-site`) already fetches `{ user, organization }` via `getUserOrg` in its `page.tsx` to gate `canAccessAdminPanel`, then discarded it; the SIBLING `layout.tsx` (which mounts `AdminLayout`'s sidebar) separately fetched a DIFFERENT, narrower value (`getCurrentUser()`, no `organization` at all) for display. Both server components now call `getUserOrg` and resolve the SAME `{ user, organization }` shape: `layout.tsx` passes it to `NextAdminLayout` (already forwards `user`/`organization` through to `AdminLayout`'s own `VexAuthProvider`, unchanged), and `page.tsx` passes it to `NextAdminPage`. Unlike the first draft of this decision, `NextAdminPage`'s `auth` prop is OPTIONAL, not required — a project with `config.access` absent or `{ enabled: false }` passes nothing at all, exactly matching `hasPermission`/`resolveFieldPermissions`/`resolveAccessRule`'s own existing allow-all behavior when access is off, so the common "no RBAC" case needs zero auth plumbing. A project WITH access enabled that omits `auth` is NOT treated as allow-all (that would silently leak every field/document to an unauthenticated caller) — it fails CLOSED, resolving to an anonymous `{ user: null }` exactly as P-007's default-deny already treats any other unauthenticated caller, plus a one-time, dev-only (`NODE_ENV !== "production"`) `console.warn` naming the misconfiguration, since a silently-empty admin panel with no auth prop wired is otherwise indistinguishable from "a role with nothing to see." `NextAdminPage` wraps its ENTIRE return (every branch — dashboard, global, collection list, collection edit, media) in `@vexcms/react`'s `VexAuthProvider`, seeded with this resolved (never-`undefined`) value, as the nearest ancestor for page content. The sidebar's own nav gating (`AppSidebar`, mounted by `AdminLayout` outside `NextAdminPage`'s subtree) now resolves `organization`-aware rules correctly on first paint too — not just the content area. Server-side, the SAME resolved `auth` resolves `collection.admin.table.searchField`'s readable subset via `resolveFieldPermissions` (`@vexcms/core`, `PERMISSION_SCOPES.any`, matching `useFieldPermissions`'s own list-view scope) and `resolveSearchField` before the `search` prefetch, fed `resolved.searchField` (the URL/view/collection-default-resolved field `resolveListQueryState` already computed) rather than the raw URL `qf` — matching Step 14's own sort-parity follow-up's client-side call exactly, so an unmodified VIEW's own saved `searchField` gets the same readability narrowing a raw `?qf=` does, closing Step 14's documented gap ("`resolveListQueryState`'s own `searchField` ... has no readability filter at all"). The server and client must also agree on WHICH endpoint runs, not just that endpoint's args: `isSearchActive` (both sides) is now `search.trim() !== "" && resolvedSearchField !== undefined`, so a role with no readable `searchField` entry skips the `search` prefetch and calls `findPaginated` instead, server-side, exactly as the client already does (Decision 2's "no search bar" case). **Deviation from the original plan, found live, not in any test:** `resolveSearchField`/`readableSearchFields` were drafted to live in `@vexcms/react` as "a pure function with no `use client` directive" — true of the function itself, but tsup bundles it into the SAME chunk as `CollectionListView`/`ListSearch` (both genuinely client components), and a bundler-level `"use client"` banner applies to the whole chunk, not the function. `NextAdminPage` (an async server component) crashed hard against the real dev server — caught by live browser verification, not vitest, which has no RSC boundary enforcement — with "Attempted to call resolveSearchField() from the server but resolveSearchField is on the client." Both functions moved to `@vexcms/core/collections/resolveSearchField.ts` (alongside `resolveListQueryState`, the same core-not-react placement every other cross-boundary pure function in this spec already uses), with `CollectionListView`/`ListSearch` updated to import them from there instead. View-action gates (`createView`/`updateView`/`deleteView`) need no server code change: `listViews` (Step 7) already self-gates on `readViews`; the client-side menu gating now simply resolves correctly on first paint because it reads this same threaded `auth`, not a second, possibly-stale value.
+45. **`admin.view` (default view) + `admin.views` (preset views) replace `admin.table.defaultView`/`admin.table.views`, `defaultSort`, `defaultColumns`, and the bare default page size (developer decision, 2026-10-28, REDESIGNED 2026-10-28 — supersedes this decision's own first version, which Step 18 had begun implementing as `admin.table.defaultView`; that in-flight code moves to `admin.view`, it does not merely rename in place).** Both move OUT of `admin.table` to the `admin` level directly — they are view configuration, not table-rendering configuration (`admin.table` keeps `serverPageSize`, `pageSizeOptions`, `bulkActions`, `countLimit`, `searchField`; `defaultPageSize` is gone, replaced by `admin.view.pageSize`). `admin.view?: { name?: string; description?: string; where?: VexWhere<TFieldSlug>; sort?: CollectionTableSort<TFieldSlug>; columns?: TFieldSlug[]; pageSize?: number; searchField?: TFieldSlug; pinned?: { left?: TFieldSlug[]; right?: TFieldSlug[] } }` (the `pinned` key is Decision 48) is the collection's DEFAULT view — the first tab, active whenever the URL has no `view=`. Its tab label is `name ?? "All"`; it carries a fixed, never-URL-visible id (`"default"`); it may declare a hidden `where` exactly like a preset view (Decision 25's lock-badge treatment, Decision 26's declared-filter exemption — both apply identically). With `admin.view` entirely unset, it resolves to `{ name: "All", sort: { field: "_creationTime", order: "desc" }, columns: every non-hidden data field, pageSize: 10 }` — the same defaulting Step 4's old `defaultColumns` fallback and Decision 4's `_creationTime desc` already established, just read from the new location. `admin.views?: VexViewConfig<TFieldSlug>[]` (array only, no own default slot) is the PRESET views, rendered as tabs after the default tab in declaration order — the direct move of what was `admin.table.views` (Step 5), same per-entry shape (`viewId`, `name`, `description?`, `state: { where?, sort?, search?, searchField?, columns?, pageSize?, pinned? }`). `resolveListQueryState`'s fallback chain (Step 14) bottoms out at `admin.view` instead of three/four separate `admin.table.*` keys; the URL-diff baseline (Decision 9: "only params that differ from the active view appear") is the DEFAULT view's own state when the URL carries no `view=` — the default view now has a real, diffable state to compare against, not an implicit collection-level default with no view identity. Migration (clean cutover, no back-compat shim): `CollectionTableConfigInput.defaultSort`/`.defaultColumns`/`.views`/`.defaultView` and `CollectionTableConfig`'s resolved equivalents are REMOVED from `admin.table`'s type entirely; `AdminCollectionConfigInput`/`AdminCollectionConfig` gain `view`/`views` siblings to `table`/`components`/etc. Every reader of the old keys across core/react/next, and every app/template collection declaring `admin.table.defaultColumns`/`admin.table.views` (`apps/test/src/vexcms/collections/{pages,posts,fields,testimonials}.ts`, `apps/www/.../pages.ts`, `marketing-site/.../pages.ts`, and the `NextAdminPage`/`matchDeclaredViewFilter`/`toClientViewConfig`/`useListViews` call sites Steps 5–14 shipped against the old location), moves to `admin.view`/`admin.views`. Why: `admin.table` is rendering/pagination config; views are a different axis entirely — the collection's saved-query surface — and pairing the default view and preset views as siblings at the `admin` level, both typed the SAME per-view shape, reads as "here is every view this collection declares, default first" rather than a table setting with an oddly-named array buried inside it. Use case this unblocks: a collection sorting its default view by `updatedAt` desc declares `admin.view.sort = { field: "updatedAt", order: "desc" }`, validated the same way the old `defaultSort.field` was (must lead a declared index).
+    - **Revised 2026-10-29, developer (FINAL — `admin.table` is REMOVED ENTIRELY, clean cutover, no alias; supersedes the residual `admin.table` this decision's first revision left standing above):** the term "view" now covers the whole data-views screen, not just one saved view — EVERYTHING about the list screen lives under `admin.view`/`admin.views`, nothing under `admin.table` (which no longer exists at all). `admin.view`'s resolved shape flattens BOTH the default view's own state (`name?`, `description?`, `where?`, `sort`, `pageSize`, `searchField` — the default SELECTED search field, singular, unchanged — `columns?`, now the Decision 48-unified entry shape) AND the collection-wide list settings that used to live on `admin.table` into the SAME object: `searchFields: TFieldSlug[]` (renamed from the old `admin.table.searchField` — plural now, so it stops colliding with the per-view singular `searchField`; same shape, same searchIndex validation, Decision 2/3), `pageSizeOptions`, `countLimit` (Decision 35), `serverPageSize`, and `bulkActions` — the last two have no other stated destination once `admin.table` is gone, so they move here too, a necessary extension of this decision beyond what was explicitly enumerated. No `enableViews`/`enableSharedViews` config exists or is ever added — local and shared views are always available wherever `VIEW_ACTIONS` already permits them (Decision 13); there is no feature flag to disable either. Step 21 (its own number kept, rescoped from "Column pinning" to this full cutover plus pinning plus resizing) migrates every remaining reader end to end: core types/config/validation, `resolveListQueryState`, the URL codec, `NextAdminPage`, every react consumer, every app/template collection, the docs, and the `2026-10-28-committs-field` spec's own stale references.
+    - **Revised 2026-10-29, developer (developer answer — `admin.views` entries accept the SAME settings as `admin.view`):** every `admin.views[n].state` widens to the identical shape `admin.view` itself has — not just the per-view query state (`where?`/`sort?`/`search?`/`searchField?`/`columns?`/`pageSize?`) but ALSO the collection-wide settings (`searchFields?`, `pageSizeOptions?`, `countLimit?`, `serverPageSize?`, `bulkActions?`). `VexViewConfig<TFieldSlug>.state` and the `admin.view` input type become the SAME type (`VexViewState<TFieldSlug>`, superset, every key optional) — a preset view is "the array form" of exactly the same declaration the default view makes. An unset collection-wide key on a preset view falls back to `admin.view`'s own resolved value, then the global default — the same two-tier fallback `admin.view` itself already uses against the global default, just one level deeper. `validateViewConfig` (this decision's rename, see Step 21) runs its `searchFields`/sort-leads-an-index/`countLimit`-is-a-positive-number checks per view, not just once for `admin.view` — a preset view overriding `searchFields` with a field that has no `searchIndex` throws the same `VexConfigError`, naming that view.
+46. **Switching views keeps the previous page's rows visible, dimmed, while the new query loads (developer decision, 2026-10-28).** `useVexListQuery`'s underlying TanStack query now passes `placeholderData: keepPreviousData` (mirroring the fix Step 10's own follow-up already shipped for the search box's debounced re-query — applied here to the base hook so a VIEW switch, which changes `where`/`sort`/`searchField` just as sharply as a `q` edit, gets it too) instead of clearing to a loading/empty frame on every `view=` change; the table body gets `aria-busy="true"` and a dimmed `opacity-60` treatment (matching `ListFilterBuilder`'s existing muted-incomplete-row convention) while the new view's rows are in flight — rows stay interactive, since Load More and row actions on the stale rows remain valid until the new page replaces them. The CLICKED tab shows a small inline spinner next to its label until the new rows land. Hovering or keyboard-focusing a view tab for 150ms (`LIST_PEEK_HOVER_DELAY_MS`, Decision 27, reused) prefetches that tab's own query via `queryClient.prefetchQuery(convexQuery(...))`, where the args are built by the EXACT SAME pair — `resolveListQueryState` then `buildListFindQueryArgs`/`buildListSearchQueryArgs` — `CollectionListView`'s own live query uses for the currently active view (Decision 39's "exact args" rule extended to a not-yet-active view), so a prefetched entry's cache key always matches the real query that runs after the click. Because `findPaginated`/`search` are live Convex subscriptions, not fire-and-forget fetches, an unused prefetched entry left subscribed forever would leak a websocket query per hovered-but-never-opened tab; prefetched entries get a short `gcTime` (30 seconds) distinct from the longer `gcTime` an ACTIVE query gets once `useVexListQuery` actually mounts it.
+47. **Views (config/shared/local) store column ORDER, not just visibility; EVERY visible column is reorderable, by drag or keyboard (developer decision, 2026-10-28, revised 2026-10-28).** `VexViewState.columns` widens from "the visible columns, in display order" (Decision 11's original shape, unchanged for an OLD stored view) to "every column's display order, visible or not" — a field absent from a loaded view's `columns` array is simply APPENDED, in field-declaration order, after every field the array DOES name (`completeColumnOrder`, new core helper), so an old view (which only ever listed its visible fields) still reorders to its historically-visible fields first, then the rest in declaration order, with no migration write needed. `visibleColumns` (the existing derived state `DataTable`'s `columnVisibility` reads) stays a strict subset check over this same ordered list; the new `columnOrder` is threaded to `DataTable` as a plain TanStack `state.columnOrder` array. The URL's `cols=` param (new grammar: a comma-separated, URI-component-encoded field-slug list, round-trip tested like every other param) carries the full order list, present only when the current order or visible set differs from the active view's own (`config`/`shared`), and always present for an active LOCAL view (Decision 41). The server prerenders the exact columns in the exact order, so there is no first-paint column shift. Reordering reuses `ui/dnd/{DndProvider,Droppable,Draggable,DragHandle}` — the SAME `@hello-pangea/dnd`-backed primitives `forms/ArrayField.tsx`/`forms/BlocksField.tsx` already use for array/blocks item reordering — wrapping `DataTableColumnsMenu`'s column list in one `Droppable`/`Draggable` pair with a `DragHandle`, keyboard-reorderable via `@hello-pangea/dnd`'s own built-in keyboard sensor (space to lift, arrow keys to move, space to drop — no new keybinding code). **Revised decision, with justification: the columns menu lists EVERY visible column, not just `hideableColumns` — a reorderable-but-not-hideable field (`admin.enableHiding: false`) appears in the menu like any other, drag handle included, but its visibility checkbox renders `disabled` (always checked, consistent row shape with every other row — chosen over omitting the checkbox entirely, which would misalign the drag handle/label column across rows and read as "this row is different" rather than "this field can't be hidden").** `DataTableColumn<TFieldSlug>` gains `hideable: boolean` (from `admin.enableHiding`); `DataTableColumnsMenuProps.columns` widens from "every hideable, readable column" to "every READABLE column" (hideable or not) — `CollectionListView`'s `hideableColumns` memo is renamed `columnMenuEntries`, still filtered by field-read access, no longer filtered by `admin.enableHiding`. Save/modified-state diffing (`diffViewState`, Step 12) compares the ordered `columns` array element-for-element, not just set equality, so a pure reorder with no visibility change now correctly shows "Modified: columns."
+    - **Revised 2026-10-29, developer (superseded by Decision 48's REDESIGNED unified model):** `VexViewState.columns`' order-only array, `columnOrder`/`visibleColumns`/`hideableColumns`'s separate client state, `completeColumnOrder`, and the plain bare-field-list `cols=` grammar above are ALL superseded — see Decision 48's unified `columns: (TFieldSlug | { field, width?, pinned?, hidden? })[]` entry shape, one `resolveColumnConfig` resolver, and the richer `cols=<field>[:w<width>][:pl|:pr][:h]` grammar. Step 21 (rescoped) migrates this Step 20-shipped code to the new shape in place.
+48. **Column pinning AND resizing share one unified column-entry model, with a single three-tier precedence resolver (developer decision, 2026-10-28, REDESIGNED 2026-10-29 — folds resizing back in from the backlog and finishes Decision 45's FINAL `admin.view`/`admin.views` consolidation; supersedes this decision's own first version, which shipped no code — Step 21, rescoped, implements this version directly, not the superseded one).**
+    - **Model.** A column's visibility, order, pin side, width, AND capability flags (whether IT, specifically, is sortable/hideable — not just the field's own global default) are attributes of the SAME array entry — `columns: (TFieldSlug | { field: TFieldSlug; width?: number; pinned?: "left" | "right"; hidden?: boolean; enableSorting?: boolean; enableHiding?: boolean })[]`, in display order (Decision 45's FINAL revision, superseding Decision 47's order-only array and this decision's own original separate `pinned: { left, right }` state; `enableSorting?`/`enableHiding?` added by the developer's precedence answer below). There is no other column-layout state anywhere — not a separate `visibleColumns`, `columnOrder`, `pinned`, or `columnSizing`. The selection checkbox column is always the leftmost pinned column, ahead of any user-pinned-left field.
+    - **Precedence, one resolver (`resolveColumnConfig`, new core function) — VIEWS ALWAYS WIN over field configs, for every one of the five attributes above (developer answer, 2026-10-29):** `the active view's own column entry's explicit value for that attribute ?? field.admin.<attr> (the field's own declared default) ?? the global default` (`FIELD_TYPE_DEFAULT_WIDTH[type]` for width; `false` for `enableSorting`/`enableHiding`; `undefined`/`false` for `pinned`/`hidden`, which have no field-level equivalent at all — the view's own entry is their only source besides the global default). "The active view's own column entry" is ALREADY the single, fully-resolved array `resolveListQueryState` produces (URL `cols=` override, when present, else the active view's own stored/declared `columns` — Decision 9's existing fallback chain, unchanged by this revision) — `resolveColumnConfig` consumes that one resolved entry per field, it does not re-resolve across sources itself. A view can therefore make a field sortable/hideable that `field.admin.enableSorting`/`.enableHiding` marks `false`, and vice versa — the columns menu's checkbox/the header's sort affordance both render off the RESOLVED value, never `field.admin.*` directly. `field.admin.width` stays OPTIONAL (unlike `enableSorting`/`enableHiding`, which Step 4 always resolves to a boolean); when every tier is unset the type default still applies. **Sorting still needs a declared index regardless of WHICH tier turned it on** — `validateViewConfig` (Step 21) now also walks every `admin.view`/`admin.views` column entry setting `enableSorting: true` and applies the SAME leads-an-index check Decision 6 already runs for `field.admin.enableSorting: true`, naming the view when it fails. Every reader — the columns menu, the header's sort affordance and resize handle, the server prerender — calls `resolveColumnConfig`, never re-derives any of this.
+    - **Pinning.** Pinned columns render sticky with offsets from TanStack's own `column.getStart("left")`/`column.getAfter("right")`, reusing Step 16's sticky technique (`border-separate` table, opaque per-cell background in every row state — selected, hovered, modified, not just at rest — correct z-order, a divider exactly at the pinned/unpinned boundary, not on every column). The columns menu gets a per-column pin control (left / right / none).
+    - **Resizing (pulled back from the backlog, developer decision 2026-10-29).** TanStack's own column-resizing feature (`columnResizing` state, `header.getResizeHandler()`): a drag handle in each resizable column's header cell, keyboard-accessible (the handle is a focusable element; `ArrowLeft`/`ArrowRight` adjust width by a fixed step matching the drag gesture's own granularity). The table renders `table-layout: fixed` with every column's CSS width set to its `resolveColumnConfig`-resolved value — Step 16/21's existing fixed-width, zero-shift approach, generalized from "pinned columns only" to every column. A resize commits a NEW explicit `width` into the ACTIVE view's own `columns` entry via the SAME setter pin/hide/reorder already use — never a transient-only UI state that forgets itself on reload. Every column is resizable; there is no per-column opt-out.
+    - **Storage and URL.** Widths (and pins, visibility, order) save in views exactly like order already did (Decision 47) — default/preset/shared/local, all the SAME `columns` array, one setter. The URL's `cols=` grammar (Decision 40, `listUrlParams.ts`) carries the full resolved array per entry: `cols=<field>[:w<width>][:pl|:pr][:h]`, comma-separated, suffixes in that fixed order when combined, diff-only against the active view's own resolved array (Decision 9), always present for an active `local` view (Decision 41) — this REPLACES Step 20's plain bare-field-list `cols=` grammar entirely, a breaking format change Step 21 migrates in place (clean cutover, no back-compat shim, matching Decision 45's precedent) along with every stored view. `enableSorting?`/`enableHiding?` overrides are NEVER written by this live URL grammar — no UI control exposes a live "make this column sortable" toggle; they're declared in `admin.view`/`admin.views` config, or persisted directly into a saved local/shared view's own stored `columns` JSON (the same shape, written by a future, not-yet-built admin UI for view-level field capability overrides) — `cols=`'s suffix set stays width/pin/hidden only.
+    - **Server prerender.** Because every column's effective width/pin/visibility/order is resolvable from config plus the active view's own stored state (no client measurement), `NextAdminPage` computes the SAME `resolveColumnConfig` output and renders `table-layout: fixed` with those exact values — zero layout shift on hydration, the same guarantee Decision 39/43 already give order/visibility/pinning. A prefetch-args/server-parity test proves it, mirroring Step 14/20's own parity tests.
+    - Why: visibility (Decision 11/15), order (Decision 47), pinning (this decision's own first draft), and resizing (previously deferred to the backlog) are really one concern — "this view's own column layout" — and one array, one resolver, one URL param reads better than four independent mechanisms.
+49. **Admin-page streaming: a synchronous token gate, then the real shell immediately, with only row data in its own `<Suspense>` boundary (developer decision, 2026-10-29).** `NextAdminPage`/`page.tsx` no longer await a full `Promise.all` of every query before returning JSX. The route's `page.tsx` awaits only `getToken()` (a local jwtCache decode — see the `cookiePrefix` fix below, not a network round trip) and redirects to sign-in immediately if absent; `adminPanel.access` (`getUserOrg`/`canAccessAdminPanel`) runs in its OWN sibling `<Suspense fallback={null}>` boundary, redirecting from inside the stream on denial, never blocking the real content. `NextAdminPage`'s collection-list branch awaits `auth`+`listViews`(conditionally, only for a `shared:` view — the Step 14 perf fix this preserves)+`peek` (all comparatively fast; a DOCUMENTED SCOPE LIMIT, not Main's full vision, which also streams these independently — not implemented this round) and THEN, using a per-request TanStack `QueryClient` (`getServerQueryClient`, `React.cache()`-scoped), calls `queryClient.prefetchQuery({queryKey, queryFn: () => fetchQuery(...)})` for `findPaginated`/`search` WITHOUT awaiting it (TanStack Query v5's own streaming-SSR pattern: https://tanstack.com/query/v5/docs/framework/react/guides/advanced-ssr#streaming-with-server-components), wraps the return value in `<HydrationBoundaryClient state={dehydrate(queryClient)}>` (a `"use client"`-wrapped re-export of `@tanstack/react-query`'s `HydrationBoundary`, in its own tsup entry — importing `HydrationBoundary` directly into `NextAdminPage.tsx`'s own server bundle silently inlined it, losing the RSC client boundary, confirmed live via "createContext only works in Client Components"). `shouldDehydrateQuery` additionally includes `pending`-status queries (TanStack's own default only dehydrates settled ones) so the un-awaited prefetch's still-in-flight promise streams as a later chunk instead of blocking the response.
+
+    The query key is built with a hand-written `convexServerQueryKey(funcRef, args)` (`["convexQuery", getFunctionName(funcRef), args]`, matching `@convex-dev/react-query`'s own `convexQuery(...).queryKey` shape byte-for-byte) rather than importing `convexQuery` itself — `@convex-dev/react-query`'s package entry imports `convex/react` at module top level (for its OWN `ConvexQueryClient`/React hooks), so importing even just the `convexQuery` function transitively pulled `convex/react`'s `createContext` call into the server bundle, confirmed live with the same crash. `getFunctionName` (`convex/server`) and `convexToJson` (`convex/values`) are both server-safe, pure metadata/serialization helpers with no live client involved — the hash function (`queryKeyHashFn`) is reimplemented the same way, matching `ConvexQueryClient.hashFn()`'s own two-branch logic (a Convex key hashes as `` `convexQuery|${fnName}|${JSON(args)}` ``, everything else falls back to TanStack's own `hashKey`).
+
+    Client-side, `CollectionListView` splits into an outer shell (title, header actions, view tabs, toolbar, `CollectionListProvider` — all computed from config/URL/cookies, never touches row data, matching Decision 39's existing SSR-prefetch-parity helpers) and an inner `CollectionListViewData`, rendered only inside `ListLayout`'s new `tableSlot` prop (replacing its own inline `<DataTable>` call when supplied) wrapped in `<Suspense fallback={<DataTable data={[]} isPending .../>}>`. The fallback is the SAME `DataTable` component the settled content uses, with `isPending` now driving real loading-skeleton rows (`pageSize`-many, one `Skeleton` cell per the table's own resolved `columnsWithActions`, using `DENSITY_ROW_CLASS` — exported from `@vexcms/core`, not `@vexcms/react`'s own barrel, which is `"use client"`-banner'd end to end and silently resolves a plain constant import to `undefined` across the RSC boundary when a server component imports it) and a real loading-state footer, instead of a separate hand-built skeleton file. `CollectionListViewData` seeds a `useSuspenseQuery(convexQuery(sameFn, sameArgs))` call — built from the identical `buildListFindQueryArgs`/`buildListSearchQueryArgs` helpers the server prefetch uses — then feeds its result as `initialData` to the EXISTING, unchanged `useVexListQuery` hook (still a plain `useQuery` under the hood via `usePaginatedQuery`, so Load More/cursor accumulation never re-suspend the boundary). `selection.selectedDocs`/`isSearchFetching` (part of `CollectionListProvider`'s context value, needed by the bulk-actions bar/search spinner OUTSIDE the Suspense boundary) are LIFTED state the inner component reports up via `onRowsChange`/`onSearchFetchingChange` effects, keyed on a row-id string (not the row array's own identity — `.slice()`-derived arrays are never referentially stable even with identical data, and keying the effect on the array itself looped forever).
+
+    A view/filter/sort switch re-suspends `useSuspenseQuery` on its new key; `useListUrlState`'s own `useQueryStates` call now passes `startTransition` (React's `useTransition()`, nuqs's own supported option) so React keeps the last committed content on screen instead of flashing the fallback — `isPending` from the same hook is exposed on `UseListUrlStateReturn` and OR'd into `DataTable`'s `isRefetching` (alongside the existing `isPlaceholderData`, Decision 46) for the dimming treatment during the transition window.
+
+    `jwtCache.cookiePrefix` bug, found and fixed enabling this: `@convex-dev/better-auth`'s `getToken`'s jwtCache path reads `opts.cookiePrefix` (a TOP-LEVEL `GetTokenOptions` field, not nested under `jwtCache`) to find this app's own `<prefix>.convex_jwt` cookie — omitted, every call silently fell through to the network path (`/api/auth/convex/token`, ~170ms) despite `jwtCache.enabled: true`; fixed in all `auth/server.ts` files, now measured ~0-1ms (a genuine local JWT decode).
+
+    Known, accepted limitation: the footer's own height differs by up to ~12px between the skeleton (which always reserves space for the default-size Load More `Button`, 32px) and settled content that happens to show "That's everything" (a shorter `<p>`) instead — a collection with ALL its rows on one page (the common small-collection case) hits this; a generic, data-free skeleton cannot know in advance which state the real footer will need, and over-reserving (the Button's height) is the safer failure mode (no shift for the common paginated case, a small one for the "already done" case) per `layout-stability.md`'s own "reserve space" guidance. Every OTHER measured region (title, tab row, toolbar, chips row, table header row, body row) matches the settled content's `top`/`height` EXACTLY (±0px, not just ±0.5px) at 1440 and 390 for the default view, a view with an active filter + visible chips row, and a view with `cols=` narrowing the visible columns — verified live via `getBoundingClientRect()` comparison, not just structural reasoning, since both states render through the identical shell component tree (only the table body actually swaps).
+
+    Media-list/globals-list/edit-view/dashboard branches and the sidebar/peek Suspense boundaries Main's full vision also calls for were NOT converted to this streaming pattern this round (still the Decision-39-era "await everything, one `VexAuthProvider`-wrapped return" shape) — a scope limit under time pressure, not a design rejection; the collection-list branch (the one exercising every piece of the pattern — gate, prefetch, dehydrate, shell/data split, `startTransition`) is the reference implementation for extending it to the rest.
+
+    **Skeleton row count follow-up (developer decision, same day).** The fallback's row count was initially a fixed `pageSize` guess — wrong (and shift-causing) for any view with fewer total rows than a full page, the common small-collection case. Fixed with a new per-collection, per-view cookie, `vex-list-rows:<collection>` (`listRowCountCookie.ts`, core: `listRowCountCookieName`/`parseListRowCountCookie`/`applyListRowCountUpdate`, mirroring `listViewsCookie.ts`'s own name/parse/LRU shape; `listPreferenceCookies.ts`, react: `writeListRowCountCookie`, mirroring `writeListDensityCookie`) mapping a view id (`"default"` included, Decision 45) to the row count its last settled result actually showed, capped at that load's `pageSize`. `CollectionListViewData` writes it once a result settles (never mid-`isPending`, keyed off the SAME `rowIdsKey`-identity effect the lifted-state sync already uses, Decision 49 above). `NextAdminPage` reads it server-side and passes `initialSkeletonRowCount` through `CollectionListViewProps` to the fallback's own `pageSize` prop — `DataTable`'s `isPending` branch already derives its skeleton row count FROM `pageSize`, so no new row-count prop was needed there, only a source swap. An entry's absence (never-visited view) still falls back to `pageSize`; an entry of exactly `0` (a filtered view with no matches) renders zero skeleton rows AND no footer — `DataTable`'s footer-visibility condition gained a `pageSize !== 0` guard alongside its existing `isInitialLoading` check, so a known-empty view's skeleton doesn't reserve footer space the real empty state won't have either. At most `LIST_ROW_COUNT_COOKIE_MAX_ENTRIES` (10) view entries are kept per collection, LRU by write order, so a browser that visits many different saved views over time never grows this cookie unboundedly. Verified live: a collection with 8 posts and `pageSize: 10` (the framework default) — holding the fallback open via a temporary `__rectdelay` gate (same technique as the rect comparison above, added and reverted) — skeleton tbody: 8 rows, 384px; settled tbody: 8 rows, 384px, Δ0.
+
+    **Shared-view listViews dehydrated-status fix (developer-reported, un-deferred).** The conditional `listViews` await above (only for a `shared:` view) was, initially, incomplete: `listViewsPromise` itself was awaited for `sharedView`'s own server-side resolution, but the SEPARATE `queryClient.prefetchQuery({...})` call that actually populates the dehydrated cache stayed un-awaited (`void ... .catch(...)`) — its OWN cache-status bookkeeping (marking the entry `"success"`, not `"pending"`) still needed one more microtask tick after the underlying promise settled, so `dehydrate()` (called synchronously, same tick) still captured `"pending"` for a `shared:` view's own `listViews` query. `CollectionListView.tsx`'s own `visibleColumns`/`columnOrder` state — seeding BOTH the skeleton's column count and the real table, not just `ListViewTabs`' own tab strip — reads `sharedViews` via a PLAIN (non-suspense) `useListViews()` call, which only sees the right answer on its very first render if the dehydrated cache already shows `"success"`; the live-reported symptom was the skeleton showing every column, then narrowing once `listViews` resolved client-side. Fixed by awaiting the `prefetchQuery` call ITSELF (not just `listViewsPromise`) when `viewSource === "shared"` — cheap, since by that point the underlying fetch is already settled, so this costs roughly one microtask tick, not a real round trip. Default/config/local views are unaffected (still fully un-awaited, Decision 39's perf optimization preserved). `NextAdminPage.test.ts` gained 2 regression tests (`"success"` for shared, `"pending"` still possible for default) plus an updated assertion on the existing failure test (now deterministically `"error"`, not `["pending", "error"]`, for a `shared:` view specifically).
+
+    **Top-bar move: `AdminTopNav` relocated from `AdminLayout` into `NextAdminPage` (developer-approved, shell-streaming follow-up).** Fixes two things: a genuine PRE-EXISTING bug (the document-title breadcrumb never reliably appeared — its `vexConvexApi.get` query omitted `drafts`, so its key never matched the edit view's own prefetch key at all) and makes the crumb correct on first paint (previously gated behind a client-only `mounted` flag to avoid an SSR/client mismatch, so it only ever appeared after a post-hydration flash). Three Suspense-integration attempts were tried and reverted before landing on the one that works, confirming a fundamental React SSR-streaming constraint, not a fixable bug in the old structure: a direct second `useSuspenseQuery` call in `AdminTopNav` (still rendered by `AdminLayout`, a SIBLING of `NextAdminPage`'s own `HydrationBoundary`, not a descendant) never resolved within the SSR pass even reading an already-dehydrated matching key; reordering `AdminLayout`'s own JSX (`<main>` before `<header>`, CSS-ordered back to visually on top) so the boundary hydrated first didn't help either — React's streaming SSR renders the WHOLE tree eagerly and falls back wherever something suspends, WITHOUT blocking sibling rendering for a Suspense boundary elsewhere to settle first; a shared external store written into by the edit view's own already-resolving data component (no second query) hit the identical wall. The fix: move `AdminTopNav` itself into `NextAdminPage`'s own render tree, as a TRUE DESCENDANT of its `HydrationBoundary`, alongside the view content — `AdminLayout` now owns only the sidebar and the main column frame (no more `<header>`, no more `pathname`/`AdminTopNav` props); `NextAdminPage` renders `AdminTopNav` (and a `p-6 pt-0` content wrapper, moved out of `AdminLayout`'s own `<main>` so the bar can render full-bleed and `sticky top-0` against it) via a shared `renderAdminShell` helper, on EVERY branch (dashboard, globals list/edit/not-found, media list/edit, collection list/edit/not-found) for structural uniformity — even branches with nothing to prefetch still get a (harmlessly empty) `HydrationBoundaryClient`. `AdminTopNav.tsx` itself absorbed `ViewSiteButton` (moved out of `AdminLayout.tsx`) and the `<header>` shell; its document-title crumb is now its own `<Suspense>`-wrapped piece (`useSuspenseQuery` on the exact same `vexConvexApi.get` key, `drafts` included, the edit view's own data component prefetches), with a fixed-width skeleton fallback — two components suspending on an identical TanStack Query key share the same underlying promise (dedup), so both resolve together within one SSR streaming pass once they're genuinely part of the same subtree. `activeSlug`/`activeDocID` now come directly from `NextAdminPage`'s own server-side route params, not `usePathname()` parsing (the sidebar's own highlighting still needs that client-side derivation in `NextAdminLayoutClient.tsx`, unchanged).
+
+    **Three regressions from the top-bar move + the Part 3 edit-view Suspense split, developer-reported, fixed same day.** (1) **Breadcrumb order/icon wrong.** `AdminTopNav`'s document-title crumb (a `<Suspense>`-wrapped piece, since it resolves asynchronously) rendered its OWN divider nested inside a 2-item fragment alongside its link — fine when appended to an array that's used as-is, but WRONG once the whole array is `.reverse()`d for a right-side sidebar: a nested `[divider, link]` unit reverses as one block, landing the divider on the wrong side and leaving no divider between it and its neighbor. Fixed by making `AdminTopNavDocCrumb` return ONLY the link (no divider) and building the WHOLE nav as one flat array of individual items (home-link, divider, collection-link, divider, [document-link]) — exactly mirroring the pre-move implementation's own `crumbs.flatMap(...)` + single `.reverse()` — so a right-side sidebar's reversed order and divider placement match byte-for-byte. The base "Collection" crumb's own `isLast` (active/orange styling) is now `false` whenever a document crumb exists, matching the original (it was incorrectly always `true` before this fix). (2) **Edit-view content clipped to one line.** `renderAdminShell`'s new padded content wrapper (`<div className="p-6 pt-0">`, replacing padding `AdminLayout.tsx`'s own `<main>` used to carry directly) had no explicit height — `CollectionEditForm`'s own `<AppForm className="... h-[calc(100%+1.5rem)] ...">` needs a parent with a DEFINITE, percentage-resolvable height to size itself against; without one the form collapsed to near-zero height. Fixed (SUPERSEDED by the fourth regression's own fix below) by adding `h-full` to the wrapper. (3) **Edit form no longer rendering as a whole at once.** The Part 3 shell-streaming follow-up's `<Suspense>`+`useSuspenseVexDocQuery`/`useSuspenseQuery` split on `CollectionEditView`/`MediaCollectionEditView`/`GlobalEditView`'s own PRIMARY document query is reverted: the primary document is essential and cheap (one small `get` call, not a paginated list), so `NextAdminPage.tsx`'s three edit branches now AWAIT it server-side (parallelized with `authPromise`/the live-preview URL resolution where safe, not sequenced after them) and pass the resolved value as an explicit `initialData` prop, same shape the pre-Part-3 code used. The Suspense wrapper is removed entirely — `CollectionEditViewData`/`MediaCollectionEditViewData`/`GlobalEditViewData` call the PLAIN `useVexDocQuery`/`useQuery` (not the suspense variants), which seed synchronously from `initialData` so the document is never `undefined` on the first render — the whole form renders at once, same as before Part 3. Only individual fields that fetch their OWN data (relationship/upload pickers) retain their own independent loading states, unaffected by this revert.
+
+    **Fourth regression: edit/list view double scrollbar, following the `h-full` fix above (developer-reported, fixed same day).** `h-full` on `renderAdminShell`'s content wrapper resolved to 100% of `<main>`'s FULL height — but `<main>` was not `display:flex`, so the wrapper and `AdminTopNav`'s own `<header>` (a ~48px sibling, also inside `<main>` now) didn't divide `<main>`'s space between them the way flex siblings would; the wrapper's own 100% ignored the header's space entirely, overflowing `<main>`'s own bottom edge by exactly the header's height — a second, page-level scrollbar that moved the edit view's own fixed title/header-actions row out from under the top bar when scrolled (it should never move; only the form's own internal scroll container should). Fixed: `AdminLayout.tsx`'s `<main>` becomes `flex flex-col`; `NextAdminPage.tsx`'s wrapper changes from `h-full` to `min-h-0 flex-1` (flex-item properties only, NOT `display:flex` on the wrapper itself, which would have changed how its own child — `CollectionEditForm`'s `AppForm`, `CollectionListView`'s root — is laid out). `min-h-0` is the same override `<main>` itself already needed, for the identical reason: without it, flexbox's default `min-height: auto` would let the wrapper grow to fit `AppForm`'s own tall `h-[calc(100%+1.5rem)]` instead of staying clamped to its allotted share.
+
+    **`listViews` always awaited, not just for `shared:` (developer decision, 2026-10-29, latest).** Supersedes the "conditionally, only for a `shared:` view" clause in this decision's own opening paragraph above: `listViews` is now ALWAYS awaited before the shell flushes, for every view source, so shared-view tabs are present on first paint on every load, not just one, with no pop-in once the stream settles for the others. Measured cost: ~46ms warm on average (within noise against a baseline render); larger on a cold start or a remote (non-local) Convex backend. No changeset: a render-timing change with no public API/behavior-doc surface describing the old conditional-await shape to correct.
+
+50. **Per-field filter value inputs move to a registry, `fields/<type>/FilterInput.tsx` + `fieldToFilterInputComponent`, mirroring `fieldToFieldComponent`/`fieldToCellComponent` (developer decision, 2026-10-29).** `ListFilterBuilder.tsx`'s own hand-coded `renderFilterValueInput` (a single `if`-chain switching on `field.type`) is deleted; its one call site resolves `fieldToFilterInputComponent(field.type)` (`fields/registry.ts`, new export) and renders the returned component with a shared `FilterInputProps<TField extends AdminDataField = AdminDataField>` (`{ field: TField; value: unknown; op: string; onChange: (value: unknown) => void; disabled?: boolean }` — `op` is a plain `string`, not react's list-view-only `ListFilterOp`, so this type can live in `packages/core/src/fields/types.ts` beside `FieldComponentProps`/`CellComponentProps` without core depending on a react/list-view type). `reactAdapter.fields[type]` (`packages/react/src/adapter.ts`) gains a third key, `filterInput`, beside `field`/`cell`, present for every filterable type: `number` (a number `Input`), `checkbox` (the existing true/false `Select`), `date` (the existing `DateTimePicker` branch), `select` (the existing options `Select` — the synthetic `vex_status` field is itself `type: "select"`, so it free-rides this component with no special case), `color` (a small swatch + the existing hex text `Input`, side by side — NOT the full color-picker popover the edit-view `ColorField` uses, since a filter compares one exact stored hex string, not a chosen-from-swatches UX), `text`/`email`/`url`/`textarea` (each its own file, one plain `Input`, following this package's established one-component-per-type convention even where the bodies are identical — e.g. `Cell.tsx` already does this for these four types), and `relationship`/`upload` (new, below). `json`/`richtext`/`array`/`blocks`/`group` register NO `filterInput` (`undefined`, the same absence `field`/`cell` already show for UI-only types) — a row on one of these fields shows no value control at all, because `FILTER_BUILDER_OPS_BY_FIELD_TYPE` (`ListFilterBuilder.tsx`, Decision 10) is corrected to list them explicitly as `["isEmpty", "isNotEmpty"]` (a real bug this decision fixes: these five types fell through to `FILTER_BUILDER_DEFAULT_OPS`'s `eq`/`neq`/`isEmpty`/`isNotEmpty` before this, offering an `eq`/`neq` comparison against a structured value that was never meaningful and had no matching input to begin with).
+    - **`relationship`/`upload` filter values, single-select, reusing the existing pickers.** `relationship/FilterInput.tsx` opens `RelationshipPicker` (`fields/relationship/RelationshipPicker.tsx`) directly — it already takes plain `{ fieldDef, targetCollection, selectedIds, drafts, onSelect, onCancel }` props with no form coupling, so a filter row's own local state (`value: string | undefined`, a single id) maps straight onto `selectedIds: value ? [value] : []` / `onSelect: (ids) => onChange(ids[0])`, regardless of the field's own `hasMany` (a filter leaf always compares ONE value). `upload/FilterInput.tsx` needs new work: the existing `MediaPicker` (`media/MediaPicker.tsx`) is NOT reusable as-is — its `field` prop is a live TanStack Form field-API object, not a plain value/callback pair, confirmed by reading its props (`field: AnyFieldApi`). This step builds a thin, standalone single-select media dialog with a `RelationshipPickerProps`-shaped contract (`{ targetCollection, selectedId, onSelect, onCancel }`), reusing `MediaPicker`'s own internal document-grid/upload-dropzone PIECES (not the whole component) — the same "reuse the pieces, not the form-coupled shell" pattern `ListPeek` (Step 13) already used for its own copy button vs. `ListCopyLinkButton`'s toast convention.
+    - **Relationship/upload chips and the builder's own selected-value display show the target document's title, not the raw id, server-prerendered so nothing shifts.** New core helper `collectRelationshipFilterValues({ where, collection }): { fieldKey: string; targetCollection: string; id: string }[]` walks the active `where`'s DNF leaves, collecting every `relationship`/`upload`-typed leaf with a concrete `eq`/`neq` value (never `isEmpty`/`isNotEmpty`, which carries no id). `NextAdminPage.tsx` calls it after resolving `resolved.where`, then — parallel to the existing `listViews`/`peek` `Promise.allSettled` prefetches, same degrade-never-crash pattern (Decision 9/32) — fetches `vexConvexApi.get({ id, collection: targetCollection })` for each DISTINCT id, reducing to `initialFilterValueTitles: Record<string, string | null>` (`doc[useAsTitle] ?? doc._id` when readable, `null` for not-found/denied), passed as a new `CollectionListViewProps.initialFilterValueTitles`. `CollectionListContext` gains `filterValueTitles` (seeded from the prop) plus a setter the relationship/upload `FilterInput`s call directly from their OWN picker's `onSelect` — a value picked THIS session already carries its title from the picker's own document list, so the common "user just picked it" path needs no extra query; only a COLD load (a direct `?filter=` link, a saved view, a different tab) ever depends on the server-resolved map. `ListFilterChips.tsx` and the builder's own relationship/upload row read `filterValueTitles[id] ?? id` — the raw id is the final fallback, never a blocking state.
+51. **Every admin preference cookie is scoped to the admin `basePath`, not `path=/`, and consolidated into two JSON cookies per the audit below (developer decision, 2026-10-29).** Audited: `vex-list-density` and `vex-list-chips:<collection>` (`collections/listPreferenceCookies.ts`), `vex-list-views:<collection>` (the local-views index, `listViewsCookie.ts`/`listViewStore.ts`), `vex-list-rows:<collection>` (Decision 49's skeleton row-count hint, `listRowCountCookie.ts`), `vex-live-preview-panel:<slug>`/`vex-live-preview-layout:<slug>` (`livePreview/panelCookie.ts`), and `sidebar_state` (`ui/sidebar.tsx`) — up to ~5 cookies per collection today, every one `path=/`, sent on EVERY request to the domain including public, non-admin pages. Two fixes, together: (1) every admin cookie's `Path` becomes `config.basePath` — resolved from `VexConfig.basePath` (always set, defaults `/admin`) — server-side reads/writes already have the config in scope; (2) the per-concept cookies consolidate into ONE collection-scoped JSON cookie, `vex-admin:<collection>` (`{ v: 1, chipsVisible?, localViews?, rowCounts?, livePreview?: { panelOpen?, panelSize? } }`), plus ONE global `vex-admin` (`{ v: 1, density?, sidebarOpen? }`) — a single core codec (`packages/core/src/adminCookie.ts`, new) owns both names, the versioned shape, parse (tolerant, degrade-to-defaults, matching `parseListViewsIndexCookie`'s precedent), and serialize WITH caps: `rowCounts` keeps its existing `LIST_ROW_COUNT_COOKIE_MAX_ENTRIES`-entry LRU cap; `localViews` entry names truncate past 40 chars; a hard `ADMIN_COOKIE_MAX_BYTES` ceiling (~3800, headroom under the common ~4096 per-cookie browser limit) is enforced by dropping, in order, `rowCounts` first (cosmetic skeleton accuracy only, never user data), then the OLDEST `localViews` entries, re-measuring after each drop — scalar fields (`chipsVisible`/`livePreview`/`density`/`sidebarOpen`) are never dropped, they're too small to matter. Every EXISTING exported function (`parseListPreferences`, `writeListDensityCookie`, `writeListChipsVisibleCookie`, `parseListViewsIndexCookie`, `writeListRowCountCookie`, `readLivePreviewPanelCookie`, `writePreferenceCookie`, …) keeps its OWN name/signature — every caller across the codebase (`NextAdminPage.tsx`, `CollectionListView.tsx`, `ListFilterChips.tsx`, `useLivePreviewPanelState.ts`) is UNCHANGED; only each function's OWN internal implementation becomes a thin read/write through the one consolidated cookie instead of its own dedicated one — consolidating the STORAGE, not the API, the same "one place this is computed, many unchanged callers" shape `resolveListQueryState`/`buildListQueryArgs` already established. The one new write pattern: a single react writer (`packages/react/src/adminCookie.ts`, new) reads the CURRENT cookie, merges a patch, and writes back ONLY when the merged JSON differs from what's already stored — no redundant cookie churn on a no-op update. `ui/sidebar.tsx`'s `SidebarProvider` is the one exception needing a NEW dependency: it reads `useVexConfig().basePath` and routes its write through the global writer — the one `ui/` primitive gaining a `@vexcms/core` config coupling, flagged deliberately (it is admin-only in practice despite its `ui/` location; a future non-admin consumer would need its own un-scoped sidebar cookie path, out of scope here). **Migration: no read-and-delete of the old cookie names.** This is pre-release (`v0.1.0-launch-plan`), every affected cookie is a UI preference with zero data-loss risk, and the project's own established pattern for a breaking internal rename is a clean cutover (Decision 45), not a migration shim. New code simply never reads the old names again; a one-time best-effort client-side clear (`document.cookie = "<old-name>=; path=/; max-age=0"` for each of the 6 old names, called once on `AdminLayout` mount) tidies a returning browser's DevTools/cookie jar without adding any server-side migration logic. Why: a public-page request carrying 5 admin-only cookies it will never read is pure waste, and five independently-shaped, independently-pathed cookies for one logical "this collection's admin UI state" concept is the same scattered-config shape Decision 45 already fixed for views.
+
+## Polish Decisions
+
+Developer-approved decisions from the post-implementation polish pass (`local://polish-fixes.md`, 2026-10-29), reviewed against the shipped code across core/react/next (`agent://PolishCoreServer`, `agent://PolishReactList`, `agent://PolishNextShell`, `agent://PolishDocsConfig`). Continues the Design Decisions numbering.
+
+52. **Load errors are region-specific, one shared error-boundary-style component reused per region, `QueryErrorResetBoundary` for retry.** Table: the existing `ListQueryError` (generic "Couldn't load <plural>" + Retry; `UNINDEXED_SORT` → "Can't sort by X yet" + Remove sort) — the toolbar stays usable, same frame size as the table (zero shift). Peek: reuses the pinned Decision 34 copy "Can't show this document" for BOTH not-found and no-access — they read identically, no access-leak distinction. Shared-view tabs: the default/config/local tabs still render on a shared-view fetch failure; the shared slot shows a small "Couldn't load shared views · Retry". Edit views (collection/global/media): `useVexDocQuery` returns `error`; an inline error state with Retry replaces a silently-blank form.
+53. **`saveView` input is validated** (`viewId`/`name` must be strings, `state` a plain object) → `VexError({ code: "INVALID_VIEW" })` on a bad call. Every reader of `vex_views.state` (`listViews`, `loadSharedViewWheres`, anything reading the stored state) skips a row whose `state` isn't a plain object instead of crashing on it (a dev-only one-time warning, not a thrown error — a malformed row must never break the whole view list for every other user).
+54. **Cross-org view protection — FINAL, revised a second time: a new `access.organizations?: boolean` flag (default `false`) is the SOLE trigger, not merely `orgCollectionSlug` being set.** `orgCollectionSlug` alone never scoped anything — it only ever meant "where organization data lives, so a project's own permission callbacks can read `organization`," a genuinely separate mechanism (`hasPermission`/`resolveAccessRule`/`resolveFieldPermissions`/`SubjectMap`/`PermissionCallbackProps`, a project's own `create`/`update`/`remove` callbacks) that stays keyed on `orgCollectionSlug` alone, unaffected — a project can read `organization` in its own callbacks without opting into view scoping. `access.organizations: true` REQUIRES `orgCollectionSlug` to also be set (a dev-mode warning otherwise). With it on: `listViews`/`loadSharedViewWheres`/`saveView`/`removeView` and the client's `useCanAccessSharedViews` all route through one shared predicate (`isViewOrganizationScopingEnabled`/`resolveViewOrganizationId`, new `packages/core/src/access/resolveViewOrganizationScope.ts`), so none of them can independently drift — everything this decision's prior revision established (org-less rows invisible/inert, never adopted; a caller whose own org doesn't resolve denied outright for `saveView`/`removeView` and seeing `[]` from `listViews`/`loadSharedViewWheres`; a cross-org row, an org-less row, and a genuinely missing row throwing the IDENTICAL `No view "<viewId>" found for collection "<collection>"` error, no existence leak; a new insert always stamps the caller's own resolved org) is unchanged, it just now gates on this flag rather than merely `orgCollectionSlug`'s presence. **With the flag unset (the default, and `apps/test`'s own state — unaffected):** exactly the pre-scoping behavior — `listViews`/`loadSharedViewWheres` read everything unscoped; `saveView`/`removeView` can create/patch/delete any shared view, cross-org-labeled or org-less, as long as the caller holds the relevant `VIEW_ACTIONS` permission; `useCanAccessSharedViews` returns `true`. Local (cookie/`localStorage`) views are entirely unaffected either way — they never touch `vex_views` or any org logic.
+55. **A non-integer/non-finite number in a `where` on a `commitTs` field throws `VexError({ code: "INVALID_WHERE" })`**, naming the field — `commitTs`'s underlying `int64` comparison has no meaningful fractional/`NaN`/`Infinity` value, so this fails at the query boundary rather than silently coercing or matching nothing.
+56. **One doc-query key builder.** A single shared core helper builds the `get` args for every caller that fetches a single document by id (server prefetch, the three edit views, the top-nav crumb, peek, filter-value titles) — `drafts` is included only when the collection is versioned (never a literal `drafts: false`), so every caller's query key is byte-identical for the same document regardless of which surface requested it, keeping the TanStack Query cache a single source of truth rather than one entry per caller.
+57. **Changesets, one per user-facing change, each naming the affected packages with migration notes** — this decision is itself satisfied by the changesets this polish pass adds (`.changeset/admin-table-to-admin-view.md`, `cols-url-grammar.md`, `hook-rename-react-compiler-safety.md`, `themescript-server-entry.md`, `admin-cookie-consolidation.md`, `updated-at-commitTs.md`, `total-docs-count-cap.md`, `next-admin-page-auth-searchparams.md`, `region-specific-load-errors.md`, `invalid-view-validation.md`, `cross-org-view-protection.md`, `invalid-where-commitTs.md`, `stale-saved-view-fallback.md`, `admin-gate-covers-content.md`, `empty-search-fields-enforced.md`, `admin-not-found-state.md`, `remove-dead-initial-props.md`, `field-display-slot.md` (Decision 64), `peek-resize-and-panel-collapse.md` (Decisions 65/66/74), `access-system-and-ui-fields.md` (Decision 67), `view-actions-boolean-only.md` (Decision 68), `hidden-field-filter-exemption-and-notices.md` (Decisions 69/70), `anonymous-admin-access.md` (Decision 71), `collections-globals-index-pages.md` (Decision 72), `admin-sign-in-out-control.md` (Decision 73), `button-content-justify.md` (Decision 76), `use-debounced-value.md` (Decision 77), `search-keeps-previous-results.md` (Decision 78) — one per user-facing change, per the developer's explicit choice, not bundled).
+58. **A stale saved view's `sort.field`/`searchField`** (no longer exists, no longer indexed, no longer searchable) falls back to the collection's own default for just that ONE part — identically server- and client-side, so there's no first-paint/hydration mismatch — and shows a small, dismissible toolbar notice ("This view's sort on 'X' is no longer available"). The saved view itself is never silently rewritten; it only changes if the user explicitly saves over it.
+59. **The admin gate also covers the content area, not just chrome — REVISED by the developer after a live review (supersedes this decision's own first version below).** `canAccessAdminPanel` is now awaited BEFORE anything streams, exactly like the existing token check (await → redirect on denial) — a denied caller receives no admin shell and no content at all, not a skeleton of either. An allowed caller's real shell streams exactly as it did before this decision (real title/tabs/toolbar/controls/checkboxes; only row data still resolves behind its own `<Suspense>` skeleton). **Superseded first version:** content waited for `canAccessAdminPanel` behind a generic `AdminContentSkeleton` (no config-derived text, every element at the settled content's exact position/size) instead of an outright redirect — reverted because a live review found it made the real loading state WORSE: layout shift, row-selection spinners, phantom skeletons, and pop-in as the real content replaced the generic one. `AdminContentSkeleton` is deleted; there is no replacement component.
+60. **`admin.view.searchFields: []` (or omitted) is enforced server-side, not just hidden client-side.** The search endpoint returns `SEARCH_FIELD_NOT_ALLOWED` for a collection with no declared search fields, regardless of what a client sends — the client hiding the search bar was never itself a security boundary.
+61. **One shared `AdminNotFound` state**, styled like `ListEmptyState`: icon, title ("Collection not found" / "Global not found" / "Document not found"), a detail line, and a button back to the dashboard (a document's own not-found goes back to its collection's list instead) — server-rendered, same frame size as settled content. Replaces every ad hoc not-found TODO string.
+62. **Dead props deleted**: `CollectionListViewProps.initialData`/`.initialQueryError`/`.initialViews`/`.initialPeekDoc`, `ListPeek.initialDoc`, and their now-unreachable client branches (e.g. `hasLiveQueryResultRef`'s fallback) and tests. A non-Next caller prefetches through the query cache exactly like `NextAdminPage` does — there's no separate `initial*`-prop seeding path left standing.
+63. **`commitTs` reuses `date`'s `FilterInput`** — the filter-input registry maps `commitTs` to the same component `date` uses (identical bucket/value-control shape, Decision 8 of the `2026-10-28-committs-field` spec); the dedicated `commitTs/FilterInput.tsx` this spec's own Step 22/the committs spec originally shipped is deleted as redundant.
+64. **A new optional `display` field-component slot, beside `field`/`cell`/`filterInput` on `reactAdapter.fields[type]` (developer feedback on `ListPeek`, via Step13InspectPeek, same registry shape as Decision 50's `filterInput`).** `DisplayComponentProps<TField>` (`packages/core/src/fields/types.ts`, beside `CellComponentProps`/`FilterInputProps`): `{ field, value, document, collection }`; `FieldComponentMap` (`framework.ts`) gains `display?`. `fieldToDisplayComponent(type)` (`fields/registry.tsx`, renamed from `.ts` — needs JSX for its Cell-fallback adapter) falls back to the type's registered `cell` (adapted, `isTitleField` forced `false`) when no `display` is registered. 9 built-ins register a dedicated `display`: `text`/`textarea` (full value, not truncated), `json` (the real `JsonEditor`, read-only), `richtext` (the configured editor adapter's own `renderComponent`, falling back to plain text), `relationship`/`upload` (chip + id), `group`/`array`/`blocks` (recurse via new shared `fields/DisplayFieldList.tsx`); the 8 remaining scalar types (`date`/`commitTs`/`checkbox`/`select`/`number`/`email`/`url`/`color`) register none — Cell-fallback covers them. `ListPeek.tsx`'s Fields tab is now ONE loop over `fieldToDisplayComponent` — its own `formatPeekFieldValue`/`PeekRegistryCellValue`/`RelationshipFieldValue`/`titleOfPopulatedDoc` are deleted (the relationship piece moved to `relationship/Display.tsx`). Copy buttons are disabled (greyed, no toast) for an empty value via new core helper `isDisplayValueEmpty` (`undefined`/`null`/`""`/`[]`) — shared by every Display's own "—" check and the peek's copy button. Docs: `apps/docs/.../dev/adding-a-field-type.mdx` updated (also backfilled the missing `filterInput` mention it never got from Decision 50). Changeset: `.changeset/field-display-slot.md` (`@vexcms/core`+`@vexcms/react`, minor).
+65. **Resizable peek-panel width, persisted like a column's (developer-approved "peek-resize", via Step13InspectPeek).** A drag handle on the panel's left edge, same look/behavior as `DataTable`'s own column-resize (full-height primary highlight on hover/focus/drag, grip, `role="separator"`, keyboard `ArrowLeft`/`ArrowRight`), clamped `[320px, 60vw]`, desktop-only (the mobile bottom sheet is unaffected). Persisted exactly like `pageSize`: `VexViewState.peekWidth?: number` (`collections/types.ts`), `AdminCookieCollection.peekWidth?: number` (`adminCookie.ts`, mirrors `chipsVisible`), `PEEK_PANEL_DEFAULT_WIDTH_PX`/`PEEK_PANEL_MIN_WIDTH_PX`/`PEEK_PANEL_MAX_WIDTH_VIEWPORT_FRACTION` constants (`collections/listPreferenceCookies.ts`), `ListPreferences.peekWidth: number` (always resolved, default `384`). A new `"peekWidth"` `ListViewDiffCategory` in `useListViews.ts`'s `ListViewStateSnapshot`/`ListViewEntry`, following `pageSize`'s exact pattern — a saved view restores it on switch, "Modified" diffs it, Reset restores the active view's own saved width (or `undefined` → default). A Reset control (icon-only `Button`, `RotateCcw`, `aria-label="Reset peek width"`) appears on handle hover/focus; double-click the handle also resets. Client writer: `writePeekWidthCookie` (`packages/react/src/collections/listView/listPreferenceCookies.ts`). Shared resize-handle styling (`DIVIDER_HIGHLIGHT_CLASS`/`resolveResizeGripClass`) extracted from `DataTable.tsx` into `packages/ui/resizeHandleStyles.ts` for reuse, not duplicated.
+    - **Revised 2026-10-29, developer (binding, supersedes the prior round's "`peekWidth` compares against `PEEK_PANEL_DEFAULT_WIDTH_PX`" fix — via Step12SavedViews):** peek width counts toward "Modified" ONLY for a view that has its OWN saved `peekWidth`. A view that saved one: Modified when the current width differs from it, Reset restores it. A view with NO saved width — including the default ("All") view and every config view that never set one — never shows Modified for peek width regardless of the current width (it's just the remembered cookie preference, not view state); Reset on such a view leaves `peekWidth` untouched (nothing to reset). Saving (plain Save, "Save as new", Rename-and-keep) a view with no saved width does NOT start saving `peekWidth` unless the user explicitly resized the peek WHILE that view was active — tracked by a `peekWidthTouchedRef`/`peekWidthTouched` flag (`CollectionListView.tsx`), reset on every active-view change. `diffViewState` (`useListViews.ts`) skips the `peekWidth` comparison entirely when the view's own saved value is `undefined`, the same shape `pageSize` would need if it ever gained an optional/unset state; `onPeekWidthChange(width, source?: "user" | "view")` distinguishes a user drag from a view-switch re-seed so the touched flag only ever flips on a genuine user resize. New `PendingViewSaveState` type (`useListViews.ts`) makes `peekWidth` optional in the save-dialog's own pending state.
+66. **The peek panel becomes ONE element at every width, not two separately-mounted layouts — structural root-cause fix for the earlier reported freeze bug (Main's own directive, binding, supersedes this spec's original two-layout/`Sheet` assumption in Step 13's own shipped code).** `ListPeek.tsx`'s `LIST_PEEK_PANEL_CLASSNAME` is pure CSS (`md:` prefix) switching between a full-width bottom sheet (`<768px`) and a fixed right panel (`≥768px`) — never two mounted subtrees, never a measured/JS-driven layout branch. Base UI `Dialog` is dropped entirely and rebuilt minimally: `role="complementary"` + an unconditional `aria-label`, a document-level Escape-key effect (skipped while focus sits on an editable control inside the panel), a plain mobile-only dim backdrop (`pointer-events-none`), and the bottom sheet's slide-up+fade mount transition via native CSS `@starting-style` (Tailwind's `starting:` variant), explicitly canceled at `md:` to match the desktop panel's prior no-transition behavior. `packages/react/src/ui/useVisibleOnce.ts` (the earlier `IntersectionObserver` workaround for the freeze bug) is DELETED, along with its test — there is now only ever one Tabs/Display instance mounted, so the duplicate-construction risk that workaround patched over no longer exists at all.
+    - **Correction, 2026-10-31, developer (via Step13InspectPeek): this decision's single-panel collapse was NOT the freeze's full story.** It removed the first, duplicate-same-library freeze (two `JsonEditor`/Plate instances for the SAME field, one in each previously-always-mounted layout) but exposed a SECOND, different freeze underneath — see Polish Decision 74 for the real, confirmed-via-live-bisection final cause (DOM order relative to the table) and the dead-end `heavyEditorGate` mutex that was tried and deleted along the way.
+67. **Access field-permission maps accept the real system field names — `_creationTime`, `updatedAt`, `vex_status` (only on a versioned/drafts collection) — and `ui()`-type fields, typed per collection (developer decision, breaking, via Step12SavedViews/`access-system-fields.md`).** `_id` stays the ONE permanently ungateable key — always readable, never a valid map entry. Hidden-unless-listed applies to these exactly like a data field: a partial map that doesn't list one now hides it. The wildcard key (`"*"`) covers system and UI fields too. **Carve-out, unchanged and now explicitly tested:** sorting by `_creationTime` is allowed even when its own value is hidden from that caller. Stripping runs server-side on every read path (`find`/`get`/`search`/the versions endpoints); a new client `useCanReadField` hook (`@vexcms/react`) lets a component check readability for these keys the same way it already could for data fields. **Breaking migration:** a role's field map that previously implicitly showed these fields (no key existed to gate them on) now hides them unless the key is added or the map becomes `'*'` — `apps/test`'s/`apps/www`'s own `access.ts` needed an audit pass (e.g. `guest`'s `posts` map gained an explicit `updatedAt` entry while deliberately keeping `vex_status`/`_creationTime` hidden). Changeset: `.changeset/access-system-and-ui-fields.md`.
+68. **View actions (`readViews`/`createView`/`updateView`/`deleteView`) are boolean-only, no field-permission map, no constrained-query object (developer decision, breaking, via Step12SavedViews).** Both forms were always meaningless for a view action — a saved view is one whole collection-level `vex_views` row, never read/written per-field or per-document. New `ViewPermissionCheck<TUser, TOrg> = boolean | ((props: { user, organization? }) => boolean | undefined)` — a SINGLE props object shape, matching every other permission callback, deliberately with no `data` — so a future per-view property (the stored view the action targets) can be added later without another breaking change. Reachable only through an untyped config or an `as` cast, a map/object that reaches runtime anyway now fails CLOSED with a dev-only warning, never read as an implicit allow. Per-view access control itself (a callback actually receiving the target view) is explicitly backlog, not built here. Changeset: `.changeset/view-actions-boolean-only.md`.
+69. **Declared (config/default and active-unmodified-shared) view filters stay exempt from the unreadable-field check and show only as the hidden-filter badge; a user-added filter on an unreadable field is dropped BEFORE the query, with a dismissible stale-filter notice naming the field's label (developer decisions, via Step11FilterBuilder/DraftPairPagination, `access-system-fields.md` parts 2b/3/11).** A declared view's own `where` (config/default, OR an active shared view the caller hasn't edited away from) composes into the query server-side regardless of the current viewer's own field permissions — same treatment `vex_status`'s draft/publish filtering already had — the viewer never sees a column/chip/peek row for that field, the view shows its hidden-filter badge, and the viewer can't add their own filter on it. The instant a caller edits a shared view's filter it becomes THEIRS, fully subject to the check from then on. A user-supplied (URL/local-view) condition on a field that's since become unreadable is now extracted and dropped by `resolveListQueryState` itself (`fieldPermissions?: ResolvedFieldPermissions`, a new optional param, threaded through both the server and client callers plus the hover-prefetch path for cache-key parity) BEFORE the query is built — the server already rejected it, so a dropped-but-still-sent condition used to produce a silently broken/empty query with no visible way to fix it. `ListStaleViewNotice.tsx` gains a third, independent sentence for `staleFilterField` ("showing unfiltered results instead" — no fallback exists for a dropped filter, unlike sort/search). All three stale-field notices (sort/search/filter) now show the field's display LABEL, not its raw key. The filter builder's field picker and the chip row both never offer/show a field the viewer can't read, including the synthetic `vex_status`. Changesets: `.changeset/hidden-field-filter-exemption-and-notices.md`.
+70. **A fully readable shared view's own saved filter shows as normal, editable chips, not invisible (bug fix, via Step11FilterBuilder).** New `resolveEffectiveFilterWhere` (`useListViews.ts`): a URL filter (set or explicitly cleared) always wins; otherwise an active, FULLY READABLE shared view's own `where` substitutes (`hasHiddenFilter === false`); `undefined` for a declared view (already structurally stripped, Decision 25) or an unreadable shared one (badge-only, Decision 69). Previously an unmodified shared-view link showed zero chips/count/eye toggle for EVERY caller, since those all read from `urlState.filter` alone, which a shared view never populates (Decision 41 — only a local view's state is URL-embedded). Changeset: `.changeset/hidden-field-filter-exemption-and-notices.md`.
+71. **Anonymous admin access is a pure `access.ts` config decision via `anonRole`, no app code branching (developer-approved, via Step16Responsive).** The RBAC/data layer already fully supported it (`hasPermission`, `resolveFieldPermissions`, every server function, `usePermission`, sidebar/list/peek field filtering) — the actual gap was two gate points that ran BEFORE `canAccessAdminPanel` ever got a chance to say yes. Fixed, both gates: `proxy.ts`'s middleware (the true primary blocker, runs before any route code) now calls `canAccessAdminPanel({ access, user: null })` FIRST — pure, synchronous, no I/O — and skips its own session-verification round trip entirely when it returns `true`; every app's/template's `page.tsx` no longer hard-redirects on a missing token before the authorization check — `getUserOrg()` runs unconditionally (already safe with no session), THEN `canAccessAdminPanel`, redirecting only on denial (`/auth/sign-in` for a genuinely missing token, `/unauthorized` otherwise). `base-nextjs` gets only the `page.tsx` half — its whole-app gate stays unchanged, "private apps stay private." Changeset: `.changeset/anonymous-admin-access.md`.
+72. **`/admin/collections` (new) and `/admin/globals` (now permission-filtered) index pages, both with a proper empty state (developer request, via Step16Responsive).** `/admin/collections` is a collections-only index, same card-grid style as the dashboard, built on a new shared `AdminCardSection`/`CollectionsIndexView` (both exported) rather than new one-off components — `DashboardView`/`GlobalsListView` refactored onto the same section component so all three index pages render identical markup. `AdminHrefTarget` gains `{ type: "collections" }` (→ `/{basePath}/collections`), parallel to the existing `{ type: "globals" }`; `AdminTopNav`'s breadcrumb trail gains a matching "Collections" crumb. **Breaking (narrow): `GlobalsListView` is now permission-filtered** — it used to render every configured global unconditionally, not a real boundary since the route is reachable directly by URL (including anonymously, Decision 71); it now runs the same `hasPermission({read, scope:"any"})` check the dashboard's own Globals section already ran. Both not-found screens' back links now point at the new section index (`/admin/collections`, `/admin/globals`) instead of the dashboard. Both index pages show a new `AdminIndexEmptyState` (exported, same visual shape as `ListEmptyState`'s `"empty"` variant) when the caller can read nothing at all, instead of silently rendering nothing below the title. Changeset: `.changeset/collections-globals-index-pages.md`.
+73. **A sign-in/out control in the admin top bar, via a new `FrameworkComponents.auth` adapter + `@vexcms/next/auth` (developer-requested, meaningful now that Decision 71 allows anonymous admin access, via Step14Prerender).** `FrameworkComponents.auth?: { signInHref: (redirectTo: string) => string; signOut: () => Promise<void> }` — omitted, the control renders nothing (same as before). The signed-in/out STATE is deliberately NOT part of the adapter — `AdminTopNav` reads it from the existing `useVexAuth()`; `user === null` OR `user.isAnonymous === true` (Better Auth's `anonymous()` plugin convention) both count as signed out. New `@vexcms/next/auth` subpath exports `VexAdminAuthAdapterProvider`/`useVexAdminAuthAdapter` — a CONTEXT, not a prop threaded through `NextAdminLayout`/the app's own `layout.tsx` (both server components; the sign-in href builder and `signOut` closure are client values that can't cross that boundary as props) — the app mounts the provider anywhere above `NextAdminLayout` in its OWN client tree instead. Placement mirrors the existing sidebar-trigger/breadcrumbs/"View site" cluster's own side-aware branching, on the opposite edge; the control shows label text ("Sign in"/"Sign out") WITH the icon to its right, not icon-only. Changeset: `.changeset/admin-sign-in-out-control.md`.
+74. **Peek navigation and polish round, several developer requests/reports landing together (via Step13InspectPeek).** Previous/Next now WRAP within the loaded rows (Previous on the first row jumps to the last, Next on the last jumps to the first; disabled only with a single loaded row or a deep-linked peek outside the loaded page). The header's edit-page link reads "Edit", not the previously ambiguous "Open" (Decision 28's row-menu action renamed to match). The panel's sidebar-offset now animates (`md:transition-[right] md:duration-200 md:ease-linear`, mounted-gated so a cold deep link never animates in from a wrong offset) in lockstep with the admin sidebar's own toggle instead of jumping instantly; a RIGHT-side, non-mobile sidebar is the only one this panel ever offsets against (a left sidebar needs no offset — this panel is viewport-`fixed`, unaffected by a left sibling's layout width). The JSON tab now reads from a DEDICATED raw (depth-0, no `populate`) `get` fetch of the same document — not the Fields tab's own populated row — so a relationship/upload field shows its actual stored id(s) there instead of a nested populated document (the common seeded-row fast path pays a brief JSON-tab-only loading state for this; a deep-linked peek pays nothing extra, since its query key already matches the server's own prefetch). The panel remembers which tab (Fields/JSON) was last open, admin-wide (`AdminCookieGlobal.peekTab`), the same "last used, not per-view" tradeoff `density`/`sidebarOpen` already make. **The freeze bug's real, confirmed cause (superseding Decision 66's own "single-panel collapse" framing, and this spec's earlier `useVisibleOnce` IntersectionObserver fix):** root-caused via extensive live bisection (profiling, a long elimination list — containment, compositing, DOM ancestry, double-click specifics, every piece of the peek's own structure — each individually ruled out), the confirmed binary cause was DOM ORDER relative to the table: `ListPeek` rendered AFTER `<ListLayout>` in JSX hung a `json`+`richtext`-populated row's first real-editor construction; the SAME component, same CSS, same data, placed BEFORE `<ListLayout>` never hangs. `ListPeek` now renders BEFORE `<ListLayout>` in `CollectionListView.tsx` (both already non-flow `position: fixed` siblings — no layout impact), with an in-place comment warning against moving it back without re-testing. An intermediate attempt, `heavyEditorGate.ts` (a module-level mutex serializing heavy-editor construction app-wide), was tried, shown NOT to address a real cross-library race (the edit view mounts both CodeMirror and Plate simultaneously with no gate and never hangs), and DELETED along with its test — `json`/`richtext` Display components construct their real editors synchronously again, no gate. Known, accepted side effect: the peek's focusable controls now precede the toolbar/table in DOM tab order while the peek is open (unfixed with a `tabindex` hack per explicit instruction not to without asking). Changeset: `.changeset/peek-resize-and-panel-collapse.md`.
+75. **The row ⋯ menu's "Open" action renamed to "Edit"** (Decision 28's revision note) — matches the peek's own rename (Decision 74); icon, href, destination, and every internal identifier (`ListRowOpenAction`, `vex.list.row.open`) unchanged.
+76. **`Button`'s icon+label content defaults to grouped/centered, not space-between (developer decision, breaking (narrow), via Step12SavedViews).** New `contentJustify?: "center" | "between" | "start"` prop, default `"center"` — `"between"` is now an explicit opt-in (the old default), correct for exactly one caller (`ListViewTabs.tsx`'s full-width mobile view-switcher, label-left/icon-right); every other full-width labeled button wants its icon+label pair to stay grouped together, just centered within the stretched width, which was wrong under the old default. `"start"` is new, for a left-aligned icon+label pair (a menu-style overflow item) that shouldn't center. Same pass: `hasLabel` (drives the icon's own margin, unrelated to justify-content) now correctly ignores a raw icon element passed as bare `children` with no `icon` prop, and respects an explicit `iconPosition="center"` even when `children` is present (an `sr-only` a11y label no longer miscounts as visible label content). **Migration:** a full-width labeled `Button` relying on the old space-between default needs `contentJustify="between"` added explicitly. Changeset: `.changeset/button-content-justify.md`.
+77. **New `useDebouncedValue` hook (`@vexcms/react`) replaces every internal use of the buggy third-party `@ts-hooks-kit/core` `useDebounceValue` (bug fix, via Step14Prerender).** The third-party hook's internal "last call" timer only updated on the FIRST call of a debounce burst, not on every subsequent one — a 250ms debounce window tracked 250ms after the FIRST keystroke, not the most recent, behaving like a throttle at the original interval rather than a true debounce; typing at a normal pace fired a real search roughly every 250–300ms DURING typing instead of once after stopping. Migrated every call site: the list search box, the relationship picker's own search, the rich text editor's inline media-picker search, and the shared search-pagination hook under the media library grid. Changeset: `.changeset/use-debounced-value.md`.
+78. **The list search box keeps the previous results on screen while a search resolves, instead of flashing to a loading skeleton then an empty state (developer-reported, via Step14Prerender).** Three compounding causes, fixed together: the table's seed `useSuspenseQuery` re-suspended on every search/sort/filter key change with no previous-page fallback; switching between find-mode and search-mode pagination lost the OTHER (now-inactive) mode's still-valid previous results, since the newly-active mode had never run before and so had nothing of its own for `keepPreviousData` to draw from; and the buggy debounce (Decision 77). `isFetching`/`isPlaceholderData` are also unreliable against a live Convex websocket subscription (updates push straight into the query cache, never through a tracked refetch) — the search spinner now tracks a dedicated `isSettling` state instead. Changeset: `.changeset/search-keeps-previous-results.md`.
+
 ## Out of Scope
 
 - Inline cell editing
 - CSV export / import
 - Searching all fields in one query (a fan-out search merged on the client)
-- Drag-reorder rows / manual ordering
+- Drag-reorder rows / manual ordering (distinct from Step 20's column-order drag handles, Decision 47, which reorder list COLUMNS, not rows — rows stay insertion/sort-ordered)
 - Numbered pagination / jumping to page N
 - Nested filter trees beyond one level of OR groups; a `contains` / `in` operator
 - Declarative row/bulk action sugar (`{ label, icon, mutation }`)
@@ -345,6 +522,7 @@ Launch-plan item I. Collection list views are only navigable by Load More today.
 - A `view` argument on `find`/`search`; server-side view lookups
 - Exact counts above `countLimit` (Convex aggregate component)
 - Pixel-matching the design mockups; new design tokens (e.g. `--success`)
+- "Select all matching" / server-side bulk view-switch prefetch beyond the clicked/hovered tab (Decision 46 only prefetches on hover/focus, never all tabs eagerly)
 
 ## Implementation
 
@@ -10501,7 +10679,7 @@ export interface ListEmptyStateProps {
   /** `"empty"` only — gates the "Create {singular}" button. */
   canCreate?: boolean;
   onCreate?: () => void;
-  /** `"empty"` only — the guide link ("Read the docs"); omitted renders no button (wired by Step 17 once the real guide path exists). */
+  /** `"empty"` only — the guide link ("Read the docs"); omitted renders no button (wired by Step 24 once the real guide path exists). */
   docsHref?: string;
   /** `"noSearchResults"` only — the active query text, shown verbatim in the heading. */
   searchQuery?: string;
@@ -12021,17 +12199,43 @@ import { DateTimePicker } from "../../ui/datetime/date-picker";
 import { useFieldPermissions, isFieldAllowed } from "../../access/useFieldPermissions";
 import { toDnf, fromDnf, listFilterOpOf, applyListFilterOp, type ListFilterOp, type WhereDnfLeaf } from "./whereDnf";
 
-/** Operator choices the filter builder offers, in display order — Decision 10's six comparators plus the two value-less operators; labels mirror how each reads in a sentence ("field IS value"). */
+/**
+ * Operator choices the filter builder offers, keyed by every `ListFilterOp`
+ * — **Revised 2026-10-27, developer**: each label pairs a symbol with its
+ * op CODE (`= eq`, `≥ gte`, …), shown identically in the operator
+ * `Select`'s option list, as its selected value, and in a chip. `gt`/`lt`
+ * keep entries even though the builder no longer OFFERS them as new
+ * choices (see `filterBuilderOpsForFieldType` below) — a `where` built
+ * before this revision can still carry one, and it must render with its
+ * own code rather than being relabelled or dropped. `isEmpty`/
+ * `isNotEmpty` (**revised again, same day**) drop the "is"/"Not" words —
+ * the `!` prefix already reads as a negation on its own — so the
+ * operator column can stay the row's narrowest fixed-width grid track
+ * (see `FILTER_BUILDER_ROW_GRID_COLS` below).
+ */
 export const FILTER_BUILDER_OP_LABELS: Record<ListFilterOp, string> = {
-  eq: "is",
-  neq: "is not",
-  gt: "is greater than",
-  gte: "is at least",
-  lt: "is less than",
-  lte: "is at most",
-  isEmpty: "is empty",
-  isNotEmpty: "is not empty",
+  eq: "= eq",
+  neq: "≠ neq",
+  gt: "> gt",
+  gte: "≥ gte",
+  lt: "< lt",
+  lte: "≤ lte",
+  isEmpty: "∅ empty",
+  isNotEmpty: "!∅ empty",
 };
+
+/**
+ * One row's fixed 4-column grid template — field | operator | value |
+ * remove — shared by EVERY row in EVERY group (**Revised 2026-10-27,
+ * developer**: "don't size each row by its content"). Field/value are
+ * `minmax(0,1fr)` (equal, `min-w-0`-truncating); operator is a fixed
+ * `6rem` track, just wide enough for the longest label above; remove is
+ * `auto` (one constant-size icon button in every row). A LITERAL string —
+ * never built from a shared width constant via template interpolation,
+ * since Tailwind's class scanner only generates CSS for arbitrary-value
+ * classes it finds as unbroken source text.
+ */
+export const FILTER_BUILDER_ROW_GRID_COLS = "grid-cols-[minmax(0,1fr)_6rem_minmax(0,1fr)_auto]";
 
 /** `Select` options for a `checkbox` field's filter value — Decision 10 ships no boolean-specific widget, so this reuses the field-type-dispatch `Select` with fixed labels. */
 export const FILTER_BUILDER_BOOLEAN_OPTIONS = [
@@ -12043,25 +12247,49 @@ export const FILTER_BUILDER_BOOLEAN_OPTIONS = [
 export const FILTER_BUILDER_STATUS_FIELD_KEY = VERSION_SYSTEM_FIELDS.status.slug;
 
 /**
- * Which {@link ListFilterOp}s a field's `Select` offers, by field type —
- * Decision 10: number and date get all six comparisons, every other type
- * gets `eq`/`neq`, and every type gets the two value-less operators.
+ * Which {@link ListFilterOp}s a field's `Select` OFFERS as new choices —
+ * **Revised 2026-10-27, developer**'s minimal, no-derivable-duplicates
+ * matrix (see Decision 10's revision bullet for the full per-type list and
+ * why). Looked up by field KEY first (`vex_status` → `eq`/`neq` only,
+ * regardless of its `"select"` type), then by `AdminDataField["type"]`
+ * (`number` → six ops minus `gt`/`lt`; `date` → `gte`/`lte` plus the two
+ * value-less ops, no `eq`/`neq`; every other type → `eq`/`neq` plus the
+ * two value-less ops). A row whose CURRENT op isn't in this list (a
+ * `gt`/`lt` row from before this revision) is never dropped — the caller
+ * adds that one extra op to what it actually renders for that row.
  *
  * @param props - Input props.
- * @param props.type - The field's `AdminDataField["type"]` (or the
- *   synthetic `vex_status` field, typed `"select"`).
+ * @param props.type - The field's `AdminDataField["type"]`.
+ * @param props.field - The row's field key — checked first for the
+ *   `vex_status` special case.
  * @returns The operators to render, in {@link FILTER_BUILDER_OP_LABELS} order.
  */
-export function filterBuilderOpsForFieldType(props: { type: AdminDataField["type"] }): ListFilterOp[] {
+export function filterBuilderOpsForFieldType(props: { type: AdminDataField["type"]; field?: string }): ListFilterOp[] {
   // TODO: implement
-  // 1. `props.type === "number" || props.type === "date"` →
-  //    `["eq", "neq", "gt", "gte", "lt", "lte", "isEmpty", "isNotEmpty"]`.
-  // 2. Every other type → `["eq", "neq", "isEmpty", "isNotEmpty"]`.
+  // 1. `props.field === FILTER_BUILDER_STATUS_FIELD_KEY` → `["eq", "neq"]`.
+  // 2. `props.type === "number"` → `["eq", "neq", "gte", "lte", "isEmpty", "isNotEmpty"]`.
+  // 3. `props.type === "date"` → `["gte", "lte", "isEmpty", "isNotEmpty"]`.
+  // 4. Every other type → `["eq", "neq", "isEmpty", "isNotEmpty"]`.
   throw new Error("Not implemented");
 }
 
+/**
+ * Props the `list.filters` slot's contributions receive — **Revised
+ * 2026-10-27, developer**: the chip row's visibility and its setter,
+ * lifted to `ListLayout` (the common ancestor of this slot's `ListToolbar`
+ * row and the separate `ListFilterChips` row below it) so the grouped eye
+ * toggle rendered here and the chip row it controls share one source of
+ * truth. Threaded through `ListToolbar`'s own `list.filters` `SlotOutlet` call.
+ */
+export interface ListFiltersSlotProps {
+  /** Whether the chip row below the toolbar is currently showing. */
+  chipsVisible: boolean;
+  /** Replaces `chipsVisible`; the caller also persists the choice via `writeListChipsVisibleCookie`. */
+  onChipsVisibleChange: (visible: boolean) => void;
+}
+
 /** Props for {@link ListFilterBuilder}. */
-export interface ListFilterBuilderProps {
+export interface ListFilterBuilderProps extends ListFiltersSlotProps {
   /** The collection the list view renders — its data fields populate the field picker. */
   collection: CollectionConfig;
   /**
@@ -12082,6 +12310,17 @@ export interface ListFilterBuilderProps {
  * complete. Renders read-only when `props.where` is not in that normal
  * form (`toDnf` returns `null`), e.g. a config-authored `admin.table.views`
  * entry's hidden filter leaking into view state as a hand-written tree.
+ *
+ * **Revised 2026-10-27, developer:** wraps its own trigger — a "Filter"
+ * `Button` (with an active-condition count badge) beside a `variant="ghost"`
+ * eye/crossed-eye toggle for the chip row below ({@link ListFiltersSlotProps},
+ * "one grouped control" — see Decision 10's revision bullet for the
+ * disabled/no-active-filter state) — and overlay: a `Popover` on wider
+ * containers, a bottom `Sheet` below `768px` (`useIsMobile`). Opening the
+ * overlay with no existing filter immediately seeds one incomplete row
+ * (first group, first row) rather than showing an empty "Add filter"
+ * button first — see Decision 10's revision bullet. `ListFiltersAction`
+ * stays a thin prop-forwarding wrapper with nothing of its own to render.
  *
  * Maintains its own `draftGroups` state, seeded from `toDnf(props.where)`
  * and resynced whenever `props.where` changes from OUTSIDE this component
@@ -12140,9 +12379,14 @@ export function ListFilterBuilder(props: ListFilterBuilderProps): ReactNode {
   // 4. `isRowComplete(row: WhereDnfLeaf)`: `listFilterOpOf({ leaf: row })`
   //    is `"isEmpty"`/`"isNotEmpty"` → true (no value needed); else
   //    `row.value !== "" && row.value !== undefined && row.value !== null`.
-  // 5. `draftGroups.length === 0` → render just a single "Add filter"
-  //    `Button` that calls `handleAddGroup()` (step 10) to seed the first
-  //    group/row.
+  // 5. **Revised 2026-10-27, developer:** the overlay's own `onOpenChange`
+  //    seeds one incomplete row (`buildNewRow()`, the same row-shape logic
+  //    `handleAddGroup`/`handleAddRow` use) the moment it OPENS with
+  //    `draftGroups.length === 0` — in the SAME handler as `setOpen`, so
+  //    React batches them and the overlay never paints the old "Add
+  //    filter"-only empty state first. `draftGroups.length === 0` still
+  //    renders just that "Add filter" `Button` as a fallback (e.g. a
+  //    collection with zero readable fields, where there is nothing to seed).
   // 6. Otherwise render each `draftGroups[i]` as a bordered block:
   //    a. Between blocks, an "OR" divider (not before the first block).
   //    b. Within a block, each `rows[j]` as one row, `opacity-50` (muted)
@@ -12153,7 +12397,8 @@ export function ListFilterBuilder(props: ListFilterBuilderProps): ReactNode {
   //         in headers") calling `handleUpdateRow(i, j, { field: nextKey })`
   //         on change;
   //       - an operator `Select` (`FILTER_BUILDER_OP_LABELS` filtered by
-  //         `filterBuilderOpsForFieldType({ type: dataFields[row.field].type })`,
+  //         `filterBuilderOpsForFieldType({ type: dataFields[row.field].type, field: row.field })`
+  //         — plus the row's own CURRENT op if it isn't in that list (a legacy `gt`/`lt` row, Revised 2026-10-27) —,
   //         value = `listFilterOpOf({ leaf: row })`) calling
   //         `handleUpdateOp(i, j, nextOp)`;
   //       - when the resolved op is `isEmpty`/`isNotEmpty`, no value input;
@@ -12163,9 +12408,9 @@ export function ListFilterBuilder(props: ListFilterBuilderProps): ReactNode {
   //         is a text-like type and `row.op === "eq"` — a hint line "Exact
   //         match. Use search for partial text." under the row;
   //       - a remove-row icon `Button` calling `handleRemoveRow(i, j)`.
-  //    c. After a block's rows, an "Add condition" `Button` (AND) calling
+  //    c. After a block's rows, an "AND condition" `Button` calling
   //       `handleAddRow(i)`.
-  // 7. After all blocks, an "Add OR group" `Button` calling `handleAddGroup()`.
+  // 7. After all blocks, an "OR conditions" `Button` calling `handleAddGroup()`.
   // 8. Every mutation handler rebuilds `draftGroups` immutably (never
   //    mutates in place), then calls `applyDraft(nextGroups)` (step 3).
   // 9. `handleAddGroup()`:
@@ -12200,7 +12445,7 @@ export function ListFilterBuilder(props: ListFilterBuilderProps): ReactNode {
   //   [] })` — clearing the filter entirely; step 5 already renders the
   //   resulting empty state, so no special-case branch is needed.
   // - A collection with zero readable data fields (`Object.keys(dataFields)
-  //   .length === 0`) disables "Add filter" / "Add OR group" / "Add
+  //   .length === 0`) disables "Add filter" / "OR conditions" / "AND
   //   condition" rather than adding a row with no selectable field.
   // - Switching the field on a row whose op is `isEmpty`/`isNotEmpty`
   //   resets `op` to `"eq"` too (step 12) — an empty check rarely still
@@ -12417,11 +12662,9 @@ export function writeListChipsVisibleCookie(props: { collectionSlug: string; vis
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { getDataFields, type CollectionConfig, type VexWhereNode } from "@vexcms/core";
 import { Button, Badge } from "../../ui";
-import { Icon } from "../../ui/Icon";
-import { writeListChipsVisibleCookie } from "./listPreferenceCookies";
 import {
   toDnf,
   fromDnf,
@@ -12430,78 +12673,75 @@ import {
 } from "./whereDnf";
 import { FILTER_BUILDER_OP_LABELS } from "./ListFilterBuilder";
 
-/** Props for {@link ListFilterChips}. */
+/**
+ * Props for {@link ListFilterChips}. **Revised 2026-10-27, developer:** the
+ * eye-icon visibility toggle described below moved OUT of this component
+ * entirely, to sit grouped beside `ListFilterBuilder`'s own "Filter"
+ * trigger (Decision 10's revision bullet) — `ListFilterChips` no longer
+ * owns `useState`/`writeListChipsVisibleCookie` for it, or renders a
+ * collapsed toggle-only affordance when hidden. `initialVisible` below is
+ * renamed `visible` and becomes a plain CONTROLLED boolean (owned by
+ * `ListLayout`, the common ancestor of the toolbar's `list.filters` slot
+ * and this component's own row) instead of a one-time seed for local
+ * state; `!props.visible` is just one more reason (alongside `where`
+ * being `undefined`/non-DNF) this component renders `null`.
+ */
 export interface ListFilterChipsProps {
-  /** The collection the list view renders — needed for field labels and the chips-visible cookie name. */
+  /** The collection the list view renders — needed for field labels and date formatting. */
   collection: CollectionConfig;
   /** The list's current filter, in plain `VexWhereNode` form. Same prop as `ListFilterBuilder.where`. */
   where: VexWhereNode<string> | undefined;
   /** Replaces `where` wholesale — same contract as `ListFilterBuilder.onWhereChange`. */
   onWhereChange: (where: VexWhereNode<string> | undefined) => void;
-  /**
-   * The chip row's starting visibility, resolved server-side by
-   * `CollectionListView`'s `initialPreferences` (Decision 39/42,
-   * `parseListPreferences`). Seeds this component's own state so the first
-   * client render already matches what the server sent — never
-   * `useLocalStorage`, which has no value until after hydration and would
-   * flip the chip row visible/hidden on first paint (Decision 42,
-   * `layout-stability.md`).
-   */
-  initialVisible: boolean;
+  /** Whether the chip row is showing — see this interface's own revision note above. */
+  visible: boolean;
 }
 
 /**
  * The chip row under the toolbar showing Decision 10's active filter rows —
- * clear one, clear all, and an eye-icon toggle that hides the row per
- * browser, persisted to the `vex-list-chips:<collection>` cookie
- * (Decision 42) via `writeListChipsVisibleCookie` so a reload renders the
- * same state the user left. Renders nothing when `where` is `undefined` or
- * not in DNF form (`toDnf` returns `null` — a non-DNF config `where` has no
+ * clear one, clear all. Renders nothing when `where` is `undefined`, not in
+ * DNF form (`toDnf` returns `null` — a non-DNF config `where` has no
  * per-row chips to show; it still reaches the user via `ListFilterBuilder`'s
  * read-only panel and, for a config VIEW's hidden filter specifically, Step
- * 12's `ListHiddenFilterBadge`, which this component does not render).
+ * 12's `ListHiddenFilterBadge`, which this component does not render), or
+ * (**Revised 2026-10-27, developer**) `!props.visible`.
  *
  * @param props - {@link ListFilterChipsProps}.
- * @returns The chip row, the collapsed toggle-only affordance, or `null`.
+ * @returns The chip row, or `null`.
  */
 export function ListFilterChips(props: ListFilterChipsProps): ReactNode {
-  const [visible, setVisible] = useState(props.initialVisible);
   const dnf = useMemo(() => toDnf({ where: props.where }), [props.where]);
   const dataFields = useMemo(
     () => getDataFields({ fields: props.collection.fields }),
     [props.collection.fields],
   );
 
-  function toggleVisible(): void {
-    const next = !visible;
-    setVisible(next);
-    writeListChipsVisibleCookie({ collectionSlug: props.collection.slug, visible: next });
-  }
-
   // TODO: implement
-  // 1. `dnf === null || dnf.groups.length === 0` → return `null` — no
-  //    filter, nothing to toggle.
-  // 2. Render a row starting with the eye/eye-off icon `Button`
-  //    (`aria-label="Hide filter chips"` / `"Show filter chips"`) calling
-  //    `toggleVisible()`.
-  // 3. `!visible` → stop after the toggle button (collapsed affordance,
-  //    DESIGN-NOTES 05b).
-  // 4. Otherwise, for every `(groupIndex, rowIndex)` pair in
+  // 1. `dnf === null || dnf.groups.length === 0 || !props.visible` →
+  //    return `null` (**Revised 2026-10-27, developer**: the eye toggle
+  //    itself no longer lives here — see `ListFilterBuilder`'s own
+  //    revision note — so there is no collapsed affordance to render
+  //    either; this component is ALL chips or nothing).
+  // 2. Otherwise, for every `(groupIndex, rowIndex)` pair in
   //    `dnf.groups`, a `Badge` chip reading `"{fieldLabel(row.field)}
   //    {FILTER_BUILDER_OP_LABELS[listFilterOpOf({ leaf: row })]}
   //    {formatChipValue(row)}"` (empty-op chips omit the value segment),
   //    with a small remove `×` button calling `handleRemoveRow(groupIndex,
   //    rowIndex)`.
-  // 5. After the chips, a "Clear all" `Button` (ghost) calling
+  // 3. After the chips, a "Clear all" `Button` (ghost) calling
   //    `props.onWhereChange(undefined)`.
-  // 6. `fieldLabel(field)`: `field === FILTER_BUILDER_STATUS_FIELD_KEY` →
-  //    `"Status"`; else `dataFields[field]?.admin?.label ?? field`.
-  // 7. `formatChipValue(row)`: relationship fields show the ID as-is (no
+  // 4. `fieldLabel(field)`: `field === FILTER_BUILDER_STATUS_FIELD_KEY` →
+  //    `"Status"`; else `dataFields[field]?.label || field` (`label` is
+  //    `BaseField`'s own TOP-LEVEL property, always set — not nested under
+  //    `admin`).
+  // 5. `formatChipValue(row)`: relationship fields show the ID as-is (no
   //    document lookup here — Step 10's URL serializer already works at
-  //    this granularity); `date` fields format via the same ISO formatting
-  //    `ListFilterBuilder`'s `DateTimePicker` uses; everything else
-  //    `String(row.value)`.
-  // 8. `handleRemoveRow(groupIndex, rowIndex)` mirrors `ListFilterBuilder`'s
+  //    this granularity); `date` fields format via `formatDateFieldValue`
+  //    (`fields/date/utils.ts` — the SAME formatter the data-table cell and
+  //    the date field's own display use, Decision 10 revised 2026-10-27's
+  //    "always displayed formatted as date/time" — never a raw ISO
+  //    string); everything else `String(row.value)`.
+  // 6. `handleRemoveRow(groupIndex, rowIndex)` mirrors `ListFilterBuilder`'s
   //    own removal: drop that row; drop the whole group if it becomes
   //    empty; `props.onWhereChange(fromDnf({ groups: nextGroups }))`.
   throw new Error("Not implemented");
@@ -12633,6 +12873,8 @@ query cache, and `ListViewTabs`' tab overflow uses a fixed `@container/list` CSS
 one. Step 14 owns reading the cookie and calling `vexConvexApi.listViews` on the server and
 passing the results down through `CollectionListView`; this step owns writing the cookie and
 consuming those initial values.
+
+**Note (added 2026-10-29, developer, Decision 45 redesign):** this step's own checklist/code below reads `collection.admin.table.views` — the config source's real location as of when this step shipped. Decision 45 later moves that surface to `collection.admin.view` (default)/`collection.admin.views` (preset), implemented by Step 18. Any NEW code built on top of this step's `useListViews`/`ListViewTabs` should target the new location; this step's own historical checklist is left as shipped.
 
 - [ ] `packages/core/src/collections/listViewsCookie.ts` (new) + test — `listViewsCookieName`, `parseListViewsIndexCookie` (core, shared with Step 14's server read)
 - [ ] `packages/react/src/collections/listView/listViewStore.ts` (new) + test — `localViewsStorageKey`, `useLocalViews`; writes the `vex-list-views:<collection>` cookie index alongside every localStorage mutation; prunes stale cookie entries after hydration
@@ -14068,6 +14310,12 @@ Lock badge + count, popover with the view description, never a chip or builder r
 
 Verify: `pnpm --filter @vexcms/core test -- listViewsCookie && pnpm --filter @vexcms/react test -- collections` && browser: tab between All/config/shared/local views, modify a shared view and Save changes, Save as new on a config view (confirm the saved view's `where` is only the user's own filter, not a config view's hidden condition), rename and delete a local view, promote a local view to shared with the confirm dialog, hidden-filter lock badge popover on a config view with a server-resolved where, unknown view id shows the fallback notice, Copy link on a local view serializes full state, hard-reload a URL with `view=local:<id>` and confirm the local view's tab and name render immediately (no post-hydration flash) from the cookie index, resize the list panel across `@container/list` breakpoints and confirm the tab count changes without any visible reflow jump
 
+**Revised 2026-10-28, developer** (see Decision 11's own revision note above for the heading/label change itself): `ListViewTabs.tsx` no longer renders the page `<h1>` at all — `ListLayout.tsx` renders it, unconditionally, in its own title row alongside the `list.header.actions` output (Decision 23's `headerExtra`/`RevalidateButton` included), so the title and the header actions stay on one row, aligned, with or without an active view. `ListViewTabsProps` drops `collectionLabel` (no longer needed — the heading isn't this component's concern). `ListViewTabs`' own reserved slot shrinks from 3 lines (eyebrow/name/description) to 2 (the `<Source label> - <name>` identity line, then description); `SOURCE_EYEBROW_LABELS`/`SOURCE_GROUP_LABELS` read "Preset view(s)"/"Shared view(s)"/"Local view(s)" (was "Config view"/"Shared view"/"Your view(s)").
+
+**Revised 2026-10-29, developer (supersedes the 2026-10-28 revision immediately above — see Decision 11's own 2026-10-29 revision note for the full behavior):** `ListViewTabs.tsx` drops its reserved eyebrow/description slot entirely — it renders ONLY the tab strip and the modified-state row now. `ListLayout.tsx`'s `<h1>` absorbs the view identity INLINE instead: `"<Collection plural> - <view name>"`, with the source label and description absolutely positioned above/below the name span specifically (not the separator), consuming no layout space. `CollectionListContext`'s `CollectionListState` gains `activeViewDisplay?: { name; source; description }`, computed once by `CollectionListView` (which already resolves `activeView` for its query) so `ListLayout` never needs its own `useListViews()` call. The title row and `ListViewTabs` (and everything below) now share one uniform small gap on `ListLayout`'s root column — no gap is reserved between them, so the page reads dense with no active view.
+
+**Revised 2026-10-29, developer (FINAL — supersedes the inline-heading revision immediately above; see Decision 11's own FINAL 2026-10-29 revision note for the full behavior):** the inline `"<Collection plural> - <view name>"` heading, its badge/eyebrow, and its absolutely-positioned description are all REMOVED — `ListLayout.tsx`'s `<h1>` is unconditionally `collection.labels.plural`, nothing else, ever. `CollectionListContext`'s `activeViewDisplay` field and `CollectionListView`'s computation of it are removed entirely (no remaining consumer). A view's description instead surfaces as a `ui/tooltip` hover tooltip on its `TabsTrigger` (`ListViewTabs.tsx`, `delay={1000}`, same convention `DataTableSortHeader` already established), shown only when the view has one. `ListViewTabs.tsx`'s reserved modified-state row is deleted outright (not just its content) — the controls move into a new `packages/react/src/collections/listView/ListViewModifiedControls.tsx`, rendered by `ListToolbar.tsx` immediately right of the Filter+eye `list.filters` slot, immediately left of the hidden-filter badge. It calls `useListViews()` independently (TanStack Query dedupes the fetch with `ListViewTabs`' own call by queryKey) and returns `null` outright — no invisible placeholder — whenever there is no active view or nothing is modified, so the toolbar row's height never changes when the controls appear (verified: `getBoundingClientRect` on the toolbar row is byte-identical before/after triggering a modification). Save's target now branches per Decision 13's revised note: in place for local/shared-with-`updateView`, else a new local copy via the existing `ListSaveViewDialog` in "create" mode, name pre-filled `"<view name> (copy)"`.
+
 ### Step 13 — Inspect peek, responsive per Decision 27 [agent]
 
 Why: Design Decision 27 needs the panel and the prefetch strategy that makes it open instantly. The architecture review's responsive pass (Decision 43) replaces the `ResizeObserver`-measured inline/right-panel switch with a fixed `@5xl/list` container-query breakpoint, so the server's first paint is already the settled layout (Decision 39, `layout-stability.md`) — resizing across the breakpoint needs no React re-render at all. The real `Sheet` component (Radix-style `Portal` + viewport-`fixed` positioning) can't be the thing a *named* container query toggles: a portaled node sits outside `@container/list`'s DOM subtree, so no `@5xl/list:` variant on it would ever match. A `peek=<id>` URL can be open on first paint (Decision 39/41's server prefetch), so — unlike `DataTableResponsiveMenu`'s overlay-vs-popover choice, which starts closed — the bottom-`Sheet`-vs-panel choice can never be a `useIsMobile()` JS branch either: both layouts mount unconditionally, and a `md:hidden`/`hidden md:flex` viewport-class pair (not `@container/list`, since 768px is a device property per Decision 22 point 3) decides which one is visible, exactly mirroring `ListViewTabs`' CSS-only mobile collapse (Step 16). The `@5xl/list`-and-narrower panel is one plain, always-mounted `div`, descendant of the same `@container/list` root `CollectionListView` already establishes (Decision 22), styled `fixed` (viewport-docked, right-aligned, bordered, shadowed — visually the same right-panel Decision 27 describes) by default and switched to a `static` flex sibling by its own `@5xl/list:` variant classes. It was never a Radix dialog, so "non-modal" (Decision 27: "the list behind it stays interactive") is true unconditionally, in both breakpoints, with no `modal={false}` prop to reason about. Decision 39/41's prerender also needs a document to seed from when `peek=` names a row outside the loaded page: `ListPeek` gains an `initialDoc` prop, which `NextAdminPage` (Step 14) fills from its own `get(peek)` prefetch. Decision 21 keeps the files in `collections/listView/` with the redundant `Collection` prefix dropped (`ListPeek`, `useListPeekPrefetch`), and Decision 38 keeps no separate file for the (now much smaller) layout logic — it's a few Tailwind classes, not a hook.
@@ -14080,6 +14328,7 @@ Verify: `pnpm --filter @vexcms/react test -- collections/listView/ListPeek colle
 - [ ] `packages/react/src/ui/data-table/DataTable.tsx` — adds a generic `getRowProps` per-row event hook (builds on Step 10's edit)
 - [ ] `packages/react/src/collections/listView/ListLayout.tsx` — adds `onRowHoverStart`/`onRowHoverEnd`/`onRowFocus` props, forwarded to `DataTable`'s `getRowProps` (builds on Step 9/10's edits; `ListLayout` composes regions only, per Decision 38 — this edit adds no new region, only forwards three props through the existing `<DataTable>` call)
 - [ ] `packages/react/src/collections/listView/CollectionListView.tsx` — gains an `initialPeekDoc` prop (Decision 39/41), mounts `ListPeek` as `ListLayout`'s sibling inside the component's existing `@container/list` root, wires `useListPeekPrefetch` into `ListLayout`'s row-hover/focus props — no container ref, since the breakpoint is CSS, not measurement
+- **Revised 2026-10-29, developer (Polish Decisions 65/66):** resizable peek-panel width (a persisted `peekWidth`, drag handle, Decision 65) and ONE panel element at every width via pure CSS instead of two separately-mounted layouts (the structural fix also removing `useVisibleOnce`, Decision 66) both land on top of the shipped code above — this step's own original code blocks below describe the FIRST-SHIPPED two-layout/`Sheet` structure and are left as-is; the two Polish Decisions are the current, superseding description of `ListPeek.tsx`'s real shape.
 
 #### packages/react/src/collections/listView/ListPeek.tsx
 
@@ -14890,6 +15139,8 @@ the preference and local-view-index cookies (mirroring `readLivePreviewPanelCook
 wiring should import it rather than re-deriving the URL/view-state merge a second time; that's
 noted here for whoever reconciles the fragments, not restated as a TODO in those steps' own
 checklists.
+
+**Note (added 2026-10-29, developer, Decision 45 redesign):** this step's own checklist/code below reads `collection.admin.table.views`/`defaultSort`/`defaultColumns`/`defaultPageSize` — the real locations as of when this step shipped. Decision 45 later moves these to `collection.admin.view` (default)/`collection.admin.views` (preset), implemented by Step 18, with `resolveListQueryState`'s own fallback chain updated there. This step's own historical checklist is left as shipped.
 
 - [ ] `packages/core/src/collections/buildListQueryArgs.ts` (new) + test — `buildListFindQueryArgs`/`buildListSearchQueryArgs`, the ONE place the `findPaginated`/`search` Convex args get built, shared by `useVexListQuery` (client) and `NextAdminPage` (server)
 - [ ] `packages/core/src/collections/resolveListQueryState.ts` (new) + test — merges the parsed URL with the active view's own saved state and the collection's `admin.table` defaults into one effective `where`/`sort`/`search`/`searchField`/`pageSize`
@@ -16255,7 +16506,7 @@ width — `DataTableResponsiveMenu` itself picks `Popover` vs. bottom `Sheet` pu
 
 - [ ] `packages/react/src/ui/data-table/DataTableResponsiveMenu.tsx` (new) + test — one trigger/content pair: `Popover` at `useIsMobile() === false`, bottom `Sheet` at `useIsMobile() === true` (768px, viewport — Decision 22 point 3 / Decision 43)
 - [ ] `packages/react/src/ui/data-table/index.ts` — barrel export for `DataTableResponsiveMenu`
-- [ ] `packages/react/src/ui/data-table/DataTable.tsx` — sticky first column while the table scrolls horizontally (unconditional, not breakpoint-gated)
+- [ ] `packages/react/src/ui/data-table/DataTable.tsx` — sticky selection (checkbox) column while the table scrolls horizontally (unconditional, not breakpoint-gated); `<Table>` uses `border-separate border-spacing-0` (required for a clean sticky cell border — see the file section below for why `border-collapse` breaks it)
 - [ ] `packages/react/src/ui/data-table/DataTableBulkActions.tsx` — container-query sizing (`@container/list`, not `md:`): full-width, larger touch targets, icon-only secondary actions below `@lg/list` (position stays Step 10's — inline in the toolbar, left of Filter)
 - [ ] `packages/react/src/collections/listView/ListToolbar.tsx` — CSS-only ⋯ overflow at fixed `@container/list` breakpoints (Decision 43), wrapped in a `DataTableResponsiveMenu` container for the `Popover`/`Sheet` choice; the bulk group (when a selection is active) replaces the Filter trigger below `@lg/list` via container-query classes, not `useIsMobile`
 - [ ] `packages/react/src/ui/data-table/DataTableColumnsMenu.tsx` + `packages/react/src/collections/listView/ListFilterBuilder.tsx` — each swaps its trigger/content container for `DataTableResponsiveMenu`
@@ -16456,6 +16707,60 @@ cell (plain `flexRender` or a `DataTableSortHeader`) is unaffected — only the 
 When `enableRowSelection` is on, column 0 is the checkbox column `DataTable` already
 prepends — the checkbox then stays docked with the row it belongs to, same as the title
 column when selection is off.
+
+**Revised 2026-10-28, developer (after 4 rounds of live verification — supersedes edits 1-3
+above):** the literal code above shipped, broke, and was fixed/re-broken/re-fixed three more
+times against real developer screenshots before landing. The sticky column is the
+**selection (checkbox) column specifically** (`column.id === "select"`), not generically
+"whatever `index === 0` happens to be" — a fixed-width sticky divider on an arbitrary data
+column (e.g. Title) would truncate it, and a fixed width is required (see below), which only
+makes sense for the one column whose content (a checkbox) has a known, fixed size.
+
+1. **`border-collapse: collapse` (Tailwind preflight's table default) is incompatible with
+   `position: sticky` on a `<td>`/`<th>`** — collapsed-border painting is computed once
+   across the whole table's border-conflict resolution, not per the cell's own post-scroll
+   sticky position, so a `border-r` (or any border) on a sticky cell renders detached, and
+   the cell's own `border-b` row divider misaligns against its siblings by a few sub-pixels.
+   Fix: `<Table className="border-separate border-spacing-0">`. Under `border-separate`, a
+   border on `<tr>` (`TableRow`'s own `border-b`) does not render at all (CSS separated-
+   borders model) — every header/body `<TableHead>`/`<TableCell>` needs its own explicit
+   `"border-b"` class to keep the row dividers visible.
+2. **A sticky cell with no explicit width lets its sticky layout box and the table's own
+   auto-layout column-width allocation diverge during horizontal scroll** — observed live as
+   the checkbox clipped by the divider, with scrolled content bleeding in from underneath.
+   Fix: an explicit fixed width, `w-12 min-w-12 max-w-12`.
+3. **Cell padding (`p-2`/`px-2`, with a pre-existing `[&:has([role=checkbox])]:pr-0` rule
+   zeroing only the right side) produces asymmetric left/right gaps around the checkbox once
+   the column has a fixed width wider than its content.** Fix: `px-0` on the cell (both
+   sides), and the checkbox itself wrapped in a `<div className="flex items-center
+   justify-center">` inside the column's own `header`/`cell` render functions (not
+   `display: flex` on the `<td>`/`<th>` itself, which would pull it out of the table's row-
+   height layout) — centers regardless of padding.
+4. **A sticky cell needs an OPAQUE background in every row state the row itself has one
+   for** — `TableRow`'s own `hover:bg-muted/50` is intentionally translucent for the rest of
+   the row, but a sticky cell has different content scrolling underneath it specifically, so
+   a translucent background lets that content show through. `TableRow` exposes a
+   `group/row` name; the sticky cell reads `group-hover/row:` and
+   `group-data-[state=selected]/row:` with an **opaque equivalent** for hover (`bg-
+   [color-mix(in_oklab,var(--muted)_50%,var(--background)_50%)]`, computing the same blend
+   `bg-muted/50` produces over the page background, as a flat solid color) — `data-
+   [state=selected]:bg-muted` is already opaque, so the selected variant reuses `bg-muted`
+   directly. `DataTable`'s own `<TableRow>` needs `data-state={row.getIsSelected() ?
+   "selected" : undefined}` for `group-data-[state=selected]/row:` to ever fire (this
+   attribute was not previously set anywhere in `DataTable`, so row selection had no visual
+   row-background feedback at all before this fix — a real, if incidental, improvement).
+5. **The header's own selection cell is sticky on BOTH axes at once** (pinned left via this
+   column, pinned top via `TableHeader`'s own `sticky top-0 z-10`) and needs `z-20`, not the
+   body cells' `z-10`, to out-rank every single-axis sticky element during a diagonal scroll.
+
+```tsx
+const SELECTION_CELL_SHARED_CLASS = "sticky left-0 w-12 min-w-12 max-w-12 border-r px-0 bg-background";
+const SELECTION_CELL_HEADER_CLASS = `${SELECTION_CELL_SHARED_CLASS} z-20`;
+const SELECTION_CELL_BODY_CLASS = `${SELECTION_CELL_SHARED_CLASS} z-10 group-hover/row:bg-[color-mix(in_oklab,var(--muted)_50%,var(--background)_50%)] group-data-[state=selected]/row:bg-muted`;
+```
+
+`ui/table.tsx`'s `TableRow` gains `group/row` in its own base class (additive, inert unless
+a descendant references it — zero behavior change for every other table in the app).
 
 #### packages/react/src/ui/data-table/DataTableBulkActions.tsx
 
@@ -16680,7 +16985,7 @@ predate I. Append a resolution note to the horizontal-scroll bullet:
 ```markdown
 - `DataTable` wraps in `overflow-x-auto` (`DataTable.tsx:225`) — horizontal scroll is the
   fallback, not a mobile design. A wide collection on a 375px screen is the worst case in
-  the product. **Resolved by I** — ships a sticky first column alongside the scroll
+  the product. **Resolved by I** — ships a sticky selection column alongside the scroll
   region (list-view-overhaul Design Decision 22, Step 16); re-auditing this bullet is
   regression only.
 ```
@@ -16703,16 +17008,165 @@ toolbar's ⋯ collapse, the tab row, and the peek's inline/right-sheet mode must
 their final state on the server-rendered HTML (Step 14, Decision 43), with no
 `ResizeObserver`-driven reflow after hydration.
 
-### Step 17 — Examples, docs, acceptance [agent]
+### Step 17 — Server auth for `NextAdminPage` [agent]
+
+Why: Decision 44 (revised 2026-10-28, revised again 2026-10-28 — `auth` made OPTIONAL). `NextAdminPage` resolves a server-side `{ user, organization }` once per every app route (`getUserOrg`, gating `canAccessAdminPanel`) and discards it. The SIBLING `layout.tsx` server component (which mounts `AdminLayout`'s sidebar) separately fetched a DIFFERENT, narrower value (`getCurrentUser()`, no `organization`) for the sidebar's own `VexAuthProvider` seed — so the sidebar nav, the search-field picker, the columns menu, and the view-action menus could each render with a different caller than the one the page gate just checked, with no client-side correction (`useVexAuth` only ever reads context; there is no client refetch to paper over a wrong server seed). This step makes `getUserOrg` the ONE auth source for the whole admin shell — `layout.tsx` and `page.tsx` alike — uses it server-side to close Step 14's documented `searchField`-readability gap, and makes the whole `auth` prop OPTIONAL: a project with `config.access` absent/disabled passes nothing (allow-all, unchanged); a project with access ENABLED that omits `auth` fails CLOSED to an anonymous caller, once, with a dev-only warning — never a silent allow-all.
+
+Verify: `pnpm --filter @vexcms/next test && pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test && pnpm typecheck` — DONE, all green (core 135 files/1837 tests, react 187 files/2187 tests, next 7 files/77 tests, root typecheck 16/16) && browser (apps/test, real `getUserOrg`-backed admin session against the real dev Convex backend) — DONE for the admin/allow-all path: `/admin/collections/posts` (no `access` restriction active on `title`) loads with the search box, `?q=post` narrows results identically on the raw SSR fetch AND post-hydration (8 matching rows in both), WS-frame interception confirms one `vex:find`+one `vex:search` subscription pair with `searchField: "title"` matching the server prefetch exactly, no "Couldn't load" error, no flash. A role denied read access to every `admin.table.searchField` entry seeing no search box on first paint, and `VIEW_ACTIONS`-gated menu items/the sidebar's org-scoped nav resolving correctly without a real non-admin test account to safely sign in as (switching `apps/test`'s own admin account's role would strand it: `guest`'s declared `permissions` grant zero `users` access, so reverting through the admin UI itself would be impossible, and no safe, existing, targeted mutation exists to script the switch outside the admin UI) — covered instead by `NextAdminPage.test.ts`'s "server auth" describe block (6 cases: access absent, access enabled+no auth two-render warn-once check, access disabled despite a denying role config, access enabled+allowed role, access enabled+denied role, every non-collection-list branch wraps in `VexAuthProvider`) and `CollectionListView.serverParity.test.tsx`/`resolveFieldPermissions.test.ts`/`ListViewTabs.test.tsx`'s pre-existing client-side coverage of the same gates. Recommended as a manual follow-up with a real non-admin credential.
+- [x] `packages/next/src/NextAdminPage.tsx` — `props.auth?: VexApiAuth` (OPTIONAL, not required — Decision 44's binding revision); resolves `const auth: VexApiAuth = props.auth ?? { user: null }` (fail-closed default — `hasPermission`/`resolveFieldPermissions`/`resolveAccessRule` already treat an absent/disabled `access` as allow-all regardless of `user`, so this one fallback is correct for both "no access config" and "access enabled, auth omitted"); a new module-level `warnIfAuthMissing()` logs ONCE, dev-only (`NODE_ENV !== "production"`), when `config.access` is enabled and `props.auth` is `undefined`; wraps the ENTIRE return value (every branch — dashboard, globals list/edit, collection list/edit, media list/edit, every not-found state) in `@vexcms/react`'s `<VexAuthProvider value={auth}>`; the collection-list branch resolves `const fieldPermissions = resolveFieldPermissions({ access: props.config.access, user: auth.user, organization: auth.organization, resource: collection.slug, action: CRUD_ACTIONS.read, scope: PERMISSION_SCOPES.any })` (`@vexcms/core`) and narrows via `resolveSearchField({ collection, qf: resolved.searchField, fieldPermissions })` — **deviation from the original plan**: fed `resolved.searchField` (the already URL/view/collection-default-resolved field), not the raw URL `qf`, matching `CollectionListView.tsx`'s own already-landed Step 14 sort-parity call exactly, so a VIEW's own saved `searchField` (not just an explicit `?qf=`) gets the same readability narrowing — the literal spec text here would have reintroduced the exact client/server divergence that follow-up fixed. `isSearchActive` (gating `search` vs `findPaginated`) is now `resolved.search.trim() !== "" && resolvedSearchField !== undefined` on BOTH sides, so a role with no readable `searchField` entry skips the `search` prefetch and calls `findPaginated` instead, matching the client; no server-side change needed for `VIEW_ACTIONS` — `listViews` (Step 7) already self-gates on `readViews` and resolves `[]` for a denied caller.
+- [x] **Deviation, found live, not by any test**: `resolveSearchField`/`readableSearchFields` were specified to live in `@vexcms/react` ("already a pure function, no `use client` directive") — true of the function itself, but tsup bundles it into the same chunk as `CollectionListView.tsx`/`ListSearch.tsx` (both real client components), and a bundler `"use client"` banner applies to the whole chunk. `NextAdminPage` crashed against the real dev server with "Attempted to call resolveSearchField() from the server but resolveSearchField is on the client" — caught only by live browser verification, since vitest enforces no RSC boundary. Moved `packages/react/src/collections/listView/resolveSearchField.ts`(`.test.ts`) to `packages/core/src/collections/resolveSearchField.ts`(`.test.ts`) (alongside `resolveListQueryState`, matching this spec's existing core-not-react placement for every other cross-boundary pure function); `CollectionListView.tsx`/`ListSearch.tsx` now import both from `@vexcms/core`; `packages/react/src/index.ts`'s public barrel no longer re-exports them (never did need to, now that `NextAdminPage.tsx` imports from `@vexcms/core` directly) — it DOES newly export `VexAuthProvider` (needed for `NextAdminPage.tsx`'s wrapping, previously internal-only).
+- [x] `packages/next/src/NextAdminPage.test.ts` — `render()`'s helper gains an OPTIONAL `{ auth?, config? }` options arg (no existing call site needed updating); mock of `@vexcms/react` switched to `importOriginal` + spread, keeping the real `VexAuthProvider` (stubbing only the heavy view components) instead of a hand-written stub object; new `innerProps()`/`authValue()` helpers unwrap the new `VexAuthProvider` wrapper (every `element.props.X` assertion in the pre-existing suite updated to `innerProps(element).X`, since `NextAdminPage`'s return value gained one level of nesting); new describe block "server auth" (6 cases, see Verify above).
+- [x] `apps/test/src/app/(vexcms)/admin/[[...path]]/page.tsx`, `apps/www/src/app/(vexcms)/admin/[[...path]]/page.tsx`, `packages/create-vexcms/templates/base-nextjs/src/app/(vexcms)/admin/[[...path]]/page.tsx` — pass `auth={auth}` to `<NextAdminPage>` (the `auth` each file already fetches via `getUserOrg` for the `canAccessAdminPanel` gate, previously discarded after the `if` check)
+- [x] `apps/test/src/app/(vexcms)/admin/layout.tsx`, `apps/www/src/app/(vexcms)/admin/layout.tsx`, `packages/create-vexcms/templates/base-nextjs/src/app/(vexcms)/admin/layout.tsx`, `packages/create-vexcms/templates/marketing-site/src/app/(vexcms)/admin/layout.tsx` (not in the original checklist — `marketing-site` ships its own `layout.tsx` overlay with the same `getCurrentUser()` call, found while implementing, fixed identically) — swap `getCurrentUser()` for the SAME `fetchAuthQuery(api.auth.api.getUserOrg, {})` call `page.tsx` already makes (new imports: `api` from `@convex/_generated/api`, `fetchAuthQuery` from `~/auth/server`, matching `page.tsx`'s own imports exactly); pass `user={auth.user ?? undefined}` AND the new `organization={auth.organization}` to `<NextAdminLayout>` (`NextAdminLayout`/`NextAdminLayoutClient`/`AdminLayout` already accept and forward `organization` — confirmed unchanged, no `@vexcms/next`/`@vexcms/react` edit needed here); `getCurrentUser` import dropped, `AuthServerProvider`/theme components untouched. `packages/create-vexcms` has no no-auth template variant to handle separately — both templates already ship full auth identically to `apps/test`'s own pattern.
+- [x] `apps/test/convex/seed.ts`, `apps/www/convex/seed.ts` — the embedded "one route in your app" doc-comment code example now also fetches `auth` via `getUserOrg` and forwards it to `<NextAdminPage>`, with a one-line comment noting `auth` is optional, so it stays copy-pasteable and accurate to the real (optional-but-recommended) shape.
+
+### Step 18 — `admin.view` + `admin.views` [agent]
+
+Why: Decision 45 (REDESIGNED 2026-10-28, supersedes this step's own original `admin.table.defaultView` shape — Step4TableConfig's in-flight implementation moves to the new location, it does not just rename in place). `admin.view` (the collection's always-present default view) and `admin.views` (preset views, moved from `admin.table.views`) are siblings at the `admin` level, not nested under `admin.table` — `defaultSort`/`defaultColumns`/the bare default page size collapse into `admin.view`, and `admin.table.views` moves to `admin.views`, unchanged per-entry shape. `admin.table` keeps only rendering/pagination config: `serverPageSize`, `pageSizeOptions`, `bulkActions`, `countLimit`, `searchField`.
+
+Verify: `pnpm typecheck && pnpm --filter @vexcms/core test -- collections && pnpm --filter @vexcms/react test -- collections/listView && pnpm --filter @vexcms/next test` && browser: a collection declaring `admin.view.sort = { field: "updatedAt", order: "desc" }` renders the default view sorted that way on first (server) paint, with no reload-time flip; a preset view still resolves from `admin.views`; `rg "admin\.table\.views|admin\.table\.defaultView|defaultSort|defaultColumns" packages apps` (outside test fixtures asserting the OLD shape never existed, and this spec's own prose) returns zero hits
+- [ ] `packages/core/src/collections/types.ts` — `AdminCollectionConfigInput<TFieldSlug>`/`AdminCollectionConfig<TFieldSlug>` gain `view?: VexViewConfig<TFieldSlug>` (input; resolved `view: VexViewConfig<TFieldSlug>`, fixed `viewId: "default"`, always present) and `views?: VexViewConfig<TFieldSlug>[]` (input; resolved `views: VexViewConfig<TFieldSlug>[]`) as siblings of `table`/`components`; `CollectionTableConfigInput<TFieldSlug>`/`CollectionTableConfig<TFieldSlug>` DROP `defaultSort`/`defaultColumns`/`views`/any `defaultView` key entirely — `admin.table` keeps only `serverPageSize`/`pageSizeOptions`/`bulkActions`/`countLimit`/`searchField`
+- [ ] `packages/core/src/collections/config.ts` — `defineCollection` resolves `admin.view` into a full `VexViewConfig` (`viewId: "default"`, `name: input.admin?.view?.name`, `state.sort` defaults to `{ field: "_creationTime", order: "desc" }`, `state.columns` to every non-hidden data field — Step 4's existing fallback, unchanged logic, new home — `state.pageSize` to `10`, `state.searchField` to `input.admin?.table?.searchField?.[0]` when unset); resolves `admin.views` the same way Step 5 resolved `admin.table.views` (now reading `input.admin?.views ?? []`, same per-entry shape, same defaulting)
+- [ ] `packages/core/src/collections/config.test.ts` — type tests move from `admin.table.defaultSort.field`/`.defaultColumns`/`.views` to `admin.view.sort.field`/`admin.view.columns`/`admin.views`; cases for `admin.view.pageSize`/`.searchField` defaulting
+- [ ] `packages/core/src/collections/validateTableConfig.ts` + `.test.ts` — every check this file already runs against `admin.table.views`/`defaultSort.field` (duplicate `viewId`, where-field, sort-index, searchField, columns — Step 5's per-view checks, plus Step 4's sort-leads-an-index check) now runs against `[collection.admin.view, ...collection.admin.views]` instead; error text updated (`"is sortable (admin.view.sort or admin.enableSorting)"`, `"admin.views has more than one view with viewId …"`, etc.); new check: `admin.view`'s own `viewId` can never be set to `"default"` by the project accidentally colliding is moot (the resolver assigns it, not the input) — but a `admin.views` entry's `viewId` of literally `"default"` IS rejected (`VexConfigError`, reserved for the built-in default view)
+- [ ] `packages/core/src/collections/matchDeclaredViewFilter.ts` + `.test.ts` — the declared-filter matcher's candidate list widens from `collection.admin.table.views` to `[collection.admin.view, ...collection.admin.views]` — the default view's own `where` is a declared filter too (Decision 25/26 revised), so a request matching it gets the same trusted-narrowing treatment a preset view's `where` already does
+- [ ] `packages/core/src/collections/toClientViewConfig.ts` — no signature change (already takes a `VexViewConfig`, not an `admin.table.views` path); called for `admin.view` and every `admin.views` entry alike
+- [ ] `packages/core/src/collections/listUrlParams.ts` + `.test.ts` — the `size`-omitted-at-default check and `sort`'s fallback doc comment move from `admin.table.defaultPageSize`/`defaultSort` to `admin.view.pageSize`/`admin.view.sort`
+- [ ] `packages/core/src/collections/resolveListQueryState.ts` + `.test.ts` — the fallback chain (`sort`, `searchField?.[0]`, `pageSize`) collapses to one `collection.admin.view` read; a `default`-source `params.view` (the URL has no `view=` at all) resolves `configView` = `collection.admin.view` explicitly, the same shape a `config`/`admin.views` resolution already produces
+- [ ] `packages/react/src/collections/listView/CollectionListView.tsx`, `ListLayout.tsx`, `ListToolbar.tsx` — every `collection.admin.table.defaultPageSize`/`defaultColumns`/`.views` read moves to `collection.admin.view.pageSize`/`.columns`, `collection.admin.views`
+- [ ] `packages/react/src/collections/listView/useListViews.ts` + `.test.ts` — the merged views list gains the ALWAYS-PRESENT default view (`source: "default"`, from `collection.admin.view`) as its own distinct entry ahead of `config`/`admin.views` presets in the merge order; `rawConfigViews` (was `collection.admin.table.views`) reads `collection.admin.views`; `diffViewState`'s "no `view=` in the URL" baseline diffs against `collection.admin.view`'s own state, which now has a REAL identity (not an implicit, undeclared default)
+- [ ] `packages/next/src/NextAdminPage.tsx` + `.test.ts` — the mediaCollection/collection `numItems = Math.max(serverPageSize, X)` reads move to `.admin.view.pageSize`; `[viewSource, viewId] = params.view?.split(":")` resolution gains the `default` case (no `view=` at all) resolving `configView = collection.admin.view` explicitly, alongside the existing `config` case (`collection.admin.views.find(...)`, was `collection.admin.table.views.find(...)`)
+- [ ] `apps/test/src/vexcms/collections/pages.ts`, `apps/test/src/vexcms/collections/posts.ts`, `apps/test/src/vexcms/collections/fields.ts`, `apps/www/src/vexcms/collections/pages.ts`, `packages/create-vexcms/templates/marketing-site/src/vexcms/collections/pages.ts` — `admin.table.defaultColumns`/`.views` move to `admin.view.columns`/`admin.views`; e.g. `admin: { table: { defaultColumns: ["title", "slug"] } }` → `admin: { view: { sort: { field: "_creationTime", order: "desc" }, columns: ["title", "slug"] } }`
+
+### Step 19 — View switch keeps rows + prefetch [agent]
+
+Why: Decision 46. Switching `view=` changes `where`/`sort`/`searchField` as sharply as a search edit — Step 10's own follow-up already fixed the identical "blank table flash" problem for search via `placeholderData: keepPreviousData`; this step applies the same fix to the shared base hook, plus hover/focus prefetch so a deliberate tab click usually finds its query already warm.
+
+Verify: `pnpm --filter @vexcms/react test -- hooks collections/listView` && browser: switching views shows the previous rows dimmed with `aria-busy="true"` until the new rows land, never a blank/loading frame; hovering a tab 150ms then clicking shows no visible refetch delay; hovering every tab in a tour without clicking leaves no lingering active subscriptions after ~30s (network panel / Convex dev console)
+- [ ] `packages/react/src/hooks/usePaginatedQuery.ts` — `useQuery`'s options gain `placeholderData: keepPreviousData` (`@tanstack/react-query`), the same fix Step 10's "search qf default" follow-up already applied to `ListSearch`'s debounced query, now on the base hook so a view switch gets it too; `UsePaginatedQueryReturn` gains `isPlaceholderData: boolean` (TanStack's own flag, forwarded)
+- [ ] `packages/react/src/hooks/useVexListQuery.ts` — forwards `isPlaceholderData` on its return (both find- and search-mode branches)
+- [ ] `packages/react/src/collections/listView/CollectionListView.tsx` — passes `pagination.isPlaceholderData` through to `ListLayout` as a new `isRefetching` prop
+- [ ] `packages/react/src/collections/listView/ListLayout.tsx` — forwards `isRefetching` to `DataTable` (composition-only edit, Decision 38)
+- [ ] `packages/react/src/ui/data-table/DataTable.tsx` — new optional `isRefetching?: boolean` prop: the `<tbody>` gets `aria-busy="true"` and `opacity-60` (matching `ListFilterBuilder`'s existing muted-incomplete-row convention) while true; rows stay interactive — Load More and row actions on the stale rows remain valid until the new page replaces them
+- [ ] `packages/react/src/collections/listView/useListViewPrefetch.ts` (new) + `.test.ts` — `useListViewPrefetch({ collection, urlState, rawConfigViews, sharedViews })` → `{ onTabPointerEnter, onTabPointerLeave, onTabFocus, pendingViewId }`; on 150ms hover/immediate focus (`LIST_PEEK_HOVER_DELAY_MS`, reused from `useListPeekPrefetch.ts`), resolves the hovered tab's `configView`/`sharedView` the same way `CollectionListView`'s own client/server sort-parity fix (Step 14 follow-up) resolves the ACTIVE one (`decodeViewSource`/`decodeViewUrlValue` from `useListViews.ts`), builds that tab's own `ListParams` (empty/default for every source except `local`, Decision 41, which is never prefetched this way — its full state already lives in its own stored view, read synchronously on click), calls `resolveListQueryState` then `buildListFindQueryArgs`/`buildListSearchQueryArgs`, and calls `queryClient.prefetchQuery({ ...convexQuery(vexConvexApi.findPaginated | search, args), gcTime: 30_000 })` — the exact args pairing `useVexListQuery`'s own live query builds post-click, so the cache key matches exactly; `pendingViewId` clears once the matching query settles or the user moves to a different tab first
+- [ ] `packages/react/src/collections/listView/useListViewPrefetch.test.ts` — asserts the prefetched args for a hovered config/shared tab deep-equal `buildListFindQueryArgs`/`buildListSearchQueryArgs`'s own output for that tab's resolved state (mirrors `useVexListQuery.serverParity.test.tsx`'s assertion shape); a `local`-source tab is never prefetched this way; every prefetch call carries `gcTime: 30_000`
+- [ ] `packages/react/src/collections/listView/CollectionListContext.tsx` — gains a `viewPrefetch: UseListViewPrefetchReturn` field (Decision 37's "built-ins read shared list state from context" convention)
+- [ ] `packages/react/src/collections/listView/ListViewTabs.tsx` — each `TabsTrigger` gains `onPointerEnter`/`onPointerLeave`/`onFocus` wired to `useCollectionList().viewPrefetch`'s handlers; the hovered/clicked-and-pending tab renders a small `animate-spin` spinner inline beside its label while `pendingViewId === view.viewId` (the first loading spinner anywhere in `listView/`, confirmed by grep — no existing convention to deviate from)
+- [ ] `packages/react/src/collections/listView/CollectionListView.tsx` — mounts `useListViewPrefetch` alongside the existing `useListPeekPrefetch` call, feeds `viewPrefetch` into the `CollectionListProvider` value
+
+### Step 20 — Columns in views, ordering, SSR [agent]
+Why: Decision 47 (revised 2026-10-28). Views already store a `columns` array (Decision 11); this step widens its meaning to carry order (not just the visible subset), adds URL/SSR support so the server prerenders the exact column order, and gives the columns menu drag-handle reordering off the same `ui/dnd` primitives `forms/ArrayField.tsx`/`forms/BlocksField.tsx` already use for item reordering — now for EVERY visible column, not just `admin.enableHiding: true` ones.
+- [ ] `packages/core/src/collections/types.ts` — `VexViewState<TFieldSlug>.columns` JSDoc widened to document the full-order/back-compat-subset reading (Decision 47); no type change (`TFieldSlug[] | undefined` already)
+- [ ] `packages/core/src/collections/completeColumnOrder.ts` (new) + `.test.ts` — `completeColumnOrder({ order, collection }): TFieldSlug[]` — appends every data field absent from `order`, in field-declaration order, after the entries `order` already names (Decision 47's back-compat rule for an old visible-only stored `columns` array)
+- [ ] `packages/core/src/collections/listUrlParams.ts` + `.test.ts` — `ListParams.cols: TFieldSlug[] | undefined` (new); `parseListParams`/`serializeListParams` gain the `cols=<field>,<field>,…` grammar (URI-component-encoded per entry); `serializeListParams` omits `cols` when it deep-equals the active view's own resolved order, UNLESS the active view is `local` (Decision 41 — always present); round-trip tests for an explicit order, a back-compat subset, and an absent value
+- [ ] `packages/core/src/collections/resolveListQueryState.ts` + `.test.ts` — gains `columnOrder: TFieldSlug[]` in its return: `completeColumnOrder({ order: params.cols ?? viewState?.columns ?? collection.admin.view.columns, collection })`
+- [ ] `packages/react/src/collections/listView/useListUrlState.ts` + `.test.tsx` — `UseListUrlStateReturn` gains `cols: TFieldSlug[] | undefined` / `setCols(order: TFieldSlug[]): void` (push, Decision 9's "discrete actions push" rule — a drag-drop is discrete)
+- [ ] `packages/react/src/collections/listView/CollectionListView.tsx` — `visibleColumns`'s existing `useState` is joined by a new `columnOrder` `useState`, seeded/re-synced the same way (`completeColumnOrder({ order: activeView?.columns, collection })`, `syncedViewIdRef`-guarded re-sync for `shared`/`local`); both feed `useListUrlState`'s new `cols`/`setCols` slice; the `hideableColumns` memo this file already computes is RENAMED `columnMenuEntries` and its filter drops the `admin.enableHiding` check — every field-read-access-passing column qualifies, each tagged `hideable: field.admin.enableHiding === true`
+- [ ] `packages/react/src/collections/listView/useListViews.ts` + `.test.ts` — `diffViewState` compares `columnOrder` element-for-element (order-sensitive), not just `visibleColumns` set-equality
+- [ ] `packages/react/src/collections/listView/CollectionListContext.tsx` — gains `columnOrder: TFieldSlug[]` / `onColumnOrderChange: (order: TFieldSlug[]) => void`; `hideableColumns` field renamed `columnMenuEntries: DataTableColumn<TFieldSlug>[]` (now typed with the new `hideable` field, see below)
+- [ ] `packages/react/src/collections/listView/ListLayout.tsx` — forwards `columnOrder` to `DataTable` (composition-only edit, Decision 38)
+- [ ] `packages/react/src/ui/data-table/DataTable.tsx` — new optional `columnOrder?: string[]` prop threaded to `useReactTable`'s `state.columnOrder` (TanStack's own built-in column-order state — `getRowModel` already respects it for render order, no new logic)
+- [ ] `packages/react/src/ui/data-table/DataTableColumnsMenu.tsx` + `.test.tsx` — `DataTableColumn<TFieldSlug>` gains `hideable: boolean`; `columns` prop widens from "every hideable, readable column" to "every READABLE column" (its one caller now passes `columnMenuEntries`, every field-read-access-passing column); wraps the FULL column list in `ui/dnd`'s `DndProvider` (new ancestor, local to this menu — not shared with `forms/ArrayField`'s own instance) → `Droppable` → one `Draggable`+`DragHandle` per row, in `columnOrder`'s own sequence (not field-declaration order, so a prior reorder is visible immediately on open); `onReorder(from, to)` calls a new `onColumnOrderChange: (order: TFieldSlug[]) => void` prop — EVERY row (hideable or not) participates in drag/keyboard reorder; a row's `Checkbox` is `disabled` (and forced `checked`) when `!column.hideable`, so a non-hideable field keeps the same row shape (drag handle + label + checkbox column) as every hideable one — never omitted, never a layout outlier; the drag handle (icon `GripVertical`) sits left of each row's checkbox, `aria-label="Reorder {label}"`; keyboard reorder (space to lift, arrow keys to move, space to drop) comes free from `@hello-pangea/dnd`'s own keyboard sensor
+- [ ] `packages/react/src/collections/listView/ListColumnsAction.tsx` — forwards `columnOrder`/`onColumnOrderChange` from `useCollectionList()` to `DataTableColumnsMenu`, passing `columns={columnMenuEntries}` (renamed, widened — see above) in place of the old `hideableColumns`
+- [ ] `packages/next/src/NextAdminPage.tsx` — no new prop; `resolved.columnOrder` (Step 18/20's `resolveListQueryState` return) is available server-side for parity assertions, and `CollectionListView` re-derives the identical order client-side from the same URL/cookie/view inputs the server used (Step 14's established "the client re-derives from the same inputs" pattern), so the column set/order already matches on hydration with zero shift
+Verify: `pnpm --filter @vexcms/core test -- collections/listUrlParams && pnpm --filter @vexcms/react test -- ui/data-table collections/listView && pnpm --filter @vexcms/next test` && browser: dragging a column (hideable OR not) in the menu reorders the table live, with no flash on reload of the resulting `?cols=` URL; a keyboard-only reorder (Tab to the drag handle, Space to lift, arrow keys to move, Space to drop) works with no mouse, for a non-hideable field too; a field with `admin.enableHiding: false` appears in the menu with a disabled, checked checkbox, never hideable but freely reorderable, and its drag handle works identically to a hideable field's
+
+### Step 21 — View config API cutover + column pinning + resizable columns [agent]
+
+Why: Decision 45's FINAL revision (`admin.table` removed entirely) and Decision 48's REDESIGN (pinning + resizing share one unified `columns` entry model with a single precedence resolver) are both still code, not just decisions — this step (kept at its original number, rescoped from "Column pinning" alone) is where they land: the config API cutover, the unified column model, pinning, and resizing, together, because resizing/pinning's own state IS the `columns` array the config cutover introduces — splitting them into separate steps would mean building the pinning-only version first and immediately rewriting it.
+
+Verify: `pnpm --filter @vexcms/core test -- collections fields && pnpm --filter @vexcms/react test -- collections/listView ui/data-table && pnpm --filter @vexcms/next test` && browser: pinning left/right sticks with a correct offset while scrolling, no shift on reload of the resulting `?cols=` URL; dragging a column's header edge resizes it, a keyboard-focused resize handle resizes via arrow keys, both persist to the active view and the URL; `admin.view.sort = { field: "updatedAt", order: "desc" }` (no `admin.table` anywhere) still sorts the default view that way on first paint; `rg "admin\.table" packages apps` (outside test fixtures asserting the OLD shape never existed, and this spec's own prose) returns zero hits
+
+**Part A — config API cutover (`admin.table` removed entirely).**
+- [ ] `packages/core/src/collections/types.ts` — `CollectionTableConfigInput`/`CollectionTableConfig` and the `table` key on `AdminCollectionConfigInput`/`AdminCollectionConfig` are DELETED entirely. `AdminCollectionConfigInput.view`/`AdminCollectionConfig.view` widen to carry everything: `{ name?, description?, where?, sort?, pageSize?, searchField?, columns?: ColumnEntry<TFieldSlug>[], searchFields?: readonly TFieldSlug[], pageSizeOptions?: number[], countLimit?: number, serverPageSize?: number, bulkActions?: { delete?: boolean } }` on input; every key but `name`/`description`/`where`/`searchField` always-resolved on output. `ColumnEntry<TFieldSlug> = TFieldSlug | { field: TFieldSlug; width?: number; pinned?: "left" | "right"; hidden?: boolean; enableSorting?: boolean; enableHiding?: boolean }` (new, exported — the last two added per the developer's "views always win" precedence answer)
+- [ ] `packages/core/src/collections/types.ts` — `VexViewState<TFieldSlug>.columns?: ColumnEntry<TFieldSlug>[]` (was `TFieldSlug[]`); `VexViewState.pinned` (never shipped — Step 21 was 0/11 before this rescope) is REMOVED, folded into `ColumnEntry.pinned`; `VexViewState<TFieldSlug>` WIDENS to the exact same shape as `admin.view`'s own input type (`searchFields?`, `pageSizeOptions?`, `countLimit?`, `serverPageSize?`, `bulkActions?` added, all optional) — `VexViewConfig.state` and `admin.view`'s input become one shared type, so every `admin.views[n]` entry can override any collection-wide setting, not just per-view query state (developer answer: "every `admin.views` entry accepts the same settings as `admin.view`")
+- [ ] `packages/core/src/fields/baseTypes.ts` — `FieldAdminConfigInput.width?`/`FieldAdminConfig.width?` (both OPTIONAL, unlike `enableSorting`/`enableHiding` — no type-based default resolved here; the type default lives only in `resolveColumnConfig`'s own `FIELD_TYPE_DEFAULT_WIDTH` map)
+- [ ] `packages/core/src/collections/config.ts` — `defineCollection`'s `admin.view` resolution absorbs every old `admin.table.*` default (`searchFields` ← was `searchField`; `pageSizeOptions` default `[10,25,50,100]`; `countLimit` default `1000`; `serverPageSize` default `100`; `bulkActions` default `{ delete: true }`; `pageSize` default `10`; `sort` default `_creationTime desc`; `columns` default: every non-hidden data field, bare-slug entries) — all ONE resolution block, no separate `table` object built at all
+- [ ] `packages/core/src/collections/resolveColumnConfig.ts` (new) + `.test.ts` — `resolveColumnConfig({ fieldKey, fieldDef, resolvedColumnEntry }): { width: number; enableSorting: boolean; enableHiding: boolean; pinned?: "left" | "right"; hidden: boolean }` — `resolvedColumnEntry` is the ONE `ColumnEntry` `resolveListQueryState` already resolved for this field (URL `cols=` override, else the active view's own stored/declared `columns` — Decision 9's unchanged chain); for EACH of the five attributes: `resolvedColumnEntry?.<attr> ?? field.admin.<attr> ?? global default` (`FIELD_TYPE_DEFAULT_WIDTH[fieldDef.type]` for width, `false` for `enableSorting`/`enableHiding`, `undefined`/`false` for `pinned`/`hidden` — no field-level source for those two) — VIEWS ALWAYS WIN, per the developer's precedence answer; `FIELD_TYPE_DEFAULT_WIDTH: Record<DataFieldType, number>` (narrow for `checkbox`/`select`/`date`, wide for `text`/`textarea`/`richtext`) exported alongside
+- [ ] `packages/core/src/collections/validateTableConfig.ts` — renamed `validateViewConfig.ts` (no more "table" in the name — `admin.table` is gone); every existing check (searchField→searchIndex, sort-leads-an-index, per-view where/sort/searchField/columns) runs per view — `admin.view` AND every `admin.views[n]`, since both now share one type (developer answer #1) — reading each view's OWN `searchFields`/`countLimit`/etc. when set, else `admin.view`'s; new checks: a `ColumnEntry.field` naming an unknown field; `.pinned` colliding with the always-first selection column's own reserved left slot; and — developer answer #2 — ANY column entry (on `admin.view` or any `admin.views[n]`) setting `enableSorting: true` must lead a declared index, the SAME check Decision 6 already runs for `field.admin.enableSorting: true`, now also applied to a view-level override, naming the offending view in the thrown `VexConfigError`
+- [ ] `packages/core/src/collections/matchDeclaredViewFilter.ts`, `toClientViewConfig.ts` — no signature change, already operate on `VexViewConfig`/`VexViewState`
+- [ ] grep-proof: `rg "admin\.table|CollectionTableConfig" packages/core/src packages/react/src packages/next/src apps` (outside test fixtures/historical spec prose) returns zero hits
+
+**Part B — unified columns, pinning, resizing (client + URL + server).**
+- [ ] `packages/core/src/collections/listUrlParams.ts` + `.test.ts` — `ListParams.cols: ColumnEntry<TFieldSlug>[] | undefined`; `parseListParams`/`serializeListParams`'s `cols=` grammar becomes `cols=<field>[:w<width>][:pl|:pr][:h]`, comma-separated, URI-component-encoded field slugs, suffixes in that fixed order when combined — REPLACES Step 20's plain bare-field-list grammar entirely (breaking, no back-compat); `serializeListParams` omits `cols` when the resolved array deep-equals the active view's own, UNLESS `local` (Decision 41, unchanged rule); round-trip tests for every suffix combination, a back-compat bare-slug-only array, and an absent value
+- [ ] `packages/core/src/collections/resolveListQueryState.ts` + `.test.ts` — `columns: ColumnEntry<TFieldSlug>[]` in its return: `params.cols ?? viewState?.columns ?? collection.admin.view.columns`, completed (missing fields appended, Decision 47's back-compat rule, same `completeColumnOrder`-style helper, now entry-aware) then passed through `resolveColumnConfig` per field for the final width/pin/hidden/sort/hide map
+- [ ] `packages/react/src/fields/index.tsx` — `getCollectionColumnDefs` (Step 10's central `enableSorting`/`enableHiding` pass, previously reading `fieldDef.admin.enableSorting`/`.enableHiding` directly) now takes the active view's resolved `columns: ColumnEntry[]` and sets each columnDef's `enableSorting`/`enableHiding` from `resolveColumnConfig`'s OWN output per field, not `fieldDef.admin.*` directly — this is what lets a view's column entry override the field's own default (`DataTableSortHeader`'s sort affordance and `DataTableColumnsMenu`'s checkbox both already read the columnDef's resolved flag, so neither needs its own change beyond this one upstream source swap)
+- [ ] `packages/react/src/ui/data-table/DataTable.tsx` — `columns?: ColumnEntry<TFieldSlug>[]` (one prop, replaces `visibleColumns`/`columnOrder`/`columnPinning` separately) threaded to `useReactTable`'s `state.columnVisibility`/`columnOrder`/`columnPinning`/`columnSizing`, all derived from `resolveColumnConfig` per column; `table-layout: fixed`; `columnResizeMode: "onChange"`, `enableColumnResizing: true` unconditionally (every column resizable); a drag handle (`header.getResizeHandler()`) in each header cell, `tabIndex={0}`, `onKeyDown` handling `ArrowLeft`/`ArrowRight` to adjust width by a fixed step; `onColumnsChange: (columns: ColumnEntry<TFieldSlug>[]) => void` — the ONE callback for reorder/pin/hide/resize, called with the full next array; sticky cell styling (header + body) generalizes Step 16's `STICKY_FIRST_COLUMN_CLASS` to any pinned column via `column.getStart("left")`/`column.getAfter("right")` inline offsets; selection column's `columnDef` unconditionally first in the resolved `left` pin group
+- [ ] `packages/react/src/collections/listView/useListUrlState.ts` + `.test.tsx` — `UseListUrlStateReturn.cols`/`setCols(columns: ColumnEntry<TFieldSlug>[]): void` (push, discrete action)
+- [ ] `packages/react/src/collections/listView/CollectionListView.tsx` — the separate `visibleColumns`/`columnOrder`/`pinned` `useState`s collapse into ONE `columns: ColumnEntry<TFieldSlug>[]` `useState`, seeded/re-synced from the active view (`syncedViewIdRef`-guarded); feeds `useListUrlState`'s `cols`/`setCols`
+- [ ] `packages/react/src/collections/listView/useListViews.ts` + `.test.ts` — `diffViewState` compares the `columns` array element-for-element including each entry's own `width`/`pinned`/`hidden` (deep-equal per entry, not just field-slug set/order)
+- [ ] `packages/react/src/collections/listView/CollectionListContext.tsx` — `columns: ColumnEntry<TFieldSlug>[]` / `onColumnsChange: (columns: ColumnEntry<TFieldSlug>[]) => void` replace the separate `columnOrder`/`visibleColumns`/`pinned`/`onColumnOrderChange`/`onPinnedChange` fields
+- [ ] `packages/react/src/collections/listView/ListLayout.tsx` — forwards `columns`/`onColumnsChange` to `DataTable` (composition-only, Decision 38)
+- [ ] `packages/react/src/ui/data-table/DataTableColumnsMenu.tsx` + `.test.tsx` — reads `columnMenuEntries` (every readable field) and the resolved per-field config via `resolveColumnConfig`; each row: drag handle (reorder, `ui/dnd`, unchanged from Step 20), checkbox (hide/show, disabled+checked when `!enableHiding`, unchanged from Step 20), NEW 3-state pin control (left/none/right); calls ONE `onColumnsChange` with the next full array for any of the three interactions — resizing is NOT controlled from this menu, only from the header's own drag handle (Decision 48)
+- [ ] `packages/react/src/collections/listView/ListColumnsAction.tsx` — forwards `columns`/`onColumnsChange`
+- [ ] `packages/next/src/NextAdminPage.tsx` + `.test.ts` — the mediaCollection/collection `numItems` reads move to `.admin.view.serverPageSize`/`.pageSize`; resolves `resolved.columns` (per-field width/pin/hidden/order) the same way the client does, renders `table-layout: fixed` with exact widths — a prefetch-args/server-parity test proves it, mirroring Step 14/20's own
+
+**Part C — migration of every remaining usage.**
+- [ ] `apps/test/src/vexcms/collections/{pages,posts,fields}.ts`, `apps/www/src/vexcms/collections/pages.ts`, `packages/create-vexcms/templates/marketing-site/src/vexcms/collections/pages.ts` — every `admin.table.*` key moves to `admin.view.*` (`searchField` → `searchFields`, everything else same name, new location)
+- [ ] `packages/create-vexcms/templates/base-nextjs` — grepped for `admin.table`; fixed if present (the template's own seed/example collections, if any declare it)
+- [ ] `apps/docs/src/content/docs/guides/list-views.mdx` section (Step 24's own appendix, below) — every `admin.table` example rewritten to `admin.view`; Sort/Column-visibility/Page-size/Saved-views sections collapse their split `admin.table`+`admin.view` examples (from this spec's own prior revision) into one `admin.view` block each; new "Pinning & resizing" section
+- [ ] `README.md`'s embedded example (Step 24's own appendix) — same `admin.table` → `admin.view` rewrite
+- [ ] `2026-10-28-committs-field` spec — its own references to `defaultView`/`admin.table` (if any remain) fixed to `admin.view`
+
+### Step 22 — Per-field filter inputs [agent]
+
+Why: Decision 50. `ListFilterBuilder.tsx`'s own hand-coded `renderFilterValueInput` duplicates logic every field type's own `Field.tsx`/`Cell.tsx` already encode once in the `reactAdapter.fields` registry; a third registry key, `filterInput`, closes that gap and fixes a real bug along the way — `json`/`richtext`/`array`/`blocks`/`group` currently fall through to `eq`/`neq` with no matching value input at all.
+
+Verify: `pnpm --filter @vexcms/core test -- fields && pnpm --filter @vexcms/react test -- fields collections/listView && pnpm --filter @vexcms/next test` && browser: a relationship filter opens the existing picker and shows the picked document's title, not its id, in the row and the resulting chip; the same for an upload filter; a `json`/`array`/`blocks`/`group`/`richtext` field offers only `isEmpty`/`isNotEmpty` with no value control; a hard-reloaded `?filter=` URL naming a relationship/upload id shows the correct title on first paint, no flash to the raw id
+- [ ] `packages/core/src/fields/types.ts` — `FilterInputProps<TField extends AdminDataField = AdminDataField>` (`{ field: TField; value: unknown; op: string; onChange: (value: unknown) => void; disabled?: boolean }`), beside `FieldComponentProps`/`CellComponentProps`
+- [ ] `packages/core/src/collections/collectRelationshipFilterValues.ts` (new) + `.test.ts` — `collectRelationshipFilterValues({ where, collection }): { fieldKey: string; targetCollection: string; id: string }[]` — walks the DNF `where`'s leaves, collecting every `relationship`/`upload` leaf with a concrete `eq`/`neq` value
+- [ ] `packages/react/src/fields/{text,email,url,textarea}/FilterInput.tsx` + `.test.tsx` — one plain text `Input` each
+- [ ] `packages/react/src/fields/number/FilterInput.tsx` + `.test.tsx` — a number `Input` (moved from `renderFilterValueInput`'s `number` branch)
+- [ ] `packages/react/src/fields/checkbox/FilterInput.tsx` + `.test.tsx` — the true/false `Select` (moved from the `checkbox` branch)
+- [ ] `packages/react/src/fields/date/FilterInput.tsx` + `.test.tsx` — the `DateTimePicker` (moved from the `date` branch)
+- [ ] `packages/react/src/fields/select/FilterInput.tsx` + `.test.tsx` — the options `Select` (moved from the `select` branch); the synthetic `vex_status` field (`type: "select"`) resolves through this component with no special case
+- [ ] `packages/react/src/fields/color/FilterInput.tsx` + `.test.tsx` — a small colour swatch (background from `value`) beside the existing hex text `Input`, not the full swatch-picker popover `ColorField` uses
+- [ ] `packages/react/src/fields/relationship/FilterInput.tsx` + `.test.tsx` — opens `RelationshipPicker` directly (`selectedIds: value ? [value] : []`, `onSelect: (ids) => { onChange(ids[0]); /* title from the picker's own list */ }`); a trigger `Button` showing `filterValueTitles[value] ?? value ?? "Select…"`
+- [ ] `packages/react/src/fields/upload/FilterInput.tsx` + `.test.tsx` — a new standalone single-select media dialog (`RelationshipPickerProps`-shaped: `{ targetCollection, selectedId, onSelect, onCancel }`), reusing `MediaPicker`'s internal document-grid/upload-dropzone pieces (NOT `MediaPicker` itself — it requires a live TanStack Form `field` API, confirmed unusable standalone)
+- [ ] `packages/react/src/adapter.ts` — `reactAdapter.fields[type].filterInput` for every type listed in Decision 50; `json`/`richtext`/`array`/`blocks`/`group` entries get none
+- [ ] `packages/react/src/fields/registry.ts` — `fieldToFilterInputComponent(field: DataFieldType): ComponentType<FilterInputProps> | undefined`
+- [ ] `packages/react/src/collections/listView/ListFilterBuilder.tsx` — DELETES `renderFilterValueInput`; its call site resolves+renders via `fieldToFilterInputComponent`; `FILTER_BUILDER_OPS_BY_FIELD_TYPE` gains `json: ["isEmpty","isNotEmpty"]`, `richtext: [...]`, `array: [...]`, `blocks: [...]`, `group: [...]` (fixes the fallthrough bug)
+- [ ] `packages/core/src/framework.ts` — `CollectionListViewProps.initialFilterValueTitles?: Record<string, string | null>`
+- [ ] `packages/next/src/NextAdminPage.tsx` + `.test.ts` — calls `collectRelationshipFilterValues`, prefetches `vexConvexApi.get` per distinct id (`Promise.allSettled`, degrades to `null` on any failure — never crashes the page), builds `initialFilterValueTitles`
+- [ ] `packages/react/src/collections/listView/CollectionListContext.tsx` — gains `filterValueTitles: Record<string, string | null>` / `setFilterValueTitle: (id: string, title: string | null) => void`
+- [ ] `packages/react/src/collections/listView/CollectionListView.tsx` — seeds `filterValueTitles` from `props.initialFilterValueTitles`
+- [ ] `packages/react/src/collections/listView/ListFilterChips.tsx` — a relationship/upload chip reads `filterValueTitles[id] ?? id` instead of the raw id
+
+**Dependency (added 2026-10-29, developer-directed):** `2026-10-28-committs-field`'s own `commitTs()` field also needs a `FilterInput` (date+time, mirroring `date/FilterInput.tsx`) — that spec adds `fields/commitTs/FilterInput.tsx` itself once this step's registry exists; this step does not add it.
+
+### Step 23 — Admin cookie scoping + consolidation [agent]
+
+Why: Decision 51. Up to five separately-named, `path=/` admin cookies per collection ship on every request to the whole domain, including public pages that never read them — scoping to `basePath` and consolidating into two JSON cookies fixes both the leak and the sprawl in one pass, with zero caller-facing API change.
+
+Verify: `pnpm --filter @vexcms/core test -- adminCookie && pnpm --filter @vexcms/react test -- adminCookie collections/listView livePreview ui/sidebar && pnpm --filter @vexcms/next test` && browser: `document.cookie` after any admin interaction shows exactly `vex-admin` and `vex-admin:<collection>` (no `vex-list-*`/`vex-live-preview-*`/`sidebar_state`), both with `Path=<basePath>`; a public, non-admin page's request carries neither; first paint (density, chips, local-view tabs, live-preview panel, sidebar state, skeleton row count) is pixel-identical to before this step; a cookie built past `ADMIN_COOKIE_MAX_BYTES` drops `rowCounts` first, then oldest `localViews`, confirmed via a seeded test with many local views
+- [ ] `packages/core/src/adminCookie.ts` (new) + `.test.ts` — `ADMIN_COOKIE_NAME`/`adminCollectionCookieName({ collection })`, `AdminCookieGlobal`/`AdminCookieCollection` (versioned, `v: 1`), `parseAdminCookie`/`parseAdminCollectionCookie` (tolerant, degrade-to-defaults), `serializeAdminCookie`/`serializeAdminCollectionCookie` (caps: `rowCounts` LRU via the existing `LIST_ROW_COUNT_COOKIE_MAX_ENTRIES`, `localViews` names truncated past 40 chars, `ADMIN_COOKIE_MAX_BYTES` ~3800 enforced by dropping `rowCounts` then oldest `localViews`)
+- [ ] `packages/core/src/collections/listPreferenceCookies.ts` — `parseListPreferences` reads through `parseAdminCookie`/`parseAdminCollectionCookie`; `LIST_PREFERENCE_COOKIES`/`listChipsVisibleCookieName` retained as internal constants only (no longer independent cookie names)
+- [ ] `packages/core/src/collections/listViewsCookie.ts` — `parseListViewsIndexCookie` reads `localViews` off `parseAdminCollectionCookie`
+- [ ] `packages/core/src/collections/listRowCountCookie.ts` — `parseListRowCountCookie` reads `rowCounts` off `parseAdminCollectionCookie`
+- [ ] `packages/core/src/livePreview/panelCookie.ts` — `readLivePreviewPanelCookie`/`readLivePreviewLayoutCookie` read `livePreview.panelOpen`/`.panelSize` off `parseAdminCollectionCookie` (global-slug live-preview, e.g. a global edit view, reads the GLOBAL `vex-admin` cookie's own `livePreview` field instead — same shape, different cookie)
+- [ ] `packages/react/src/adminCookie.ts` (new) + `.test.ts` — `writeAdminCookie(patch: Partial<AdminCookieGlobal>)` / `writeAdminCollectionCookie({ collection, patch: Partial<AdminCookieCollection> })`, each reads-merges-writes, SKIPS the write when the merged JSON is unchanged
+- [ ] `packages/react/src/collections/listView/listPreferenceCookies.ts` — `writeListDensityCookie`/`writeListChipsVisibleCookie` call `writeAdminCookie`/`writeAdminCollectionCookie` internally, same exported names/signatures
+- [ ] `packages/react/src/collections/listView/listViewStore.ts` — its cookie-index write calls `writeAdminCollectionCookie({ patch: { localViews } })`
+- [ ] `packages/react/src/collections/listView/listPreferenceCookies.ts` (row-count writer) — `writeListRowCountCookie` calls `writeAdminCollectionCookie({ patch: { rowCounts } })`
+- [ ] `packages/react/src/livePreview/useLivePreviewPanelState.ts` — its `writePreferenceCookie` calls `writeAdminCollectionCookie`/`writeAdminCookie` (collection vs. global slug) with a `livePreview` patch
+- [ ] `packages/react/src/ui/sidebar.tsx` — `SidebarProvider` reads `useVexConfig().basePath` and calls `writeAdminCookie({ patch: { sidebarOpen } })` instead of its own `document.cookie` write; `SIDEBAR_COOKIE_NAME` read removed
+- [ ] `packages/react/src/admin/AdminLayout.tsx` — one-time best-effort clear of the 6 old cookie names (`vex-list-density`, `vex-list-chips:*`, `vex-list-views:*`, `vex-list-rows:*`, `vex-live-preview-panel:*`, `vex-live-preview-layout:*`, `sidebar_state`) on mount, `path=/` (matching how they were originally written, so the clear actually removes them), `max-age=0`
+- [ ] `apps/docs/src/content/docs/guides/admin-cookies.mdx` (new) — "Cookies used by the admin" (names, `Path`, contents, size bounds), linked from `list-views.mdx` and the live-preview guide if one exists
+
+### Step 24 — Examples, docs, acceptance [agent]
 
 Why: acceptance needs a 200-doc collection, a custom row + bulk action exercising `access`, a config view with a server-resolved `where` the current role can't read, a count-cap demonstration, an index-pushdown demonstration, a declared-filter narrowing demonstration, and a docs guide that matches every decision through the architecture review (peek, density, shortcuts, parked sort, filter chips, view tabs, hidden-filter narrowing, count cap, pushdown, server prerender, and the local-view cookie). It also needs hard-reload proof that Decision 39's zero-layout-shift promise holds for every view source and for the peek.
+
+**Dependency (added 2026-10-28, developer-directed):** this step lands AFTER the separate `2026-10-28-committs-field` spec. `testimonials` declares a `commitTs()` field (that spec's new field type) and `apps/test/src/vexcms/collections/testimonials.ts` sets `admin.view.sort = { field: "updatedAt", order: "desc" }` (Step 18) — the example and `list-views.mdx` both demonstrate `commitTs()` alongside the default view's sort, not a hand-picked sortable field. Also pins at least one column left and one right (Step 21), demonstrating the sticky-offset behavior in the live example, and includes at least one relationship-filtered preset view exercising Step 22's title-resolved chip. Do not start this step until `2026-10-28-committs-field` is implemented (that spec's own `FilterInput` for `commitTs()` additionally depends on this spec's Step 22).
+
+**Backlog (2026-10-29, developer, not addressed by this spec):** Step 12's modified-state controls (Decision 11's revised 2026-10-29 note — dot/"Modified: …"/Reset/Save, now inline in `ListToolbar`'s row) wrap onto a second toolbar line at narrow `@container/list` widths (~700px and below), alongside every other toolbar control that already wraps there — confirmed not to overflow or clip (no horizontal scrollbar, every control stays reachable), just an UNOPTIMIZED two-line toolbar. A dedicated narrow-width treatment (folding into the existing `⋯` overflow stages, same as Copy link/Columns/Rows-per-load) is real future work, not solved here.
 Verify: pnpm typecheck && pnpm test && vex generate && the 15-item browser smoke checklist below, for at least one allowed role and one denied role
 
-- [ ] `apps/test/src/db/constants/index.ts` + `apps/test/src/vexcms/collections/testimonials.ts` (new) + `apps/test/src/vexcms/collections/index.ts` — collection with `searchField` (2 fields), sortable columns, an indexed `source` field, a low `admin.table.countLimit` (below the seeded row count, to exercise `totalDocsCapped`), 3 `views` (one with a server-resolved `where` on a field the `contributor`/`user` roles can't read), custom row + bulk action contributions, seed 200 docs
+- [ ] `apps/test/src/db/constants/index.ts` + `apps/test/src/vexcms/collections/testimonials.ts` (new) + `apps/test/src/vexcms/collections/index.ts` — collection with a `commitTs()` field (`2026-10-28-committs-field`), `admin.view.sort = { field: "updatedAt", order: "desc" }` (Step 18), a pinned column via `ColumnEntry.pinned`/an `admin.views` preset with its own pinned entry, resizable columns exercised (Step 21), a relationship field with at least one preset view filtering on it (Step 22), `admin.view.searchFields` (2 fields), sortable columns, an indexed `source` field, a low `admin.view.countLimit` (below the seeded row count, to exercise `totalDocsCapped`), 3 `views` (one with a server-resolved `where` on a field the `contributor`/`user` roles can't read), custom row + bulk action contributions, seed 200 docs
 - [ ] `apps/test/src/components/TestimonialFeatureRowAction.tsx` + `apps/test/src/components/TestimonialBulkApproveAction.tsx` (new) — custom row + bulk action contributions
 - [ ] `apps/test/src/auth/access.ts` — `testimonials` resource, `VIEW_ACTIONS` rules (`readViews`/`createView`/`updateView`/`deleteView`), field-level read restriction on `internalScore`
 - [ ] `apps/test/convex/seed.ts` — 200 seeded rows, each stamped with a `source`
-- [ ] `apps/docs/src/content/docs/guides/list-views.mdx` (new) — list-view guide covering every Step 1–16 behavior, including server prerender and the local-view cookie index; `README.md` `admin.table` claims made true
+- [ ] `apps/docs/src/content/docs/guides/list-views.mdx` (new) — list-view guide covering every Step 1–23 behavior, including server prerender, the local-view cookie index, the server-seeded auth context (sidebar included), `admin.view`/`admin.views` (Decision 45), `commitTs()` (`2026-10-28-committs-field`), the view-switch prefetch/keep-previous-rows behavior, column ordering, pinning, and resizing (one unified `columns` array, Decision 48), per-field filter inputs (relationship/upload title resolution), and a link to the new `admin-cookies.mdx` guide; `README.md` `admin.view` claims made true
 - [ ] `.agent/docs/product/v0.1.0-launch-plan.md` — I tasks ticked; backlog updated
 - [ ] browser smoke checklist: every Verify above + `VIEW_ACTIONS` denied vs allowed + hidden-filter badge + density + peek + keyboard shortcuts + declared-filter narrowing + count cap + pushdown + hard-reload zero-shift for shared/config/local views and `peek=`
 
@@ -16751,7 +17205,7 @@ import { TestimonialFeatureRowAction } from "../../components/TestimonialFeature
  * (indexed `by_source`, readable by every role) is the field a `contributor`/`user`
  * narrows the `high-value` view with (decision 26's declared-filter allow-list: the
  * view's own `where` stays trusted unchanged, and the caller's `source = g2` row is
- * checked against readable fields only). `admin.table.countLimit` is set below the
+ * checked against readable fields only). `admin.view.countLimit` is set below the
  * seeded count so `totalDocsCapped` and the "1,000+"-style capped count (decision 35)
  * are observable without seeding past the 1000 default. `status`'s `by_status` index
  * doubles as the equality filter pushdown demo (decision 36). The row/bulk
@@ -16771,52 +17225,64 @@ export const testimonials = defineCollection({
   admin: {
     useAsTitle: "authorName",
     icon: "Quote",
-    table: {
-      searchField: ["authorName", "company"],
-      defaultSort: { field: "_creationTime", order: "desc" },
-      defaultColumns: ["authorName", "company", "rating", "status"],
-      pageSizeOptions: [10, 25, 50, 100],
-      defaultPageSize: 25,
-      countLimit: 150,
-      views: [
-        {
-          viewId: "featured",
-          name: "Featured",
-          description: "Featured testimonials, highest rating first.",
-          state: {
-            where: { field: "featured", op: "eq", value: true },
-            sort: { field: "rating", order: "desc" },
-            columns: ["authorName", "company", "rating"],
-          },
-        },
-        {
-          viewId: "pending-review",
-          name: "Pending Review",
-          description: "Awaiting an approve/reject decision, oldest first.",
-          state: {
-            where: { field: "status", op: "eq", value: ["pending"] },
-            sort: { field: "_creationTime", order: "asc" },
-          },
-        },
-        {
-          viewId: "high-value",
-          name: "High Value",
-          description: "Curated for the homepage by internal score.",
-          state: {
-            // Server-only (decision 25): never sent to the client. `internalScore` is
-            // also read-restricted below, so this view encodes a business rule a
-            // `contributor`/`user` can act on (via the view) without ever reading the
-            // field it's built from — the UI shows only a lock badge with a count. A
-            // `source = g2` filter layered on top by a role that can't read
-            // `internalScore` exercises decision 26's narrowing allow-list: the
-            // declared `where` is trusted as-is, and only the added row is checked
-            // against readable fields.
-            where: { field: "internalScore", op: "gte", value: 8 },
-            sort: { field: "rating", order: "desc" },
-          },
-        },
+    view: {
+      // `commitTs` (2026-10-28-committs-field) is a monotonic, write-ordered
+      // timestamp — sorting the default view by it (desc) shows the most
+      // recently COMMITTED row first, not merely the most recently created one.
+      sort: { field: "updatedAt", order: "desc" },
+      // `authorName` pinned left (fixed 220px), `status` pinned right — the
+      // unified `columns` array carries order, visibility, pin side, and
+      // width in ONE entry per field (Decision 48); a bare slug means
+      // "visible, no overrides".
+      columns: [
+        { field: "authorName", width: 220, pinned: "left" },
+        "company",
+        "rating",
+        { field: "status", pinned: "right" },
       ],
+      pageSize: 25,
+      searchFields: ["authorName", "company"],
+      pageSizeOptions: [10, 25, 50, 100],
+      countLimit: 150,
     },
+    views: [
+      {
+        viewId: "featured",
+        name: "Featured",
+        description: "Featured testimonials, highest rating first.",
+        state: {
+          where: { field: "featured", op: "eq", value: true },
+          sort: { field: "rating", order: "desc" },
+          columns: ["authorName", "company", "rating"],
+        },
+      },
+      {
+        viewId: "pending-review",
+        name: "Pending Review",
+        description: "Awaiting an approve/reject decision, oldest first.",
+        state: {
+          where: { field: "status", op: "eq", value: ["pending"] },
+          sort: { field: "_creationTime", order: "asc" },
+        },
+      },
+      {
+        viewId: "high-value",
+        name: "High Value",
+        description: "Curated for the homepage by internal score.",
+        state: {
+          // Server-only (decision 25): never sent to the client. `internalScore` is
+          // also read-restricted below, so this view encodes a business rule a
+          // `contributor`/`user` can act on (via the view) without ever reading the
+          // field it's built from — the UI shows only a lock badge with a count. A
+          // `source = g2` filter layered on top by a role that can't read
+          // `internalScore` exercises decision 26's narrowing allow-list: the
+          // declared `where` is trusted as-is, and only the added row is checked
+          // against readable fields.
+          where: { field: "internalScore", op: "gte", value: 8 },
+          sort: { field: "rating", order: "desc" },
+        },
+      },
+    ],
     components: {
       rowActions: [{ id: "testimonials.feature", component: TestimonialFeatureRowAction }],
       bulkActions: [{ id: "testimonials.bulkApprove", component: TestimonialBulkApproveAction }],
@@ -17191,7 +17657,7 @@ description: Search, portable sort, filters, density, saved views, server preren
 ---
 
 Every collection list view ships a paginated, searchable, sortable, filterable data
-table driven entirely by `admin.table` — each control reads one config key, and a
+table driven entirely by `admin.view` — each control reads one config key, and a
 control with no key stays hidden. The page itself never scrolls: header, tabs,
 toolbar, and chips stay fixed, and the table owns its own scroll area (Step 10). The
 first server render already shows the final rows, tabs, and preferences — there is no
@@ -17227,8 +17693,8 @@ plain client query; only the first render pays for `listViews` and the prefetch.
 
 ```ts
 admin: {
-  table: {
-    searchField: ["authorName", "company"],
+  view: {
+    searchFields: ["authorName", "company"],
   },
 },
 fields: {
@@ -17247,8 +17713,8 @@ can read (`useFieldPermissions`).
 
 ```ts
 admin: {
-  table: {
-    defaultSort: { field: "_creationTime", order: "desc" },
+  view: {
+    sort: { field: "_creationTime", order: "desc" },
   },
 },
 fields: {
@@ -17258,7 +17724,7 @@ fields: {
 
 Sort is portable — `{ field, order }`, never an index name. The server resolves `field`
 (`resolveQueryIndex`) to the index whose first field leads with it (draft-status-aware);
-`_creationTime` needs no index. `defaultSort.field` and every `enableSorting` field must
+`admin.view.sort.field` and every `enableSorting` field must
 lead some index, or `defineConfig` throws naming the index to declare. Sort on an
 unreadable field is rejected with a `VexAccessError` — sort order alone can leak values.
 
@@ -17271,8 +17737,8 @@ badge and an explanatory tooltip; clearing the search restores the sort.
 
 ```ts
 admin: {
-  table: {
-    defaultColumns: ["authorName", "company", "rating", "status"],
+  view: {
+    columns: ["authorName", "company", "rating", "status"],
   },
 },
 fields: {
@@ -17289,17 +17755,61 @@ same way `readLivePreviewPanelCookie` reads the live-preview panel cookie — so
 reloaded page renders at the right density and chip visibility on the very first
 paint, never flipping after hydration. Neither enters the URL or a saved view.
 
+## Column ordering, pinning & resizing
+
+```ts
+admin: {
+  view: {
+    columns: [
+      { field: "authorName", width: 220, pinned: "left" },
+      "company",
+      "rating",
+      { field: "status", pinned: "right" },
+    ],
+  },
+},
+```
+
+`columns` is one ordered array per view — a bare field slug means "visible, no
+overrides"; an object entry overrides `width` (px), `pinned` (`"left"` / `"right"`),
+and/or `hidden` for that field. Order, visibility, pin side, and width all live in this
+ONE array; there is no separate pin or width state anywhere. Drag the row in the
+columns menu to reorder (keyboard: Tab to the handle, Space to lift, arrow keys to
+move, Space to drop); drag a column's own header edge to resize it (keyboard: Tab to
+the resize handle, Left/Right arrows); pin left or right from the columns menu. Every
+change commits straight into the active view's own `columns` array — a local or shared
+view remembers it; the default/preset config shape above is just that view's own
+starting point.
+
+**Precedence**, for `width`/sortability/hideability, resolved by one core function
+(`resolveColumnConfig`): the active view's own entry (when it overrides the attribute)
+beats the field's own `admin.width`/`admin.enableSorting`/`admin.enableHiding`, which
+beats a global per-type default. The selection checkbox column is always the leftmost
+pinned column. Pinned columns render sticky, with the server computing their exact
+offsets ahead of render (`table-layout: fixed`) — no layout shift on reload.
+
 ## Filters
 
 The filter builder renders into the `list.filters` slot. It edits one level of OR
-groups of AND rows — operators are `eq`/`neq`/`gt`/`gte`/`lt`/`lte` plus the
-list-only `isEmpty`/`isNotEmpty` (offered by field type: number/date get all six
-comparisons, text/boolean/select/relationship get `eq`/`neq`, everything gets the
-empty operators). The builder applies live — a row counts once it's complete — and
-stores the same plain `VexWhereNode` `find`/`search` already accept:
-`{ or: [{ and: [leaf, …] }, …] }`. Active filters show as chips with a per-browser
-visibility toggle; unreadable fields never appear in the field list. `vex_status` is
-a built-in filter field on versioned collections.
+groups of AND rows, opening with one empty row already there, ready to edit — no
+"Add filter" click needed. Operators are `eq`/`neq`/`gte`/`lte` plus the list-only
+`isEmpty`/`isNotEmpty`, offered by field type: `number` gets all four plus `gte`/
+`lte`; `date` gets `gte`/`lte`/`isEmpty`/`isNotEmpty` only (no `eq`/`neq` — an
+exact-millisecond match on a timestamp is never what a user means, and the value
+control is a date-plus-time picker, always displayed formatted); every other type
+gets `eq`/`neq`/`isEmpty`/`isNotEmpty`; `vex_status` gets `eq`/`neq` only (it is
+always set, so an emptiness check could never match). `gt`/`lt` are never NEW
+choices, but a `where` built before this still parses, queries, and renders with
+its own operator. The operator picker shows a symbol plus the op code (`= eq`,
+`≥ gte`, …) identically in the picker and in a chip. The builder applies live — a
+row counts once it's complete — and stores the same plain `VexWhereNode`
+`find`/`search` already accept: `{ or: [{ and: [leaf, …] }, …] }`. Active filters
+show as chips, with a `variant="ghost"` eye/crossed-eye visibility toggle grouped
+beside the "Filter" trigger itself — not rendered at all when there is no active
+filter (never disabled), otherwise showing the open eye or the crossed eye
+matching whether the chip row itself is currently shown; unreadable fields never
+appear in the field list. `vex_status` is a built-in filter field on versioned
+collections.
 
 A config view's own `where` (below) is never editable here and never shown as a
 chip — only as a lock badge with a count. A caller may still **narrow** a config
@@ -17312,9 +17822,9 @@ then checks the remaining rows against normal field-read rules (decision 26). Se
 
 ```ts
 admin: {
-  table: {
+  view: {
     pageSizeOptions: [10, 25, 50, 100],
-    defaultPageSize: 25,
+    pageSize: 25,
   },
 },
 ```
@@ -17327,13 +17837,13 @@ page at the new size without re-chunking already-loaded rows.
 
 ```ts
 admin: {
-  table: {
+  view: {
     countLimit: 150,
   },
 },
 ```
 
-The total count shown next to "Showing 25 of …" is capped at `admin.table.countLimit`
+The total count shown next to "Showing 25 of …" is capped at `admin.view.countLimit`
 (default 1000): the server counts with `take(countLimit + 1)` instead of scanning the
 whole matching set, and `find` returns `totalDocsCapped: true` once the cap is hit, so
 the UI reads "Showing 25 of 150+" instead of a possibly stale or expensive exact count.
@@ -17348,33 +17858,40 @@ unaffected; pushdown only changes which index-eligible equalities move out of
 
 ```ts
 admin: {
-  table: {
-    views: [
-      {
-        viewId: "featured",
-        name: "Featured",
-        description: "Featured testimonials, highest rating first.",
-        state: { where: { field: "featured", op: "eq", value: true }, sort: { field: "rating", order: "desc" } },
-      },
-      {
-        viewId: "high-value",
-        name: "High Value",
-        description: "Curated for the homepage by internal score.",
-        state: { where: { field: "internalScore", op: "gte", value: 8 }, sort: { field: "rating", order: "desc" } },
-      },
-    ],
+  view: {
+    sort: { field: "updatedAt", order: "desc" },
   },
+  views: [
+    {
+      viewId: "featured",
+      name: "Featured",
+      description: "Featured testimonials, highest rating first.",
+      state: { where: { field: "featured", op: "eq", value: true }, sort: { field: "rating", order: "desc" } },
+    },
+    {
+      viewId: "high-value",
+      name: "High Value",
+      description: "Curated for the homepage by internal score.",
+      state: { where: { field: "internalScore", op: "gte", value: 8 }, sort: { field: "rating", order: "desc" } },
+    },
+  ],
 },
 ```
 
-Views come from three sources, merged by `viewId` and shown as tabs — **All** first,
-then config, shared, and local, overflowing into an "All views" menu grouped by
-source: `config` (`admin.table.views`, read-only), `shared` (the `vex_views` Convex
-table, collection-wide and org-scoped when `access.orgCollectionSlug` is set — no
-user or role scopes), and `local` (the browser's `localStorage`, the personal tier). Shared views are invisible to a caller without `readViews` on the collection — `listViews` resolves to an empty list for them, so their tabs simply don't appear (no error).
+Views come from four sources, merged by `viewId` and shown as tabs — the collection's own
+**default** view (`admin.view`, always present — even undeclared it resolves to `{ name: "All",
+sort: _creationTime desc, every non-hidden column }`) first, then `config` (`admin.views`,
+preset, read-only), `shared`, and `local`, overflowing into an "All views" menu grouped by
+source. `shared` is the `vex_views` Convex table, collection-wide and org-scoped when
+`access.orgCollectionSlug` is set — no user or role scopes; `local` is the browser's
+`localStorage`, the personal tier. Shared views are invisible to a caller without `readViews`
+on the collection — `listViews` resolves to an empty list for them, so their tabs simply don't
+appear (no error). The default view is a real view (fixed `viewId: "default"`, never written
+to `view=` — the URL still carries no `view=` while it's active) — it diffs, resets, and may
+declare its own hidden `where` exactly like a preset view.
 
-A config view's `where` is **hidden from the UI, not secret** — it ships in the client
-bundle like an access rule (P-004), since `admin.table.views` is part of the same
+A config view's `where` (the default view's or a preset's) is **hidden from the UI, not secret** — it ships in the client
+bundle like an access rule (P-004), since `admin.view`/`admin.views` are part of the same
 config object imported into the browser, and may reference fields the caller can't
 read, like `high-value`'s `internalScore` above. Don't encode sensitive thresholds or
 identifiers in one. UI code never reads a config view's `where` directly — it reads
@@ -17518,19 +18035,20 @@ hidden filter), and the row/bulk contributions above.
 
 The admin panel's collection list view is a paginated data table backed by Convex's
 `usePaginatedQuery`, with per-collection search, sort, filters, column visibility,
-density, page size, saved views, an Inspect peek, core keyboard shortcuts, and a
-server-prerendered first paint, all driven by `admin.table`:
+density, page size, saved views, column pinning and resizing, an Inspect peek, core
+keyboard shortcuts, and a server-prerendered first paint, all driven by `admin.view`/
+`admin.views`:
 
 \`\`\`typescript
 export const posts = defineCollection({
   slug: "posts",
   admin: {
-    table: {
-      searchField: ["title"],
-      defaultSort: { field: "_creationTime", order: "desc" },
-      defaultColumns: ["title", "status"],
+    view: {
+      sort: { field: "_creationTime", order: "desc" },
+      columns: ["title", "status"],
+      pageSize: 10,
+      searchFields: ["title"],
       pageSizeOptions: [10, 25, 50, 100],
-      defaultPageSize: 10,
     },
   },
   fields: {
@@ -17647,4 +18165,4 @@ this step's Verify condition (see the Verify line at the top of this step).
 - `pnpm typecheck && pnpm test` green
 - `harness doctor` clean; `harness struct` regenerated after Step 2
 - `vex generate` in `apps/test` emits `vex_views` and every `searchField` search index
-- Step 17 browser smoke checklist recorded, including hard reloads with no visible layout shift
+- Step 24 browser smoke checklist recorded, including hard reloads with no visible layout shift

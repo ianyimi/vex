@@ -29,8 +29,8 @@ vi.mock("./RelationshipDocumentList", () => ({
   ),
 }));
 
-vi.mock("../../collections/CreateDocumentForm", () => ({
-  CreateDocumentForm: ({
+vi.mock("../../collections/listView/create/ListViewCreateDocumentForm", () => ({
+  ListViewCreateDocumentForm: ({
     onCreated,
     onCancel,
     onSubmittingChange,
@@ -174,7 +174,7 @@ describe("RelationshipPicker", () => {
     expect(onSelect).toHaveBeenCalledWith(["doc-created"]);
   });
 
-  it("blocks dismissal while CreateDocumentForm reports an in-flight submit", async () => {
+  it("blocks dismissal while ListViewCreateDocumentForm reports an in-flight submit", async () => {
     const user = userEvent.setup();
     const onCancel = vi.fn();
     render(

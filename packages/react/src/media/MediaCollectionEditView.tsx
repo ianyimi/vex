@@ -1,9 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { CRUD_ACTIONS, getDataFields, vexConvexApi } from "@vexcms/core";
+import { CRUD_ACTIONS, getDataFields, vexConvexApi, buildGetArgs } from "@vexcms/core";
 import type {
   MediaCollectionConfig,
   MediaCollectionSlug,
@@ -11,13 +9,14 @@ import type {
 } from "@vexcms/core";
 import { AppForm } from "../forms";
 import { Button } from "../ui";
+import { InlineQueryError } from "../ui/InlineQueryError";
 import { RenderFields } from "../fields/RenderFields";
 import { applyFieldPermissionReadOnly } from "../fields/applyFieldPermissionReadOnly";
 import { useFieldsForm } from "../fields/useFieldsForm";
 import { useLiveFieldMerge } from "../fields/useLiveFieldMerge";
 import { useVisibleFields } from "../fields/useVisibleFields";
 import { useFieldPermissions, usePermission } from "../access";
-import { useVexMutation } from "../hooks";
+import { useVexDocQuery, useVexMutation } from "../hooks";
 import { changedValues } from "../forms/changedValues";
 import { useVexConfig } from "../config/VexConfigContext";
 
@@ -65,24 +64,52 @@ export function MediaCollectionEditView<
     return <p>Collection not found.</p>;
   }
 
-  // Generic over `TCollectionSlug` — see the note in `CollectionEditView`: the slug is a
-  // runtime value here, so this uses the generic endpoint rather than the
-  // per-slug `get()` wrapper.
-  const { data } = useQuery({
-    ...convexQuery(vexConvexApi.get, {
-      id: props.documentId as string,
-      collection: collection.slug,
-    }),
+  return (
+    <MediaCollectionEditViewData collection={collection} documentId={props.documentId} initialData={props.initialData} />
+  );
+}
+
+/**
+ * The data-resolving half of {@link MediaCollectionEditView} — split out for the same
+ * hooks-order reason {@link CollectionEditView}'s own `CollectionEditViewData` is.
+ *
+ * Plain `useVexDocQuery` (developer-reported regression fix, reverting the shell-streaming
+ * follow-up's `<Suspense>`+`useSuspenseVexDocQuery` split here specifically) — the edit
+ * view's own primary document is essential and cheap to fetch, so `NextAdminPage.tsx` now
+ * AWAITS it server-side and passes the resolved value as `initialData`, so `currentDocument`
+ * is NEVER `undefined` on the very first render — the whole form renders at once. No
+ * whole-form Suspense fallback; only individual fields that fetch their OWN data show their
+ * own loading states.
+ *
+ * @param props - The resolved media collection, document id, and SSR-prefetched initial data.
+ * @returns An inline query error when the fetch fails, a not-found message when the document
+ *   doesn't exist, or the edit form once a document is loaded.
+ */
+function MediaCollectionEditViewData<TCollectionSlug extends MediaCollectionSlug = MediaCollectionSlug>(
+  props: Pick<MediaCollectionEditViewProps<TCollectionSlug>, "documentId" | "initialData"> & {
+    collection: MediaCollectionConfig;
+  },
+) {
+  const { document: currentDocument, error, refetch } = useVexDocQuery<VexMediaDocument>({
+    collection: props.collection.slug,
+    id: props.documentId,
+    drafts: buildGetArgs({ id: props.documentId, collection: props.collection }).drafts,
     initialData: props.initialData,
   });
-  const currentDocument = data as VexMediaDocument | null | undefined;
+
+  // Checked before `!currentDocument` — an unreadable document also leaves
+  // `currentDocument` `undefined`, which would otherwise show the misleading "Document not
+  // found" message for what's actually a permission/network failure (polish fixes, Decision 1/2).
+  if (error) {
+    return <InlineQueryError error={error} subject="this document" onRetry={refetch} />;
+  }
 
   if (!currentDocument) {
     // TODO: add proper not found component or screen
     return <p>Document not found.</p>;
   }
 
-  return <MediaCollectionEditForm collection={collection} currentDocument={currentDocument} />;
+  return <MediaCollectionEditForm collection={props.collection} currentDocument={currentDocument} />;
 }
 
 /**

@@ -7,6 +7,8 @@ import { populateDocs } from "../../../db/populate";
 import type { GenericQueryServerParams, GetReturn } from "../types";
 import type { PopulateShape } from "../../../db/types";
 import { hasPermission, resolveFieldPermissions, stripDeniedFields } from "../../../access";
+import { convertCommitTsFieldsToMs } from "../../../db/documents";
+import { ADMIN_FIELDS } from "../../../fields";
 import { resolveReadCall } from "../../../access/resolveReadCall";
 import { requiresPublishedOnly, VERSION_STATUSES } from "../../../versions";
 
@@ -121,6 +123,16 @@ export async function get<
     );
   }
 
+  const collection = args.config?.collections.find((c) => c.slug === args.collection);
+  if (doc && collection) {
+    const commitTsKeys = Object.entries(collection.fields)
+      .filter(([, field]) => field.type === ADMIN_FIELDS.commitTs.type)
+      .map(([key]) => key);
+    if (commitTsKeys.length > 0) {
+      doc = convertCommitTsFieldsToMs({ doc, keys: commitTsKeys });
+    }
+  }
+
   // Resolve slug for buildDepthPopulate from the Id (D12).
   //
   // `Id<TableName>` is a TypeScript phantom type — `__tableName` is purely
@@ -151,6 +163,7 @@ export async function get<
     [doc],
     effectivePopulate,
     wantsDrafts,
+    args.config,
   );
 
   return (populated ?? null) as unknown as GetReturn<TCollectionSlug, TPopulate, D>;

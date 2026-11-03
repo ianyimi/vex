@@ -5,6 +5,7 @@ import type { CollectionSlug, GlobalSlug } from "../../../types/generated";
 import type { VexConfig } from "../../../config";
 import type { AccessCallOptions, VexApiAuth } from "../../../db/types";
 import { DRAFT_ACTIONS, hasPermission } from "../../../access";
+import type { VexAccessConfig } from "../../../access";
 import { resolveAccessCall } from "../../../access/resolveAccessCall";
 import {
   resolveVersionedTarget,
@@ -122,6 +123,12 @@ export async function resolveHistoryTarget<DataModel extends GenericDataModel>(
  *   never the literal `"vex_globals"`.
  * @param props.data - The resolved document's user fields, forwarded to
  *   `hasPermission` for document-scoped (ABAC) rules.
+ * @returns The resolved `{ access, action, resource }` ({@link resolveAccessCall}'s
+ *   own result) — `undefined` when `config.access` is unset (RBAC fully off) —
+ *   so {@link getVersionSnapshot} can reuse the SAME resolution for
+ *   `resolveFieldPermissions`/`stripDeniedFields` rather than re-deriving it
+ *   (developer decision, binding, "access-system-fields": the versions read
+ *   path returned an UNSTRIPPED snapshot, contradicting its own doc comment).
  * @throws {VexAccessError} When the caller's roles lack `defaultAction` on `resource`.
  */
 export function assertVersionsAccess(props: {
@@ -131,9 +138,9 @@ export function assertVersionsAccess(props: {
   resource: string;
   defaultAction: typeof DRAFT_ACTIONS.readDrafts | typeof DRAFT_ACTIONS.deleteVersions;
   data?: Record<string, unknown>;
-}): void {
-  if (props.config.access === undefined) return;
-  const { access, action, resource } = resolveAccessCall({
+}): { access: VexAccessConfig | undefined; action: string; resource: string } | undefined {
+  if (props.config.access === undefined) return undefined;
+  const resolved = resolveAccessCall({
     config: props.config,
     access: props.access,
     defaultAction: props.defaultAction,
@@ -141,11 +148,12 @@ export function assertVersionsAccess(props: {
   });
   hasPermission({
     throwOnDenied: true,
-    access,
+    access: resolved.access,
     user: props.auth?.user ?? null,
     organization: props.auth?.organization,
-    resource,
-    action,
+    resource: resolved.resource,
+    action: resolved.action,
     data: props.data,
   });
+  return resolved;
 }

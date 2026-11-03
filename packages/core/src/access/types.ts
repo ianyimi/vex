@@ -15,6 +15,7 @@ import {
   type PermissionMode,
   type CrudAction,
   type DraftAction,
+  type ViewAction,
   type AdminCustomSubjectSlug,
   QueryAction,
 } from "./constants";
@@ -35,9 +36,20 @@ import type {
 export type AccessResource = CollectionConfig | GlobalConfig;
 
 /**
- * Document keys Convex owns, which a field map can neither gate nor strip.
+ * Document keys Convex owns that a field map can NEVER gate or strip —
+ * always readable, regardless of any permission rule. `_id` (Convex's own
+ * document identifier) is the only one; `_slug` (the synthetic global
+ * discriminator `VexDocumentGlobal` adds) is the other.
+ *
+ * `_creationTime` is deliberately NOT here (developer decision, binding,
+ * "access-system-fields") — it is a REAL gateable field-permission key now,
+ * same as `updatedAt`/`vex_status` (on versioned collections). A view/column
+ * CAN hide it; `resolveQueryIndex.ts`'s own hardcoded sort carve-out is the
+ * one place it stays usable regardless (sorting by it never reveals its
+ * stored value, same reasoning Design Decision 26 already established for
+ * every other field).
  */
-type SystemFieldKey = "_id" | "_creationTime" | "_slug";
+type SystemFieldKey = "_id" | "_slug";
 
 /**
  * The gateable field names of a document type — its own keys minus the system
@@ -182,6 +194,32 @@ type BasePermissionCheck<TData, TUser, TOrg> =
   | ((
       props: PermissionCallbackProps<TData, TUser, TOrg>,
     ) => boolean | undefined | FieldPermissionMap<TData>);
+
+/**
+ * Permission check shape for {@link ViewAction}s (`readViews`/`createView`/
+ * `updateView`/`deleteView`) — developer-reported: these actions type-accepted
+ * a {@link FieldPermissionMap} return value exactly like `read`/`update` do,
+ * which is meaningless for them. A saved view is a whole row in `vex_views`,
+ * never read/written per-field or per-document-field the way a collection's
+ * own documents are — so neither a field map NOR the narrowing
+ * `{ where, filter, withIndex }` object form ({@link ConstrainedPermissionCheck},
+ * equally document-query-shaped) make sense here. Only a flat `boolean`, or a
+ * callback resolving to one (`undefined` still denies, same as every other
+ * check), is valid — a field map is now a compile error at the action itself.
+ *
+ * Developer decision: the callback takes {@link AccessRuleProps} — `user`
+ * (plus `organization` when configured) ONLY, no `data` — a SINGLE props
+ * object shape matching every other permission callback, so a `view`
+ * property (the stored view the action targets) can be added here later
+ * without a breaking change. Per-view access (passing the stored view, plus
+ * an `updatedBy` field) is deferred to the backlog — NOT implemented here.
+ *
+ * Runtime counterpart: `hasPermission` fails closed (with a dev warning) if a
+ * view-action rule returns a map anyway (untyped/JS config, or an `as` cast).
+ */
+export type ViewPermissionCheck<TUser = Record<string, unknown>, TOrg = Record<string, unknown>> =
+  | boolean
+  | ((props: AccessRuleProps<TUser, TOrg>) => boolean | undefined);
 
 /**
  * The caller context every access-rule callback receives: the user, plus the
@@ -593,6 +631,9 @@ type HasDrafts<T> = T extends { versions?: { drafts?: infer D extends boolean } 
     : false
   : false;
 
+/** True when a resource config resolves an `admin.view` (every collection always does; globals never do) — collections only. @internal */
+type HasListView<T> = T extends { admin: { view: unknown } } ? true : false;
+
 /**
  * Subject entry synthesized for the user/organization collections.
  *
@@ -660,6 +701,7 @@ export type SubjectMap<
     action:
       | CrudAction
       | (HasDrafts<R> extends true ? DraftAction : never)
+      | (HasListView<R> extends true ? ViewAction : never)
       | CustomActionsFor<ExtractSlug<R>, TCustomActions>["query"]
       | CustomActionsFor<ExtractSlug<R>, TCustomActions>["mutation"];
     queryAction: QueryAction | CustomActionsFor<ExtractSlug<R>, TCustomActions>["query"];
@@ -790,13 +832,15 @@ export type RolePermissions<
         // this same template) means only genuinely custom action names reach the
         // `queryAction` branch - and those exist only when `customActions` was
         // declared, at which point the parameter has a candidate and resolves.
-        [A in TSubjects[S]["action"]]?: A extends QueryAction
-          ? PermissionCheck<TSubjects[S]["data"], TUser, TOrg, TSubjects[S]["indexFields"]>
-          : A extends Exclude<CrudAction | DraftAction, QueryAction> | typeof WILDCARD_KEY
-            ? AnyActionPermissionCheck<TSubjects[S]["data"], TUser, TOrg>
-            : A extends TSubjects[S]["queryAction"]
-              ? PermissionCheck<TSubjects[S]["data"], TUser, TOrg, TSubjects[S]["indexFields"]>
-              : AnyActionPermissionCheck<TSubjects[S]["data"], TUser, TOrg>;
+        [A in TSubjects[S]["action"]]?: A extends ViewAction
+          ? ViewPermissionCheck<TUser, TOrg>
+          : A extends QueryAction
+            ? PermissionCheck<TSubjects[S]["data"], TUser, TOrg, TSubjects[S]["indexFields"]>
+            : A extends Exclude<CrudAction | DraftAction, QueryAction> | typeof WILDCARD_KEY
+              ? AnyActionPermissionCheck<TSubjects[S]["data"], TUser, TOrg>
+              : A extends TSubjects[S]["queryAction"]
+                ? PermissionCheck<TSubjects[S]["data"], TUser, TOrg, TSubjects[S]["indexFields"]>
+                : AnyActionPermissionCheck<TSubjects[S]["data"], TUser, TOrg>;
       } & {
         [W in typeof WILDCARD_KEY]?: AnyActionPermissionCheck<TSubjects[S]["data"], TUser, TOrg>;
       });
@@ -954,9 +998,34 @@ export interface VexAccessConfigInput<
   /**
    * Slug of the organization collection. When present, `organization` is
    * available (typed via the registry) in every permission callback; when
-   * omitted, callbacks have no `organization` key.
+   * omitted, callbacks have no `organization` key. Declaring this alone does
+   * NOT scope saved views (or anything else) to the caller's own
+   * organization — it only says WHERE organization data lives, for a
+   * project's own permission callbacks to read. Set {@link organizations}
+   * to actually enforce organization-scoped behavior.
    */
   orgCollectionSlug?: TOrgSlug;
+
+  /**
+   * Default: `false`. Whether organizations are an ENFORCED tenancy
+   * boundary in this project, not just available data — developer-approved,
+   * binding (the pre-existing behavior keyed `orgCollectionSlug` alone into
+   * view scoping, which silently broke a project that only declared
+   * `orgCollectionSlug` for its own callbacks' benefit, with no org data
+   * ever seeded). Currently drives ONE thing: whether saved (`vex_views`)
+   * shared views are scoped to the caller's own organization at all
+   * (`listViews`/`loadSharedSavedListViewWheres`/`saveView`/`removeView`, server, and
+   * `useCanAccessSharedSavedListViews`, client — all resolve this through the SAME
+   * shared predicate, `isViewOrganizationScopingEnabled`, so none of them
+   * can disagree). Requires {@link orgCollectionSlug} to be set too — this
+   * flag has no effect without it.
+   *
+   * When `false` (the default): shared-view CRUD is exactly the
+   * pre-organization-scoping behavior — any caller with the relevant
+   * `VIEW_ACTIONS` permission can create, read, update, and delete ANY
+   * shared view, including an org-less one, regardless of `organization`.
+   */
+  organizations?: boolean;
 
   /**
    * Permission matrix: role → subject → check. See {@link RolePermissions}
@@ -1058,6 +1127,9 @@ export interface VexAccessConfig<
 
   /** Slug of the organization collection, when configured. */
   orgCollectionSlug?: TOrgSlug;
+
+  /** Default: `false`. Whether organizations are an enforced tenancy boundary — see `VexAccessConfigInput.organizations`. */
+  organizations: boolean;
 
   /**
    * The permission matrix as authored (checks may be booleans, field-mode

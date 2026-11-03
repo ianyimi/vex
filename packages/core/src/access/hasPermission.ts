@@ -4,6 +4,7 @@ import {
   PERMISSION_MODES,
   PERMISSION_SCOPES,
   PermissionScope,
+  VIEW_ACTIONS,
   WILDCARD_KEY,
 } from "./constants";
 import { evaluateQueryConstraint } from "./evaluateQueryConstraint";
@@ -141,6 +142,24 @@ export function hasPermission<
         );
       }
       return true;
+    }
+
+    // Developer-reported fix: a view action (readViews/createView/updateView/
+    // deleteView) is collection-level — never per-document or per-field — so a
+    // rule resolving to a field map here is always a config mistake (now also a
+    // compile error, `ViewPermissionCheck`), reachable only through an
+    // untyped/JS config or an `as` cast. Unlike `delete` above, this FAILS
+    // CLOSED: a map that was meant to deny (e.g. `{ "*": false }`) must never
+    // read as an implicit allow just because it's non-boolean.
+    if ((Object.values(VIEW_ACTIONS) as string[]).includes(props.action)) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          `[vexcms] "${props.resource}.${props.action}" resolved to a field map, but view ` +
+            `actions are collection-level (never per-document or per-field) — denying. Return ` +
+            `a boolean from this rule instead.`,
+        );
+      }
+      return false;
     }
 
     if (props.changes !== undefined) {

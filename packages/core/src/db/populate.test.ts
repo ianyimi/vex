@@ -5,6 +5,7 @@ import schema from "./test/convex/schema";
 import { populateDocs } from "./populate";
 import type { PopulateShape } from "./types";
 import type { DocumentBySlug } from "../types/generated";
+import type { VexConfig } from "../config";
 
 import * as _generatedApi from "./test/convex/_generated/api";
 
@@ -12,6 +13,22 @@ import * as _generatedApi from "./test/convex/_generated/api";
 const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
 };
+
+/**
+ * Minimal `VexConfig` fixture naming `authors`' own `updatedAt` as a
+ * `commitTs` field — `populateDocs`'s `config` param uses this to resolve
+ * which of a populated relationship TARGET's fields need ms conversion.
+ */
+const fixtureConfig: VexConfig = {
+  collections: [
+    {
+      slug: "authors",
+      fields: { name: { type: "text" }, updatedAt: { type: "commitTs", on: "save" } },
+      labels: { singular: "Author", plural: "Authors" },
+      admin: { useAsTitle: "name" },
+    },
+  ],
+} as unknown as VexConfig;
 
 describe("populateDocs", () => {
   test("returns docs unchanged when populate is empty", async () => {
@@ -39,6 +56,28 @@ describe("populateDocs", () => {
 
     const populated = (result as any[])[0].author as DocumentBySlug["authors"][];
     expect(populated[0].name).toBe("Lena Park");
+  });
+
+  test("converts a populated relationship target's commitTs field to ms", async () => {
+    const t = convexTest(schema, modules);
+    const resolvedNs = BigInt(1_700_000_000_000) * BigInt(1_000_000);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", { name: "Lena Park", updatedAt: resolvedNs });
+      const postId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        author: [authorId],
+      });
+      const post = await ctx.db.get(postId);
+      return populateDocs(ctx, [post!], { author: true } as PopulateShape, undefined, fixtureConfig);
+    });
+
+    const populated = (result[0] as unknown as Record<string, unknown>).author as Record<
+      string,
+      unknown
+    >[];
+    expect(typeof populated[0].updatedAt).toBe("number");
+    expect(populated[0].updatedAt).toBe(1_700_000_000_000);
   });
 
   test("recurses into nested populate (2 levels)", async () => {

@@ -33,7 +33,7 @@ export function ArrayFieldCell<
   TData extends TDocument = TDocument,
   TArrayType extends ArrayType = ArrayType,
 >(props: CellComponentProps<ArrayField<VexResourceSlug, TArrayType>, TData>) {
-  if (props.value === undefined || props.value === null) return <span>—</span>;
+  if (props.value === undefined || props.value === null || props.value.length === 0) return <span>—</span>;
   const config = useVexConfig();
 
   const itemCount = props.value.length;

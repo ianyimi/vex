@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { DRAFT_ACTIONS, vexConvexApi, type EditSlotProps } from "@vexcms/core";
+import { DRAFT_ACTIONS, VERSION_STATUSES, vexConvexApi, type EditSlotProps } from "@vexcms/core";
 import { useVexDocument } from "../documents/VexDocumentContext";
 import { useDocumentEditRuntime } from "../documents/DocumentEditRuntimeContext";
 import { useVexConfig } from "../config/VexConfigContext";
@@ -64,7 +64,7 @@ export function VersionUnpublishAction(props: EditSlotProps) {
     enabled: confirming,
   });
   const publishedTimeline = (unpublishVersions ?? [])
-    .filter((row) => row.status === "published" && row.publishedAt !== null)
+    .filter((row) => row.status === VERSION_STATUSES.published.key && row.publishedAt !== null)
     .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
   const unpublishCurrent = publishedTimeline[0];
   const unpublishTarget = publishedTimeline[1];

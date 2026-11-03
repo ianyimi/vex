@@ -23,9 +23,10 @@ export const pages = defineCollection({
   admin: {
     useAsTitle: "title",
     icon: "FileText",
-    table: {
-      defaultColumns: ["title", "slug", "_id"],
+    view: {
       serverPageSize: 100,
+      sort: { field: "_creationTime", order: "desc" },
+      columns: ["title", "slug"],
     },
     livePreview: {
       url: (doc) => resolvePagePath(doc.slug),
