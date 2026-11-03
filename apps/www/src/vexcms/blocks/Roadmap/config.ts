@@ -66,7 +66,7 @@ export const roadmapBlock = defineBlock({
         {
           feature: "RBAC & Access Control",
           description:
-            "Document-level access rules, indexed constraints that compile to withIndex ranges, per-call access.action/bypass overrides, and an anonRole fallback for public reads.",
+            "Document-level access rules — withIndex ranges and where predicates applied inside the query itself — per-call access.action/bypass overrides, and an anonRole fallback for public reads.",
           status: "shipped",
         },
         {
@@ -95,8 +95,8 @@ export const roadmapBlock = defineBlock({
         },
         {
           feature: "Versioning & Drafts",
-          description: "Draft/publish workflow with autosave and version history — in active development.",
-          status: "in-progress",
+          description: "Draft/publish workflow with autosave, version history, restore, and unpublish.",
+          status: "shipped",
         },
         {
           feature: "Lifecycle Hooks & Validation",

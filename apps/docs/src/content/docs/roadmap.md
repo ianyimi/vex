@@ -15,8 +15,8 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · �
 - ✅ Real-time admin panel
 - ✅ DataTable with pagination and `totalDocs`
 - ✅ Media library
-- ✅ RBAC with document-level access, indexed `{ constraints }` rules, and per-call `access.action` / `access.bypass`
-- ✅ Access index resolution — `{ constraints }` rules compile to `withIndex` ranges inside Convex queries
+- ✅ RBAC with document-level access, indexed rules (`withIndex` ranges and `where` predicates), and per-call `access.action` / `access.bypass`
+- ✅ Access index resolution — a rule's `withIndex` range and `where` predicate apply inside the Convex query itself
 - ✅ `anonRole` fallback for unauthenticated callers
 - ✅ Globals (`defineGlobal`)
 - ✅ Database-driven theming — `themes` collection, active-theme selector, `buildThemeCss` custom-property injection
@@ -39,15 +39,14 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · �
 - ✅ Admin extension points (experimental) — per-field and project-wide component overrides and additive action-menu contributions, documented in the [admin customization guide](/guides/admin-customization/)
 - ✅ List views — per-collection search, sort, an AND/OR filter builder with per-field filter inputs, column visibility/order/pinning/resizing, page size, local and shared saved views (`admin.view` / `admin.views`), a peek panel, row and bulk actions, server-prerendered first paint. See the [list views guide](/guides/list-views/)
 - ✅ `commitTs()` field — Convex's own commit timestamp, read-only and auto-indexed; the auto-injected `updatedAt` uses it
+- ✅ Edit-view overhaul — reorganized header with a ⋯ actions menu, every built-in action a replaceable `admin.components.edit` slot contribution, an unsaved-changes guard, duplicate for documents and blocks, and collection URLs under `/admin/collections/<slug>`. See the [admin customization guide](/guides/admin-customization/)
 
 ## In progress
 
 These are the v0.1.0 launch track, in the order they ship.
 
-- 🔄 Data-table integrity pass — bulk actions and the per-collection `admin.view` options wired end to end
 - 🔄 Localization design — the storage model and versioning interaction decided before anyone has data to migrate. Localization ships free in the core
 - 🔄 Field input consistency pass — relationship field and others get consistent interaction and loading patterns
-- 🔄 Edit-view improvements — unsaved-changes guard, duplicate document, duplicate block
 - 🔄 Responsive pass across the admin panel, marketing template, and docs
 
 ## Planned

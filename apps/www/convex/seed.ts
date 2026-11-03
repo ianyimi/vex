@@ -894,7 +894,7 @@ export const featuredPosts = query({
           },
           {
             icon: "Lock",
-            text: "Document- and field-level access control, with constraints that compile to an indexed range.",
+            text: "Document- and field-level access control, with rules that compile to an indexed range.",
           },
           {
             icon: "Image",
@@ -982,7 +982,7 @@ export const featuredPosts = query({
           {
             question: "Is it production ready?",
             answer:
-              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation, live preview, versioning and drafts, the richtext/json/email/textarea fields, and the list-view overhaul have all landed; the remaining big ones are the field input consistency pass and the edit-view overhaul. The roadmap page has the full list.",
+              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation, live preview, versioning and drafts, the richtext/json/email/textarea fields, and the edit-view and list-view overhauls have all landed; the remaining big one is the field input consistency pass, then a responsive pass. The roadmap page has the full list.",
           },
           {
             question: "Which frameworks does it support?",
@@ -1246,7 +1246,7 @@ export const testimonials = defineTable({
         id: "features-split-access",
         eyebrow: "Access control",
         heading: "A scoped read stays scoped, inside the query.",
-        body: "Access rules carry constraints, and constraints compile to a withIndex range on the query itself. The narrowing happens in the database, not in a filter over documents you already paid to read.",
+        body: "Access rules carry withIndex ranges and where predicates, applied to the query itself. The narrowing happens in the database, not in a filter over documents you already paid to read.",
         bullets: [
           {
             icon: "Lock",
@@ -1254,7 +1254,7 @@ export const testimonials = defineTable({
           },
           {
             icon: "Search",
-            text: "Indexed constraints rather than filtering a page of results after the fact.",
+            text: "Indexed rules rather than filtering a page of results after the fact.",
           },
           {
             icon: "Users",
@@ -1453,7 +1453,7 @@ export const testimonials = defineTable({
             feature: "Data-Table Integrity & Config Honesty",
             description:
               "First in the launch track. Every key under admin.view gets a consumer or gets deleted. No README documents a flag that does nothing.",
-            status: ["planned"],
+            status: ["shipped"],
           },
           {
             feature: "Public API Honesty Pass",
@@ -1494,8 +1494,8 @@ export const testimonials = defineTable({
           {
             feature: "Edit-View Overhaul",
             description:
-              "An unsaved-changes guard, so a misclick cannot cost you work. Duplicate for documents and for blocks. A validation summary that jumps to the failing field.",
-            status: ["planned"],
+              "An unsaved-changes guard, so a misclick cannot cost you work. Duplicate for documents and for blocks. Every built-in header action is a slot contribution you can hide, reorder, or replace.",
+            status: ["shipped"],
           },
           {
             feature: "List-View Overhaul",
