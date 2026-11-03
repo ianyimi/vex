@@ -16,7 +16,7 @@ and any other short text value.
 | `defaultValue` | `string` | `""` | Pre-filled value shown in the admin form when creating a new document. |
 | `min` | `number \| [number, string]` | — | Minimum character length constraint. Bare number, or a `[value, customError]` tuple for a custom error message. |
 | `max` | `number \| [number, string]` | — | Maximum character length constraint. Bare number, or a `[value, customError]` tuple. |
-| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `index` | `string \| { name, additionalFields?, draftStatus? }` | — | Convex index name (generates `.index(name, [fieldKey])`), or the object form for a compound index. See [Compound indexes](#compound-indexes) below. |
 | `searchIndex` | `{ name: string, filterFields: string[] }` | — | Full-text search index on this field. The field becomes the `searchField`. |
 | `description` | `string` | — | Helper text shown below the field input. |
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
@@ -28,6 +28,28 @@ and any other short text value.
 | `admin.description` | `string` | — | Helper text displayed below the field input. |
 | `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. A throwing condition counts as met. Hidden fields skip `required`/`validate` on the server too. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
 | `admin.mask` | `string \| string[] \| { mask, storeMasked?, options? } \| false` | — | An opt-in `use-mask-input` pattern, or `false` to opt out of a project-wide default set via `fields.inputMasks.text`. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
+
+## Compound indexes
+
+The object form of `index` declares a compound index led by the field it's set on: `author`'s
+`index` names `status` as `additionalFields`, so the generated index covers both fields in order.
+
+```ts
+author: relationship({ collection: users, index: { name: "by_author_status", additionalFields: ["status"] } })
+// .index("by_author_status", ["author", "status"])
+```
+
+A field-level `index` wins over a collection-level `indexes` entry of the same name — every field
+setting wins over its collection's. Pass the collection slug and the field's own key as generics
+to type `additionalFields` against the collection's other fields:
+
+```ts
+author: relationship<"articles", "author">({ collection: users, index: { name: "by_author_status", additionalFields: ["status"] } })
+```
+
+For an index that does not lead with a single field's own key, declare it in the collection's
+`indexes` instead.
+
 
 ## Schema output
 

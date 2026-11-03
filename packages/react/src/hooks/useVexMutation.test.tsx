@@ -5,7 +5,7 @@ import { VEX_REVALIDATE_BATCH_SIZE, vexConvexApi } from "@vexcms/core";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_VEX_REVALIDATE_ENDPOINT } from "../context/VexRevalidateContext";
+import { DEFAULT_VEX_REVALIDATE_ENDPOINT } from "../revalidate/VexRevalidateContext";
 import { useVexMutation } from "./useVexMutation";
 
 const { convexMutationMock } = vi.hoisted(() => ({ convexMutationMock: vi.fn() }));

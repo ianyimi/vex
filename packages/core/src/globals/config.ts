@@ -1,4 +1,5 @@
-import { getDataFields, type AdminField, type ComponentHKT } from "../fields";
+import { getDataFields, type AdminField } from "../fields";
+import type { ComponentHKT } from "../components/types";
 import { slugToPascalCase } from "../collections/utils";
 import type {
   GlobalAdminConfig,

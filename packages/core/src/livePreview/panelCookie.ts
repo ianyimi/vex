@@ -1,3 +1,4 @@
+import { parseAdminCollectionCookie } from "../adminCookie";
 import {
   DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
   LIVE_PREVIEW_LAYOUT_COOKIE_PREFIX,
@@ -31,26 +32,34 @@ export function livePreviewPanelCookieName(props: { slug: string }): string {
  * Pure, so the server component reading `cookies()` and any other caller share
  * one interpretation of the stored value.
  *
- * @param props.cookieValue - The already-parsed value of the one cookie this reads.
+ * Decision 51: `props.cookieValue` is now the consolidated admin cookie's
+ * OWN raw value — `vex-admin:<collection>` for a collection's edit/list
+ * views, or `vex-admin` itself for a global's edit view (both parse
+ * cleanly through {@link parseAdminCollectionCookie}; see its own doc
+ * comment for why a `vex-admin`-shaped blob still resolves `.livePreview`
+ * correctly here) — read via its `livePreview.panelOpen` field, not a raw
+ * `"1"`/`"0"` string from a dedicated `vex-live-preview-panel:<slug>` cookie.
+ *
+ * @param props.cookieValue - The raw consolidated admin cookie value, or `undefined` when unset.
  * @param props.defaultOpen - The collection/global's `admin.livePreview.defaultOpen` —
  *   the fallback used when no cookie has been written yet.
- * @returns `true`/`false` when the cookie holds an explicit `"1"`/`"0"`, else
- *   `props.defaultOpen`.
+ * @returns `true`/`false` when `livePreview.panelOpen` is set, else `props.defaultOpen`.
  */
 export function readLivePreviewPanelCookie(props: {
   cookieValue: string | undefined;
   defaultOpen: boolean;
 }): boolean {
-  if (props.cookieValue === "1") return true;
-  if (props.cookieValue === "0") return false;
-  return props.defaultOpen;
+  const panelOpen = parseAdminCollectionCookie({ cookieValue: props.cookieValue }).livePreview?.panelOpen;
+  return panelOpen ?? props.defaultOpen;
 }
 
 /**
  * Cookie name holding one collection or global's split-handle position.
  *
- * Server-read for the same reason as the open/closed cookie: the split has to
- * render at its remembered width on the first paint, not snap to it afterwards.
+ * No longer the cookie ACTUALLY written/read on the wire (Decision 51
+ * consolidated it into the admin cookie's own `livePreview.panelSize`
+ * field) — retained for `AdminLayout`'s one-time best-effort clear of the
+ * now-retired cookie name.
  *
  * @param props.slug - The collection or global slug the cookie is scoped to.
  * @returns The fully-qualified cookie name.
@@ -64,22 +73,27 @@ export function livePreviewLayoutCookieName(props: { slug: string }): string {
  *
  * Clamps to the same bounds the panels declare as their `minSize`, so a
  * hand-edited or stale cookie can never render a split the user cannot drag
- * back — and a non-numeric value falls back to the default rather than
- * producing `NaN` percentages.
+ * back — and a missing/non-numeric value falls back to the default rather
+ * than producing `NaN` percentages.
  *
- * @param props.cookieValue - The raw cookie value, or `undefined` when unset.
+ * Decision 51: `props.cookieValue` is now the consolidated admin cookie's
+ * own raw value, read via its `livePreview.panelSize` field — see
+ * {@link readLivePreviewPanelCookie}'s own doc comment for the global-vs-
+ * collection cookie split.
+ *
+ * @param props.cookieValue - The raw consolidated admin cookie value, or `undefined` when unset.
  * @returns The form panel's percentage of the split.
  */
 export function readLivePreviewLayoutCookie(props: { cookieValue: string | undefined }): number {
-  const parsedSize = Number(props.cookieValue);
-  if (!Number.isFinite(parsedSize)) return DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE;
+  const panelSize = parseAdminCollectionCookie({ cookieValue: props.cookieValue }).livePreview?.panelSize;
+  if (panelSize === undefined) return DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE;
   return Math.min(
     MAX_LIVE_PREVIEW_FORM_PANEL_SIZE,
-    Math.max(MIN_LIVE_PREVIEW_FORM_PANEL_SIZE, parsedSize),
+    Math.max(MIN_LIVE_PREVIEW_FORM_PANEL_SIZE, panelSize),
   );
 }
 
-/** Which column of the split a minimum is being resolved for. */
+/** Which column of the split a minimum is being resolved for (form or preview). */
 export type LivePreviewPanelColumn = "form" | "preview";
 
 /**

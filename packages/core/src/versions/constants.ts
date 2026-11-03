@@ -61,7 +61,7 @@ export const VERSION_STATUSES = {
 /**
  * Publish-state values a versioned document (or global) can carry —
  * `vex_status`'s two literal values. Shared by `StatusBadge`
- * (`@vexcms/react`), `InputComponentProps.documentStatus` (`fields/types.ts`,
+ * (`@vexcms/react`), `FieldComponentProps.documentStatus` (`fields/types.ts`,
  * Step 12), and anywhere else a caller needs to name this union — defined
  * once here rather than redeclared per-package, since `@vexcms/react`
  * depends on `@vexcms/core` and never the reverse.

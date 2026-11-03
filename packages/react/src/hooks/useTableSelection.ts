@@ -111,10 +111,8 @@ export function useTableSelection(props: UseTableSelectionProps = {}): UseTableS
 
   const toggleSelectAll = useCallback(() => {
     if (mode === "all") {
-      // Deselect all
       clearSelection();
     } else {
-      // Select all in table
       setMode("all");
       setSelectedIds(new Set()); // IDs will be fetched on bulk action
       onSelectionChange?.({ selectedIds: new Set(), mode: "all" });
@@ -123,10 +121,8 @@ export function useTableSelection(props: UseTableSelectionProps = {}): UseTableS
 
   const toggleInverseMode = useCallback(() => {
     if (mode === "inverse") {
-      // Exit inverse mode
       clearSelection();
     } else {
-      // Enter inverse mode (everything selected except deselected)
       setMode("inverse");
       setSelectedIds(new Set()); // IDs represent EXCLUDED items in this mode
       onSelectionChange?.({ selectedIds: new Set(), mode: "inverse" });

@@ -1,4 +1,4 @@
-import type { VexDocument } from "../api/convex";
+import type { VexDocument } from "../documents/types";
 import type {
   CollectionSlug,
   DocumentByCollectionSlug,
@@ -7,7 +7,7 @@ import type {
 } from "../types/generated";
 import type { DocumentByGlobalSlug } from "../types/generated";
 import type { IconName } from "../utils";
-import type { VexCallbackApi } from "../api/server";
+import type { VexCallbackApi } from "../server";
 
 /**
  * Resolves a document to the single public URL its live preview should render.
@@ -154,8 +154,8 @@ export interface AdminLivePreviewConfigInput<
   debounceMs?: number;
   /**
    * Whether the preview panel starts open before the editor has ever made an
-   * explicit choice. A `vex-live-preview-panel:<slug>` cookie remembers an explicit
-   * choice once made and always wins over this default.
+   * explicit choice. The consolidated admin cookie's `livePreview.panelOpen`
+   * field (Decision 51) remembers an explicit choice once made and always wins over this default.
    * @defaultValue `false`
    */
   defaultOpen?: boolean;

@@ -1,5 +1,13 @@
 # @vexcms/richtext
 
+## 0.1.0-alpha.28
+
+### Patch Changes
+
+- aa9f68d: Re-recorded the case-only renames of `components/Elements.tsx`, `components/Leaves.tsx`
+  and `components/EditorElements.tsx` — macOS's case-insensitive filesystem had hidden them from
+  git, so case-sensitive checkouts (Linux CI, builds from source) failed to resolve the imports.
+
 ## 0.1.0-alpha.27
 
 ### Patch Changes

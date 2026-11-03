@@ -275,7 +275,7 @@ function betterAuthAttrToVexField(
   if (isHidden) admin.hidden = true;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const baseOptions: { defaultValue: any } & BaseFieldInput<VexResourceSlug, AuthFieldMeta> = {
+  const baseOptions: { defaultValue: any } & BaseFieldInput<VexResourceSlug, never, AuthFieldMeta> = {
     defaultValue: undefined,
   };
   if (Object.keys(admin).length > 0) baseOptions.admin = admin;
@@ -289,7 +289,7 @@ function betterAuthAttrToVexField(
   }
 
   if (attr.references) {
-    return text<VexResourceSlug, AuthFieldMeta>(baseOptions);
+    return text<VexResourceSlug, never, AuthFieldMeta>(baseOptions);
   }
 
   if (Array.isArray(attr.type)) {
@@ -301,27 +301,27 @@ function betterAuthAttrToVexField(
 
   switch (attr.type) {
     case "string":
-      return text<VexResourceSlug, AuthFieldMeta>(baseOptions);
+      return text<VexResourceSlug, never, AuthFieldMeta>(baseOptions);
     case "string[]":
       return array({
         ...baseOptions,
-        items: text<VexResourceSlug, AuthFieldMeta>(baseOptions),
+        items: text<VexResourceSlug, never, AuthFieldMeta>(baseOptions),
       });
     case "boolean":
       return checkbox(baseOptions);
     case "number":
-      return number<VexResourceSlug, AuthFieldMeta>(baseOptions);
+      return number<VexResourceSlug, never, AuthFieldMeta>(baseOptions);
     case "number[]":
       return array({
         ...baseOptions,
-        items: number<VexResourceSlug, AuthFieldMeta>(baseOptions),
+        items: number<VexResourceSlug, never, AuthFieldMeta>(baseOptions),
       });
     case "date":
       return date(baseOptions);
     case "json":
       // Fall back to text until a dedicated json field type is wired
       // TODO: create json field
-      return text<VexResourceSlug, AuthFieldMeta>(baseOptions);
+      return text<VexResourceSlug, never, AuthFieldMeta>(baseOptions);
     default:
       // Unknown type — skip rather than crash
       return null;

@@ -61,8 +61,9 @@ import type { VexResourceSlug } from "../../types/generated";
  */
 export interface DateFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /**
    * Pre-filled Unix timestamp (milliseconds) shown in the admin form when creating a new document.
    * Does not apply to existing database values.
@@ -111,7 +112,7 @@ export interface DateFieldInput<
  * Resolved configuration for a `date()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<DateField>` and `CellComponentProps<DateField>`
+ * `fieldDef` in `FieldComponentProps<DateField>` and `CellComponentProps<DateField>`
  * is this type.
  *
  * @see {@link DateFieldInput} for the user-facing input type

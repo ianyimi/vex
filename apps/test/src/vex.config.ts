@@ -1,5 +1,5 @@
 import { betterAuthCollections } from "@vexcms/better-auth/client";
-import { defineConfig } from "@vexcms/core";
+import { BUILTIN_CONTRIBUTION_IDS, defineConfig } from "@vexcms/core";
 import { uploadFile } from "@vexcms/file-storage-convex/client";
 import { plateEditor } from "@vexcms/richtext-plate";
 
@@ -14,9 +14,11 @@ import {
   images,
   pages,
   posts,
+  testimonials,
   themes,
   users,
 } from "~/vexcms/collections";
+import { CopyDocumentIdMenuItem } from "~/vexcms/components/CopyDocumentIdMenuItem";
 
 import { access } from "./auth/access";
 import { authSchema } from "./auth/schema";
@@ -44,8 +46,29 @@ const vexConfig = defineConfig({
   authCollections: betterAuthCollections(authSchema),
   editor: plateEditor(),
   admin: {
-    sidebar: {
-      side: "right",
+    // sidebar: {
+    //   side: "right",
+    // },
+    components: {
+      edit: {
+        // Dogfoods a root-level `admin.components.edit.actionsMenu.items` contribution,
+        // ordered after the built-ins (default array order — no `order`/`before`/`after`
+        // needed since it only needs to come after whatever's already there). `access` gates it
+        // to collections only, declaratively — a global singleton has no per-document id worth
+        // copying, and the component itself returning `null` for a global (rather than being
+        // filtered out of the resolved list) left an empty ⋯ trigger on every unversioned global
+        // (nothing else in its menu to fall back to, e.g. `siteSettings`).
+        actionsMenu: {
+          items: [
+            {
+              id: "editorial.copyDocumentId",
+              component: CopyDocumentIdMenuItem,
+              after: BUILTIN_CONTRIBUTION_IDS.edit.duplicate,
+              access: (ctx) => ctx.resource?.kind === "collection",
+            },
+          ],
+        },
+      },
     },
     livePreview: {
       // `headers` declares its preview here rather than in its own
@@ -96,6 +119,7 @@ const vexConfig = defineConfig({
     comments,
     posts,
     fields,
+    testimonials,
   ],
   mediaCollections: [images],
   globals: [nav, siteSettings, announcement],

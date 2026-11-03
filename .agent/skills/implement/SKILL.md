@@ -52,6 +52,27 @@ that each compile alone and fail together). Sequential-subagent protocol:
 3. A worker that discovers a false spec assumption reports it in its summary (P-023); fold
    the correction into every later group's digest so the divergence propagates forward
    exactly once.
+4. Developer corrections route to the ORIGINAL worker. When the developer reports a bug,
+   UI correction, or design change in a feature a group's subagent built (during or after
+   the run, for any spec), the main agent revives THAT subagent by messaging it
+   (`agent://<id>`) with the report, never spawns a fresh worker and never fixes it
+   itself — the original holds the context of every decision it made. Only if that
+   subagent is unrecoverable does the main agent spawn a replacement, pointed at the
+   original's transcript (`history://<id>`). Fold the outcome into the digest like (3).
+5. Developer-reported errors from in-progress work: when the developer pastes a build or
+   runtime error, first check whether it comes from a worker's unfinished edits (a file the
+   active worker is mid-way through: a missing export, half-migrated imports, a transient
+   parse error). If it does, just tell the developer which in-progress work caused it and
+   that the worker's own next steps resolve it. Do NOT message, interrupt, or redirect the
+   worker about it, and do not restart dev servers for it. Escalate only if the error
+   outlives the worker's completion, or the developer explicitly asks for a fix.
+6. Workers announce live-app breakage. A worker whose edits will break the running dev app
+   (a multi-file migration, export renames, a dev-server restart dependency) messages the
+   main agent BEFORE starting: what will break, why, and roughly how long. It messages
+   again the moment the app compiles and loads cleanly. An unexpected break gets reported
+   the same way as soon as the worker notices it. The main agent relays each notice to the
+   developer as a short status ("app down: <worker>, <reason>, ~<eta>" / "app back up"),
+   so the developer knows when to wait and when to test, instead of pasting errors.
 
 ## Rules
 - Never proceed past a failed verify without developer approval — the CLI refuses `done`

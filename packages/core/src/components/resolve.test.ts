@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   resolveComponentContributions,
   resolveComponentOverrides,
+  resolveEditSlot,
   VexComponentConfigError,
 } from "./resolve";
 
@@ -104,6 +105,123 @@ describe("resolveComponentContributions", () => {
       ],
     });
     expect(result.map((r) => r.id)).toEqual(["acme.action"]);
+  });
+});
+
+describe("resolveEditSlot", () => {
+  it("merges builtins, then root, then resource contributions in that array order when no order/before/after is set", () => {
+    const result = resolveEditSlot({
+      slotId: "edit.header.actions",
+      builtins: [{ id: "vex.save", component: comp }],
+      root: { contributions: [{ id: "acme.rootAction", component: comp }] },
+      resource: { contributions: [{ id: "acme.resourceAction", component: comp }] },
+    });
+    expect(result.contributions.map((c) => c.id)).toEqual([
+      "vex.save",
+      "acme.rootAction",
+      "acme.resourceAction",
+    ]);
+    expect(result.overrides).toEqual({});
+  });
+
+  it("sorts merged contributions by order across builtin, root and resource levels, ties broken by merge position", () => {
+    const result = resolveEditSlot({
+      slotId: "edit.header.actions",
+      builtins: [{ id: "vex.save", component: comp, order: 10 }],
+      root: { contributions: [{ id: "acme.rootAction", component: comp, order: 0 }] },
+      resource: { contributions: [{ id: "acme.resourceAction", component: comp, order: 0 }] },
+    });
+    expect(result.contributions.map((c) => c.id)).toEqual([
+      "acme.rootAction",
+      "acme.resourceAction",
+      "vex.save",
+    ]);
+  });
+
+  it("a resource-level hide directive drops a built-in by id", () => {
+    const result = resolveEditSlot({
+      slotId: "edit.header.actions",
+      builtins: [{ id: "vex.duplicate", component: comp }],
+      root: {},
+      resource: { contributions: [{ id: "vex.duplicate", hidden: true }] },
+    });
+    expect(result.contributions).toEqual([]);
+  });
+
+  it("merges root then resource override chains for the same built-in id, root entries first", () => {
+    const result = resolveEditSlot({
+      slotId: "edit.header.actions",
+      builtins: [{ id: "vex.save", component: comp }],
+      root: { overrides: { "vex.save": [{ id: "acme.rootWrap", component: comp }] } },
+      resource: { overrides: { "vex.save": [{ id: "acme.resourceWrap", component: comp }] } },
+    });
+    expect(result.overrides["vex.save"]?.map((o) => o.id)).toEqual([
+      "acme.rootWrap",
+      "acme.resourceWrap",
+    ]);
+  });
+
+  it("throws VexComponentConfigError when an override is keyed to an id that isn't in the slot's resolved contributions", () => {
+    expect(() =>
+      resolveEditSlot({
+        slotId: "edit.header.actions",
+        builtins: [{ id: "vex.save", component: comp }],
+        root: { overrides: { "vex.save": [{ id: "acme.wrap", component: comp }] } },
+        resource: { contributions: [{ id: "vex.save", hidden: true }] },
+      }),
+    ).toThrow(VexComponentConfigError);
+  });
+
+  it("throws VexComponentConfigError when a duplicate override id appears across root and resource chains for one built-in", () => {
+    expect(() =>
+      resolveEditSlot({
+        slotId: "edit.header.actions",
+        builtins: [{ id: "vex.save", component: comp }],
+        root: { overrides: { "vex.save": [{ id: "acme.wrap", component: comp }] } },
+        resource: { overrides: { "vex.save": [{ id: "acme.wrap", component: comp }] } },
+      }),
+    ).toThrow(VexComponentConfigError);
+  });
+
+  it("returns builtins-only contributions and no overrides when neither level configures the slot", () => {
+    const result = resolveEditSlot({
+      slotId: "edit.beforeFields",
+      builtins: [],
+    });
+    expect(result).toEqual({ contributions: [], overrides: {} });
+  });
+
+  it("edit.actionsMenu: hides vex.duplicate and orders a root + resource item after it", () => {
+    const result = resolveEditSlot({
+      slotId: "edit.actionsMenu",
+      builtins: [
+        { id: "vex.revalidate", component: comp },
+        { id: "vex.duplicate", component: comp },
+      ],
+      root: {
+        contributions: [
+          { id: "vex.duplicate", hidden: true },
+          { id: "acme.rootItem", component: comp, after: "vex.duplicate" },
+        ],
+      },
+      resource: {
+        contributions: [{ id: "acme.resourceItem", component: comp, after: "vex.duplicate" }],
+      },
+    });
+    expect(result.contributions.map((c) => c.id)).toEqual([
+      "vex.revalidate",
+      "acme.rootItem",
+      "acme.resourceItem",
+    ]);
+  });
+
+  it("edit.actionsMenu: wraps vex.revalidate via an override, receiving renderDefault", () => {
+    const result = resolveEditSlot({
+      slotId: "edit.actionsMenu",
+      builtins: [{ id: "vex.revalidate", component: comp }],
+      root: { overrides: { "vex.revalidate": [{ id: "acme.wrapRevalidate", component: comp }] } },
+    });
+    expect(result.overrides["vex.revalidate"]?.map((o) => o.id)).toEqual(["acme.wrapRevalidate"]);
   });
 });
 

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 
 import "./globals.css";
 
-import { LivePreviewProvider, ThemeScript } from "@vexcms/react";
+import { LivePreviewProvider } from "@vexcms/react";
+import { ThemeScript } from "@vexcms/react/server";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import ClientProviders from "~/components/providers/client";

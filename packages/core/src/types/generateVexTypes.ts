@@ -3,7 +3,7 @@ import type { VexConfig } from "../config/types";
 import { globalConfigToInterface } from "../globals";
 import { ADMIN_FIELDS, fieldsToFieldTypeMap, type AdminField } from "../fields";
 import { STORAGE_ADAPTER_PROTOCOLS } from "../media";
-import { collectionConfigToIndexFields } from "../collections/indexFields";
+import { resolveCollectionIndexes } from "../collections/resolveCollectionIndexes";
 import { CustomActionsInput } from "../access";
 
 /**
@@ -184,7 +184,7 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     .map((c) =>
       formatIndexFieldsEntry({
         slug: c.slug,
-        indexFields: collectionConfigToIndexFields({ collection: c }),
+        indexFields: new Map(resolveCollectionIndexes({ collection: c }).map((index) => [index.name, [...index.fields]])),
       }),
     )
     .join("\n");

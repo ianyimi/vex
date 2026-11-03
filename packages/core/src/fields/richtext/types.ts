@@ -81,8 +81,9 @@ export type RichTextDocument = RichTextElement[];
  */
 export interface RichTextFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * Does not affect existing database values.
@@ -115,7 +116,7 @@ export interface RichTextFieldInput<
  * Resolved configuration for a `richtext()` field, after all defaults are applied.
  *
  * This is the type framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<RichTextField>` and
+ * `fieldDef` in `FieldComponentProps<RichTextField>` and
  * `CellComponentProps<RichTextField>` is this type.
  *
  * @see {@link RichTextFieldInput} for the user-facing input type

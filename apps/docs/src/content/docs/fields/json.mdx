@@ -16,7 +16,7 @@ diagnostics.
 | `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
 | `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema and the form allows leaving it empty. |
 | `defaultValue` | `unknown` | `undefined` | Pre-filled value shown in the admin form when creating a new document. Does not apply to database values. |
-| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `index` | `string \| { name, additionalFields?, draftStatus? }` | — | Convex index name, or the object form for a [compound index](/fields/text/#compound-indexes). |
 | `description` | `string` | — | Helper text shown below the field input. |
 | `validate` | `(props) => Promise<void> \| void` | — | Server-only async validation, receives the resolved value typed as `unknown`. |
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |

@@ -60,13 +60,15 @@ instead of filtered, narrow it on status:
 
 ```ts
 indexes: [{ name: "by_slug", fields: ["slug"], draftStatus: "both" }],
-fields: { author: relationship({ to: "users", indexDraftStatus: true }) },
+fields: { author: relationship({ to: "users", index: { name: "by_author", draftStatus: true } }) },
 ```
 
 - `true` replaces the index with a `vex_status`-prefixed one; `"both"` keeps the original
   and adds a status-prefixed twin.
-- `indexDraftStatus` needs an index to attach to (`index` set, or a relationship field) and
-  `versions.drafts: true`; `defineCollection` throws otherwise.
+- A field's `index.draftStatus` requires `versions.drafts: true`; `defineCollection` throws
+  otherwise. A relationship field's automatic index cannot carry it — declare the index
+  explicitly (`index: { name: "by_author", draftStatus: true }`, as above), which replaces
+  the automatic one.
 - Unique fields stay unique among published documents only — a draft may share a slug with
   its own published row.
 

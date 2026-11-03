@@ -237,6 +237,7 @@ export type SEO = {
 
 export interface Page extends VexDocument {
   _id: Id<"pages">
+  vex_status?: "draft" | "published"
   /**
    * Display title shown as the page heading and in browser tabs (as fallback).
    */
@@ -597,6 +598,7 @@ export interface Comment extends VexDocument {
 
 export interface Post extends VexDocument {
   _id: Id<"posts">
+  vex_status?: "draft" | "published"
   /**
    * Required — leave empty in a draft to test publish rejection.
    */
@@ -807,6 +809,54 @@ export interface FieldsExample extends VexDocument {
     body?: string
   }[]
   updatedAt?: number
+  wordCount?: never
+}
+
+type TestimonialSourceOption = "website" | "import" | "survey" | "referral"
+export interface Testimonial extends VexDocument {
+  _id: Id<"testimonials">
+  /**
+   * Who gave the testimonial.
+   */
+  customerName: string
+  /**
+   * Customer's company, when given.
+   */
+  company?: string
+  /**
+   * The testimonial text itself.
+   */
+  quote: string
+  /**
+   * 1-5 star rating.
+   */
+  rating: number
+  /**
+   * Where this testimonial was collected from — indexed for sorted/filtered list
+   * queries.
+   */
+  source: TestimonialSourceOption[]
+  /**
+   * Pinned to the homepage testimonials section.
+   */
+  featured?: boolean
+  /**
+   * Reviewed and cleared for public display.
+   */
+  approved?: boolean
+  /**
+   * The internal user who submitted/collected this testimonial, when known.
+   */
+  contributorId?: Id<"user">[]
+  /**
+   * Customer headshot, shown in the peek panel.
+   */
+  avatar?: Id<"images">[]
+  /**
+   * Internal quality score (0-100). Not visible to contributor/user roles.
+   */
+  internalScore?: number
+  updatedAt?: number
 }
 
 export interface SessionDocument extends VexDocument {
@@ -1007,6 +1057,7 @@ export type CollectionSlug =
   | "comments"
   | "posts"
   | "fields"
+  | "testimonials"
   | "session"
   | "account"
   | "verification"
@@ -1037,6 +1088,7 @@ export type DocumentBySlug = {
   comments: Comment
   posts: Post
   fields: FieldsExample
+  testimonials: Testimonial
   session: SessionDocument
   account: AccountDocument
   verification: VerificationDocument
@@ -1070,6 +1122,7 @@ declare module "@vexcms/core" {
       | "comments"
       | "posts"
       | "fields"
+      | "testimonials"
       | "session"
       | "account"
       | "verification"
@@ -1096,6 +1149,7 @@ declare module "@vexcms/core" {
       comments: Comment
       posts: Post
       fields: FieldsExample
+      testimonials: Testimonial
       session: SessionDocument
       account: AccountDocument
       verification: VerificationDocument
@@ -1120,7 +1174,7 @@ declare module "@vexcms/core" {
         upload: "ogImage"
         relationship: "themes"
         group: "seo"
-        date: "updatedAt"
+        commitTs: "updatedAt"
       }
       user: {
         text: "name" | "email" | "image" | "role" | "banReason" | "userId"
@@ -1131,52 +1185,55 @@ declare module "@vexcms/core" {
       headers: {
         text: "name"
         blocks: "content"
-        date: "updatedAt"
+        commitTs: "updatedAt"
       }
       footers: {
         text: "name"
         blocks: "content"
-        date: "updatedAt"
+        commitTs: "updatedAt"
       }
       themes: {
         text: "name" | "fontFamily" | "radius"
         group: "light" | "dark"
-        date: "updatedAt"
+        commitTs: "updatedAt"
       }
       articles: {
         text: "title" | "slug" | "excerpt" | "body"
-        date: "publishedAt" | "updatedAt"
+        date: "publishedAt"
         relationship: "authorId" | "coverImage"
         select: "status"
         number: "readingMinutes"
         checkbox: "featured"
+        commitTs: "updatedAt"
       }
       case_studies: {
         text: "title" | "slug" | "excerpt" | "clientName" | "industry" | "outcomeSummary"
-        date: "publishedAt" | "updatedAt"
+        date: "publishedAt"
         relationship: "authorId"
         select: "status"
         url: "clientUrl"
         number: "contractValue"
+        commitTs: "updatedAt"
       }
       changelog: {
         text: "title" | "slug" | "excerpt" | "version" | "notes"
-        date: "publishedAt" | "updatedAt"
+        date: "publishedAt"
         relationship: "authorId"
         select: "status" | "releaseType"
         checkbox: "breaking"
+        commitTs: "updatedAt"
       }
       comments: {
         relationship: "authorId" | "article"
         text: "body"
         checkbox: "approved"
-        date: "updatedAt"
+        commitTs: "updatedAt"
       }
       posts: {
         text: "title" | "slug"
         richtext: "body"
         relationship: "relatedPost" | "relatedArticle" | "relatedField"
-        date: "updatedAt"
+        commitTs: "updatedAt"
       }
       fields: {
         email: "contactEmail"
@@ -1205,13 +1262,23 @@ declare module "@vexcms/core" {
         select: "status" | "tags"
         color: "accentColor"
         url: "website"
-        date: "dueOn" | "eventAt" | "updatedAt"
+        date: "dueOn" | "eventAt"
         relationship: "relatedUser" | "relatedUsers"
         upload: "avatar" | "gallery"
         richtext: "body"
         array: "tagList" | "gridItems" | "sections"
         group: "info" | "seo" | "displaySettings"
         blocks: "content"
+        commitTs: "updatedAt"
+      }
+      testimonials: {
+        text: "customerName" | "company"
+        textarea: "quote"
+        number: "rating" | "internalScore"
+        select: "source"
+        checkbox: "featured" | "approved"
+        relationship: "contributorId" | "avatar"
+        commitTs: "updatedAt"
       }
       session: {
         date: "expiresAt" | "createdAt" | "updatedAt"
@@ -1289,7 +1356,7 @@ declare module "@vexcms/core" {
         text: "filename" | "alt" | "mimeType" | "storageId" | "src"
         number: "size" | "width" | "height"
         checkbox: "deleted"
-        date: "updatedAt"
+        commitTs: "updatedAt"
       }
     }
     GlobalsFieldTypeMap: {
@@ -1307,38 +1374,58 @@ declare module "@vexcms/core" {
       }
     }
     IndexFieldsBySlug: {
-      pages: { by_slug: readonly ["slug"]; by_themes: readonly ["themes"] }
+      pages: {
+        by_slug_title: readonly ["slug", "title"]
+        by_slug: readonly ["slug"]
+        by_themes: readonly ["themes"]
+        by_updatedAt: readonly ["updatedAt"]
+      }
       user: { by_email: readonly ["email"] }
-      headers: { by_name: readonly ["name"] }
-      footers: { by_name: readonly ["name"] }
-      themes: { by_name: readonly ["name"] }
+      headers: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
+      footers: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
+      themes: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
       articles: {
         by_slug: readonly ["slug"]
         by_author: readonly ["authorId"]
         by_status: readonly ["status"]
         by_coverImage: readonly ["coverImage"]
+        by_updatedAt: readonly ["updatedAt"]
       }
       case_studies: {
         by_slug: readonly ["slug"]
         by_author: readonly ["authorId"]
         by_status: readonly ["status"]
+        by_updatedAt: readonly ["updatedAt"]
       }
       changelog: {
         by_slug: readonly ["slug"]
         by_author: readonly ["authorId"]
         by_status: readonly ["status"]
         by_version: readonly ["version"]
+        by_updatedAt: readonly ["updatedAt"]
       }
-      comments: { by_author: readonly ["authorId"]; by_article: readonly ["article"] }
+      comments: {
+        by_author: readonly ["authorId"]
+        by_article: readonly ["article"]
+        by_updatedAt: readonly ["updatedAt"]
+      }
       posts: {
         by_slug: readonly ["slug"]
         by_relatedPost: readonly ["relatedPost"]
         by_relatedArticle: readonly ["relatedArticle"]
         by_relatedField: readonly ["relatedField"]
+        by_updatedAt: readonly ["updatedAt"]
       }
       fields: {
         by_relatedUser: readonly ["relatedUser"]
         by_relatedUsers: readonly ["relatedUsers"]
+        by_updatedAt: readonly ["updatedAt"]
+      }
+      testimonials: {
+        by_source: readonly ["source"]
+        by_contributorId: readonly ["contributorId"]
+        by_avatar: readonly ["avatar"]
+        by_updatedAt: readonly ["updatedAt"]
       }
       session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] }
       account: { by_userId: readonly ["userId"] }
@@ -1354,7 +1441,7 @@ declare module "@vexcms/core" {
       teamMember: { by_teamId: readonly ["teamId"]; by_userId: readonly ["userId"] }
       member: { by_organizationId: readonly ["organizationId"]; by_userId: readonly ["userId"] }
       invitation: { by_organizationId: readonly ["organizationId"]; by_email: readonly ["email"] }
-      images: { by_deleted: readonly ["deleted"] }
+      images: { by_deleted: readonly ["deleted"]; by_updatedAt: readonly ["updatedAt"] }
     }
     CustomActionsBySlug: {
       articles: { query: "listFeatured"; mutation: "publish" }

@@ -279,7 +279,7 @@ describe("arrayFieldToInputSchema", () => {
   describe("default value", () => {
     it("applies default value for optional array", () => {
       const itemsField = number({ required: true });
-      const field = array<VexResourceSlug, number>({
+      const field = array<VexResourceSlug, never, number>({
         required: false,
         defaultValue: [1, 2, 3],
         items: itemsField,

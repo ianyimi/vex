@@ -1,4 +1,4 @@
-import type { MutationCallActionFor, QueryCallActionFor } from "@vexcms/core";
+import type { AccessCheck, MutationCallActionFor, QueryCallActionFor } from "@vexcms/core";
 
 /**
  * Compile-time pins for the slug-aware `access.action` unions. No test runner —
@@ -49,6 +49,13 @@ const articlesReadDrafts: ArticlesMutation = "readDrafts";
 // @ts-expect-error — listFeatured is articles' QUERY verb, not a mutation
 const articlesListFeaturedM: ArticlesMutation = "listFeatured";
 
+// ── access rules: the generated registry reaches withIndex's range ──────────
+const articlesStaticIndex: AccessCheck<"articles"> = { withIndex: { name: "by_slug", range: (ix) => ix.eq("slug", "a") } };
+// @ts-expect-error — `status` is not a field of `by_slug`
+const articlesWrongIndexField: AccessCheck<"articles"> = { withIndex: { name: "by_slug", range: (ix) => ix.eq("status", ["published"]) } };
+// @ts-expect-error — `nope` is not a field of articles
+const articlesUnknownWhereField: AccessCheck<"articles"> = { where: { field: "nope", op: "eq", value: "a" } };
+
 // Consumed so no-unused-vars stays quiet; the assignments above are the assertions.
 export const accessActionTypePins = [
   pagesRead,
@@ -63,4 +70,7 @@ export const accessActionTypePins = [
   articlesSaveDraft,
   articlesReadDrafts,
   articlesListFeaturedM,
+  articlesStaticIndex,
+  articlesWrongIndexField,
+  articlesUnknownWhereField,
 ] as const;

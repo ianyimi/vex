@@ -41,17 +41,17 @@ import {
  *   (`string` or `string[]` value); `hasPermission` reads roles from it.
  * @param props.orgCollectionSlug - Optional org collection slug enabling
  *   org-scoped callbacks.
+ * @param props.organizations - Default `false`. Enforces saved-view CRUD as
+ *   scoped to the caller's own organization; `orgCollectionSlug` alone does not.
  * @param props.permissions - Role → subject → check matrix (see `RolePermissions`).
  * @returns Frozen `VexAccessConfig` carrying the `SubjectMap` phantom for inference.
  * @throws {VexAccessConfigError} When `userCollectionSlug` or `userRolesField` is
  *   empty, when a `customResources` key collides with a resource slug, or when a
- *   `customResources` entry declares an empty `actions` array. Also when a rule's
- *   recorded constraints are not an in-order prefix of a declared index or violate
- *   Convex's operator rule (see `validateAccessConstraints`), and when a
- *   `constraints` callback throws while being recorded — every rule's callback runs
- *   once here, at module load, so a rule that reached past its types surfaces as a
- *   config error naming the role, resource and action rather than as a bare
- *   `TypeError` from whichever method was missing.
+ *   `customResources` entry declares an empty `actions` array. A rule's `withIndex`
+ *   is validated against its resource's declared indexes separately, by
+ *   `validateAccessConfig` (`access/validateAccessConfig.ts`), called from
+ *   `defineConfig` once the full resource set (including the merged user
+ *   collection) is known.
  * @example
  * ```ts
  * export const access = defineAccess({
@@ -177,6 +177,9 @@ export function defineAccess<
     if (props.orgCollectionSlug !== undefined && props.orgCollectionSlug.length === 0) {
       console.warn(`orgCollectionSlug must not be empty`);
     }
+    if (props.organizations === true && props.orgCollectionSlug === undefined) {
+      console.warn(`organizations: true has no effect without orgCollectionSlug also set`);
+    }
   }
 
   return Object.freeze({
@@ -192,6 +195,7 @@ export function defineAccess<
     userCollectionSlug: props.userCollectionSlug,
     userRolesField: props.userRolesField,
     orgCollectionSlug: props.orgCollectionSlug,
+    organizations: props.organizations ?? false,
     permissions: props.permissions,
   });
 }

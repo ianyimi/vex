@@ -48,19 +48,33 @@ export interface AssertUniqueAmongPublishedArgs<TCollectionSlug extends Collecti
 }
 
 /**
- * Asserts that no OTHER published row in `collection` already has `value` for
- * `field`, scoped to `vex_status === "published"` (design-review.md §3.2).
+ * Asserts that no OTHER "canonical" row in `collection` already has `value`
+ * for `field` — a published row, OR an UNLINKED draft-only row (`vex_status
+ * === "draft"` with no `vex_publishedId`, the row `create`'s
+ * `versions.defaultStatus: "draft"` path produces for a document that has
+ * never been published; design-review.md §3.2, widened by the draft-pair
+ * pagination fix's Fix D).
  *
- * A draft shares its published parent's field values by definition, so an
- * uniqueness check that considers every row — draft included — reports a
- * document as colliding with itself the moment it has a draft. Scoping to
- * published rows only, and excluding the document's own published `_id`,
- * removes the false positive while still catching a real collision with a
- * DIFFERENT document's published row — a third document's in-progress,
- * not-yet-published draft never counts either. The same status scoping
- * handles a draft-only row (never published, no `vex_publishedId`) for free:
- * it is never itself a `"published"` candidate, so it cannot collide with
- * itself regardless of whether the caller passed an `excludeId`.
+ * A LINKED draft (`vex_publishedId` set) shares its published parent's
+ * field values by definition, so a uniqueness check that considered every
+ * row — linked draft included — would report a document as colliding with
+ * itself the moment it has a draft. Scoping to published rows, excluding
+ * the document's own published `_id`, removes that false positive while
+ * still catching a real collision with a DIFFERENT document's published
+ * row; a third document's in-progress, linked draft never counts either.
+ *
+ * An UNLINKED draft-only row is different: it has no published parent to
+ * mirror, so two of them sharing the same declared-unique value are two
+ * genuinely separate documents that collide for real — the exact gap the
+ * "Duplicate" action hit (cloning a published document's fields, forced to
+ * `vex_status: "draft"`, keeps the source's slug verbatim with no
+ * published counterpart yet to collide with under the narrower, published-
+ * only scope). Both an unlinked draft-only candidate and the document
+ * being checked itself (when IT is also an unlinked draft-only row, e.g.
+ * re-validating an unchanged value) are excluded only via `excludeId` —
+ * callers that validate a draft-only row's own field must now pass its own
+ * `_id` as `excludeId`, even though under the narrower scope this was
+ * never necessary (a draft row was never itself a candidate before).
  *
  * Call this from a field's `validate()` (see `fieldValidator`'s own
  * `@example` in `fields/baseTypes.ts`, which now delegates to this helper)
@@ -76,7 +90,7 @@ export interface AssertUniqueAmongPublishedArgs<TCollectionSlug extends Collecti
  * @typeParam TCollectionSlug - The collection slug being checked.
  * @param args - `{ ctx, collection, indexName, field, value, excludeId? }`.
  * @returns Promise resolving when no collision exists.
- * @throws {Error} When a different published row already has `value` for `field`.
+ * @throws {Error} When a different canonical row already has `value` for `field`.
  * @example
  * ```ts
  * await assertUniqueAmongPublished({
@@ -102,15 +116,38 @@ export async function assertUniqueAmongPublished<
     .withIndex(args.indexName, (q) => q.eq(args.field, args.value))
     .collect();
 
-  // `undefined` status = a non-versioned row, which IS the document. A draft
-  // row is never a candidate: it either shares its own parent's value (the
-  // false positive this helper exists to remove) or is unpublished.
+  // `undefined` status = a non-versioned row, which IS the document.
+  // Candidate rows (Fix D's widened, "canonical row" scope): published, OR
+  // an UNLINKED draft-only row (no `vex_publishedId`). A LINKED draft is
+  // never a candidate — it shares its own published parent's value (the
+  // false positive this helper exists to remove).
+  //
+  // `excludeId` excludes the document's OWN row two ways — one logical
+  // document, one identity, regardless of which physical row a caller
+  // happened to pass: a candidate whose OWN `_id` is `excludeId` (the
+  // common case: re-publishing, or any update where the live row IS the
+  // candidate), OR whose `vex_publishedId` POINTS AT `excludeId` (a
+  // first-time publish's own soon-to-be-superseded draft is never a
+  // candidate anyway under the widened scope above — this half only ever
+  // matters for a linked draft that somehow matched, which Decision 26's
+  // own two-row invariant says can only be THIS document's own draft, not
+  // a different one, since `vex_publishedId` values are themselves unique
+  // per the two-row model's "at most one draft per published row").
   const collision = rows.find(
     (doc) =>
-      (doc.vex_status === "published" || doc.vex_status === undefined) &&
-      doc._id !== args.excludeId,
+      (doc.vex_status === "published" ||
+        doc.vex_status === undefined ||
+        (doc.vex_status === "draft" && doc.vex_publishedId === undefined)) &&
+      doc._id !== args.excludeId &&
+      // Guarded: an `undefined` `excludeId` (no exclusion requested — a
+      // brand-new `create`, or a validator that genuinely has nothing to
+      // exclude) must never match a candidate whose OWN `vex_publishedId`
+      // is ALSO merely absent (every published row, and every unlinked
+      // draft) — `undefined !== undefined` is `false`, which would wrongly
+      // exclude those candidates from the scan entirely.
+      (args.excludeId === undefined || doc.vex_publishedId !== args.excludeId),
   );
   if (collision) {
-    throw new Error(`Another published document already uses "${args.field}": "${args.value}"`);
+    throw new Error(`Another document already uses "${args.field}": "${args.value}"`);
   }
 }

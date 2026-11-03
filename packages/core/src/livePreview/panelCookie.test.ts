@@ -7,13 +7,21 @@ import {
   readLivePreviewPanelCookie,
 } from "./panelCookie";
 
+function adminCookieValue(livePreview: unknown): string {
+  return encodeURIComponent(JSON.stringify({ v: 1, livePreview }));
+}
+
 describe("readLivePreviewPanelCookie", () => {
-  it("returns true for an explicit '1', regardless of defaultOpen", () => {
-    expect(readLivePreviewPanelCookie({ cookieValue: "1", defaultOpen: false })).toBe(true);
+  it("returns true for an explicit panelOpen: true, regardless of defaultOpen", () => {
+    expect(
+      readLivePreviewPanelCookie({ cookieValue: adminCookieValue({ panelOpen: true }), defaultOpen: false }),
+    ).toBe(true);
   });
 
-  it("returns false for an explicit '0', regardless of defaultOpen", () => {
-    expect(readLivePreviewPanelCookie({ cookieValue: "0", defaultOpen: true })).toBe(false);
+  it("returns false for an explicit panelOpen: false, regardless of defaultOpen", () => {
+    expect(
+      readLivePreviewPanelCookie({ cookieValue: adminCookieValue({ panelOpen: false }), defaultOpen: true }),
+    ).toBe(false);
   });
 
   it("falls back to defaultOpen when no cookie has been written yet", () => {
@@ -22,11 +30,14 @@ describe("readLivePreviewPanelCookie", () => {
   });
 
   it("falls back to defaultOpen for a garbage cookie value", () => {
-    expect(readLivePreviewPanelCookie({ cookieValue: "true", defaultOpen: true })).toBe(true);
+    expect(readLivePreviewPanelCookie({ cookieValue: "not json", defaultOpen: true })).toBe(true);
+    expect(readLivePreviewPanelCookie({ cookieValue: adminCookieValue({ panelOpen: "yes" }), defaultOpen: true })).toBe(
+      true,
+    );
   });
 });
 
-describe("livePreviewPanelCookieName", () => {
+describe("livePreviewPanelCookieName (retained for AdminLayout's retired-cookie clear)", () => {
   it("scopes the cookie per collection or global slug", () => {
     expect(livePreviewPanelCookieName({ slug: "pages" })).toBe("vex-live-preview-panel:pages");
   });
@@ -34,24 +45,24 @@ describe("livePreviewPanelCookieName", () => {
 
 describe("readLivePreviewLayoutCookie", () => {
   it("returns the stored form-panel share", () => {
-    expect(readLivePreviewLayoutCookie({ cookieValue: "42" })).toBe(42);
+    expect(readLivePreviewLayoutCookie({ cookieValue: adminCookieValue({ panelSize: 42 }) })).toBe(42);
   });
 
   it("falls back to the default when unset or non-numeric", () => {
     expect(readLivePreviewLayoutCookie({ cookieValue: undefined })).toBe(60);
-    expect(readLivePreviewLayoutCookie({ cookieValue: "wide" })).toBe(60);
+    expect(readLivePreviewLayoutCookie({ cookieValue: adminCookieValue({ panelSize: "wide" }) })).toBe(60);
   });
 
   it("clamps to the absolute floor, not the current split's derived floor", () => {
     // 10/90 is the hard limit. Clamping to a narrow window's derived floor
     // would permanently rewrite a wide-display layout the first time that
     // editor opened the document small.
-    expect(readLivePreviewLayoutCookie({ cookieValue: "5" })).toBe(10);
-    expect(readLivePreviewLayoutCookie({ cookieValue: "99" })).toBe(90);
+    expect(readLivePreviewLayoutCookie({ cookieValue: adminCookieValue({ panelSize: 5 }) })).toBe(10);
+    expect(readLivePreviewLayoutCookie({ cookieValue: adminCookieValue({ panelSize: 99 }) })).toBe(90);
   });
 });
 
-describe("livePreviewLayoutCookieName", () => {
+describe("livePreviewLayoutCookieName (retained for AdminLayout's retired-cookie clear)", () => {
   it("scopes the cookie per collection or global slug", () => {
     expect(livePreviewLayoutCookieName({ slug: "pages" })).toBe("vex-live-preview-layout:pages");
   });

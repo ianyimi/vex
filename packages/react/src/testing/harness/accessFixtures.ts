@@ -10,8 +10,8 @@ import {
   type VexApiAuth,
   type VexClientConfig,
 } from "@vexcms/core";
-import { VexConfigProvider } from "../../context/VexConfigContext";
-import { VexAuthProvider } from "../../context/VexAuthContext";
+import { VexConfigProvider } from "../../config/VexConfigContext";
+import { VexAuthProvider } from "../../auth/VexAuthContext";
 
 /**
  * One collection, one shared `defineAccess` matrix, three roles — reused by every
@@ -48,9 +48,7 @@ const access = defineAccess({
     // Doc-scoped: only documents with `status: "published"` are readable.
     scoped: {
       posts: {
-        read: {
-          constraints: ({ q }) => q.withIndex("by_status", (ix) => ix.eq("status", "published")),
-        },
+        read: { withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") } },
       },
     },
   },

@@ -42,8 +42,9 @@ import type { JsonFieldInput, JsonField } from "./types";
  */
 export function json<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
->(options?: JsonFieldInput<TCollectionSlug, TFieldMeta>): JsonField<TCollectionSlug, TFieldMeta> {
+>(options?: JsonFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>): JsonField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.json.type,
     interfaceType: ADMIN_FIELDS.json.interfaceType,
@@ -59,6 +60,8 @@ export function json<
       position: "main",
       width: "100%",
       cellAlignment: "left",
+      enableSorting: false,
+      enableHiding: true,
       placeholder: "",
       ...options?.admin,
       components: resolveFieldComponents({ components: options?.admin?.components }),

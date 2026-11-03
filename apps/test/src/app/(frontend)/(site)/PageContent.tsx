@@ -7,7 +7,7 @@ import { RenderBlocks, useLivePreviewQuery } from "@vexcms/react"
 import type { CodeHighlightMap } from "~/lib/highlight"
 import type { Page } from "~/vex.types"
 
-import { CodeHighlightProvider } from "~/components/CodeHighlightContext"
+import { CodeHighlightProvider } from "~/context/CodeHighlightContext"
 import { WelcomePage } from "~/components/WelcomePage"
 import { useSitePreviewMode } from "~/lib/useSitePreviewMode"
 import { blockComponents } from "~/vexcms/blocks"

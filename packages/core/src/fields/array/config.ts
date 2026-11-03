@@ -1,6 +1,6 @@
 import { childInterfaceType } from "../childInterfaceType";
 import { ADMIN_FIELDS } from "../constants";
-import { BaseFieldMeta } from "../types";
+import { BaseFieldMeta, AdminDataField } from "../types";
 import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 import { RESERVED_ARRAY_ITEM_FIELD_NAMES } from "./types";
 import type { ArrayFieldInput, ArrayField, ArrayType } from "./types";
@@ -61,9 +61,10 @@ import type { VexResourceSlug } from "../../types/generated";
  */
 export function array<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TArrayType extends ArrayType = string,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
->(options: ArrayFieldInput<TCollectionSlug, TArrayType, TFieldMeta>): ArrayField<TCollectionSlug, TArrayType, TFieldMeta> {
+>(options: ArrayFieldInput<TCollectionSlug, TFieldKey, TArrayType, TFieldMeta>): ArrayField<TCollectionSlug, TArrayType, TFieldMeta> {
   const itemsField = options.items;
   if (
     itemsField.type === ADMIN_FIELDS.group.type &&
@@ -111,7 +112,7 @@ export function array<
     items: {
       ...options.items,
       required: true,
-    },
+    } as AdminDataField,
 
     // Admin config with all defaults applied
     admin: {
@@ -120,6 +121,8 @@ export function array<
       position: "main",
       width: "100%",
       cellAlignment: "left",
+      enableSorting: false,
+      enableHiding: true,
       // Optional admin properties (no defaults)
       placeholder: "",
       ...options?.admin,

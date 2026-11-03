@@ -47,10 +47,10 @@ export const access = defineAccess({
       user: {
         "*": false,
         read: {
-          constraints: ({ user, q }) => q.withIndex("by_email", (fq) => fq.eq("email", user.email)),
+          withIndex: ({ user }) => ({ name: "by_email", range: (ix) => ix.eq("email", user.email) }),
         },
         update: {
-          constraints: ({ user, q }) => q.filter((fq) => fq.eq("email", user.email)),
+          where: ({ user, q }) => q.eq("email", user.email),
         },
       },
     },

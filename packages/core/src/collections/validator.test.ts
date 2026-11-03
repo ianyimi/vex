@@ -97,7 +97,7 @@ describe("collectionConfigToVexSchema — compound index creation", () => {
     const posts = defineCollection({
       slug: "posts",
       fields: {
-        author: relationship({ collection: { slug: "authors" }, index: "by_author_title" }),
+        author: relationship({ collection: { slug: "authors" } }),
         title: text(),
       },
       indexes: [
@@ -106,6 +106,19 @@ describe("collectionConfigToVexSchema — compound index creation", () => {
           fields: ["author", "title"],
         },
       ],
+    });
+    const config = defineConfig({ collections: [posts] });
+    const output = collectionConfigToVexSchema({ collection: posts, config });
+    expect(output).toContain('.index("by_author_title", ["author","title"])');
+  });
+
+  it("builds a compound index from the field-level object form", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: {
+        author: relationship({ collection: { slug: "authors" }, index: { name: "by_author_title", additionalFields: ["title"] } }),
+        title: text(),
+      },
     });
     const config = defineConfig({ collections: [posts] });
     const output = collectionConfigToVexSchema({ collection: posts, config });
@@ -489,11 +502,11 @@ describe("resolveTitleSearchIndex", () => {
 // ─── injected updatedAt field ─────────────────────────────────────────────────
 
 describe("collectionConfigToVexSchema — injected updatedAt field", () => {
-  it("emits v.optional(v.number()) for the injected updatedAt field", () => {
+  it("emits v.optional(v.commitTs()) for the injected updatedAt field", () => {
     const posts = defineCollection({ slug: "posts", fields: { title: text() } });
     const config = defineConfig({ collections: [posts] });
     const contents = collectionConfigToVexSchema({ collection: posts, config });
-    expect(contents).toContain("updatedAt: v.optional(v.number()),");
+    expect(contents).toContain("updatedAt: v.optional(v.commitTs()),");
   });
 
   it("does not emit updatedAt when timestamps: false", () => {
@@ -512,7 +525,7 @@ describe("collectionConfigToVexSchema — draftStatus indexes", () => {
   it("draftStatus: true replaces the index with its vex_status-prefixed form — no unprefixed twin", () => {
     const posts = defineCollection({
       slug: "posts",
-      fields: { slug: text({ index: "by_slug", indexDraftStatus: true }) },
+      fields: { slug: text({ index: { name: "by_slug", draftStatus: true } }) },
       versions: { drafts: true },
     });
     const config = defineConfig({ collections: [posts] });
@@ -524,7 +537,7 @@ describe("collectionConfigToVexSchema — draftStatus indexes", () => {
   it('draftStatus: "both" emits the unprefixed index and a prefixed twin', () => {
     const posts = defineCollection({
       slug: "posts",
-      fields: { slug: text({ index: "by_slug", indexDraftStatus: "both" }) },
+      fields: { slug: text({ index: { name: "by_slug", draftStatus: "both" } }) },
       versions: { drafts: true },
     });
     const config = defineConfig({ collections: [posts] });
@@ -552,7 +565,7 @@ describe("collectionConfigToVexSchema — draftStatus indexes", () => {
     const posts = defineCollection({
       slug: "posts",
       fields: {
-        author: relationship({ collection: { slug: "authors" }, indexDraftStatus: true }),
+        author: relationship({ collection: { slug: "authors" }, index: { name: "by_author", draftStatus: true } }),
       },
       versions: { drafts: true },
     });
@@ -560,5 +573,22 @@ describe("collectionConfigToVexSchema — draftStatus indexes", () => {
     const output = collectionConfigToVexSchema({ collection: posts, config });
     expect(output).toContain('.index("by_author", ["vex_status","author"])');
     expect(output).not.toContain('.index("by_author", ["author"])');
+  });
+});
+
+describe("collectionConfigToVexSchema — admin.view.state.searchFields", () => {
+  it("emits the field's own searchIndex when listed in admin.view.state.searchFields, with no useAsTitle or incoming relationship involved", () => {
+    const authors = defineCollection({
+      slug: "authors",
+      fields: {
+        name: text({ required: true }),
+        bio: text({ required: true, searchIndex: { name: "search_bio", filterFields: [] } }),
+      },
+      admin: { useAsTitle: "name", view: { searchFields: ["bio"] } },
+    });
+    const config = defineConfig({ collections: [authors] });
+    const output = collectionConfigToVexSchema({ collection: authors, config });
+    expect(output).toContain('.searchIndex("search_bio"');
+    expect(output).toContain('searchField: "bio"');
   });
 });

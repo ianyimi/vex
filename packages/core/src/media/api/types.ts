@@ -5,8 +5,8 @@ import type {
   GenericMutationServerParams,
   GenericQueryClientParams,
   GenericQueryServerParams,
-  VexApiAuth,
-} from "../../api/types";
+} from "../../collections/api/types";
+import type { VexApiAuth } from "../../db/types";
 import type { VexConfig } from "../../config";
 
 // ── Generic media args base types ──────────────────────────────────────────
@@ -210,4 +210,60 @@ export interface SearchMediaClientArgs extends GenericMediaQueryClientParams {
   collectionSlug: string;
   /** Search query string — matches against `filename` and `alt` fields. */
   query: string;
+}
+
+/** Args for `api.vex.media.generateUploadUrl`. */
+export interface VexMediaGenerateUploadUrlArgs {
+  [key: string]: unknown;
+  adapter: string;
+  collection: string;
+}
+
+/** Return for `api.vex.media.generateUploadUrl`. */
+export interface VexMediaGenerateUploadUrlReturn {
+  [key: string]: unknown;
+  url: string;
+}
+
+/** Args for `api.vex.media.createMediaDocument`. */
+export interface VexMediaCreateMediaDocumentArgs {
+  [key: string]: unknown;
+  adapter: string;
+  collectionSlug: string;
+  storageId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  alt?: string;
+  adapterFields?: Record<string, unknown>;
+}
+
+/** Return for `api.vex.media.createMediaDocument`. */
+export type VexMediaCreateMediaDocumentReturn = string;
+
+/** Args for `api.vex.media.deleteMedia`. */
+export interface VexMediaDeleteMediaArgs {
+  [key: string]: unknown;
+  auth?: VexApiAuth;
+  adapter: string;
+  mediaId: string;
+  softDelete?: boolean;
+}
+
+/** Return for `api.vex.media.deleteMedia`. */
+export type VexMediaDeleteMediaReturn = boolean;
+
+/** Args for `api.vex.media.getUrl`. */
+export interface VexMediaGetUrlArgs {
+  [key: string]: unknown;
+  auth?: VexApiAuth;
+  adapter: string;
+  mediaId: string;
+}
+
+/** Return for `api.vex.media.getUrl`. */
+export interface VexMediaGetUrlReturn {
+  [key: string]: unknown;
+  url?: string;
+  error?: string;
 }

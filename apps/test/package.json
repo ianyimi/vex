@@ -41,6 +41,7 @@
     "react-dom": "catalog:",
     "shadcn": "catalog:",
     "shiki": "catalog:",
+    "sonner": "catalog:",
     "tailwind-merge": "catalog:",
     "tw-animate-css": "catalog:",
     "zod": "catalog:"

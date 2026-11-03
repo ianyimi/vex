@@ -2,9 +2,11 @@ import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { ConvexError } from "convex/values";
 
 import type { VexConfig } from "../config";
-import type { AccessCallOptions, VexApiAuth } from "../api/types";
-import { CONSTRAINT_COMPARATORS, DRAFT_ACTIONS } from "../access";
-import { prepareEdit } from "../api/prepareEdit";
+import type { AccessCallOptions, VexApiAuth } from "../db/types";
+import { DRAFT_ACTIONS } from "../access";
+import { valuesEqual } from "../utils/valuesEqual";
+import { prepareEdit } from "../db/prepareEdit";
+import { stampCommitTsFields } from "../db/documents";
 import type { CollectionOrGlobal } from "../types/utils";
 import { VERSION_STATUSES } from "./constants";
 import { createVersion, getLatestVersion, getVersion, listVersions } from "./model";
@@ -32,8 +34,9 @@ import type { VersionedTargetRows } from "./resolveVersionedTarget";
  * `hasPermission` internally, which is what lets a field-level permission
  * map deny individual keys.
  *
- * Does NOT stamp `updatedAt`: an autosave tick is not a real edit of the
- * live document; `publish` stamps it once, on promotion.
+ * Stamps only `on: "all"` `commitTs` fields — `on: "save"`/`on: "publish"`
+ * fields are untouched; an autosave tick is not a real edit of the live
+ * document.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
  * @param props - Resolved target + merge inputs.
@@ -51,7 +54,7 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
   restoredFrom?: number;
   rows: VersionedTargetRows<DataModel>;
 }): Promise<string> {
-  const data = removeVexFields({ doc: props.data });
+  const data = removeVexFields({ doc: props.data, fields: props.target.config.fields });
 
   let draftRow = props.rows.draftRow;
   const publishedRow = props.rows.publishedRow;
@@ -62,7 +65,10 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
       // off it — but only when history doesn't already hold that exact content
       // as a published row (it always does once publish stamps every state;
       // this write remains for legacy documents predating that invariant).
-      const publishedFields = props.rows.toUserFields(publishedRow);
+      const publishedFields = removeVexFields({
+        doc: props.rows.toUserFields(publishedRow),
+        fields: props.target.config.fields,
+      });
       const existing = await listVersions({
         ctx: props.ctx,
         collection: props.rows.historyCollection,
@@ -71,7 +77,7 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
       const alreadySnapshotted = existing.some(
         (row) =>
           row.status === VERSION_STATUSES.published.key &&
-          CONSTRAINT_COMPARATORS.eq(row.snapshot, publishedFields),
+          valuesEqual(row.snapshot, publishedFields),
       );
       if (!alreadySnapshotted) {
         await createVersion({
@@ -113,16 +119,24 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
     access: props.access,
     auth: props.auth,
     storedDoc: (baseVersion?.snapshot ?? props.rows.toUserFields(draftRow)) as never,
+    docId: draftRow._id as string,
     changes: data,
     partial: true,
     validateKeys: "changed",
   });
 
+  const stampedPatch = stampCommitTsFields({
+    ctx: props.ctx,
+    fields: props.target.config.fields,
+    data: patch,
+    events: ["draftSave"],
+  });
+
   await props.ctx.db.patch(
     draftRow._id as never,
     (baseVersion
-      ? props.rows.buildDraftReplace(draftRow, removeVexFields({ doc: transformedFields }))
-      : props.rows.buildDraftPatch(draftRow, patch)) as never,
+      ? props.rows.buildDraftReplace(draftRow, removeVexFields({ doc: transformedFields, fields: props.target.config.fields }))
+      : props.rows.buildDraftPatch(draftRow, stampedPatch)) as never,
   );
 
   // Restoring a version verbatim (restoredFrom set, no edits on top) makes
@@ -147,7 +161,7 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
       collection: props.rows.historyCollection,
       documentId: props.rows.documentId,
       status: VERSION_STATUSES.draft.key,
-      snapshot: removeVexFields({ doc: transformedFields }),
+      snapshot: removeVexFields({ doc: transformedFields, fields: props.target.config.fields }),
       createdBy:
         typeof props.auth?.user?.["_id"] === "string"
           ? (props.auth.user["_id"] as string)

@@ -15,17 +15,18 @@ import {
   type PermissionMode,
   type CrudAction,
   type DraftAction,
+  type ViewAction,
   type AdminCustomSubjectSlug,
   QueryAction,
 } from "./constants";
 import { ConvexError } from "convex/values";
-import type { Expression, FilterBuilder, IndexRange, IndexRangeBuilder } from "convex/server";
 import type {
-  AccessConditionResult,
+  AccessIndexSelection,
+  ConstraintResult,
   DeclaredDoc,
-  AccessPredicateBuilder,
-  AccessQueryBuilder,
-} from "./constraintTypes";
+  FilterConstraintBuilder,
+  VexWhereNodeOf,
+} from "./queryConstraintTypes";
 
 /**
  * Any config that may contribute a resource subject: a collection or a global.
@@ -35,9 +36,20 @@ import type {
 export type AccessResource = CollectionConfig | GlobalConfig;
 
 /**
- * Document keys Convex owns, which a field map can neither gate nor strip.
+ * Document keys Convex owns that a field map can NEVER gate or strip —
+ * always readable, regardless of any permission rule. `_id` (Convex's own
+ * document identifier) is the only one; `_slug` (the synthetic global
+ * discriminator `VexDocumentGlobal` adds) is the other.
+ *
+ * `_creationTime` is deliberately NOT here (developer decision, binding,
+ * "access-system-fields") — it is a REAL gateable field-permission key now,
+ * same as `updatedAt`/`vex_status` (on versioned collections). A view/column
+ * CAN hide it; `resolveQueryIndex.ts`'s own hardcoded sort carve-out is the
+ * one place it stays usable regardless (sorting by it never reveals its
+ * stored value, same reasoning Design Decision 26 already established for
+ * every other field).
  */
-type SystemFieldKey = "_id" | "_creationTime" | "_slug";
+type SystemFieldKey = "_id" | "_slug";
 
 /**
  * The gateable field names of a document type — its own keys minus the system
@@ -63,7 +75,7 @@ export type FieldPermissionKey<TData> = [Extract<keyof TData, string>] extends [
  * answers *which fields* rather than *whether*.
  *
  * Only ever a callback's RETURN value, never a value written on an action: a
- * document may legitimately carry fields named `constraints` or `filter`, and
+ * document may legitimately carry fields named `withIndex`, `where`, or `filter`, and
  * in a return position there is nothing to disambiguate against.
  *
  * Values are plain booleans. The map is built inside a callback that already
@@ -98,7 +110,7 @@ export type FieldPermissionMap<TData = unknown> =
 /**
  * The field map a resolved check can return, or `never` when it cannot return
  * one. Reads through both callback positions: the check itself, and the
- * `filter` inside a `{ constraints, filter }` descriptor.
+ * `filter` inside a `{ withIndex, where, filter }` descriptor.
  *
  * `Extract<R, object>` drops the `boolean | undefined` members of the return
  * union, leaving only the map — so a boolean-returning callback yields `never`
@@ -175,7 +187,7 @@ export type PermissionCallbackProps<
  *
  * Only the FUNCTION member returns a {@link FieldPermissionMap}. The static
  * `boolean` member is deliberately not widened, which is what keeps a map off
- * an action itself and out of collision with `constraints`/`filter`. @internal
+ * an action itself and out of collision with `withIndex`/`where`/`filter`. @internal
  */
 type BasePermissionCheck<TData, TUser, TOrg> =
   | boolean
@@ -183,165 +195,147 @@ type BasePermissionCheck<TData, TUser, TOrg> =
       props: PermissionCallbackProps<TData, TUser, TOrg>,
     ) => boolean | undefined | FieldPermissionMap<TData>);
 
-/** A range callback as applied to a Convex query. @internal */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type IndexRangeFn = (q: IndexRangeBuilder<any, any, 0>) => IndexRange;
-
 /**
- * A compiled access filter as applied to a Convex query — the output of
- * `resolveAccessConstraint`.
+ * Permission check shape for {@link ViewAction}s (`readViews`/`createView`/
+ * `updateView`/`deleteView`) — developer-reported: these actions type-accepted
+ * a {@link FieldPermissionMap} return value exactly like `read`/`update` do,
+ * which is meaningless for them. A saved view is a whole row in `vex_views`,
+ * never read/written per-field or per-document-field the way a collection's
+ * own documents are — so neither a field map NOR the narrowing
+ * `{ where, filter, withIndex }` object form ({@link ConstrainedPermissionCheck},
+ * equally document-query-shaped) make sense here. Only a flat `boolean`, or a
+ * callback resolving to one (`undefined` still denies, same as every other
+ * check), is valid — a field map is now a compile error at the action itself.
  *
- * A thunk rather than an `Expression<boolean>` because a filter expression can only
- * be built from the query's OWN `FilterBuilder`, which the resolver never sees: the
- * caller supplies it inside `.filter((q) => …)`. Mirrors {@link IndexRangeFn}, which
- * is deferred for the same reason and uses the same `any` table-info convention.
+ * Developer decision: the callback takes {@link AccessRuleProps} — `user`
+ * (plus `organization` when configured) ONLY, no `data` — a SINGLE props
+ * object shape matching every other permission callback, so a `view`
+ * property (the stored view the action targets) can be added here later
+ * without a breaking change. Per-view access (passing the stored view, plus
+ * an `updatedBy` field) is deferred to the backlog — NOT implemented here.
  *
- * @internal
+ * Runtime counterpart: `hasPermission` fails closed (with a dev warning) if a
+ * view-action rule returns a map anyway (untyped/JS config, or an `as` cast).
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AccessFilterFn = (q: FilterBuilder<any>) => Expression<boolean>;
+export type ViewPermissionCheck<TUser = Record<string, unknown>, TOrg = Record<string, unknown>> =
+  | boolean
+  | ((props: AccessRuleProps<TUser, TOrg>) => boolean | undefined);
 
 /**
- * A concrete index a query will use: the output of `resolveAccessIndex` and,
- * after arbitration, of `pickQueryIndex`. Both stages produce the same shape,
- * so there is one type for both.
- *
- * Distinct from what the user *authors*: a rule declares its index inside
- * `q.withIndex(name, (ix) => …)`, whose range is a function **of the caller**.
- * Resolving one binds the caller in, leaving the plain
- * `(q) => …` builder here and widening `name` to `string` — by resolve time
- * the resource generic is gone. `AccessIndex` is the template; this is that
- * template applied to one caller.
- *
- * `range` is optional because after arbitration the winner may be a *caller's*
- * `withIndex`, and a caller may legitimately name an index with no range purely
- * to order results. `buildQuery` already branches on this
- * (`api/find/server.ts` — `range ? withIndex(name, range) : withIndex(name)`),
- * so an absent range needs no placeholder.
- *
- * An access-sourced index always carries one, guaranteed by
- * {@link AccessQueryBuilder.withIndex} requiring its range callback rather than
- * restated as a second type here — a range-less access index would scan the whole
- * table, since every document has an index entry (fields that are missing are
- * indexed as `undefined`).
- */
-export interface QueryIndex {
-  /** Index name to query. */
-  name: string;
-  /** Range to apply; omitted for an ordering-only caller index. */
-  range?: IndexRangeFn;
-}
-
-/**
- * Props for a rule's `constraints` callback: the caller, optionally the
- * organization, and `q` — the builder the rule records onto. No `data`:
- * constraints run once per query, before any document is read (contrast
+ * The caller context every access-rule callback receives: the user, plus the
+ * organization when `orgCollectionSlug` is configured. No `data` — `withIndex` and
+ * `where` run once per query, before any document is read (contrast
  * {@link PermissionCallbackProps}, which the sibling `filter` property uses).
- *
- * `q`'s TYPE is what gates index pushdown per action (DD 14). A query-shaped
- * action gets an {@link AccessQueryBuilder} — `filter` plus `withIndex`; every
- * other action gets an {@link AccessPredicateBuilder}, the same shape minus
- * `withIndex`, so a rule reads identically either way and `q.withIndex` is simply
- * absent where there is no query to narrow. One property, two builder types, and
- * nothing to discriminate at the object level.
- *
- * @typeParam TData - Document type constraints are typed against.
- * @typeParam TUser - User document shape.
- * @typeParam TOrg - Organization document shape; `never` if not configured.
- * @typeParam TQ - The builder for this action: `AccessQueryBuilder` on query
- *   actions, `AccessPredicateBuilder` on mutations.
  */
-export type ConstraintsCallbackProps<
-  TData = unknown,
-  TUser = Record<string, unknown>,
-  TOrg = Record<string, unknown>,
-  TQ = AccessPredicateBuilder<TData>,
-> = {
+export type AccessRuleProps<TUser = Record<string, unknown>, TOrg = Record<string, unknown>> = {
   user: TUser;
-  q: TQ;
 } & ([TOrg] extends [never] ? unknown : { organization: TOrg });
 
 /**
- * A rule's constraint-recording callback.
- *
- * ONE signature returning `boolean | ConstraintResult`, never a union of two
- * function types: verified against `tsc` that a union of differently-shaped
- * callbacks breaks contextual typing of the destructured `props` — every
- * parameter infers `any` instead of TypeScript picking a member. `boolean` is
- * primitive and `ConstraintResult` is nominal, so discriminating the RESULT at
- * runtime (`typeof result === "boolean"`) stays unambiguous.
- *
- * @typeParam TData - Document type constraints are typed against.
- * @typeParam TUser - User document shape.
- * @typeParam TOrg - Organization document shape; `never` if not configured.
- * @typeParam TQ - The builder for this action.
+ * The callback form of a rule's index half, for a range that depends on the
+ * caller. Returns `{ name, range }` to narrow through an index, `true` to add no
+ * restriction, or `false` to deny.
  */
-export type ConstraintsCallback<
-  TData = unknown,
-  TUser = Record<string, unknown>,
-  TOrg = Record<string, unknown>,
-  TQ = AccessPredicateBuilder<TData>,
-> = (props: ConstraintsCallbackProps<TData, TUser, TOrg, TQ>) => boolean | AccessConditionResult;
+export type AccessWithIndexCallback<
+  TData,
+  TUser,
+  TOrg,
+  TIndexFields extends Record<string, readonly string[]>,
+> = (props: AccessRuleProps<TUser, TOrg>) => boolean | AccessIndexSelection<TData, TIndexFields>;
 
 /**
- * The constraint-builder object form of a permission check — ONE shape for every
- * action.
+ * The index half of a rule: the static `{ name, range }` selection (the same
+ * object `find`'s `withIndex` takes) when the range reads no caller data, or a
+ * {@link AccessWithIndexCallback} when it does.
+ */
+export type AccessWithIndex<
+  TData,
+  TUser,
+  TOrg,
+  TIndexFields extends Record<string, readonly string[]>,
+> = AccessIndexSelection<TData, TIndexFields> | AccessWithIndexCallback<TData, TUser, TOrg, TIndexFields>;
+
+/**
+ * The predicate half of a rule — the same builder `find`'s `where` receives.
+ * Returns a predicate, `true` to add no restriction, or `false` to deny.
+ */
+export type AccessWhereCallback<TData, TUser, TOrg> = (
+  props: AccessRuleProps<TUser, TOrg> & { q: FilterConstraintBuilder<TData> },
+) => boolean | ConstraintResult;
+
+/**
+ * The predicate half of a rule: a plain {@link VexWhereNodeOf} when the
+ * predicate reads no caller data, or an {@link AccessWhereCallback} when it does.
+ */
+export type AccessWhere<TData, TUser, TOrg> = VexWhereNodeOf<TData> | AccessWhereCallback<TData, TUser, TOrg>;
+
+/**
+ * The type of `withIndex` on a non-query action. A sentence rather than `never`,
+ * so declaring `withIndex` on a create/update/delete reports *why* in the editor
+ * ("…is not assignable to type 'withIndex only applies to …'") instead of
+ * "expected undefined". Same pattern as `defineCollection`'s reserved-field-key
+ * message. A config that assigns the string itself still fails: it is not a
+ * `{ name, range }`, so `validateAccessConfig` rejects the rule as unreadable.
+ */
+export type WithIndexOnMutationError =
+  "withIndex only applies to query actions (read): create, update, delete and custom mutation actions authorize one known document, so there is no query to narrow. Use where instead.";
+
+/**
+ * The narrowing object form of a permission check. Its properties map 1:1
+ * onto `find`'s arguments: `withIndex` is the Convex index pushdown (query
+ * actions only), `where` the portable predicate (every action). At least one
+ * is required. `filter` is the optional per-document JS check for what
+ * neither can express (array membership, string operations, cross-table
+ * reads); it augments, never replaces.
  *
- * `constraints` narrows what gets read: compiled to a `withIndex` range when the
- * rule called `q.withIndex(…)`, otherwise to a `.filter()` expression, and in
- * either case interpreted per-document as a JS predicate
- * (`compileConstraints`). `filter` is an OPTIONAL additional per-document check
- * for what constraints cannot express — array membership, string operations,
- * cross-table reads, all outside `FilterBuilder`'s surface, so they stay
- * callbacks permanently.
- *
- * `filter` augments `constraints`; it never replaces it. A rule that declares
- * only `constraints` is already checked per-document too, via
- * `constraintsToPredicate` in `hasPermission`. A bare `filter`-only shape is
- * therefore rejected — a callback with no descriptor cannot narrow a query, so
- * write it as a bare callback instead and accept the full scan knowingly.
- *
- * Index pushdown is opted into INSIDE the callback
- * ({@link AccessQueryBuilder.withIndex}), not by a sibling property. That is
- * what lets `q` bind to one index's real field tuple and check field ORDER at
- * compile time; a sibling property cannot be seen by its neighbour's callback
- * type.
+ * `TIndexFields = never` marks a non-query action: `withIndex` is then
+ * `never`, so declaring it on a create/update/delete is a type error at the
+ * property.
  *
  * @typeParam TData - Document type for the subject.
  * @typeParam TUser - User document shape.
  * @typeParam TOrg - Organization document shape; `never` if not configured.
- * @typeParam TQ - The builder for this action.
+ * @typeParam TIndexFields - The resource's index map on query actions; `never` on mutations.
  */
-export interface ConstrainedPermissionCheck<
+export type ConstrainedPermissionCheck<
   TData = unknown,
   TUser = Record<string, unknown>,
   TOrg = Record<string, unknown>,
-  TQ = AccessPredicateBuilder<TData>,
-> {
-  /** Narrows what gets read. Required — see the type doc. */
-  constraints: ConstraintsCallback<TData, TUser, TOrg, TQ>;
-  /** Optional per-document check augmenting `constraints`. Never a substitute. */
+  TIndexFields extends Record<string, readonly string[]> = never,
+> = ([TIndexFields] extends [never]
+  ? { withIndex?: WithIndexOnMutationError; where: AccessWhere<TData, TUser, TOrg> }
+  :
+      | {
+          withIndex: AccessWithIndex<TData, TUser, TOrg, TIndexFields>;
+          where?: AccessWhere<TData, TUser, TOrg>;
+        }
+      | {
+          withIndex?: AccessWithIndex<TData, TUser, TOrg, TIndexFields>;
+          where: AccessWhere<TData, TUser, TOrg>;
+        }) & {
+  /** Optional per-document check augmenting `withIndex` / `where`. Never a substitute. */
   filter?: BasePermissionCheck<TData, TUser, TOrg>;
-}
+};
 
 /**
  * Every check shape valid on **any** action, query-shaped or not: the plain leaf
- * shapes plus the constraint-builder object form (DD 14).
+ * shapes plus the narrowing object form.
  *
  * This is the tier `RolePermissions` hands a non-query action. The only difference
- * from {@link PermissionCheck} is `q`'s type: a query action's `q` has `withIndex`,
- * this one's does not.
+ * from {@link PermissionCheck} is that `withIndex` is unusable here (typed as
+ * {@link WithIndexOnMutationError}): a create/update/delete has no query to narrow,
+ * so only `where` is available.
  *
  * **Why `ConstrainedPermissionCheck` sits here rather than inside
  * {@link BasePermissionCheck}.** Both are now valid on every action, so folding
  * them looks tempting. It cannot be done: `BasePermissionCheck` is also the type of
  * the `filter` property *inside* both object forms, so folding the composite into
- * it makes `filter` able to hold another whole constrained check —
- * `{ constraints, filter: { constraints, filter: … } }` — an infinite regress the
+ * it makes `filter` able to hold another whole narrowing check —
+ * `{ where, filter: { where, filter: … } }` — an infinite regress the
  * compiler accepts and `hasPermission`'s resolver has no meaning for. `filter` is
- * the per-document escape hatch for what constraints cannot express; a constraints
- * object is not a leaf check. "Base" stays the irreducible shapes — a value or a
- * function — and the composites point at it, never the other way round.
+ * the per-document escape hatch for what `withIndex`/`where` cannot express; a
+ * narrowing object is not a leaf check. "Base" stays the irreducible shapes — a
+ * value or a function — and the composites point at it, never the other way round.
  *
  * @typeParam TData - Document type for the subject.
  * @typeParam TUser - User document shape.
@@ -353,18 +347,16 @@ export type AnyActionPermissionCheck<
   TOrg = Record<string, unknown>,
 > =
   | BasePermissionCheck<TData, TUser, TOrg>
-  | ConstrainedPermissionCheck<TData, TUser, TOrg, AccessPredicateBuilder<TData>>;
+  | ConstrainedPermissionCheck<TData, TUser, TOrg>;
 
 /**
  * A single permission check on a **query-shaped** action: the plain leaf shapes,
- * and the constraint form with `q` upgraded to an {@link AccessQueryBuilder} so
- * `q.withIndex(…)` is available.
+ * and the narrowing object form with `withIndex` available.
  *
- * The ONLY difference from {@link AnyActionPermissionCheck} is `q`'s type. Index
- * pushdown is gated by giving a query action a builder
- * that HAS `withIndex` and a mutation one that does not — so writing
- * `q.withIndex(…)` on a create is a missing-method error at the exact call, rather
- * than a whole-object shape rejection pointing at the wrong line (DD 14).
+ * The ONLY difference from {@link AnyActionPermissionCheck} is that `withIndex` is
+ * present here — on a mutation action `TIndexFields` is `never`, so the property
+ * resolves to `never` and declaring it is a type error at the property, rather
+ * than a whole-object shape rejection pointing at the wrong line.
  *
  * A callback returning `undefined` is treated as deny.
  *
@@ -372,7 +364,7 @@ export type AnyActionPermissionCheck<
  * @typeParam TUser - User document shape.
  * @typeParam TOrg - Organization document shape; `never` if not configured.
  * @typeParam TIndexFields - The resource's index name → field tuple map, which
- *   `q.withIndex` resolves against.
+ *   `withIndex` resolves against.
  */
 export type PermissionCheck<
   TData = unknown,
@@ -381,16 +373,16 @@ export type PermissionCheck<
   TIndexFields extends Record<string, readonly string[]> = Record<string, readonly string[]>,
 > =
   | BasePermissionCheck<TData, TUser, TOrg>
-  | ConstrainedPermissionCheck<TData, TUser, TOrg, AccessQueryBuilder<TData, TIndexFields>>;
+  | ConstrainedPermissionCheck<TData, TUser, TOrg, TIndexFields>;
 
 /**
  * One entry in the subject registry: the action union, the data shape passed
- * to callbacks, and the index registry `q.withIndex` resolves against.
+ * to callbacks, and the index registry `withIndex` resolves against.
  */
 export interface SubjectEntry {
   /** Union of actions this subject supports. */
   action: string;
-  /** Actions on this subject whose `q` carries `withIndex`. `never` when none do. */
+  /** Actions on this subject whose check carries a `withIndex` property. `never` when none do. */
   queryAction: string;
   /** Document/context type; `never` for subjects without data. */
   data: unknown;
@@ -399,11 +391,12 @@ export interface SubjectEntry {
   /**
    * The resource's declared indexes as name → field tuple, in declaration order.
    * `{}` for subjects with no table to index (custom resources, admin subjects),
-   * which makes `q.withIndex` uncallable there rather than absent.
+   * which makes `withIndex` resolve to `never` there rather than absent.
    *
    * Carries TUPLES, not just the names in `indexes`, because
-   * {@link AccessQueryBuilder.withIndex} binds `q` to one index's real field order
-   * — that is what makes positional constraint typing reachable.
+   * {@link AccessIndexSelection} discriminates `name` to bind `range` to one
+   * index's real field order — that is what makes positional constraint typing
+   * reachable.
    */
   indexFields: Record<string, readonly string[]>;
 }
@@ -442,7 +435,7 @@ type InferDocType<T> = T extends { slug: infer S extends string }
 export type AccessDocFor<S extends string> = DeclaredDoc<InferDocTypeFromSlug<S>>;
 
 /**
- * Resource `S`'s index name → field tuple map, which `q.withIndex` resolves against.
+ * Resource `S`'s index name → field tuple map, which `withIndex` resolves against.
  *
  * @typeParam S - Resource slug.
  */
@@ -503,7 +496,7 @@ export type AccessIndexedFieldFor<S extends string> = {
  * The index on `S` whose leading field is `F`.
  *
  * Lets a helper's runtime index lookup be typed as the index name it resolves to,
- * rather than a bare `string` that `q.withIndex` refuses.
+ * rather than a bare `string` that `withIndex` refuses.
  *
  * @typeParam S - Resource slug.
  * @typeParam F - A field that leads an index on `S`.
@@ -560,7 +553,7 @@ export type AccessIndexedFieldWithValue<S extends string, V> = {
  * @typeParam S - Resource slug.
  */
 export type AccessResourceRef<S extends string> = {
-  readonly fields: Readonly<Record<string, { readonly index?: string; readonly type?: string }>>;
+  readonly fields: Readonly<Record<string, { readonly index?: string | { readonly name: string }; readonly type?: string }>>;
   readonly slug: S;
 };
 
@@ -571,8 +564,8 @@ export type AccessResourceRef<S extends string> = {
  * `vex generate` emits the slugs `defineAccess` was configured with
  * ({@link AuthSlugs}), so the project's user and organization documents resolve from
  * the registry — nothing needs passing in, and a project's helpers need no local
- * type aliases at all. `AccessMutationCheck` is the non-query counterpart: its `q`
- * is an {@link AccessPredicateBuilder}, no `withIndex`, because a single-document
+ * type aliases at all. `AccessMutationCheck` is the non-query counterpart: its
+ * `withIndex` is unusable ({@link WithIndexOnMutationError}), because a single-document
  * authorization has no range to narrow (DD 14).
  *
  * @typeParam S - Resource slug.
@@ -605,7 +598,7 @@ type ExtractIndexNames<T> = T extends { slug: infer S extends string } ? IndexNa
 
 /**
  * The declared-index field-tuple map for a resource config's slug — the shape
- * {@link AccessQueryBuilder.withIndex} resolves against. `{}` pre-generation, so
+ * {@link AccessIndexSelection} resolves against. `{}` pre-generation, so
  * `withIndex` accepts nothing rather than accepting anything. @internal
  */
 type ExtractIndexFields<T> = T extends { slug: infer S extends string }
@@ -637,6 +630,9 @@ type HasDrafts<T> = T extends { versions?: { drafts?: infer D extends boolean } 
     ? true
     : false
   : false;
+
+/** True when a resource config resolves an `admin.view` (every collection always does; globals never do) — collections only. @internal */
+type HasListView<T> = T extends { admin: { view: unknown } } ? true : false;
 
 /**
  * Subject entry synthesized for the user/organization collections.
@@ -705,6 +701,7 @@ export type SubjectMap<
     action:
       | CrudAction
       | (HasDrafts<R> extends true ? DraftAction : never)
+      | (HasListView<R> extends true ? ViewAction : never)
       | CustomActionsFor<ExtractSlug<R>, TCustomActions>["query"]
       | CustomActionsFor<ExtractSlug<R>, TCustomActions>["mutation"];
     queryAction: QueryAction | CustomActionsFor<ExtractSlug<R>, TCustomActions>["query"];
@@ -797,14 +794,14 @@ export type CustomResourceInput = {
  * ({@link WILDCARD_KEY}).
  *
  * **Only `withIndex` is gated on {@link QueryAction}** (DD 14). A query-shaped
- * action gets the full {@link PermissionCheck}, whose `q` carries `withIndex` —
- * there is a query to narrow.
+ * action gets the full {@link PermissionCheck}, whose object form carries
+ * `withIndex` — there is a query to narrow.
  * Every other action gets the plain shapes plus
  * {@link ConstrainedPermissionCheck}: a create/update/delete has no query to
- * narrow, but its constraints are still meaningful, interpreted per-document via
- * `constraintsToPredicate`. Restricting the object form to query actions is what
+ * narrow, but its `where` is still meaningful, interpreted per-document via
+ * `queryFilterTreeToPredicate`. Restricting the object form to query actions is what
  * used to force a read+update pair to express one predicate twice — once as a
- * constraint, once as a hand-written callback — which is the dual-expression
+ * `where`, once as a hand-written callback — which is the dual-expression
  * footgun this design removes.
  *
  * The action-level wildcard stays plain: it spans actions of mixed shape, so a
@@ -835,13 +832,15 @@ export type RolePermissions<
         // this same template) means only genuinely custom action names reach the
         // `queryAction` branch - and those exist only when `customActions` was
         // declared, at which point the parameter has a candidate and resolves.
-        [A in TSubjects[S]["action"]]?: A extends QueryAction
-          ? PermissionCheck<TSubjects[S]["data"], TUser, TOrg, TSubjects[S]["indexFields"]>
-          : A extends Exclude<CrudAction | DraftAction, QueryAction> | typeof WILDCARD_KEY
-            ? AnyActionPermissionCheck<TSubjects[S]["data"], TUser, TOrg>
-            : A extends TSubjects[S]["queryAction"]
-              ? PermissionCheck<TSubjects[S]["data"], TUser, TOrg, TSubjects[S]["indexFields"]>
-              : AnyActionPermissionCheck<TSubjects[S]["data"], TUser, TOrg>;
+        [A in TSubjects[S]["action"]]?: A extends ViewAction
+          ? ViewPermissionCheck<TUser, TOrg>
+          : A extends QueryAction
+            ? PermissionCheck<TSubjects[S]["data"], TUser, TOrg, TSubjects[S]["indexFields"]>
+            : A extends Exclude<CrudAction | DraftAction, QueryAction> | typeof WILDCARD_KEY
+              ? AnyActionPermissionCheck<TSubjects[S]["data"], TUser, TOrg>
+              : A extends TSubjects[S]["queryAction"]
+                ? PermissionCheck<TSubjects[S]["data"], TUser, TOrg, TSubjects[S]["indexFields"]>
+                : AnyActionPermissionCheck<TSubjects[S]["data"], TUser, TOrg>;
       } & {
         [W in typeof WILDCARD_KEY]?: AnyActionPermissionCheck<TSubjects[S]["data"], TUser, TOrg>;
       });
@@ -999,9 +998,34 @@ export interface VexAccessConfigInput<
   /**
    * Slug of the organization collection. When present, `organization` is
    * available (typed via the registry) in every permission callback; when
-   * omitted, callbacks have no `organization` key.
+   * omitted, callbacks have no `organization` key. Declaring this alone does
+   * NOT scope saved views (or anything else) to the caller's own
+   * organization — it only says WHERE organization data lives, for a
+   * project's own permission callbacks to read. Set {@link organizations}
+   * to actually enforce organization-scoped behavior.
    */
   orgCollectionSlug?: TOrgSlug;
+
+  /**
+   * Default: `false`. Whether organizations are an ENFORCED tenancy
+   * boundary in this project, not just available data — developer-approved,
+   * binding (the pre-existing behavior keyed `orgCollectionSlug` alone into
+   * view scoping, which silently broke a project that only declared
+   * `orgCollectionSlug` for its own callbacks' benefit, with no org data
+   * ever seeded). Currently drives ONE thing: whether saved (`vex_views`)
+   * shared views are scoped to the caller's own organization at all
+   * (`listViews`/`loadSharedSavedListViewWheres`/`saveView`/`removeView`, server, and
+   * `useCanAccessSharedSavedListViews`, client — all resolve this through the SAME
+   * shared predicate, `isViewOrganizationScopingEnabled`, so none of them
+   * can disagree). Requires {@link orgCollectionSlug} to be set too — this
+   * flag has no effect without it.
+   *
+   * When `false` (the default): shared-view CRUD is exactly the
+   * pre-organization-scoping behavior — any caller with the relevant
+   * `VIEW_ACTIONS` permission can create, read, update, and delete ANY
+   * shared view, including an org-less one, regardless of `organization`.
+   */
+  organizations?: boolean;
 
   /**
    * Permission matrix: role → subject → check. See {@link RolePermissions}
@@ -1103,6 +1127,9 @@ export interface VexAccessConfig<
 
   /** Slug of the organization collection, when configured. */
   orgCollectionSlug?: TOrgSlug;
+
+  /** Default: `false`. Whether organizations are an enforced tenancy boundary — see `VexAccessConfigInput.organizations`. */
+  organizations: boolean;
 
   /**
    * The permission matrix as authored (checks may be booleans, field-mode

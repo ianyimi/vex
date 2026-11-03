@@ -1,5 +1,6 @@
 import { api } from "@convex/_generated/api";
 import {
+  canAccessAdminPanel,
   LIVE_PREVIEW_COOKIE,
   LIVE_PREVIEW_COOKIE_MAX_AGE_SECONDS,
   LIVE_PREVIEW_QUERY_PARAM,
@@ -9,6 +10,7 @@ import { fetchQuery } from "convex/nextjs";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { AUTH_COOKIE_PREFIX } from "~/db/constants";
+import vexConfig from "~/vex.config";
 
 /**
  * Both names Better Auth may give this app's session cookie: `__Secure-` over
@@ -34,7 +36,10 @@ const SESSION_COOKIES = {
  * The admin panel is not defended by this gate alone: every collection query
  * runs the RBAC rules from `vex.config.ts`, and unauthenticated callers
  * resolve through `anonRole`. The proxy is defence in depth and a redirect
- * convenience, not the access control.
+ * convenience, not the access control — `guardAdminRequest` (below) now acts on
+ * that directly: when `anonRole` itself grants `adminPanel.access`, this gate
+ * skips its own session check entirely for `/admin/*` (Polish — anonymous admin
+ * access).
  *
  * Fails **closed**: if the session cannot be verified — no cookie, no matching
  * session, or the Convex lookup throwing — the request is redirected rather than
@@ -61,8 +66,25 @@ export async function proxy(request: NextRequest) {
   return grantPreviewIfRequested(request);
 }
 
-/** Session gate for the admin panel — fails closed, per the docstring above. */
+/**
+ * Session gate for the admin panel — fails closed, per the docstring above.
+ *
+ * Checks `canAccessAdminPanel({ access: config.access, user: null })` FIRST (Polish —
+ * anonymous admin access, developer-approved): a pure, synchronous, no-I/O check — it
+ * never throws (the `adminPanel.access` subject carries no document, evaluated with
+ * `scope: "any"`). When an app's `access.ts` grants `adminPanel.access` to its
+ * `anonRole`, this is `true` regardless of session state, and the request proceeds
+ * WITHOUT the session-verification Convex round trip below — matching this gate's own
+ * documented philosophy ("defence in depth... not the access control"; Convex's
+ * per-query RBAC, keyed off `anonRole` identically, is the real boundary either way).
+ * An app that has not configured `anonRole`/`adminPanel.access` (the default) gets
+ * `false` here — byte-identical fall-through to the pre-existing session gate below.
+ */
 async function guardAdminRequest(request: NextRequest) {
+  if (canAccessAdminPanel({ access: vexConfig.access, user: null })) {
+    return NextResponse.next();
+  }
+
   const sessionStatus = await resolveSessionStatus(request);
 
   if (sessionStatus === "verification-failed") {

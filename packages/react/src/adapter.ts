@@ -3,47 +3,71 @@ import {
   CollectionFieldMeta,
   defineFrameworkAdapter,
   type ComponentHKT,
+  type CommitTsField,
+  type FilterInputProps,
   type FrameworkAdapterInput,
+  type VexResourceSlug,
 } from "@vexcms/core";
 import type { ComponentType } from "react";
 
 import {
-  TextFieldInput,
+  TextFieldAdmin,
   TextFieldCell,
-  EmailFieldInput,
+  TextFieldDisplay,
+  TextFilterInput,
+  EmailFieldAdmin,
   EmailFieldCell,
-  TextareaFieldInput,
+  EmailFilterInput,
+  TextareaFieldAdmin,
   TextareaFieldCell,
+  TextareaFieldDisplay,
+  TextareaFilterInput,
   NumberFieldCell,
-  NumberFieldInput,
-  CheckboxFieldInput,
+  NumberFieldAdmin,
+  NumberFilterInput,
+  CheckboxFieldAdmin,
   CheckboxFieldCell,
-  SelectFieldInput,
+  CheckboxFilterInput,
+  SelectFieldAdmin,
   SelectFieldCell,
-  UrlFieldInput,
+  SelectFilterInput,
+  UrlFieldAdmin,
   UrlFieldCell,
-  ColorFieldInput,
+  UrlFilterInput,
+  ColorFieldAdmin,
   ColorFieldCell,
-  CollectionEditView,
-  CollectionListView,
-  DashboardView,
-  RelationshipFieldInput,
+  ColorFilterInput,
+  RelationshipFieldAdmin,
   RelationshipFieldCell,
+  RelationshipFieldDisplay,
+  RelationshipFilterInput,
   DateFieldCell,
-  DateFieldInput,
+  DateFieldAdmin,
+  DateFilterInput,
+  CommitTsFieldCell,
+  CommitTsFieldAdmin,
   ArrayFieldCell,
-  ArrayFieldInput,
+  ArrayFieldAdmin,
+  ArrayFieldDisplay,
   GroupFieldCell,
-  GroupFieldInput,
-  BlocksFieldInput,
+  GroupFieldAdmin,
+  GroupFieldDisplay,
+  BlocksFieldAdmin,
   BlocksFieldCell,
-  UploadFieldInput,
+  BlocksFieldDisplay,
+  UploadFieldAdmin,
   UploadFieldCell,
-  RichTextFieldInput,
+  UploadFieldDisplay,
+  UploadFilterInput,
+  RichTextFieldAdmin,
   RichTextFieldCell,
-  JsonFieldInput,
+  RichTextFieldDisplay,
+  JsonFieldAdmin,
   JsonFieldCell,
-} from "./components";
+  JsonFieldDisplay,
+} from "./fields";
+import { CollectionEditView, CollectionListView } from "./collections";
+import { DashboardView } from "./admin";
 
 /**
  * HKT for React — maps any props type to `ComponentType<P>`.
@@ -70,7 +94,7 @@ export interface ReactHKT extends ComponentHKT {
  * here until a component is added for it.
  *
  * Built lazily behind a `Proxy`, not as a plain `const`: `./fields/registry.ts`
- * (via `slots/resolveFieldInputComponent.tsx` → `form/RenderFields.tsx` →
+ * (via `slots/resolveFieldComponent.tsx` → `fields/RenderFields.tsx` →
  * `form/FormGroup.tsx`/`form/FormBlocks.tsx`, step 11) is reachable from this
  * module's own `"./components"` import — a genuine circular dependency. A
  * plain `const` assignment leaves `reactAdapter` captured as `undefined` by
@@ -91,68 +115,108 @@ function buildReactAdapter(): FrameworkAdapterInput<ReactHKT> {
     version: "0.1.0-alpha.1",
     fields: {
       [ADMIN_FIELDS.text.type]: {
-        input: TextFieldInput,
+        field: TextFieldAdmin,
         cell: TextFieldCell,
+        display: TextFieldDisplay,
+        filterInput: TextFilterInput,
       },
       [ADMIN_FIELDS.email.type]: {
-        input: EmailFieldInput,
+        field: EmailFieldAdmin,
         cell: EmailFieldCell,
+        filterInput: EmailFilterInput,
       },
       [ADMIN_FIELDS.textarea.type]: {
-        input: TextareaFieldInput,
+        field: TextareaFieldAdmin,
         cell: TextareaFieldCell,
+        display: TextareaFieldDisplay,
+        filterInput: TextareaFilterInput,
       },
       [ADMIN_FIELDS.number.type]: {
-        input: NumberFieldInput,
+        field: NumberFieldAdmin,
         cell: NumberFieldCell,
+        filterInput: NumberFilterInput,
       },
       [ADMIN_FIELDS.checkbox.type]: {
-        input: CheckboxFieldInput,
+        field: CheckboxFieldAdmin,
         cell: CheckboxFieldCell,
+        filterInput: CheckboxFilterInput,
       },
       [ADMIN_FIELDS.date.type]: {
-        input: DateFieldInput,
+        field: DateFieldAdmin,
         cell: DateFieldCell,
+        filterInput: DateFilterInput,
+      },
+      [ADMIN_FIELDS.commitTs.type]: {
+        field: CommitTsFieldAdmin,
+        cell: CommitTsFieldCell,
+        // Decision 12 (polish): reuses the shared date `DateTimePicker` filter
+        // control directly — identical ms-value behavior, no commitTs-specific
+        // body to maintain (`commitTs/FilterInput.tsx` deleted). Cast needed:
+        // `DateFilterInput` is typed to `FilterInputProps<DateField>` (never
+        // reads `props.field`, only `value`/`onChange`/`disabled`), so it is
+        // runtime-safe for any ms-value field but not structurally assignable
+        // to the `CommitTsField`-narrowed slot the adapter's HKT expects here.
+        // `VexResourceSlug` (not a literal `string`) as the generic arg: an
+        // app's generated types narrow `VexResourceSlug` itself to a union of
+        // its own real collection/global slugs, so `string` stops satisfying
+        // `CommitTsField`'s `TCollectionSlug extends VexResourceSlug`
+        // constraint under that augmentation — `VexResourceSlug` always
+        // satisfies itself, in every app, augmented or not.
+        filterInput: DateFilterInput as unknown as ComponentType<
+          FilterInputProps<CommitTsField<VexResourceSlug, CollectionFieldMeta>>
+        >,
       },
       [ADMIN_FIELDS.select.type]: {
-        input: SelectFieldInput,
+        field: SelectFieldAdmin,
         cell: SelectFieldCell,
+        filterInput: SelectFilterInput,
       },
       [ADMIN_FIELDS.url.type]: {
-        input: UrlFieldInput,
+        field: UrlFieldAdmin,
         cell: UrlFieldCell,
+        filterInput: UrlFilterInput,
       },
       [ADMIN_FIELDS.color.type]: {
-        input: ColorFieldInput,
+        field: ColorFieldAdmin,
         cell: ColorFieldCell,
+        filterInput: ColorFilterInput,
       },
       [ADMIN_FIELDS.relationship.type]: {
-        input: RelationshipFieldInput,
+        field: RelationshipFieldAdmin,
         cell: RelationshipFieldCell,
+        display: RelationshipFieldDisplay,
+        filterInput: RelationshipFilterInput,
       },
       [ADMIN_FIELDS.array.type]: {
-        input: ArrayFieldInput,
+        field: ArrayFieldAdmin,
         cell: ArrayFieldCell,
+        display: ArrayFieldDisplay,
       },
       [ADMIN_FIELDS.group.type]: {
-        input: GroupFieldInput,
+        field: GroupFieldAdmin,
         cell: GroupFieldCell,
+        display: GroupFieldDisplay,
       },
       [ADMIN_FIELDS.blocks.type]: {
-        input: BlocksFieldInput,
+        field: BlocksFieldAdmin,
         cell: BlocksFieldCell,
+        display: BlocksFieldDisplay,
       },
       [ADMIN_FIELDS.upload.type]: {
-        input: UploadFieldInput,
+        field: UploadFieldAdmin,
         cell: UploadFieldCell,
+        display: UploadFieldDisplay,
+        filterInput: UploadFilterInput,
       },
       [ADMIN_FIELDS.richtext.type]: {
-        input: RichTextFieldInput,
+        field: RichTextFieldAdmin,
         cell: RichTextFieldCell,
+        display: RichTextFieldDisplay,
       },
       [ADMIN_FIELDS.json.type]: {
-        input: JsonFieldInput,
+        field: JsonFieldAdmin,
         cell: JsonFieldCell,
+        display: JsonFieldDisplay,
       },
     },
     views: {

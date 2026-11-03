@@ -12,7 +12,7 @@ applies_to: ["packages/react/src/components/ui/data-table/**", "packages/react/s
   add a columnDef factory — the visual layer changes, the derivation stays.
 - Row selection/bulk actions: `enableRowSelection` / `enableBulkActions` props insert the
   checkbox column and wire `rowSelection` state + `onBulkDelete` (confirmed via
-  DeleteManyModal). Selection state lives in `useTableSelection`
+  DataTableBulkDeleteModal). Selection state lives in `useTableSelection`
   (`packages/react/src/hooks/useTableSelection.ts:63`).
 - Pagination is cursor-based load-more: `isDone`, `onLoadMore`, `isLoadingMore`,
   `totalCount` props on DataTable; `usePaginatedQuery` owns the cursor.

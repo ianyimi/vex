@@ -2,8 +2,8 @@ import { convexTest } from "convex-test";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { describe, expect, it } from "vitest";
 
-import * as _generatedApi from "../api/test/convex/_generated/api";
-import schema from "../api/test/convex/schema";
+import * as _generatedApi from "../db/test/convex/_generated/api";
+import schema from "../db/test/convex/schema";
 import { createVersion, findDraftRow, getLatestVersion, getVersion, listVersions } from "./model";
 
 /** Explicit modules map for convex-test (replaces import.meta.glob which requires Vite). */

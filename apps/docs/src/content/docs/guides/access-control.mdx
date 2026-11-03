@@ -14,8 +14,8 @@ available (advisory) on the client for UI gating.
 - `resources` lists the collections/globals contributing **subjects** to the matrix; each
   gets the CRUD actions (`create`, `read`, `update`, `delete`) automatically, plus draft
   actions when the resource declares `versions.drafts: true`.
-- `permissions` is `role → subject → check`. A check is `{ constraints, filter? }` (the
-  recommended default — see below), a plain callback, or a static `boolean`.
+- `permissions` is `role → subject → check`. A check is `{ withIndex?, where?, filter? }`
+  (the recommended default — see below), a plain callback, or a static `boolean`.
 - **Deny-by-default, with no config knob.** An undeclared role/subject/action combination
   always resolves to deny — there is no `defaultPermissionMode` input. An allow-everything
   posture is written explicitly as a role-level wildcard: `admin: { "*": true }`.
@@ -70,63 +70,108 @@ export default defineConfig({
 
 Three forms, in the order you should reach for them.
 
-### 1. `{ constraints, filter? }` — reach for this first
+### 1. `withIndex` / `where` — reach for this first
 
-Whenever a rule can be expressed as field comparisons, write it as `constraints`. The
-comparison rides directly into the Convex query the [Local API](/guides/local-api/) issues
-instead of pulling every row into JS and discarding what fails a check: on `read`/
-`readDrafts` it compiles to `.withIndex(...)` when the field is indexed, or `.filter(...)`
-on the query when it isn't; on `create`/`update`/`delete` — which authorize one document,
-not a range — it compiles to a per-document predicate. Either way the narrowing happens
+Whenever a rule can be expressed as field comparisons, write it as `withIndex` and/or
+`where`. The comparison rides directly into the Convex query the [Local API](/guides/local-api/)
+issues instead of pulling every row into JS and discarding what fails a check: on `read`/
+`readDrafts`, `withIndex` narrows through a declared index (Convex-specific, query actions
+only) — the same `{ name, range }` object `find` takes, or a function of the caller
+returning one — and `where` is the portable predicate, the same one `find` and `search`
+take; on `create`/`update`/`delete` — which authorize one document, not a range — only
+`where` applies, compiled to a per-document predicate. Either way the narrowing happens
 inside the database query the Local API runs, not as a second pass over already-fetched
-documents.
+documents. `filter` remains the per-document escape hatch for checks neither can express.
+Any combination works; `withIndex` alone (with a compound index if the rule spans two
+fields) and `withIndex` + `filter` are the usual shapes. Each property may return `true`
+(no restriction from this half) or `false` (deny); the static forms always narrow.
 
-Read, pushed through a declared index — `q` is positional and checks field order against
-the index at compile time:
-
-```ts
-posts: {
-  read: {
-    constraints: ({ user, q }) =>
-      q.withIndex("by_authorId", (ix) => ix.eq("authorId", user._id)),
-  },
-}
-```
-
-Read, unindexed — still compiles into the query's own `.filter()`, not a JS scan-and-discard:
+Read, pushed through a declared index — `ix` checks field order against the index at
+compile time:
 
 ```ts
 posts: {
   read: {
-    constraints: ({ q }) => q.filter((f) => f.eq("visibility", "public")),
+    withIndex: ({ user }) => ({ name: "by_authorId", range: (ix) => ix.eq("authorId", user._id) }),
   },
 }
 ```
 
-Mutations get the same `constraints` shape, minus `withIndex` — there's no query to narrow
-for a single document, so the callback's `q` exposes only `.filter()`:
+Read, pushed through a declared index with no caller-dependent range — the static object
+form:
+
+```ts
+posts: {
+  read: {
+    withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") },
+  },
+}
+```
+
+Read, where no index range can express the rule — an `or` across two fields is not one
+range, so it is a `where`. It still compiles into the query's own `.filter()`, not a JS
+scan-and-discard:
+
+```ts
+posts: {
+  read: {
+    where: ({ user, q }) => q.or(q.eq("visibility", "public"), q.eq("authorId", user._id)),
+  },
+}
+```
+
+Both together — `withIndex` narrows to the caller's rows, then `where` applies what the
+range can't (a `neq` is never an index range):
+
+```ts
+posts: {
+  read: {
+    withIndex: ({ user }) => ({ name: "by_authorId", range: (ix) => ix.eq("authorId", user._id) }),
+    where: ({ q }) => q.neq("status", "archived"),
+  },
+}
+```
+
+Mutations get the same `where` shape — there's no query to narrow for a single document, so
+only a per-document predicate applies:
 
 ```ts
 posts: {
   update: {
-    constraints: ({ user, q }) => q.filter((f) => f.eq("authorId", user._id)),
+    where: ({ user, q }) => q.eq("authorId", user._id),
   },
   delete: {
-    constraints: ({ user, q }) => q.filter((f) => f.eq("authorId", user._id)),
+    where: ({ user, q }) => q.eq("authorId", user._id),
+  },
+}
+```
+
+`where` additionally accepts a plain, JSON-serialisable node — the same filter as plain
+data, for a rule that needs to be loaded from config rather than written as a callback:
+
+```ts
+posts: {
+  read: {
+    where: {
+      or: [
+        { field: "visibility", op: "eq", value: "public" },
+        { field: "featured", op: "eq", value: true },
+      ],
+    },
   },
 }
 ```
 
 The outer object's `filter` property is a **separate, optional** per-document JS callback
-that augments `constraints` for whatever field comparisons can't express — quoting the
+that augments `withIndex`/`where` for whatever field comparisons can't express — quoting the
 type's own doc comment: "array membership, string operations, cross-table reads, all
 outside `FilterBuilder`'s surface, so they stay callbacks permanently." `filter` never
-substitutes for `constraints`; it only adds to it:
+substitutes for `withIndex`/`where`; it only adds to it:
 
 ```ts
 posts: {
   read: {
-    constraints: ({ q }) => q.filter((f) => f.gt("viewCount", 1000)),
+    withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") },
     filter: ({ data }) => data.tags.includes("featured"),
   },
 }
@@ -135,10 +180,10 @@ posts: {
 ### 2. A plain callback — the escape hatch
 
 Reach for a bare callback only when the rule genuinely can't be expressed as field
-comparisons — the cases `constraints`/`filter` can't reach, or a rule that needs to inspect
-`organization` or run arbitrary logic. `data` is the concrete document when the caller
-supplies one (edit views), or omitted for a quantified check (nav/list gating), in which
-case `scope` decides how to answer:
+comparisons — the cases `withIndex`/`where`/`filter` can't reach, or a rule that needs to
+inspect `organization` or run arbitrary logic. `data` is the concrete document when the
+caller supplies one (edit views), or omitted for a quantified check (nav/list gating), in
+which case `scope` decides how to answer:
 
 ```ts
 posts: {
@@ -164,7 +209,7 @@ permissions: {
 ## Field-level permissions
 
 Every check shape above resolves a whole document — a role can read or write `posts`, full
-stop. A filter callback (form 2 above, or the `filter` beside `constraints` in form 3) can
+stop. A filter callback (form 2 above, or the `filter` beside `withIndex`/`where` in form 1) can
 answer with a **field map** instead of a boolean, restricting the check to specific fields
 without any new config surface. `apps/www` uses exactly this to let an anonymous demo caller
 see most of a global's fields but change only one of them:
@@ -186,14 +231,44 @@ entirely. `update`'s map permits only `adminTheme`, so `name` and `description` 
 visible (they're readable) but not editable. Nothing else changed — no `fields` sibling on
 the resource entry, no second wiring point, no new `defineAccess` option.
 
+### System and UI fields are gateable too
+
+A field map's keys aren't limited to the fields you declared in `fields: {}`. Three real
+system field names are valid map keys on any collection, typed per collection: `_creationTime`
+(always present), `updatedAt` (present unless the collection sets `timestamps: false`), and
+`vex_status` (only on a collection with `versions.drafts: true`). `ui()`-type fields (a
+client-computed value with no stored column, e.g. a `wordCount` admin-only display) are
+gateable the same way, by their own key.
+
+**`_id` is the one exception — it is never a valid map key, and is always readable.** Every
+document needs a stable identity for links, row keys, and relationship targets regardless of
+role; there is no scenario where hiding it is useful.
+
+Every one of these follows the SAME "hidden unless listed" rule a declared data field already
+does: a partial map that doesn't name `updatedAt`/`vex_status`/a `ui()` field hides it, exactly
+like an unnamed data field. The wildcard key (`"*"`) covers them too — `{ "*": true }` shows
+everything, system and UI fields included.
+
+```ts
+posts: {
+  "*": false,
+  read: () => ({ title: true, slug: true, updatedAt: true }), // vex_status stays hidden
+},
+```
+
+**One carve-out:** sorting by `_creationTime` is always allowed, even for a role whose map
+hides its own value — a list view's default sort has to work regardless of whether the
+timestamp itself is ever shown in a column.
+
 ### Why a map is only ever a callback's return value
 
 A field map is never written directly on an action — only returned from a callback, whether
-that callback is the bare form 2 spelling or `filter` beside `constraints` in form 3. That is
-what keeps it unambiguous: a document is free to declare fields named `constraints` or
-`filter`, because a value assigned directly to an action is always a check descriptor and a
-value a callback *returns* is always a field map. It is also why a map's values are plain
-booleans rather than nested checks — the callback already has `{ user, data, organization }`
+that callback is the bare form 2 spelling or `filter` beside `withIndex`/`where` in form 1.
+That is what keeps it unambiguous: a document is free to declare fields named `withIndex`,
+`where`, or `filter`, because a value assigned directly to an action is always a check
+descriptor and a value a callback *returns* is always a field map. It is also why a map's
+values are plain booleans rather than nested checks — the callback already has
+`{ user, data, organization }`
 in scope, so per-field logic is an ordinary boolean expression evaluated once, not a second
 permission system:
 
@@ -358,6 +433,20 @@ and the admin-panel bundle — the same boundary `hasPermission()` already has. 
 Convex function that calls `ctx.db` directly bypasses this the same way it already bypasses
 `hasPermission()`.
 
+### Declared view filters are exempt from the field-read check
+
+A list view's own `where` — declared on `admin.view`/`admin.views` in config, or saved on an
+active, unmodified shared view — still applies server-side even when it names a field the
+current caller can't read (the same treatment `vex_status`'s draft/publish filtering already
+gets). The caller never sees the field's value (no column, filter chip, or peek row for it);
+the view instead shows its "N hidden filter(s)" lock badge. The moment a caller edits a shared
+view's own filter it becomes theirs — fully subject to the read check from then on, like any
+other user-supplied condition.
+
+A user-added filter condition (typed into the filter builder, or carried in a URL/local-view
+link) on a field the caller can't read is dropped before the query reaches the server, with a
+small dismissible notice naming the field.
+
 ### Public API surface
 
 Everything above is built from a small set of exports:
@@ -368,7 +457,9 @@ Everything above is built from a small set of exports:
   before returning it — what `find`/`get`/`search`/`globals.get`/`globals.find` use
   server-side). `VexAccessError` gained an optional `field`, present only on a field-scoped
   denial.
-- **`@vexcms/react`** — `useFieldPermissions` and `useVisibleFields`, both described above.
+- **`@vexcms/react`** — `useFieldPermissions` and `useVisibleFields`, both described above,
+  plus `useCanReadField({ resource })` — checks readability for a system (`_creationTime`/
+  `updatedAt`/`vex_status`) or `ui()`-type field by key, the same way for any field type.
 
 ### What's deferred
 
@@ -400,21 +491,50 @@ export const access = defineAccess({
 ```
 
 `anonRole` only applies when the caller's resolved roles are genuinely empty — an
-authenticated user with a declared role always keeps their own role. A route guard that
-checks admin-panel access, rather than redirecting an anonymous visitor away outright, is
-what makes this work end to end:
+authenticated user with a declared role always keeps their own role. Two gates have to
+agree to let an anonymous visitor through, if your framework adapter puts a session gate
+in front of the route at all (Next.js middleware does): the route itself, and whatever
+runs before it reaches the route.
+
+**The route** checks `canAccessAdminPanel` BEFORE redirecting on a missing session —
+never unconditionally:
 
 ```ts
 import { canAccessAdminPanel } from "@vexcms/core";
 import { redirect } from "next/navigation";
 
-// Inside your admin route, after resolving `auth` server-side. `auth.user` may be
-// `null` here — an anonymous visitor is a valid caller; `anonRole` supplies the
-// fallback role instead of the route redirecting them out.
+// `getToken()`/`getUserOrg()` resolved first, as usual. `auth.user` may be `null` here —
+// an anonymous visitor is a valid caller; `anonRole` supplies the fallback role instead
+// of this redirecting them out purely for having no session.
 if (!canAccessAdminPanel({ access: config.access, user: auth.user, organization: auth.organization })) {
-  redirect("/unauthorized");
+  // Only redirect to sign-in when there was genuinely no token — a signed-in caller
+  // whose own role still fails the check goes to /unauthorized instead.
+  redirect(token ? "/unauthorized" : "/auth/sign-in?redirectTo=/admin");
 }
 ```
+
+**Middleware** (Next.js `proxy.ts`/`middleware.ts`), if your app gates `/admin` at that
+layer, needs the SAME check — a session gate there runs before the route ever executes,
+so fixing only the route still bounces an anonymous visitor before they reach it:
+
+```ts
+import { canAccessAdminPanel } from "@vexcms/core";
+import vexConfig from "~/vex.config";
+
+async function guardAdminRequest(request: NextRequest) {
+  // Pure, synchronous, no I/O — never throws. Skips the session-verification round trip
+  // entirely when `anonRole` already grants `adminPanel.access`.
+  if (canAccessAdminPanel({ access: vexConfig.access, user: null })) {
+    return NextResponse.next();
+  }
+  // ...your existing session check, unchanged for every app that hasn't opted in.
+}
+```
+
+Both checks are pure config decisions: an app that never sets `anonRole` (or sets it
+without granting `adminPanel.access`) gets byte-identical behavior to before — neither
+gate's fast path ever fires, and every unauthenticated request still redirects to sign-in
+exactly as it always did.
 
 A direct mutation attempt from that same anonymous caller is still rejected server-side —
 `guest` never declares `create`/`update`/`delete`, so those actions fall through the
@@ -543,6 +663,34 @@ hasPermission({ resource: "posts", action: "update", data: post });
 Either client path is **advisory only** — hiding or disabling a button is a UX affordance,
 not enforcement. The server guard is what actually protects the data.
 
+## Saved-view permissions
+
+`VIEW_ACTIONS` (`readViews`, `createView`, `updateView`, `deleteView`) gate shared-view CRUD
+on the `vex_views` table — a different shape from every other action, because a saved view is
+one whole collection-level row, never read or written per-field or per-document. A view
+action's check is **boolean-only**: a plain `true`/`false`, or a callback returning
+`boolean | undefined`, receiving only `{ user, organization? }` — no `data`, since there's no
+document to inspect, and no field-permission map return value either, since partial read/write
+of a view row makes no sense.
+
+```ts
+posts: {
+  readViews: true,
+  createView: ({ user }) => user.roles.includes("editor"),
+  updateView: ({ user }) => user.roles.includes("editor"),
+  deleteView: false,
+},
+```
+
+A field map or a `{ where, filter, withIndex }` constrained-query object returned for a view
+action is a type error at the config level. If one reaches runtime anyway (an untyped config,
+an `as` cast), it's denied with a dev-only console warning — never read as an implicit allow.
+
+Per-view access (a callback that receives the specific stored view a `createView`/`updateView`
+call targets, for rules narrower than "can this role touch shared views at all") is tracked as
+a backlog item, not built here — the single props-object callback shape is deliberately left
+room to add a `view` property later without another breaking change.
+
 ## Custom actions and resources
 
 Actions beyond CRUD, and subjects that aren't a collection or global:
@@ -568,11 +716,11 @@ export const access = defineAccess({
 
 ## Gotchas
 
-- **`constraints` before `filter`, `filter` before a bare callback.** A field comparison
-  that a bare callback expresses as `({ data }) => data.visibility === "public"` reads every
-  matching row into JS just to throw most of them away; the same rule as `constraints`
-  compiles into the query itself. Reach for a callback only once `constraints`/`filter`
-  genuinely can't express the check.
+- **`withIndex`/`where` before `filter`, `filter` before a bare callback.** A field
+  comparison that a bare callback expresses as `({ data }) => data.visibility === "public"`
+  reads every matching row into JS just to throw most of them away; the same rule as
+  `withIndex`/`where` compiles into the query itself. Reach for a callback only once
+  `withIndex`/`where`/`filter` genuinely can't express the check.
 - **Deny-by-default has no override knob.** There is no `defaultPermissionMode` input field
   — express an allow-everything posture as a role-level `"*": true`, which is greppable
   per-role instead of an invisible global default.

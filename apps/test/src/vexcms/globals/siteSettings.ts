@@ -1,6 +1,7 @@
 import { defineGlobal, relationship, text, upload } from "@vexcms/core";
 
 import { GLOBAL_SLUG_SITE_SETTINGS, TABLE_SLUG_IMAGES, TABLE_SLUG_THEMES } from "~/db/constants";
+import { CachePurgeNote } from "~/vexcms/components/CachePurgeNote";
 
 /**
  * Site-wide settings — a singleton, so a global rather than a collection.
@@ -16,6 +17,13 @@ export const siteSettings = defineGlobal({
   admin: {
     icon: "Settings",
     description: "Site name, SEO defaults, and the themes applied to the site and the admin panel.",
+    components: {
+      edit: {
+        sidebar: {
+          after: [{ id: "editorial.cachePurgeNote", component: CachePurgeNote }],
+        },
+      },
+    },
   },
   fields: {
     name: text({

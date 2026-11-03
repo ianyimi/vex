@@ -1,0 +1,146 @@
+[
+  {
+    "from": "packages/react/src/components/RevalidateButton.test.tsx",
+    "to": "packages/react/src/revalidate/RevalidateButton.test.tsx"
+  },
+  {
+    "from": "packages/react/src/components/RevalidateButton.tsx",
+    "to": "packages/react/src/revalidate/RevalidateButton.tsx"
+  },
+  {
+    "from": "packages/react/src/components/livePreview/LivePreviewPanel.test.tsx",
+    "to": "packages/react/src/livePreview/LivePreviewPanel.test.tsx"
+  },
+  {
+    "from": "packages/react/src/components/livePreview/LivePreviewPanel.tsx",
+    "to": "packages/react/src/livePreview/LivePreviewPanel.tsx"
+  },
+  {
+    "from": "packages/react/src/components/modals/BaseModal.test.tsx",
+    "to": "packages/react/src/modals/BaseModal.test.tsx"
+  },
+  {
+    "from": "packages/react/src/components/modals/BaseModal.tsx",
+    "to": "packages/react/src/modals/BaseModal.tsx"
+  },
+  {
+    "from": "packages/react/src/components/modals/constants.ts",
+    "to": "packages/react/src/modals/constants.ts"
+  },
+  {
+    "from": "packages/react/src/components/slots/ComponentErrorBoundary.test.tsx",
+    "to": "packages/react/src/slots/ComponentErrorBoundary.test.tsx"
+  },
+  {
+    "from": "packages/react/src/components/slots/ComponentErrorBoundary.tsx",
+    "to": "packages/react/src/slots/ComponentErrorBoundary.tsx"
+  },
+  {
+    "from": "packages/react/src/components/slots/SlotOutlet.test.tsx",
+    "to": "packages/react/src/slots/SlotOutlet.test.tsx"
+  },
+  {
+    "from": "packages/react/src/components/slots/SlotOutlet.tsx",
+    "to": "packages/react/src/slots/SlotOutlet.tsx"
+  },
+  {
+    "from": "packages/react/src/components/slots/SlotOverrideOutlet.test.tsx",
+    "to": "packages/react/src/slots/SlotOverrideOutlet.test.tsx"
+  },
+  {
+    "from": "packages/react/src/components/slots/SlotOverrideOutlet.tsx",
+    "to": "packages/react/src/slots/SlotOverrideOutlet.tsx"
+  },
+  {
+    "from": "packages/react/src/components/slots/formData.test.tsx",
+    "to": "packages/react/src/slots/formData.test.tsx"
+  },
+  {
+    "from": "packages/react/src/components/slots/formData.ts",
+    "to": "packages/react/src/slots/formData.ts"
+  },
+  {
+    "from": "packages/react/src/components/slots/index.ts",
+    "to": "packages/react/src/slots/index.ts"
+  },
+  {
+    "from": "packages/react/src/components/slots/resolveFieldCellComponent.test.tsx",
+    "to": "packages/react/src/slots/resolveFieldCellComponent.test.tsx"
+  },
+  {
+    "from": "packages/react/src/components/slots/resolveFieldCellComponent.tsx",
+    "to": "packages/react/src/slots/resolveFieldCellComponent.tsx"
+  },
+  {
+    "from": "packages/react/src/components/slots/resolveFieldComponent.test.tsx",
+    "to": "packages/react/src/slots/resolveFieldComponent.test.tsx"
+  },
+  {
+    "from": "packages/react/src/components/slots/resolveFieldComponent.tsx",
+    "to": "packages/react/src/slots/resolveFieldComponent.tsx"
+  },
+  {
+    "from": "packages/react/src/components/slots/types.ts",
+    "to": "packages/react/src/slots/types.ts"
+  },
+  {
+    "from": "packages/react/src/context/LivePreviewContext.test.tsx",
+    "to": "packages/react/src/livePreview/LivePreviewContext.test.tsx"
+  },
+  {
+    "from": "packages/react/src/context/LivePreviewContext.tsx",
+    "to": "packages/react/src/livePreview/LivePreviewContext.tsx"
+  },
+  {
+    "from": "packages/react/src/context/VexRevalidateContext.tsx",
+    "to": "packages/react/src/revalidate/VexRevalidateContext.tsx"
+  },
+  {
+    "from": "packages/react/src/context/livePreviewProtocol.test.ts",
+    "to": "packages/react/src/livePreview/livePreviewProtocol.test.ts"
+  },
+  {
+    "from": "packages/react/src/context/livePreviewProtocol.ts",
+    "to": "packages/react/src/livePreview/livePreviewProtocol.ts"
+  },
+  {
+    "from": "packages/react/src/hooks/useLivePreviewPanelMinSize.test.tsx",
+    "to": "packages/react/src/livePreview/useLivePreviewPanelMinSize.test.tsx"
+  },
+  {
+    "from": "packages/react/src/hooks/useLivePreviewPanelState.ts",
+    "to": "packages/react/src/livePreview/useLivePreviewPanelState.ts"
+  },
+  {
+    "from": "packages/react/src/hooks/useLivePreviewServerUrl.test.tsx",
+    "to": "packages/react/src/livePreview/useLivePreviewServerUrl.test.tsx"
+  },
+  {
+    "from": "packages/react/src/hooks/useLivePreviewServerUrl.ts",
+    "to": "packages/react/src/livePreview/useLivePreviewServerUrl.ts"
+  },
+  {
+    "from": "packages/react/src/hooks/useLivePreviewSync.test.ts",
+    "to": "packages/react/src/livePreview/useLivePreviewSync.test.ts"
+  },
+  {
+    "from": "packages/react/src/hooks/useLivePreviewSync.ts",
+    "to": "packages/react/src/livePreview/useLivePreviewSync.ts"
+  },
+  {
+    "from": "packages/react/src/hooks/useModalSurface.test.tsx",
+    "to": "packages/react/src/modals/useModalSurface.test.tsx"
+  },
+  {
+    "from": "packages/react/src/hooks/useModalSurface.tsx",
+    "to": "packages/react/src/modals/useModalSurface.tsx"
+  },
+  {
+    "from": "packages/react/src/hooks/useVexRevalidate.test.tsx",
+    "to": "packages/react/src/revalidate/useVexRevalidate.test.tsx"
+  },
+  {
+    "from": "packages/react/src/hooks/useVexRevalidate.ts",
+    "to": "packages/react/src/revalidate/useVexRevalidate.ts"
+  }
+]

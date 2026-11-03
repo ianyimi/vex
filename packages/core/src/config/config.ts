@@ -1,6 +1,6 @@
 
 import { AccessResource } from "../access";
-import { validateAccessConfig } from "../access/validateAccessConstraints";
+import { validateAccessConfig } from "../access/validateAccessConfig";
 import { mergeAuthCollections } from "../auth/mergeCollections";
 import { VexAuthConfigError } from "../auth/types";
 import { internalCollections } from "../collections/internal";
@@ -139,6 +139,10 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
                 slotId: SLOT_IDS.field.input,
                 overrides: config?.admin?.components?.fields?.[type]?.Input ?? [],
               }),
+              Field: resolveComponentOverrides({
+                slotId: SLOT_IDS.field.field,
+                overrides: config?.admin?.components?.fields?.[type]?.Field ?? [],
+              }),
               Cell: resolveComponentOverrides({
                 slotId: SLOT_IDS.field.cell,
                 overrides: config?.admin?.components?.fields?.[type]?.Cell ?? [],
@@ -161,6 +165,24 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
             slotId: SLOT_IDS.array.itemActions,
             contributions: config?.admin?.components?.array?.itemActions ?? [],
           }),
+        },
+        edit: {
+          header: {
+            actions: config?.admin?.components?.edit?.header?.actions ?? [],
+            before: config?.admin?.components?.edit?.header?.before ?? [],
+            after: config?.admin?.components?.edit?.header?.after ?? [],
+            overrides: config?.admin?.components?.edit?.header?.overrides ?? {},
+          },
+          beforeFields: config?.admin?.components?.edit?.beforeFields ?? [],
+          afterFields: config?.admin?.components?.edit?.afterFields ?? [],
+          sidebar: {
+            before: config?.admin?.components?.edit?.sidebar?.before ?? [],
+            after: config?.admin?.components?.edit?.sidebar?.after ?? [],
+          },
+          actionsMenu: {
+            items: config?.admin?.components?.edit?.actionsMenu?.items ?? [],
+            overrides: config?.admin?.components?.edit?.actionsMenu?.overrides ?? {},
+          },
         },
       },
     },

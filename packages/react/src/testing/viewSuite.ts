@@ -1,42 +1,45 @@
 import { createElement } from "react";
-import { beforeAll, describe, expect, it } from "vitest";
-import { fireEvent } from "@testing-library/react";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, waitFor, within } from "@testing-library/react";
 import { convexTest } from "convex-test";
 import {
+  buildListViewFindQueryArgs,
   defineAccess,
+  defineCollection,
+  defineConfig,
+  parseListViewUrlState,
+  resolveListViewQueryState,
   select,
   text,
+  ui,
+  vexConvexApi,
+  VERSION_SYSTEM_FIELDS,
   type PaginationResult,
   type VexAccessConfig,
   type VexDocument,
   type VexMediaDocument,
 } from "@vexcms/core";
+import { getFunctionName } from "convex/server";
 import schema, { testModules, type TestDoc } from "./convex/schema";
 import type { ConvexTestInstance } from "./convex/bridge";
-import { renderWithVexProviders, testCollection } from "./harness/accessFixtures";
+import { renderWithVexProviders, testAccess, testCollection } from "./harness/accessFixtures";
 import { renderView, testClientConfig, wrapWithViewProviders } from "./harness/viewHarness";
 import { runRbacStateSuite } from "./rbacState";
-import { ThemeProvider } from "../components/ui/ThemeProvider";
-import { SidebarProvider } from "../components/ui/sidebar";
+import { ThemeProvider } from "../ui/ThemeProvider";
+import { SidebarProvider } from "../ui/sidebar";
 import {
   FrameworkComponentsContext,
   useFrameworkComponents,
   type FrameworkComponents,
   type VexLinkProps,
-} from "../hooks/useFrameworkComponents";
-import { AdminLayout } from "../components/AdminLayout";
-import { AppSidebar } from "../components/AdminSidebar";
-import AdminTopNav from "../components/AdminTopNav";
-import {
-  CollectionListView,
-  CollectionEditView,
-  GlobalEditView,
-  GlobalsListView,
-  DashboardView,
-  UnauthorizedView,
-  MediaCollectionListView,
-  MediaCollectionEditView,
-} from "../components/views";
+} from "../config/useFrameworkComponents";
+import { AdminLayout } from "../admin/AdminLayout";
+import { AppSidebar } from "../admin/AdminSidebar";
+import AdminTopNav from "../admin/AdminTopNav";
+import { CollectionListView, CollectionEditView } from "../collections";
+import { GlobalEditView, GlobalsListView } from "../globals";
+import { DashboardView, CollectionsIndexView, UnauthorizedView } from "../admin";
+import { MediaCollectionListView, MediaCollectionEditView } from "../media";
 
 /**
  * One entry per `runRbacStateSuite` default scenario name, resolved for a given
@@ -123,6 +126,43 @@ function toPage<TDoc extends VexDocument = VexDocument>(
 }
 
 /**
+ * Builds a {@link ViewHarnessOptions.seedQueryData} entry for `CollectionListView`'s own
+ * `findPaginated` seed query, against a collection's DEFAULT (no URL params) view state —
+ * the exact `queryKey` shape `convexQuery(vexConvexApi.findPaginated, ...)` builds at
+ * render time, computed via the SAME `resolveListViewQueryState`/`buildListViewFindQueryArgs` calls
+ * the real component uses, so this is guaranteed to match regardless of a collection's own
+ * `admin.view` defaults (never hand-duplicated/hardcoded here).
+ *
+ * Use for a fixture the fake backend's own `"vex:find"` handler can't reproduce — e.g. a
+ * draft/published pair already merged server-side by `mergeDraftCounterparts`, which the
+ * fake handler's own `config` has no `versions` info for (`collectionConfig?.versions
+ * ?.drafts === true` never passes there, so the real merge logic never runs against seeded
+ * convex-test rows).
+ *
+ * @param props.collection - The collection the seeded page belongs to (its own `admin.view`
+ *   defaults resolve `numItems`/`sort`).
+ * @param props.page - The already-resolved page content (e.g. a hand-merged draft pair).
+ * @returns One `seedQueryData` entry.
+ */
+function seedFindPaginatedQueryData(props: {
+  collection: typeof testCollection;
+  page: PaginationResult<VexDocument>;
+}): { queryKey: unknown[]; data: unknown } {
+  const params = parseListViewUrlState({ searchParams: new URLSearchParams(""), collection: props.collection });
+  const resolved = resolveListViewQueryState({ collection: props.collection, params });
+  const numItems = Math.max(props.collection.admin.view.state.serverPageSize, resolved.pageSize);
+  const args = buildListViewFindQueryArgs({
+    collection: props.collection,
+    where: resolved.where,
+    sort: resolved.sort,
+    drafts: true,
+    depth: 1,
+    numItems,
+  });
+  return { queryKey: ["convexQuery", getFunctionName(vexConvexApi.findPaginated), args], data: props.page };
+}
+
+/**
  * The visible `<thead>` column header labels, in column order. `DataTable`
  * does not emit a `data-column-id` attribute, so header text is the stable
  * way to assert which columns render — the select column's header is a
@@ -155,7 +195,7 @@ async function seedDocuments(
 
 /**
  * Full-mount `CollectionListView` — the SSR-preview stack transitively rendered here is
- * `DataTable` + `CreateDocumentModal` + `RevalidateButton`, exactly what an admin visits.
+ * `DataTable` + `ListViewCreateDocumentModal` + `RevalidateButton`, exactly what an admin visits.
  *
  * `canDelete` gates the row-selection checkbox column (`enableRowSelection={canDelete}`),
  * so its observable consequence is whether a header checkbox exists at all — asserted in
@@ -168,53 +208,94 @@ async function seedDocuments(
  */
 function describeCollectionListView(options: { access?: VexAccessConfig }): void {
   describe("CollectionListView", () => {
-    const t = convexTest(schema, testModules);
-    let docs: TestDoc<"documents">[] = [];
-
-    beforeAll(async () => {
-      docs = await seedDocuments(t, ["First", "Second", "Third"]);
+    // `beforeEach`, not a describe-scoped `const t` + `beforeAll`: convex-test's syscall
+    // dispatch goes through a single `global.Convex` reference
+    // (`convex-test/dist/index.js`'s `setConvexGlobal`/`getConvexGlobal`) that every
+    // `convexTest()` call overwrites — a later instance (`emptyT`/`t2` in the tests below)
+    // silently redirects every subsequent call made THROUGH an earlier instance's own `t`
+    // handle to the later instance's database instead, with no error. A describe-scoped `t`
+    // shared via `beforeAll` depended on no sibling test ever constructing its own
+    // `convexTest()` instance after it ran — true only by accident of declaration order
+    // (2026-10-31 investigation: `t.run(ctx => ctx.db.query("documents").collect())` read 3
+    // rows immediately before a sibling test's own `convexTest()` call and 0 immediately
+    // after, with nothing else in between). A fresh `t` + fresh seed before every single
+    // test removes the ordering dependency entirely — each test's own `convexTest()` call is
+    // the LAST one made before its own assertions run, so it always owns the global.
+    let t: ConvexTestInstance;
+    beforeEach(async () => {
+      t = convexTest(schema, testModules);
+      await seedDocuments(t, ["First", "Second", "Third"]);
     });
 
     if (options.access) {
-      it("renders without crashing under the provided access config", () => {
-        const { container, unmount } = renderView(
+      it("renders without crashing under the provided access config", async () => {
+        const { container, unmount, findAllByRole } = renderView(
           createElement(CollectionListView, {
             collection: testCollection.slug,
-            initialData: toPage(docs),
           }),
           { convex: t, access: options.access, auth: { user: null } },
         );
+        // No `initialData` (polish fixes, Decision 11) — the fake Convex client's own
+        // `query` is genuinely async (`testing/convex/bridge.ts`), so every assertion here
+        // waits for the live query to settle instead of asserting synchronously right after
+        // `render()`.
+        await findAllByRole("row");
         expect(container).toBeTruthy();
         unmount();
       });
       return;
     }
 
-    it("renders rows from seeded data", () => {
+    it("renders rows from seeded data", async () => {
       const utils = renderView(
         createElement(CollectionListView, {
           collection: testCollection.slug,
-          initialData: toPage(docs),
         }),
         { convex: t },
       );
-      expect(utils.getByText("3 documents")).toBeInTheDocument();
-      expect(utils.getAllByRole("row")).toHaveLength(4); // 1 header row + 3 data rows
+      // Step 12: `ListViewLayout`'s own static "N documents" subtitle was
+      // replaced by `SavedListViewTabs`'s heading (plain collection name, or the
+      // active view's name) — the row count now reads from `DataTable`'s
+      // own "Showing N" footer instead (Decision 35). With `initialData`
+      // gone (polish fixes, Decision 11), `pagination.totalCount` now
+      // resolves to a REAL number from the live query (it used to be
+      // `undefined` via the old `toPage()` helper, which never set a
+      // `totalDocs`-equivalent) — the footer reads "Showing 3 of 3", not
+      // bare "Showing 3", split across sibling text nodes inside the same
+      // `<p>` (` of ` is its own JSX fragment child) — an exact
+      // `findByText("Showing 3")` can never match a single text node for
+      // that shape, hence the function matcher below instead.
+      expect(
+        await utils.findByText(
+          (_content, element) => element?.tagName === "P" && (element.textContent?.startsWith("Showing 3") ?? false),
+        ),
+      ).toBeInTheDocument();
+      utils.unmount();
     });
 
-    it("renders the empty state with zero documents", () => {
+    it("renders the empty state with zero documents", async () => {
+      const emptyT = convexTest(schema, testModules);
       const utils = renderView(
         createElement(CollectionListView, {
           collection: testCollection.slug,
-          initialData: toPage([]),
         }),
-        { convex: t },
+        { convex: emptyT },
       );
-      expect(utils.getByText("0 documents")).toBeInTheDocument();
-      expect(utils.getAllByRole("row")).toHaveLength(1); // header row only
+      // Step 10: a done, zero-row query renders `ListViewEmptyState` in place of
+      // the table body, not a bare header row. `DataTable`'s "Showing N"
+      // footer renders only for `data.length > 0` (Step 12: no equivalent
+      // "0 documents" text exists elsewhere once a view is active).
+      expect(await utils.findByText("No posts yet")).toBeInTheDocument();
+      expect(utils.queryAllByRole("row")).toHaveLength(0);
+      utils.unmount();
     });
 
-    it("shows no selection checkboxes for a role without delete permission", () => {
+    it("shows selection checkboxes for every role, but no bulk-delete button for a role without delete permission", async () => {
+      // `DataTable`'s checkbox column is unconditional now — `ListViewRowDeleteAction`/
+      // `ListViewBulkDeleteAction` self-gate on delete access instead (Decision 37's review:
+      // a role without delete may still have a `list.bulkActions` contribution beyond
+      // delete, e.g. a bulk-export plugin, so the checkbox column itself is not a delete
+      // affordance).
       const noDeleteAccess = defineAccess({
         roles: ["reader"] as const,
         resources: [testCollection],
@@ -227,15 +308,20 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       const utils = renderView(
         createElement(CollectionListView, {
           collection: testCollection.slug,
-          initialData: toPage(docs),
         }),
         { convex: t, access: noDeleteAccess, auth: { user: asUser("reader") } },
       );
-      expect(utils.container.querySelector('thead [data-slot="checkbox"]')).toBeNull();
+      await utils.findAllByRole("row");
+      expect(utils.container.querySelector('thead [data-slot="checkbox"]')).not.toBeNull();
+      const hiddenInputs = utils.container.querySelectorAll<HTMLInputElement>(
+        'input[type="checkbox"]',
+      );
+      fireEvent.click(hiddenInputs[1]!);
       expect(utils.queryByRole("button", { name: /delete/i })).toBeNull();
+      utils.unmount();
     });
 
-    it("shows selection checkboxes for a role with delete permission", () => {
+    it("shows selection checkboxes for a role with delete permission", async () => {
       const deleterAccess = defineAccess({
         roles: ["deleter"] as const,
         resources: [testCollection],
@@ -248,14 +334,15 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       const utils = renderView(
         createElement(CollectionListView, {
           collection: testCollection.slug,
-          initialData: toPage(docs),
         }),
         { convex: t, access: deleterAccess, auth: { user: asUser("deleter") } },
       );
+      await utils.findAllByRole("row");
       expect(utils.container.querySelector('thead [data-slot="checkbox"]')).not.toBeNull();
+      utils.unmount();
     });
 
-    it("renders without crashing when useAsTitle points at a non-text field", () => {
+    it("renders without crashing when useAsTitle points at a non-text field", async () => {
       // `useAsTitle?: CoreAdminField | NoInfer<TFieldSlug>` (core/collections/types.ts:170)
       // accepts ANY field key, including a select/date/number column, not just a text one.
       // `getCollectionColumnDefs` (components/fields/index.tsx:220) marks whichever field's
@@ -264,10 +351,11 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       // `isTitleField`) reachable in the first place. This proves the full-mount list view
       // survives a non-text title column; whether that column ends up clickable is Step 5's
       // own contract, not asserted here.
-      const priorityTitleCollection = {
-        ...testCollection,
+      const priorityTitleCollection = defineCollection({
+        slug: "posts",
         fields: {
-          ...testCollection.fields,
+          status: text({ index: "by_status" }),
+          title: text({ required: false }),
           priority: select({
             label: "Priority",
             options: [
@@ -276,23 +364,23 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
             ],
           }),
         },
-        admin: { ...testCollection.admin, useAsTitle: "priority" },
+        admin: { useAsTitle: "priority" },
         // `useAsTitle` is typed against `testCollection`'s own generated field-key union
         // ("status"), which doesn't include this test-local "priority" key — a real
         // collection's own `TFieldSlug` would. Cast at this boundary rather than widen the
         // shared fixture's type.
-      } as unknown as typeof testCollection;
+      }) as unknown as typeof testCollection;
+      const config = { ...testClientConfig, collections: [priorityTitleCollection] };
       const utils = renderView(
         createElement(CollectionListView, {
           collection: priorityTitleCollection.slug,
-          initialData: toPage(docs),
         }),
-        { convex: t },
+        { convex: t, config },
       );
-      expect(utils.getAllByRole("row")).toHaveLength(4); // 1 header row + 3 data rows
+      await waitFor(() => expect(utils.getAllByRole("row")).toHaveLength(4)); // 1 header row + 3 data rows
     });
 
-    it("filters columns by the caller's read field permissions", () => {
+    it("filters columns by the caller's read field permissions", async () => {
       // `posts` gets a second real field here (`title`, backed by the schema's
       // own column) so a map can deny one field while leaving another
       // visible. `viewer` denies `status`; `plain` declares no map at all;
@@ -332,10 +420,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       const denied = renderView(
         createElement(CollectionListView, {
           collection: postsWithTitle.slug,
-          initialData: toPage(docs),
         }),
         { convex: t, config, access: fieldMapAccess, auth: { user: asUser("viewer") } },
       );
+      await denied.findAllByRole("row");
       expect(columnHeaderTexts(denied.container)).toContain("title");
       expect(columnHeaderTexts(denied.container)).not.toContain("status");
       // The select column has no field key and must never be filtered out.
@@ -345,10 +433,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       const undeclaredMap = renderView(
         createElement(CollectionListView, {
           collection: postsWithTitle.slug,
-          initialData: toPage(docs),
         }),
         { convex: t, config, access: fieldMapAccess, auth: { user: asUser("plain") } },
       );
+      await undeclaredMap.findAllByRole("row");
       expect(columnHeaderTexts(undeclaredMap.container)).toEqual(
         expect.arrayContaining(["title", "status"]),
       );
@@ -357,14 +445,115 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       const perDoc = renderView(
         createElement(CollectionListView, {
           collection: postsWithTitle.slug,
-          initialData: toPage(docs),
         }),
         { convex: t, config, access: fieldMapAccess, auth: { user: asUser("perDoc") } },
       );
+      await perDoc.findAllByRole("row");
       expect(columnHeaderTexts(perDoc.container)).toContain("status");
     });
 
-    it("shows the New button for a role whose create check returns a field map", () => {
+    it("hides the Status column when vex_status is unreadable, shows it when readable (access-system-fields.md decision 2a)", async () => {
+      const t2 = convexTest(schema, testModules);
+      const versionedCollection = {
+        ...testCollection,
+        versions: { ...testCollection.versions, drafts: true },
+      } as unknown as typeof testCollection;
+      const config = { ...testClientConfig, collections: [versionedCollection] };
+      const seeded = await t2.run(async (ctx) => {
+        const id = await ctx.db.insert("documents", { title: "Launch post", vex_status: "published" });
+        const doc = await ctx.db.get(id);
+        return doc ? [doc] : [];
+      });
+      const seedQueryData = [seedFindPaginatedQueryData({ collection: versionedCollection, page: toPage(seeded) })];
+      const statusDeniedAccess = defineAccess({
+        roles: ["viewer"] as const,
+        resources: [versionedCollection],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          viewer: { posts: { read: () => ({ "*": true, [VERSION_SYSTEM_FIELDS.status.slug]: false }) } },
+        },
+      });
+      const denied = renderView(
+        createElement(CollectionListView, { collection: versionedCollection.slug }),
+        { convex: t2, config, access: statusDeniedAccess, auth: { user: asUser("viewer") }, seedQueryData },
+      );
+      await denied.findAllByRole("row");
+      expect(columnHeaderTexts(denied.container)).not.toContain("Status");
+      fireEvent.click(denied.getByRole("button", { name: /columns/i }));
+      const deniedDialog = await denied.findByRole("dialog");
+      expect(within(deniedDialog).queryByText("Status")).toBeNull();
+      denied.unmount();
+
+      const statusAllowedAccess = defineAccess({
+        roles: ["viewer"] as const,
+        resources: [versionedCollection],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          viewer: { posts: { read: () => ({ "*": true }) } },
+        },
+      });
+      const allowed = renderView(
+        createElement(CollectionListView, { collection: versionedCollection.slug }),
+        { convex: t2, config, access: statusAllowedAccess, auth: { user: asUser("viewer") }, seedQueryData },
+      );
+      await allowed.findAllByRole("row");
+      expect(columnHeaderTexts(allowed.container)).toContain("Status");
+      allowed.unmount();
+    });
+
+    it("hides a ui() field's column when its field-permission map denies it (access-system-fields.md decision 2a)", async () => {
+      const postsWithWordCount = {
+        ...testCollection,
+        fields: {
+          ...testCollection.fields,
+          wordCount: ui({
+            label: "Word Count",
+            admin: { components: { Field: () => null, Cell: () => null } },
+          }),
+        },
+      } as unknown as typeof testCollection;
+      const config = { ...testClientConfig, collections: [postsWithWordCount] };
+      const wordCountDeniedAccess = defineAccess({
+        roles: ["viewer"] as const,
+        resources: [postsWithWordCount],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          viewer: { posts: { read: () => ({ "*": true, wordCount: false }) } },
+        },
+      });
+      const denied = renderView(
+        createElement(CollectionListView, { collection: postsWithWordCount.slug }),
+        { convex: t, config, access: wordCountDeniedAccess, auth: { user: asUser("viewer") } },
+      );
+      await denied.findAllByRole("row");
+      expect(columnHeaderTexts(denied.container)).not.toContain("Word Count");
+      fireEvent.click(denied.getByRole("button", { name: /columns/i }));
+      const deniedDialog = await denied.findByRole("dialog");
+      expect(within(deniedDialog).queryByText("Word Count")).toBeNull();
+      denied.unmount();
+
+      const wordCountAllowedAccess = defineAccess({
+        roles: ["viewer"] as const,
+        resources: [postsWithWordCount],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          viewer: { posts: { read: () => ({ "*": true }) } },
+        },
+      });
+      const allowed = renderView(
+        createElement(CollectionListView, { collection: postsWithWordCount.slug }),
+        { convex: t, config, access: wordCountAllowedAccess, auth: { user: asUser("viewer") } },
+      );
+      await allowed.findAllByRole("row");
+      expect(columnHeaderTexts(allowed.container)).toContain("Word Count");
+      allowed.unmount();
+    });
+
+    it("shows the New button for a role whose create check returns a field map", async () => {
       // `create` is a quantified check here (no `data`) — under the default
       // `scope: "all"` a map would deny it outright and hide the button even
       // though creating is permitted; `scope: "any"` is what CollectionListView
@@ -381,11 +570,11 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       const utils = renderView(
         createElement(CollectionListView, {
           collection: testCollection.slug,
-          initialData: toPage(docs),
         }),
         { convex: t, access: createMapAccess, auth: { user: asUser("mapCreator") } },
       );
-      const newLink = utils.container.querySelector('a[href="/admin/posts?createNew=true"]');
+      await utils.findAllByRole("row");
+      const newLink = utils.container.querySelector('a[href="/admin/collections/posts?createNew=true"]');
       expect(newLink).not.toHaveAttribute("aria-disabled");
     });
 
@@ -394,13 +583,13 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         wrapWithViewProviders(
           createElement(CollectionListView, {
             collection: testCollection.slug,
-            initialData: toPage(docs),
           }),
           { convex: t },
         ),
-      assert: (utils, scenario) => {
+      assert: async (utils, scenario) => {
         const expected = MATRIX_POSTS[scenario.name as keyof RbacMatrix];
-        const newLink = utils.container.querySelector('a[href="/admin/posts?createNew=true"]');
+        await utils.findAllByRole("row");
+        const newLink = utils.container.querySelector('a[href="/admin/collections/posts?createNew=true"]');
         expect(newLink).not.toBeNull();
         if (expected) {
           expect(newLink).not.toHaveAttribute("aria-disabled");
@@ -435,19 +624,31 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
           vex_status: "draft",
           vex_publishedId: publishedId,
         });
-        const rows = await Promise.all([ctx.db.get(publishedId), ctx.db.get(draftId)]);
-        return rows.filter((doc): doc is TestDoc<"documents"> => doc !== null);
+        // Draft-pair pagination fix: `find` merges a linked draft onto its published row
+        // server-side (`mergeDraftCounterparts`, `@vexcms/core`) — the fake `"vex:find"`
+        // handler (`testing/convex/bridge.ts`) doesn't run that merge (its own `config` has
+        // no `versions` info for `mergeDraftCounterparts`'s gate to pass), so this seeds the
+        // ALREADY-merged shape directly into the query cache (`seedFindPaginatedQueryData`,
+        // polish fixes Decision 11 — replacing the removed `CollectionListViewProps
+        // .initialData`), matching what a real SSR prefetch returns, rather than the two raw
+        // rows `CollectionListView` used to collapse itself.
+        const draftRow = await ctx.db.get(draftId);
+        if (draftRow === null) throw new Error("draft row missing");
+        return [{ ...draftRow, hasUnpublishedChanges: true } as unknown as TestDoc<"documents">];
       });
 
       const utils = renderView(
         createElement(CollectionListView, {
           collection: versionedCollection.slug,
-          initialData: toPage(seeded),
         }),
-        { convex: t2, config },
+        {
+          convex: t2,
+          config,
+          seedQueryData: [seedFindPaginatedQueryData({ collection: versionedCollection, page: toPage(seeded) })],
+        },
       );
 
-      expect(utils.getAllByRole("row")).toHaveLength(2); // header + 1 collapsed row
+      await waitFor(() => expect(utils.getAllByRole("row")).toHaveLength(2)); // header + 1 collapsed row
       expect(utils.getByText("Published")).toBeInTheDocument();
       expect(utils.getByText("Unpublished changes")).toBeInTheDocument();
       expect(utils.getByText("Launch post (edited)")).toBeInTheDocument();
@@ -463,10 +664,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       } as unknown as typeof testCollection;
       const config = { ...testClientConfig, collections: [versionedCollection] };
       const seeded = await t2.run(async (ctx) => {
-        const id = await ctx.db.insert("documents", {
-          title: "Solo post",
-          vex_status: "published",
-        });
+        const id = await ctx.db.insert("documents", { title: "Solo post", vex_status: "published" });
         const solo = await ctx.db.get(id);
         return solo ? [solo] : [];
       });
@@ -474,12 +672,15 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       const utils = renderView(
         createElement(CollectionListView, {
           collection: versionedCollection.slug,
-          initialData: toPage(seeded),
         }),
-        { convex: t2, config },
+        {
+          convex: t2,
+          config,
+          seedQueryData: [seedFindPaginatedQueryData({ collection: versionedCollection, page: toPage(seeded) })],
+        },
       );
 
-      expect(utils.getAllByRole("row")).toHaveLength(2); // header + 1 row
+      await waitFor(() => expect(utils.getAllByRole("row")).toHaveLength(2)); // header + 1 row
       expect(utils.getByText("Published")).toBeInTheDocument();
       expect(utils.queryByText("Unpublished changes")).toBeNull();
     });
@@ -507,12 +708,15 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       const utils = renderView(
         createElement(CollectionListView, {
           collection: versionedCollection.slug,
-          initialData: toPage(seeded),
         }),
-        { convex: t2, config },
+        {
+          convex: t2,
+          config,
+          seedQueryData: [seedFindPaginatedQueryData({ collection: versionedCollection, page: toPage(seeded) })],
+        },
       );
 
-      expect(utils.getAllByRole("row")).toHaveLength(2); // header + exactly 1 row
+      await waitFor(() => expect(utils.getAllByRole("row")).toHaveLength(2)); // header + exactly 1 row
       expect(utils.getByText("Draft")).toBeInTheDocument();
       expect(utils.queryByText("Unpublished changes")).toBeNull();
       expect(utils.getByText("Never published")).toBeInTheDocument();
@@ -735,11 +939,12 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
         } else {
           expect(statusInput).toBeDisabled();
         }
-        const revalidateButton = utils.getByRole("button", { name: "Revalidate" });
+        fireEvent.click(utils.getByRole("button", { name: "More actions" }));
+        const revalidateItem = utils.getByRole("menuitem", { name: "Revalidate" });
         if (expected) {
-          expect(revalidateButton).not.toBeDisabled();
+          expect(revalidateItem).not.toHaveAttribute("aria-disabled", "true");
         } else {
-          expect(revalidateButton).toBeDisabled();
+          expect(revalidateItem).toHaveAttribute("aria-disabled", "true");
         }
         // isDefaultValue dominance (see doc comment above): Save/Cancel start disabled on
         // every scenario, including "allowed" — this is NOT canEdit's doing.
@@ -784,11 +989,14 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
       return;
     }
 
-    it("renders the default field values when no document has ever been saved", () => {
+    it("renders the default field values when no document has ever been saved", async () => {
       const utils = renderView(
         createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }),
         { convex: t },
       );
+      // `GlobalEditView`'s document fetch now suspends (shell-streaming follow-up, Part 3) —
+      // the heading/form only exist once the query settles, even for "no document yet".
+      await waitFor(() => expect(utils.getByRole("heading", { level: 1 })).toBeInTheDocument());
       const heading = utils.getByRole("heading", { level: 1 });
       expect(heading.textContent).toBe("Edit Global - Settings");
       expect(utils.container.querySelector("#siteName")).not.toBeNull();
@@ -923,8 +1131,12 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
           createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }),
           { convex: t },
         ),
-      assert: (utils, scenario) => {
+      assert: async (utils, scenario) => {
         const expected = MATRIX_UNDECLARED[scenario.name as keyof RbacMatrix];
+        // `GlobalEditView`'s document fetch now suspends (shell-streaming follow-up, Part 3) —
+        // no `initialData` here (this scenario is specifically "no document saved yet"), so
+        // the form only exists once the query settles.
+        await waitFor(() => expect(utils.container.querySelector("#siteName")).not.toBeNull());
         const siteNameInput = utils.container.querySelector("#siteName");
         expect(siteNameInput).not.toBeNull();
         if (expected) {
@@ -942,23 +1154,46 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
 }
 
 /**
- * `GlobalsListView` reads only its `config` prop — no context, no `usePermission`, no
- * gating of its own (the sidebar and dashboard already filter which globals a caller ever
- * sees a link to). A plain render proves the card grid and its link targets.
+ * `GlobalsListView` now filters via `hasPermission` DIRECTLY (`read`, `scope: "any"`) —
+ * developer-reported: it used to render every configured global unconditionally, relying
+ * entirely on the sidebar/dashboard never linking to one the caller couldn't read, which
+ * is not a real boundary since `/admin/globals` is reachable directly by URL. Same
+ * `MATRIX_UNDECLARED` fixture `DashboardView`'s own Globals section already uses — the
+ * fixture's sole configured global resolves to the undeclared `"settings"` resource.
  *
- * @param _options - Unused; this view has no RBAC surface to downgrade.
+ * @param options - Optional caller-supplied access config; see {@link ViewSuiteOptions.access}.
  * @returns Nothing; registers `describe`/`it` blocks as a side effect.
  */
-function describeGlobalsListView(_options: { access?: VexAccessConfig }): void {
+function describeGlobalsListView(options: { access?: VexAccessConfig }): void {
   describe("GlobalsListView", () => {
-    it("renders one card per configured global, linking to its edit route", () => {
-      const utils = renderWithVexProviders(createElement(GlobalsListView, {}), {
-        config: testClientConfig,
+    if (options.access) {
+      it("renders without crashing under the provided access config", () => {
+        const { container, unmount } = renderWithVexProviders(createElement(GlobalsListView, {}), {
+          access: options.access,
+          auth: { user: null },
+        });
+        expect(container).toBeTruthy();
+        unmount();
       });
-      expect(utils.getByText("Settings")).toBeInTheDocument();
-      expect(utils.getByText("Edit Global")).toBeInTheDocument();
-      const link = utils.container.querySelector('a[href="/admin/globals/settings"]');
-      expect(link).not.toBeNull();
+      return;
+    }
+
+    runRbacStateSuite({
+      config: testClientConfig,
+      render: () => createElement(GlobalsListView, {}),
+      assert: (utils, scenario) => {
+        const name = scenario.name as keyof RbacMatrix;
+        const link = utils.container.querySelector('a[href="/admin/globals/settings"]');
+        if (MATRIX_UNDECLARED[name]) {
+          expect(utils.getByText("Settings")).toBeVisible();
+          expect(utils.getByText("Edit Global")).toBeVisible();
+          expect(link).not.toBeNull();
+        } else {
+          expect(utils.queryByText("Settings")).toBeNull();
+          expect(link).toBeNull();
+          expect(utils.getByText("No globals available")).toBeVisible();
+        }
+      },
     });
   });
 }
@@ -1018,6 +1253,103 @@ function describeDashboardView(options: { access?: VexAccessConfig }): void {
           expect(globalsHeading).not.toBeVisible();
         }
       },
+    });
+  });
+}
+
+/**
+ * `CollectionsIndexView` (`/admin/collections`, no slug) mirrors `DashboardView`'s own
+ * Collections/Media sections exactly (same `AdminCardSection`, same `hasPermission`
+ * filters) but renders no Globals section at all. Its own `<h1>Collections</h1>` title
+ * collides, as plain text, with `AdminCardSection`'s own `<h2>Collections</h2>` section
+ * heading — unlike `DashboardView` (whose `<h1>` says "Dashboard", never colliding with
+ * its own section headings) — so assertions target the `<h2>` tag directly via
+ * `querySelector`, not `getByText`, to disambiguate.
+ *
+ * @param options - Optional caller-supplied access config; see {@link ViewSuiteOptions.access}.
+ * @returns Nothing; registers `describe`/`it` blocks as a side effect.
+ */
+function describeCollectionsIndexView(options: { access?: VexAccessConfig }): void {
+  describe("CollectionsIndexView", () => {
+    if (options.access) {
+      it("renders without crashing under the provided access config", () => {
+        const { container, unmount } = renderWithVexProviders(
+          createElement(CollectionsIndexView, {}),
+          { access: options.access, auth: { user: null } },
+        );
+        expect(container).toBeTruthy();
+        unmount();
+      });
+      return;
+    }
+
+    runRbacStateSuite({
+      config: testClientConfig,
+      render: () => createElement(CollectionsIndexView, {}),
+      assert: (utils, scenario) => {
+        const name = scenario.name as keyof RbacMatrix;
+        const headings = Array.from(utils.container.querySelectorAll("h2"));
+        const collectionsHeading = headings.find((h) => h.textContent === "Collections");
+        const mediaHeading = headings.find((h) => h.textContent === "Media");
+        if (!MATRIX_POSTS_READ_ANY[name] && !MATRIX_UNDECLARED[name]) {
+          // Nothing readable at all — the empty state replaces both sections outright,
+          // not merely hiding them via Activity (there is nothing left to toggle).
+          expect(collectionsHeading).toBeUndefined();
+          expect(mediaHeading).toBeUndefined();
+          expect(utils.getByText("No collections available")).toBeVisible();
+          return;
+        }
+        expect(collectionsHeading).toBeDefined();
+        expect(mediaHeading).toBeDefined();
+        if (MATRIX_POSTS_READ_ANY[name]) {
+          expect(collectionsHeading).toBeVisible();
+        } else {
+          expect(collectionsHeading).not.toBeVisible();
+        }
+        if (MATRIX_UNDECLARED[name]) {
+          expect(mediaHeading).toBeVisible();
+        } else {
+          expect(mediaHeading).not.toBeVisible();
+        }
+        // No Globals section at all — unlike DashboardView, not even a hidden one.
+        expect(headings.find((h) => h.textContent === "Globals")).toBeUndefined();
+      },
+    });
+
+    // Developer-reported: must match the sidebar's own Collections group EXACTLY (same
+    // filter, same order, including whatever "hidden"/auth-table resources the real
+    // `config.collections` array carries — both components iterate that SAME array with
+    // an identical `hasPermission` filter, so set/order parity is a structural guarantee,
+    // not independently re-derived logic that could silently drift apart). `testAccess.none`
+    // (RBAC entirely off) is the one default scenario where BOTH collections and the media
+    // collection resolve visible (`MATRIX_POSTS_READ_ANY.none`/`MATRIX_UNDECLARED.none`
+    // are both `true`), so this is the scenario that actually exercises every category.
+    it("shows the EXACT SAME set of collection/media links, same order, as AppSidebar's Collections/Media groups", () => {
+      const sidebarUtils = renderWithVexProviders(
+        createElement(
+          ThemeProvider,
+          null,
+          createElement(SidebarProvider, null, createElement(AppSidebar, {})),
+        ),
+        { config: testClientConfig, access: testAccess.none, auth: { user: null } },
+      );
+      const sidebarHrefs = Array.from(
+        sidebarUtils.container.querySelectorAll('a[href^="/admin/collections/"]'),
+      ).map((a) => a.getAttribute("href"));
+      sidebarUtils.unmount();
+
+      const indexUtils = renderWithVexProviders(createElement(CollectionsIndexView, {}), {
+        config: testClientConfig,
+        access: testAccess.none,
+        auth: { user: null },
+      });
+      const indexHrefs = Array.from(
+        indexUtils.container.querySelectorAll('a[href^="/admin/collections/"]'),
+      ).map((a) => a.getAttribute("href"));
+      indexUtils.unmount();
+
+      expect(indexHrefs.length).toBeGreaterThan(0);
+      expect(indexHrefs).toEqual(sidebarHrefs);
     });
   });
 }
@@ -1204,7 +1536,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
         }),
         { convex: t, access: createMapAccess, auth: { user: asUser("mapCreator") } },
       );
-      const uploadLink = utils.container.querySelector('a[href="/admin/images?upload=true"]');
+      const uploadLink = utils.container.querySelector('a[href="/admin/collections/images?upload=true"]');
       expect(uploadLink).not.toHaveAttribute("aria-disabled");
     });
 
@@ -1220,7 +1552,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
       assert: (utils, scenario) => {
         const expected = MATRIX_UNDECLARED[scenario.name as keyof RbacMatrix];
         expect(utils.getByText("2 items")).toBeInTheDocument();
-        const uploadLink = utils.container.querySelector('a[href="/admin/images?upload=true"]');
+        const uploadLink = utils.container.querySelector('a[href="/admin/collections/images?upload=true"]');
         expect(uploadLink).not.toBeNull();
         if (expected) {
           expect(uploadLink).not.toHaveAttribute("aria-disabled");
@@ -1536,9 +1868,9 @@ function describeAdminSidebar(options: { access?: VexAccessConfig }): void {
       render: () => mount(),
       assert: (utils, scenario) => {
         const name = scenario.name as keyof RbacMatrix;
-        const postsLink = utils.container.querySelector('a[href="/admin/posts"]');
+        const postsLink = utils.container.querySelector('a[href="/admin/collections/posts"]');
         const settingsLink = utils.container.querySelector('a[href="/admin/globals/settings"]');
-        const imagesLink = utils.container.querySelector('a[href="/admin/images"]');
+        const imagesLink = utils.container.querySelector('a[href="/admin/collections/images"]');
         // Unlike `DashboardView`'s heading (always rendered, only its visibility toggles),
         // `AppSidebar` maps the FILTERED array directly — with exactly one collection/global/
         // media collection in `testClientConfig`, a denied permission means that array is
@@ -1613,7 +1945,6 @@ function describeAdminLayout(options: { access?: VexAccessConfig }): void {
       it("renders without crashing under the provided access config", () => {
         const { container, unmount } = renderView(
           createElement(AdminLayout, {
-            pathname: "/admin/posts",
             activeSlug: "posts",
             children: createElement("div", null, "content"),
           }),
@@ -1628,7 +1959,6 @@ function describeAdminLayout(options: { access?: VexAccessConfig }): void {
     it("injects the framework Link/Image overrides into the tree it wraps", () => {
       const utils = renderView(
         createElement(AdminLayout, {
-          pathname: "/admin/posts",
           activeSlug: "posts",
           components: { Link: StubLink, Image: StubImage },
           children: createElement(ImageProbe),
@@ -1643,20 +1973,20 @@ function describeAdminLayout(options: { access?: VexAccessConfig }): void {
     it("marks the active collection's nav entry and leaves the others inactive", () => {
       const utils = renderView(
         createElement(AdminLayout, {
-          pathname: "/admin/posts",
           activeSlug: "posts",
           children: createElement("div", null, "content"),
         }),
         { convex: t },
       );
-      // Scoped to `[data-slot="sidebar-menu-button"]`: AdminTopNav's breadcrumb ALSO renders
-      // an `<a href="/admin/posts">` (unrelated to `isActive`), so an unscoped href selector
-      // is ambiguous the moment the sidebar entry itself is ever absent.
+      // Scoped to `[data-slot="sidebar-menu-button"]`: the sidebar renders its OWN
+      // `<a href="/admin/collections/posts">` distinct from any other link an unrelated
+      // part of the tree might render for the same href, so an unscoped href selector
+      // would be ambiguous the moment that's ever true.
       const postsLink = utils.container.querySelector(
-        'a[data-slot="sidebar-menu-button"][href="/admin/posts"]',
+        'a[data-slot="sidebar-menu-button"][href="/admin/collections/posts"]',
       );
       const imagesLink = utils.container.querySelector(
-        'a[data-slot="sidebar-menu-button"][href="/admin/images"]',
+        'a[data-slot="sidebar-menu-button"][href="/admin/collections/images"]',
       );
       expect(postsLink).toHaveAttribute("data-active");
       expect(imagesLink).not.toHaveAttribute("data-active");
@@ -1676,13 +2006,22 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
   describe("AdminTopNav", () => {
     const t = convexTest(schema, testModules);
 
+    /**
+     * `AdminTopNav` now renders its own `SidebarTrigger` directly (top-bar move — it used to
+     * be a sibling in `AdminLayout`'s own `<header>`, which always sat inside a
+     * `SidebarProvider`) — standalone tests of `AdminTopNav` alone need one too, or
+     * `useSidebar()` throws ("must be used within a SidebarProvider").
+     *
+     * @param child - The element under test, wrapped so it can call `useSidebar()`.
+     * @returns `child` wrapped in a `SidebarProvider`.
+     */
+    function withSidebarProvider(child: ReturnType<typeof createElement>) {
+      return createElement(SidebarProvider, null, child);
+    }
+
     it("renders the breadcrumb trail for an active collection route", () => {
       const utils = renderView(
-        createElement(AdminTopNav, {
-          pathname: "/admin/posts",
-          activeSlug: "posts",
-          children: null,
-        }),
+        withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
         { convex: t, access: options.access },
       );
       expect(utils.getByText("Home")).toBeInTheDocument();
@@ -1691,17 +2030,14 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
       // the title-cased slug itself.
       expect(utils.getByText("Posts")).toBeInTheDocument();
       expect(utils.container.querySelector('a[href="/admin"]')).not.toBeNull();
-      expect(utils.container.querySelector('a[href="/admin/posts"]')).not.toBeNull();
+      expect(utils.container.querySelector('a[href="/admin/collections/posts"]')).not.toBeNull();
     });
 
     it('resolves a globals route through the "skip" sentinel with no document fetch', () => {
       const utils = renderView(
-        createElement(AdminTopNav, {
-          pathname: "/admin/globals/settings",
-          activeSlug: "globals",
-          activeDocID: "settings",
-          children: null,
-        }),
+        withSidebarProvider(
+          createElement(AdminTopNav, { activeSlug: "globals", activeDocID: "settings" }),
+        ),
         { convex: t, access: options.access },
       );
       expect(utils.getByText("Home")).toBeInTheDocument();
@@ -1712,19 +2048,18 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
 
     it("renders only the Home crumb for an unknown collection slug", () => {
       const utils = renderView(
-        createElement(AdminTopNav, {
-          pathname: "/admin/does-not-exist",
-          activeSlug: "does-not-exist",
-          children: null,
-        }),
+        withSidebarProvider(createElement(AdminTopNav, { activeSlug: "does-not-exist" })),
         { convex: t, access: options.access },
       );
       // `activeCollection` resolves to `undefined` (not in `config.collections` or
       // `config.mediaCollections`) and `isGlobals` is false, so neither crumb-building
-      // branch fires (AdminTopNav.tsx:77,90) — the breadcrumb degrades to just "Home" rather
-      // than crashing or showing a stale/wrong label.
+      // branch fires — the breadcrumb degrades to just "Home" rather than crashing or
+      // showing a stale/wrong label. Scoped to the breadcrumb trail's own container — the
+      // bar ALSO renders a "View site" link (absorbed from `AdminLayout.tsx`, top-bar
+      // move), an unrelated piece of UI chrome, not part of the breadcrumb count.
       expect(utils.getByText("Home")).toBeInTheDocument();
-      expect(utils.container.querySelectorAll("a")).toHaveLength(1);
+      const breadcrumbNav = utils.getByText("Home").closest("a")?.parentElement;
+      expect(breadcrumbNav?.querySelectorAll("a")).toHaveLength(1);
     });
 
     it("injects the framework Link override into every breadcrumb", () => {
@@ -1735,15 +2070,156 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
         createElement(
           FrameworkComponentsContext.Provider,
           { value: { Link: StubLink } as FrameworkComponents },
-          createElement(AdminTopNav, {
-            pathname: "/admin/posts",
-            activeSlug: "posts",
-            children: null,
-          }),
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
         ),
         { convex: t },
       );
       expect(utils.container.querySelectorAll('[data-stub-link="true"]').length).toBeGreaterThan(0);
+    });
+
+    it("resolves the document-title crumb via Suspense for an active edit route (top-bar move)", async () => {
+      // `testCollection` (the shared fixture) defaults `admin.useAsTitle` to `"_id"`
+      // (`defineCollection`'s own documented default) — a local variant with an explicit
+      // `useAsTitle: "title"` is needed to prove the crumb shows a REAL title, not just the
+      // id it would always have access to regardless of whether this feature works.
+      const titledPosts = defineCollection({
+        slug: "posts",
+        fields: { status: text({ index: "by_status" }), title: text({ required: false }) },
+        admin: { useAsTitle: "title" },
+      });
+      const titledConfig = defineConfig({
+        collections: [titledPosts],
+        mediaCollections: testClientConfig.mediaCollections,
+        globals: testClientConfig.globals,
+      });
+      const id = await t.run((ctx) => ctx.db.insert("documents", { status: "b", title: "My Post Title" }));
+      const utils = renderView(
+        withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts", activeDocID: id })),
+        { convex: t, config: titledConfig, access: options.access },
+      );
+      // Suspense-wrapped: not present synchronously, resolves once the `useSuspenseQuery`
+      // (same `vexConvexApi.get` key the edit view's own data component prefetches,
+      // `drafts: collection.versions.drafts`) settles — see `AdminTopNav.tsx`'s own doc
+      // comment for why this must be a genuine query, not a prop, to work correctly on an
+      // SSR-streamed first paint (a direct prop would require the layout to know the
+      // document, which it structurally cannot — the whole reason this moved to
+      // `NextAdminPage`).
+      await waitFor(() => expect(utils.getByText("My Post Title")).toBeInTheDocument());
+      expect(
+        utils.container.querySelector(`a[href="/admin/collections/posts/${id}"]`),
+      ).not.toBeNull();
+    });
+
+    /**
+     * Sign-in/out control tests (`FrameworkComponents.auth`, `AdminTopNav`'s `AuthControl`).
+     * `signOut` is ALWAYS a `vi.fn()` stub here, never a real auth client call — these tests
+     * exercise the click handler/pending-state wiring only, matching the project rule that
+     * the real sign-out action must only ever be exercised against a mock.
+     */
+    const stubAuthAdapter = {
+      signInHref: (redirectTo: string) => `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}`,
+      signOut: () => Promise.resolve(),
+    };
+
+    it("renders no sign-in/out control when no auth adapter is configured", () => {
+      const utils = renderView(
+        withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        { convex: t, access: options.access },
+      );
+      expect(utils.queryByText("Sign in")).toBeNull();
+      expect(utils.queryByText("Sign out")).toBeNull();
+    });
+
+    it("shows a visible Sign in label with the icon to its right and a redirectTo back to the current admin URL when signed out", () => {
+      const utils = renderView(
+        createElement(
+          FrameworkComponentsContext.Provider,
+          { value: { auth: stubAuthAdapter } as FrameworkComponents },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        ),
+        { convex: t, access: options.access, auth: { user: null } },
+      );
+      expect(utils.getByText("Sign in")).toBeInTheDocument();
+      expect(utils.queryByText("Sign out")).toBeNull();
+      const link = utils.getByText("Sign in").closest("a");
+      expect(link?.getAttribute("href")).toBe(
+        "/auth/sign-in?redirectTo=%2Fadmin%2Fcollections%2Fposts",
+      );
+      // iconPosition="right" (developer correction — not icon-only): the icon is the LAST
+      // element child of its own content span, after the visible "Sign in" text node.
+      const icon = link?.querySelector("svg");
+      expect(icon).not.toBeNull();
+      expect(icon?.parentElement?.lastElementChild).toBe(icon);
+    });
+
+    it('treats an anonymous session ("isAnonymous: true") as signed out, not signed in', () => {
+      const utils = renderView(
+        createElement(
+          FrameworkComponentsContext.Provider,
+          { value: { auth: stubAuthAdapter } as FrameworkComponents },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        ),
+        { convex: t, access: options.access, auth: { user: { isAnonymous: true } } },
+      );
+      expect(utils.getByText("Sign in")).toBeInTheDocument();
+      expect(utils.queryByText("Sign out")).toBeNull();
+    });
+
+    it("shows a Sign out control when signed in and calls the adapter's signOut exactly once on click", async () => {
+      const signOut = vi.fn().mockResolvedValue(undefined);
+      const utils = renderView(
+        createElement(
+          FrameworkComponentsContext.Provider,
+          {
+            value: {
+              auth: { signInHref: stubAuthAdapter.signInHref, signOut },
+            } as FrameworkComponents,
+          },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        ),
+        { convex: t, access: options.access, auth: { user: { _id: "user1" } } },
+      );
+      expect(utils.getByText("Sign out")).toBeInTheDocument();
+      expect(utils.queryByText("Sign in")).toBeNull();
+      fireEvent.click(utils.getByText("Sign out"));
+      expect(signOut).toHaveBeenCalledTimes(1);
+      // The button disables itself (`isPending`) until the adapter's promise settles —
+      // never a second call from an impatient double-click while pending.
+      fireEvent.click(utils.getByText("Sign out"));
+      expect(signOut).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(utils.getByText("Sign out").closest("button")).not.toBeDisabled());
+    });
+
+    it("places the control at the far edge opposite the sidebar-trigger cluster when the sidebar is on the right", () => {
+      const rightSidebarConfig = defineConfig({
+        collections: testClientConfig.collections,
+        mediaCollections: testClientConfig.mediaCollections,
+        globals: testClientConfig.globals,
+        admin: { sidebar: { side: "right" } },
+      });
+      const utils = renderView(
+        createElement(
+          FrameworkComponentsContext.Provider,
+          { value: { auth: stubAuthAdapter } as FrameworkComponents },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        ),
+        { convex: t, config: rightSidebarConfig, access: options.access, auth: { user: null } },
+      );
+      const header = utils.container.querySelector("header");
+      expect(header?.firstElementChild?.textContent).toContain("Sign in");
+    });
+
+    it("places the control at the far edge opposite the sidebar-trigger cluster when the sidebar is on the left (default)", () => {
+      const utils = renderView(
+        createElement(
+          FrameworkComponentsContext.Provider,
+          { value: { auth: stubAuthAdapter } as FrameworkComponents },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        ),
+        { convex: t, access: options.access, auth: { user: null } },
+      );
+      const header = utils.container.querySelector("header");
+      expect(header?.lastElementChild?.textContent).toContain("Sign in");
     });
   });
 }
@@ -1755,6 +2231,7 @@ export type ViewSuiteMember =
   | "GlobalEditView"
   | "GlobalsListView"
   | "DashboardView"
+  | "CollectionsIndexView"
   | "UnauthorizedView"
   | "MediaCollectionListView"
   | "MediaCollectionEditView";
@@ -1765,6 +2242,7 @@ const ALL_VIEW_MEMBERS: ViewSuiteMember[] = [
   "GlobalEditView",
   "GlobalsListView",
   "DashboardView",
+  "CollectionsIndexView",
   "UnauthorizedView",
   "MediaCollectionListView",
   "MediaCollectionEditView",
@@ -1801,6 +2279,7 @@ export function runViewSuite(options?: ViewSuiteOptions): void {
   if (only.includes("GlobalEditView")) describeGlobalEditView({ access });
   if (only.includes("GlobalsListView")) describeGlobalsListView({ access });
   if (only.includes("DashboardView")) describeDashboardView({ access });
+  if (only.includes("CollectionsIndexView")) describeCollectionsIndexView({ access });
   if (only.includes("UnauthorizedView")) describeUnauthorizedView({ access });
   if (only.includes("MediaCollectionListView")) describeMediaCollectionListView({ access });
   if (only.includes("MediaCollectionEditView")) describeMediaCollectionEditView({ access });

@@ -1,5 +1,118 @@
 # create-vexcms
 
+## 0.1.0-alpha.28
+
+### Patch Changes
+
+- b937b2b: `NextAdminPage`'s access gate now runs BEFORE anything streams, exactly like the existing
+  token check: `canAccessAdminPanel` is awaited, and a denied caller is redirected — the route
+  never streams any admin shell or content to them. The real shell streams exactly as it did
+  before this change (real title/tabs/toolbar/controls/checkboxes for an allowed caller, only
+  row data still resolves behind its own `<Suspense>` skeleton).
+
+  An earlier version of this change gated the content area behind a generic
+  `AdminContentSkeleton` instead of awaiting the check — reverted after a live review found it
+  made the loading state worse (layout shift, row-selection spinners, phantom skeletons,
+  pop-in). `AdminContentSkeleton` is deleted; there is no replacement component.
+
+- b937b2b: New sign-in/out control in the admin top bar, enabled by anonymous admin access via
+  `anonRole`: a visitor browsing the admin panel anonymously now has a visible way to sign
+  in, and a signed-in user a visible way to sign out, right from `AdminTopNav`.
+
+  `@vexcms/react`'s `FrameworkComponents` (`useFrameworkComponents`) gains an optional
+  `auth` field — a `{ signInHref, signOut }` adapter. Omitted (the default), the control
+  renders nothing, same as before this release. The signed-in/out determination itself
+  comes from the existing `useVexAuth()` (`{ user, organization }`, server-resolved, no
+  client-only flash) — `user === null` or `user.isAnonymous === true` (Better Auth's
+  `anonymous()` plugin convention) both render "Sign in"; anything else renders "Sign out".
+
+  Placement: the opposite edge of the bar from the sidebar-trigger/breadcrumbs/"View site"
+  cluster, derived from the SAME `config.admin.sidebar.side` the cluster itself reads — a
+  `"right"` sidebar puts the control at the far left, a `"left"`/default sidebar at the far
+  right.
+
+  `@vexcms/next` provides the Next.js adapter: `VexAdminAuthAdapterProvider`/
+  `useVexAdminAuthAdapter` from the new `@vexcms/next/auth` subpath. A context, not a prop
+  threaded through `NextAdminLayout`/your admin `layout.tsx`, because both of those are
+  server components and the sign-in href builder/`signOut` function are app-specific client
+  values that cannot cross that boundary as props — mount the provider anywhere above
+  `NextAdminLayout` in your own client tree (e.g. alongside your Better Auth client
+  provider) instead. See `VexAdminAuthAdapterContext`'s own doc comment for a full example.
+
+  `apps/test`, `apps/www`, and the `create-vexcms` `base-nextjs` template (inherited
+  unchanged by the `marketing-site` overlay) now wire this up in their own
+  `BetterAuthClientProvider`, so every scaffolded project gets the control by default with
+  no per-app configuration beyond the generated auth client itself.
+
+- b937b2b: Bumped `patch` despite being breaking, per this track's own convention (see
+  `config-client-server-split`'s changeset): the `alpha` pre-release keeps every package on the
+  `0.1.0` base, and the breaking surface is itemized here and in the commit's `BREAKING CHANGE:`
+  footer.
+
+  Removed `admin.table`/`CollectionTableConfigInput`/`CollectionTableConfig` entirely.
+  `admin.view` (the default view) and `admin.views` (preset views) now carry everything that
+  used to live on `admin.table`, not just view identity: `name?`, `description?`, `where?`,
+  `sort?`, `pageSize?`, `searchField?`, `columns?`, plus the collection-wide settings
+  `searchFields?` (renamed, plural, from the old `admin.table.searchField` — it was colliding
+  with this same shape's own per-view singular `searchField`), `pageSizeOptions?`,
+  `countLimit?`, `serverPageSize?`, and `bulkActions?`. `admin.views[n]` accepts the identical
+  shape — a preset view can override any collection-wide setting too, falling back to
+  `admin.view`'s own resolved value, then the global default.
+
+  **`@vexcms/core`.** `columns` entries are now `ColumnEntry<TFieldSlug> = TFieldSlug |
+{ field, width?, pinned?, hidden?, enableSorting?, enableHiding? }` — order, visibility, pin
+  side, width, and the sortable/hideable capability flags are all one array, one per-field
+  entry; a view's own entry always wins over `field.admin.*`, which is only consulted when
+  unset. `field.admin.width` is renamed `columnWidth` (the existing `width` key is the field's
+  own CSS row-width in the edit form, an unrelated axis). The reserved id for the always-first
+  selection-checkbox column is `"select"`; a versioned collection's synthetic `vex_status`
+  status column is a full `ColumnEntry` participant (reorderable/hideable/pinnable/resizable),
+  with an existing saved view's absence of `vex_status` back-filling as unpinned-but-visible,
+  first position — not hidden, so no pre-existing view silently loses its status badge.
+  `validateTableConfig.ts` is renamed `validateViewConfig.ts`; its checks now run per view
+  (`admin.view` and every `admin.views[n]`), and a view's own `enableSorting: true` override
+  still must lead a declared index, same as a field's.
+
+  **`@vexcms/react`.** Every `visibleColumns`/`columnOrder`/`columnPinning` consumer collapses
+  onto the one `columns: ColumnEntry[]` prop/state; `getCollectionColumnDefs` now resolves each
+  field's `enableSorting`/`enableHiding` through `resolveColumnConfig` (the view's own entry can
+  override a field's own default) instead of reading `field.admin.*` directly.
+
+  **Migration:** every `admin.table.*` config key, column ordering/visibility/pinning state, and
+  reader across core/react/next is moved — there is no shim or dual-read period.
+
+- b937b2b: The scaffolded `admin/[[...path]]/page.tsx` no longer hard-redirects to sign-in before
+  checking `canAccessAdminPanel` — it awaits `getUserOrg()` (already safe with no session)
+  and checks authorization first, only redirecting to sign-in when a caller is BOTH
+  unauthenticated and denied. The marketing-site template's `proxy.ts` middleware gate gets
+  the matching fix: it checks `canAccessAdminPanel({ access, user: null })` before its own
+  session-verification round trip, skipping it entirely when the result is `true`.
+
+  This makes anonymous, read-only admin access a pure `access.ts` config decision — set
+  `anonRole` to a role that grants `adminPanel.access` plus field-scoped reads, and
+  anonymous visitors reach `/admin` directly with no sign-in detour, seeing only what that
+  role can read (enforced server-side on every query/mutation, identically to any other
+  role). An app that hasn't configured this gets byte-identical behavior to before on both
+  the route and the middleware gate — this is additive, not a breaking change.
+
+  The `base-nextjs` (private-app) template's own whole-app middleware gate is intentionally
+  unchanged — a private app has no public surface to carve an exception into, so its
+  `page.tsx` gains the same route-level fix for consistency but the app itself stays fully
+  gated end to end.
+
+  See the "Read-only public admin via `anonRole`" section of the Access Control guide for
+  the full pattern, including the middleware-layer check most Next.js apps also need.
+
+- 30b4c10: Fix dark-mode focus rings silently disappearing on `variant="outline"` buttons (and anything
+  else carrying `shadow-xs`). Tailwind v4 composes `box-shadow` as a 5-layer `var()` list; a bare
+  `none` keyword for any one layer is invalid inside a comma-separated shadow list, so the whole
+  composed declaration fails to parse at compute time and `box-shadow` collapses to its initial
+  value — silently eating the valid `focus-visible:ring-3` layer along with the (deliberately
+  absent) elevation shadow. `--shadow-xs-val`/`--shadow-sm-val`/`--shadow-md-val`/
+  `--shadow-lg-val` now resolve to `0 0 #0000` (zero-spread, transparent — visually identical to
+  `none`, but valid inside the composed list) in dark mode, in `apps/www/src/app/globals.css` and
+  both `create-vexcms` templates (`base-nextjs`, `marketing-site`).
+
 ## 0.1.0-alpha.27
 
 ### Patch Changes

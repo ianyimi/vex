@@ -2,8 +2,8 @@ import { convexTest } from "convex-test";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { describe, expect, test } from "vitest";
 
-import * as _generatedApi from "../api/test/convex/_generated/api";
-import schema from "../api/test/convex/schema";
+import * as _generatedApi from "../db/test/convex/_generated/api";
+import schema from "../db/test/convex/schema";
 import { assertUniqueAmongPublished } from "./assertUniqueAmongPublished";
 
 const modules: Record<string, () => Promise<unknown>> = {
@@ -26,7 +26,7 @@ describe("assertUniqueAmongPublished", () => {
           // caller (a field's `validate()`) already has that fixed type;
           // this test's `ctx` is convex-test's own generic model, so the
           // same `as never` this repo's other fixed-ctx tests already use
-          // (see `resolveUrl.server.test.ts`, `callbackApi.test.ts`).
+          // (see `livePreview/api/resolve/server.test.ts`, `callbackApi.test.ts`).
           ctx: ctx as never,
           collection: "posts",
           indexName: "by_slug",
@@ -156,14 +156,16 @@ describe("assertUniqueAmongPublished", () => {
     });
   });
 
-  test("a draft-only row (never published) checks cleanly against the empty published set", async () => {
+  test("an unlinked draft-only row, excluded by its own id, checks cleanly against itself", async () => {
     // Option A's `create` on a `versions.defaultStatus: "draft"` collection —
-    // `vex_status: "draft"` with no `vex_publishedId`. No excludeId is passed:
-    // there is no published parent to exempt, and nothing published has
-    // claimed this value yet, so the check must not throw.
+    // `vex_status: "draft"` with no `vex_publishedId`. Under the widened,
+    // Fix D scope an unlinked draft-only row IS now a candidate (unlike
+    // before, when a draft row was never a candidate regardless of id), so
+    // re-validating its own unchanged value must pass its own `_id` as
+    // `excludeId` to avoid colliding with itself.
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await ctx.db.insert("posts", {
+      const draftOnlyId = await ctx.db.insert("posts", {
         title: "New page (unpublished)",
         slug: "never-published",
         vex_status: "draft",
@@ -175,8 +177,35 @@ describe("assertUniqueAmongPublished", () => {
           indexName: "by_slug",
           field: "slug",
           value: "never-published",
+          excludeId: draftOnlyId,
         }),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  test("an unlinked draft-only row collides with ANOTHER unlinked draft-only row sharing the same value (Fix D)", async () => {
+    // The exact gap "Duplicate" hit: cloning a published document (forced
+    // to vex_status: "draft") keeps the source's slug verbatim, with no
+    // published counterpart of its own yet — the narrower, published-only
+    // scope let two such clones share a slug silently. Widened scope
+    // catches it: no excludeId, so the create of the SECOND clone collides
+    // with the first.
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", {
+        title: "new post title",
+        slug: "post1",
+        vex_status: "draft",
+      });
+      await expect(
+        assertUniqueAmongPublished({
+          ctx: ctx as never,
+          collection: "posts",
+          indexName: "by_slug",
+          field: "slug",
+          value: "post1",
+        }),
+      ).rejects.toThrow();
     });
   });
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { defineCollection, defineConfig, defineServerConfig, text } from "../index";
-import { WILDCARD_KEY } from "./constants";
 import { defineAccess } from "./config";
-import type { AccessDocFieldFor, AccessDocFor, VexAccessConfig } from "./types";
+import { WILDCARD_KEY } from "./constants";
+import type { AccessDocFieldFor, AccessDocFor, ConstrainedPermissionCheck, VexAccessConfig } from "./types";
 import { VexAccessConfigError } from "./types";
-import type { MutationCallActionFor, QueryCallActionFor } from "../api/types";
+import type { MutationCallActionFor, QueryCallActionFor } from "../db/types";
 
 // Core tests run with an unaugmented GeneratedVexTypes registry, so callback
 // `data`/`user` params are the wide pre-generation fallback — the `typeof`/`in`
@@ -20,9 +20,9 @@ const draftPages = defineCollection({
 const pages = defineCollection({
   slug: "pages",
   // `authorId` declares a real index so `withIndex: "by_author"` resolves at
-  // runtime too — `defineAccess` validates constraint field order against the
-  // resource's DECLARED indexes, so a type-rejection test that names a
-  // nonexistent index would fail for the wrong reason.
+  // runtime too — index validation (`validateAccessConfig`, run from
+  // `defineConfig`) is not exercised by this file's type-rejection tests, but the
+  // fixture still names a real index so it reads like production config.
   fields: {
     title: text({ required: true }),
     authorId: text({ index: "by_author" }),
@@ -81,10 +81,20 @@ const baseInput = {
 // the shape it tested: `AccessIndex` and the deprecated `{ filter, withIndex }` pair
 // were deleted early (Step 13's type work, pulled forward) because `resolveAccessRule`
 // could not be written against two shapes at once. Its replacements live in the
-// constraint-builder block below — `q.withIndex(name)` inside the callback.
+// `withIndex` / `where` object-form block below.
 
-describe("PermissionCheck — constraint builder object form", () => {
-  it("accepts { constraints, filter? } on a query-shaped action (read)", () => {
+describe("PermissionCheck — withIndex / where / filter object form", () => {
+  it("accepts a static withIndex on a query action", () => {
+    defineAccess({
+      ...baseInput,
+      permissions: {
+        admin: { [WILDCARD_KEY]: true },
+        contributor: { pages: { read: { withIndex: { name: "by_author", range: (ix) => ix.eq("authorId", "u1") } } } },
+      },
+    });
+  });
+
+  it("accepts a caller-dependent withIndex beside a filter, with no where", () => {
     defineAccess({
       ...baseInput,
       permissions: {
@@ -92,19 +102,8 @@ describe("PermissionCheck — constraint builder object form", () => {
         contributor: {
           pages: {
             read: {
-              constraints: ({ user, q }) =>
-                typeof user === "object" && user !== null && "_id" in user
-                  ? q.filter((f) => f.eq("authorId", user._id))
-                  : false,
-              filter: ({ data, user }: { data: unknown; user: unknown }) =>
-                typeof data === "object" &&
-                data !== null &&
-                "authorId" in data &&
-                typeof user === "object" &&
-                user !== null &&
-                "_id" in user
-                  ? data.authorId === user._id
-                  : false,
+              withIndex: ({ user }) => ({ name: "by_author", range: (ix) => ix.eq("authorId", String(user._id)) }),
+              filter: () => true,
             },
           },
         },
@@ -112,39 +111,17 @@ describe("PermissionCheck — constraint builder object form", () => {
     });
   });
 
-  it("accepts constraints without filter — filter is optional", () => {
+  it("accepts where alone on a mutation action", () => {
     defineAccess({
       ...baseInput,
       permissions: {
         admin: { [WILDCARD_KEY]: true },
-        contributor: {
-          pages: {
-            read: {
-              constraints: ({ q }) => q.filter((f) => f.eq("authorId", "u1")),
-            },
-          },
-        },
+        contributor: { pages: { update: { where: ({ q }) => q.eq("authorId", "u1") } } },
       },
     });
   });
 
-  it("accepts unindexed constraints on create — the object form is valid on every action (DD 14)", () => {
-    defineAccess({
-      ...baseInput,
-      permissions: {
-        admin: { [WILDCARD_KEY]: true },
-        contributor: {
-          pages: {
-            create: {
-              constraints: ({ q }) => q.filter((f) => f.eq("authorId", "u1")),
-            },
-          },
-        },
-      },
-    });
-  });
-
-  it("accepts unindexed constraints on update — replaces the old read+update duplication", () => {
+  it("rejects withIndex on a mutation action, at the property", () => {
     defineAccess({
       ...baseInput,
       permissions: {
@@ -152,7 +129,9 @@ describe("PermissionCheck — constraint builder object form", () => {
         contributor: {
           pages: {
             update: {
-              constraints: ({ q }) => q.filter((f) => f.eq("authorId", "u1")),
+              // @ts-expect-error — a mutation action has no query to narrow, so `withIndex` is `WithIndexOnMutationError`
+              withIndex: { name: "by_author", range: (ix) => ix.eq("authorId", "u1") },
+              where: ({ q }) => q.eq("authorId", "u1"),
             },
           },
         },
@@ -160,23 +139,22 @@ describe("PermissionCheck — constraint builder object form", () => {
     });
   });
 
-  it("accepts unindexed constraints on delete", () => {
+  it("rejects an object with neither withIndex nor where", () => {
     defineAccess({
       ...baseInput,
       permissions: {
         admin: { [WILDCARD_KEY]: true },
         contributor: {
           pages: {
-            delete: {
-              constraints: ({ q }) => q.filter((f) => f.eq("authorId", "u1")),
-            },
+            // @ts-expect-error — `filter` augments `withIndex` / `where`; it is never the only property
+            read: { filter: () => true },
           },
         },
       },
     });
   });
 
-  it("accepts q.withIndex on read — index pushdown is opted into inside the callback", () => {
+  it("accepts where without filter — filter is optional", () => {
     defineAccess({
       ...baseInput,
       permissions: {
@@ -184,8 +162,7 @@ describe("PermissionCheck — constraint builder object form", () => {
         contributor: {
           pages: {
             read: {
-              constraints: ({ q }) =>
-                q.withIndex("by_author", (ix) => ix.eq("authorId", "u1")),
+              where: ({ q }) => q.eq("authorId", "u1"),
             },
           },
         },
@@ -193,11 +170,61 @@ describe("PermissionCheck — constraint builder object form", () => {
     });
   });
 
-  it("rejects a filter-only operator after q.withIndex, and surfaces a config error if forced through", () => {
-    // Two layers, both asserted. The type rejects `neq` past `withIndex`; and
-    // because loading the config RUNS the callback to record it, a caller who forced
-    // this through still gets a `VexAccessConfigError` naming the rule rather than
-    // a bare `TypeError` from the missing method.
+  it("accepts a static where, alone and beside a static withIndex", () => {
+    defineAccess({
+      ...baseInput,
+      permissions: {
+        admin: { [WILDCARD_KEY]: true },
+        contributor: {
+          pages: {
+            read: {
+              withIndex: { name: "by_author", range: (ix) => ix.eq("authorId", "u1") },
+              where: { not: { field: "title", op: "eq", value: "Draft" } },
+            },
+            update: { where: { field: "authorId", op: "eq", value: "u1" } },
+          },
+        },
+      },
+    });
+  });
+
+  it("accepts where on create — the object form is valid on every action (DD 14)", () => {
+    defineAccess({
+      ...baseInput,
+      permissions: {
+        admin: { [WILDCARD_KEY]: true },
+        contributor: {
+          pages: {
+            create: {
+              where: ({ q }) => q.eq("authorId", "u1"),
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it("accepts where on delete", () => {
+    defineAccess({
+      ...baseInput,
+      permissions: {
+        admin: { [WILDCARD_KEY]: true },
+        contributor: {
+          pages: {
+            delete: {
+              where: ({ q }) => q.eq("authorId", "u1"),
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it("rejects a flat-only operator inside withIndex's range, and surfaces a config error if forced through", () => {
+    // Two layers, both asserted. The type rejects `neq` inside the positional range
+    // builder; and because loading the config RUNS the callback to record it, a caller
+    // who forced this through still gets a `VexAccessConfigError` naming the rule
+    // rather than a bare `TypeError` from the missing method.
     expect(() =>
       loadAccess(() =>
         defineAccess({
@@ -207,9 +234,11 @@ describe("PermissionCheck — constraint builder object form", () => {
             contributor: {
               pages: {
                 read: {
-                  constraints: ({ q }) =>
-                    // @ts-expect-error — `neq` exists only on the flat algebra; past `withIndex`, `q` is positional
-                    q.withIndex("by_author", (ix) => ix.neq("authorId", "u1")),
+                  withIndex: {
+                    name: "by_author",
+                    // @ts-expect-error — `neq` exists only on the flat algebra; `ix` is positional
+                    range: (ix) => ix.neq("authorId", "u1"),
+                  },
                 },
               },
             },
@@ -220,13 +249,13 @@ describe("PermissionCheck — constraint builder object form", () => {
   });
 
   // NOTE: an unknown index NAME is not rejected here. `IndexFieldsBySlug` is
-  // unaugmented in core's own suite (see the file header), so `q.withIndex` accepts
+  // unaugmented in core's own suite (see the file header), so `withIndex` accepts
   // any name and each index resolves to eight `string` slots. Name and per-field
   // value checking bite after `vex generate`; the runtime validator that
   // `defineConfig` runs catches a bad name either way, against the resource's REAL
   // declared indexes — see `config.test.ts`.
 
-  it("rejects q.withIndex on create — no query exists to narrow (DD 14)", () => {
+  it("rejects withIndex on create, at the property — no query exists to narrow (DD 14)", () => {
     defineAccess({
       ...baseInput,
       permissions: {
@@ -234,9 +263,9 @@ describe("PermissionCheck — constraint builder object form", () => {
         contributor: {
           pages: {
             create: {
-              constraints: ({ q }) =>
-                // @ts-expect-error — a mutation action's `q` is the flat builder; it has no `withIndex`
-                q.withIndex("by_author", (ix) => ix.eq("authorId", "u1")),
+              // @ts-expect-error — a mutation action has no query to narrow, so `withIndex` is `WithIndexOnMutationError`
+              withIndex: { name: "by_author", range: (ix) => ix.eq("authorId", "u1") },
+              where: ({ q }) => q.eq("authorId", "u1"),
             },
           },
         },
@@ -244,7 +273,7 @@ describe("PermissionCheck — constraint builder object form", () => {
     });
   });
 
-  it("rejects q.withIndex on update — the error lands on the call, not the object", () => {
+  it("still accepts the flat predicate (where) on a mutation action", () => {
     defineAccess({
       ...baseInput,
       permissions: {
@@ -252,43 +281,7 @@ describe("PermissionCheck — constraint builder object form", () => {
         contributor: {
           pages: {
             update: {
-              constraints: ({ q }) =>
-                // @ts-expect-error — a mutation action's `q` is the flat builder; it has no `withIndex`
-                q.withIndex("by_author", (ix) => ix.eq("authorId", "u1")),
-            },
-          },
-        },
-      },
-    });
-  });
-
-  it("still accepts the flat algebra on a mutation action", () => {
-    defineAccess({
-      ...baseInput,
-      permissions: {
-        admin: { [WILDCARD_KEY]: true },
-        contributor: {
-          pages: {
-            update: {
-              constraints: ({ q }) => q.filter((f) => f.neq("authorId", "u1")),
-            },
-          },
-        },
-      },
-    });
-  });
-
-  it("rejects filter without constraints — constraints is required, filter is not a substitute (inverts the old withIndex/filter rule)", () => {
-    defineAccess({
-      ...baseInput,
-      permissions: {
-        admin: { [WILDCARD_KEY]: true },
-        contributor: {
-          pages: {
-            // @ts-expect-error — `constraints` is required; a bare `filter`-only object is not a valid shape
-            read: {
-              filter: ({ data }: { data: unknown }) =>
-                typeof data === "object" && data !== null && "authorId" in data,
+              where: ({ q }) => q.neq("authorId", "u1"),
             },
           },
         },
@@ -297,8 +290,8 @@ describe("PermissionCheck — constraint builder object form", () => {
   });
 });
 
-describe("PermissionCheck — bare filter callback stays valid alongside constraints", () => {
-  it("still accepts a bare callback on read — the new constraints form did not disturb it", () => {
+describe("PermissionCheck — bare filter callback stays valid alongside withIndex/where", () => {
+  it("still accepts a bare callback on read — the object form did not disturb it", () => {
     defineAccess({
       ...baseInput,
       permissions: {
@@ -409,8 +402,7 @@ describe("customActions — query/mutation split, typo protection, auth subjects
         contributor: {
           pages: {
             listFeatured: {
-              constraints: ({ q }) =>
-                q.withIndex("by_author", (ix) => ix.eq("authorId", "u1")),
+              withIndex: { name: "by_author", range: (ix) => ix.eq("authorId", "u1") },
             },
           },
         },
@@ -426,9 +418,8 @@ describe("customActions — query/mutation split, typo protection, auth subjects
         contributor: {
           pages: {
             publish: {
-              constraints: ({ q }) =>
-                // @ts-expect-error — a custom mutation action's `q` is the flat builder
-                q.withIndex("by_author", (ix) => ix.eq("authorId", "u1")),
+              // @ts-expect-error — a custom mutation action has no query to narrow, so `withIndex` is `WithIndexOnMutationError`
+              withIndex: { name: "by_author", range: (ix) => ix.eq("authorId", "u1") },
             },
           },
         },
@@ -442,7 +433,7 @@ describe("customActions — query/mutation split, typo protection, auth subjects
       permissions: {
         admin: { [WILDCARD_KEY]: true },
         contributor: {
-          pages: { publish: { constraints: ({ q }) => q.filter((f) => f.eq("authorId", "u1")) } },
+          pages: { publish: { where: ({ q }) => q.eq("authorId", "u1") } },
         },
       },
     });
@@ -499,10 +490,9 @@ describe("customActions — query/mutation split, typo protection, auth subjects
         contributor: {
           pages: {
             publish: {
-              constraints: ({ q }) =>
-                // @ts-expect-error — still predicate-only; the widened union used to
-                // make every action on this resource read as query-shaped
-                q.withIndex("by_author", (ix) => ix.eq("authorId", "u1")),
+              // @ts-expect-error — still predicate-only; the widened union used to
+              // make every action on this resource read as query-shaped
+              withIndex: { name: "by_author", range: (ix) => ix.eq("authorId", "u1") },
             },
           },
         },
@@ -545,9 +535,8 @@ describe("customActions — query/mutation split, typo protection, auth subjects
         contributor: {
           users: {
             ban: {
-              constraints: ({ q }) =>
-                // @ts-expect-error — mutation-shaped, so no index builder
-                q.withIndex("by_email", (ix) => ix.eq("email", "a@b.c")),
+              // @ts-expect-error — mutation-shaped, so no index builder
+              withIndex: { name: "by_email", range: (ix) => ix.eq("email", "a@b.c") },
             },
           },
         },
@@ -611,7 +600,7 @@ describe("customActions — query/mutation split, typo protection, auth subjects
           pages: {
             [WILDCARD_KEY]: {
               // @ts-expect-error — `q` must be the real builder, never `any`
-              constraints: ({ q }) => q.definitelyNotAMethod(),
+              where: ({ q }) => q.definitelyNotAMethod(),
             },
           },
         },
@@ -699,5 +688,46 @@ describe("DRAFT_ACTIONS — composes onto a resource's action union by shape (AP
         },
       },
     });
+  });
+});
+
+type PagesDoc = { authorId: string; status: string; title: string };
+type PagesIndexes = { by_author: readonly ["authorId"]; by_author_status: readonly ["authorId", "status"] };
+type PagesQueryRule = ConstrainedPermissionCheck<PagesDoc, { _id: string }, never, PagesIndexes>;
+type PagesMutationRule = ConstrainedPermissionCheck<PagesDoc, { _id: string }, never>;
+
+describe("ConstrainedPermissionCheck — field typing, with the registry's inputs given explicitly", () => {
+  it("types withIndex's range by the discriminated index name, in either form", () => {
+    const staticCompound: PagesQueryRule = {
+      withIndex: { name: "by_author_status", range: (ix) => ix.eq("authorId", "u1").eq("status", "published") },
+    };
+    const callerIndex: PagesQueryRule = {
+      withIndex: ({ user }) => ({ name: "by_author", range: (ix) => ix.eq("authorId", user._id) }),
+    };
+    // @ts-expect-error — `status` is not `by_author`'s field
+    const wrongField: PagesQueryRule = { withIndex: { name: "by_author", range: (ix) => ix.eq("status", "published") } };
+    // @ts-expect-error — `by_author_status` must be ranged from `authorId` first
+    const outOfOrder: PagesQueryRule = { withIndex: { name: "by_author_status", range: (ix) => ix.eq("status", "published") } };
+    // @ts-expect-error — `by_nope` is not an index
+    const unknownIndex: PagesQueryRule = { withIndex: { name: "by_nope", range: (ix) => ix.eq("authorId", "u1") } };
+    // @ts-expect-error — a range value must have the field's type
+    const wrongValue: PagesQueryRule = { withIndex: { name: "by_author", range: (ix) => ix.eq("authorId", 1) } };
+    expect([staticCompound, callerIndex, wrongField, outOfOrder, unknownIndex, wrongValue]).toHaveLength(6);
+  });
+
+  it("types where's fields and values", () => {
+    const callbackWhere: PagesMutationRule = { where: ({ q }) => q.eq("title", "Home") };
+    // @ts-expect-error — `nope` is not a field
+    const unknownField: PagesMutationRule = { where: ({ q }) => q.eq("nope", "x") };
+    // @ts-expect-error — `title` holds a string
+    const wrongValue: PagesMutationRule = { where: ({ q }) => q.eq("title", 1) };
+    expect([callbackWhere, unknownField, wrongValue]).toHaveLength(3);
+  });
+
+  it("types a static where's fields", () => {
+    const staticWhere: PagesMutationRule = { where: { and: [{ field: "title", op: "neq", value: "Draft" }] } };
+    // @ts-expect-error — `nope` is not a field
+    const unknownWhereField: PagesMutationRule = { where: { field: "nope", op: "eq", value: "x" } };
+    expect([staticWhere, unknownWhereField]).toHaveLength(2);
   });
 });

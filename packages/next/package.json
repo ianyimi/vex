@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/next",
-  "version": "0.1.0-alpha.27",
+  "version": "0.1.0-alpha.28",
   "description": "Next.js adapter and admin routes for VexCMS",
   "keywords": [
     "cms",
@@ -43,6 +43,11 @@
       "import": "./dist/NextAdminLayout.js",
       "types": "./dist/NextAdminLayout.d.ts"
     },
+    "./auth": {
+      "source": "./src/auth/index.ts",
+      "import": "./dist/auth/index.js",
+      "types": "./dist/auth/index.d.ts"
+    },
     "./cache": {
       "source": "./src/cache/index.ts",
       "import": "./dist/cache/index.js",
@@ -83,12 +88,14 @@
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
+    "@testing-library/react": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "convex": "catalog:",
+    "jsdom": "catalog:",
     "next": "catalog:",
     "nuqs": "catalog:",
     "react": "catalog:",

@@ -17,13 +17,13 @@ import schema, {
   type TestDoc,
   type TestMediaInput,
 } from "./convex/schema";
-import { FilePreview } from "../components/media/FilePreview";
-import { MediaLibraryGrid } from "../components/media/MediaLibaryGrid";
-import { MediaUploadDropzone } from "../components/media/MediaUploadDropzone";
-import { makeFile } from "../components/fields/upload/testFixture";
+import { FilePreview } from "../media/FilePreview";
+import { MediaLibraryGrid } from "../media/MediaLibraryGrid";
+import { MediaUploadDropzone } from "../media/MediaUploadDropzone";
+import { makeFile } from "../fields/upload/testFixture";
 
-/** Member names {@link runMediaSuite}'s `only` option accepts (`MediaLibaryGrid` keeps the source file's existing typo — a rename is tracked separately). */
-export type MediaSuiteMember = "FilePreview" | "MediaLibaryGrid" | "MediaUploadDropzone";
+/** Member names {@link runMediaSuite}'s `only` option accepts. */
+export type MediaSuiteMember = "FilePreview" | "MediaLibraryGrid" | "MediaUploadDropzone";
 
 /** Options for {@link runMediaSuite}. */
 export interface RunMediaSuiteOptions {
@@ -231,7 +231,7 @@ function describeFilePreview() {
  * @returns Nothing; registers `describe`/`it` blocks as a side effect.
  */
 function describeMediaLibraryGrid(access: VexAccessConfig | undefined) {
-  describe("MediaLibaryGrid (MediaLibraryGrid)", () => {
+  describe("MediaLibraryGrid", () => {
     const targetCollectionConfig = makeMockMediaCollection();
 
     /**
@@ -722,8 +722,8 @@ function describeMediaUploadDropzone(access: VexAccessConfig | undefined) {
  */
 export function runMediaSuite(props: RunMediaSuiteOptions = {}): void {
   const members: MediaSuiteMember[] =
-    props.only ?? ["FilePreview", "MediaLibaryGrid", "MediaUploadDropzone"];
+    props.only ?? ["FilePreview", "MediaLibraryGrid", "MediaUploadDropzone"];
   if (members.includes("FilePreview")) describeFilePreview();
-  if (members.includes("MediaLibaryGrid")) describeMediaLibraryGrid(props.access);
+  if (members.includes("MediaLibraryGrid")) describeMediaLibraryGrid(props.access);
   if (members.includes("MediaUploadDropzone")) describeMediaUploadDropzone(props.access);
 }

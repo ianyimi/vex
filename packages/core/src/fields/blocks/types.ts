@@ -214,8 +214,9 @@ export interface BlocksFieldAdminConfig<
  */
 export interface BlocksFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends Omit<BaseFieldInput<TCollectionSlug, TFieldMeta>, "admin"> {
+> extends Omit<BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>, "admin"> {
   admin?: BlocksFieldAdminInput<TCollectionSlug>;
   /** Block type definitions that are allowed in this field. */
   blocks: BlockConfig<TFieldMeta>[];

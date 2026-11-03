@@ -1,0 +1,43 @@
+/**
+ * Shared helpers for the globals domain layer — used by both the api/
+ * surface (`get`, `find`, `upsert`) and `db/triggers.ts`.
+ */
+
+import type { VexVersionStatus } from "../versions/constants";
+
+/**
+ * Flattens a raw `vex_globals` DB row into the API-facing flat document.
+ * Lifts `data` fields to root, renames `slug` → `_slug`.
+ *
+ * Shared rather than inlined per call site because it is also the shape a
+ * permission callback must receive as its `data`: every global rule is written
+ * against the flat document (`_slug` and user fields at root), so
+ * `({ data }) => data.name === "x"` must see `data.name`, never
+ * `data.data.name`. `getGlobal`, `findGlobals`, and `upsertGlobal` all
+ * authorize and return through this one translation; `db/triggers.ts`'s
+ * global-write trigger also uses it to flatten `oldDoc`/`newDoc` for the
+ * `onWrite` hook payload.
+ *
+ * @param row the global document as returned from convex usign a single collection for globals
+ * @returns the flattened global object data type including its metadata fields
+ */
+export function flattenGlobalRow(row: Record<string, unknown>): Record<string, unknown> {
+  const { slug, data, _id, _creationTime, vex_status, vex_publishedAt, vex_publishedId } = row as {
+    slug: string;
+    data: Record<string, unknown>;
+    _id: string;
+    _creationTime: number;
+    vex_status?: VexVersionStatus;
+    vex_publishedAt?: number;
+    vex_publishedId?: string;
+  };
+  return {
+    _id,
+    _creationTime,
+    _slug: slug,
+    ...(vex_status !== undefined ? { vex_status } : {}),
+    ...(vex_publishedAt !== undefined ? { vex_publishedAt } : {}),
+    ...(vex_publishedId !== undefined ? { vex_publishedId } : {}),
+    ...(data ?? {}),
+  };
+}

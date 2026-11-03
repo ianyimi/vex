@@ -1,0 +1,241 @@
+import { Button, Draggable, DragHandle, Droppable, Skeleton } from "../../ui";
+import { useQuery } from "@tanstack/react-query";
+import {
+  CollectionConfig,
+  type CollectionSlug,
+  formatBytes,
+  formatMimeType,
+  GlobalConfig,
+  type UploadField,
+  VexAccessError,
+  type VexMediaDocument,
+} from "@vexcms/core";
+import { FilePreview } from "../../media/FilePreview";
+import { get } from "../../client";
+import { InputTag } from "../../ui/InputTag";
+import type { AnyFieldApi } from "@tanstack/react-form";
+import { useVexConfig } from "../../config";
+import { GenericId } from "convex/values";
+
+/**
+ * Props for UploadFilledState component.
+ */
+export interface UploadFilledStateProps {
+  /** CollectionConfig for this field's collection. */
+  collection: CollectionConfig | GlobalConfig;
+  /** Array of media document IDs. */
+  mediaIds: string[];
+  /** The FieldApi of the field being uploaded to. */
+  fieldApi: AnyFieldApi;
+  /** The UploadField of the field being uploaded to. */
+  fieldDef: UploadField;
+  /** Whether this field is readOnly or not. */
+  readOnly?: boolean;
+  /** Callback to remove a specific media ID (or all if no ID provided). */
+  onRemove: (mediaId?: string) => void;
+  /** Callback to reorder items (multi only). */
+  onReorder?: (from: number, to: number) => void;
+  /** Callback to open the media picker. */
+  openPicker: () => Promise<void>;
+}
+
+/**
+ * Filled state for upload field — handles both single and multi modes.
+ *
+ * Single mode (`multi === false`):
+ * - Renders one item row with FilePreview thumbnail + Replace/Remove actions
+ * - Matches the `UploadItemRow` design
+ *
+ * Multi mode (`multi === true`):
+ * - Renders list of item rows + "Add image" / "Browse library" buttons + count display
+ * - Matches the `UploadMulti` design
+ *
+ * @param props - Component props.
+ * @returns The list of item rows (draggable when `hasMany` and `onReorder` are
+ *   provided), plus edit/clear controls and a count indicator in multi mode.
+ */
+export function UploadFilledState({
+  mediaIds,
+  fieldDef,
+  fieldApi,
+  readOnly = false,
+  onRemove,
+  onReorder,
+  openPicker,
+}: UploadFilledStateProps) {
+  const atLimit = fieldDef.max !== undefined && mediaIds.length >= fieldDef.max[0];
+
+  const config = useVexConfig();
+  const targetCollectionConfig = config.mediaCollections.find((mc) => mc.slug === fieldDef.to);
+  if (!targetCollectionConfig) {
+    throw new Error(`Media collection not configured with slug ${fieldDef.to}`);
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {fieldDef.hasMany && onReorder ? (
+        <Droppable id={`upload-${fieldApi.name}`} onReorder={onReorder}>
+          {mediaIds.map((id, index) => (
+            <Draggable key={id} id={id} index={index}>
+              <UploadItemRow
+                readOnly={readOnly}
+                mediaId={id}
+                collection={targetCollectionConfig.slug}
+                onRemove={() => onRemove(id)}
+                showDragHandle={true}
+              />
+            </Draggable>
+          ))}
+        </Droppable>
+      ) : (
+        <div>
+          {mediaIds.map((id) => (
+            <UploadItemRow
+              readOnly={readOnly}
+              key={id}
+              mediaId={id}
+              collection={targetCollectionConfig.slug}
+              onRemove={() => onRemove(id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {fieldDef.hasMany ? (
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openPicker}
+            disabled={readOnly || atLimit}
+            icon="FilePenLine"
+          >
+            Select {targetCollectionConfig.labels.plural}
+          </Button>
+          <Button
+            variant="ghost"
+            className="transition-all duration-300 hover:text-destructive"
+            size="sm"
+            onClick={() => fieldApi.setValue([])}
+            disabled={readOnly || mediaIds.length === 0}
+            icon="X"
+          >
+            Clear
+          </Button>
+          {fieldDef.max && (
+            <span
+              className={`${atLimit ? "text-destructive" : "text-muted-foreground"} ml-auto font-mono
+              text-[11px]`}
+            >
+              {mediaIds.length}/{fieldDef.max[0]}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openPicker}
+            disabled={readOnly}
+            icon="FilePenLine"
+          >
+            Replace
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Individual item row in upload field.
+ *
+ * @param props - Component props.
+ * @returns The row's drag handle (only when `showDragHandle`), thumbnail, filename/mime/size metadata (or
+ *   skeletons while loading, or an access-error message), alt-text badge, and
+ *   a remove button.
+ */
+function UploadItemRow({
+  mediaId,
+  onRemove,
+  showDragHandle = false,
+  readOnly,
+  collection,
+}: {
+  mediaId: string;
+  readOnly: boolean;
+  onRemove: () => void;
+  collection: CollectionSlug;
+  showDragHandle?: boolean;
+}) {
+  const {
+    data: doc,
+    isPending,
+    error,
+  } = useQuery({
+    ...get({ id: mediaId as GenericId<CollectionSlug>, collection }),
+  });
+  const mediaDoc = doc as VexMediaDocument | null | undefined;
+
+  const accessError = (error as ReturnType<typeof useQuery<any, VexAccessError>>["error"])?.data;
+  return (
+    <div className="flex items-center justify-between gap-2 rounded border-2 border-border px-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2 font-mono">
+        {showDragHandle && <DragHandle disabled={readOnly || Boolean(accessError)} />}
+        {!mediaDoc ? (
+          !accessError ? (
+            <Skeleton className="h-12 w-12" />
+          ) : (
+            <p className="w-full text-center text-destructive">{accessError.message}</p>
+          )
+        ) : (
+          <FilePreview mediaDoc={mediaDoc} size={44} radius={3} isPending={isPending} />
+        )}
+        {!mediaDoc ? (
+          !accessError ? (
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-4 w-xs" />
+              <Skeleton className="h-4 w-xs" />
+            </div>
+          ) : null
+        ) : (
+          <div className="min-w-0">
+            <div className="truncate text-sm" title={mediaDoc.filename}>
+              {mediaDoc.filename}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
+              {formatMimeType(mediaDoc.mimeType)} · {formatBytes(mediaDoc.size)}
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {!mediaDoc ? (
+          !accessError ? (
+            <Skeleton className="h-8 w-[200px]" />
+          ) : null
+        ) : (
+          mediaDoc.alt.length > 0 && (
+            <div className="hidden max-w-[200px] min-w-0 items-center gap-2 @lg/form:flex">
+              <InputTag>ALT</InputTag>
+              <span className="flex-1 truncate text-xs">
+                {mediaDoc.alt || <em className="text-destructive">Missing</em>}
+              </span>
+            </div>
+          )
+        )}
+        <Button
+          variant="ghost"
+          className="p-0 transition-colors duration-300 hover:text-destructive"
+          type="button"
+          title="Remove"
+          onClick={onRemove}
+          disabled={readOnly || Boolean(accessError)}
+          icon="X"
+          iconPosition="center"
+        />
+      </div>
+    </div>
+  );
+}

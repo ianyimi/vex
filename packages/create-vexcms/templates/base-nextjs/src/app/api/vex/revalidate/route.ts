@@ -1,7 +1,6 @@
-import { api } from "@convex/_generated/api"
 import { createVexRevalidateRoute } from "@vexcms/next/cache"
 
-import { fetchAuthQuery, getToken } from "~/auth/server"
+import { getToken, getUserOrg } from "~/auth/server"
 import config from "~/vex.config.server"
 
 /**
@@ -15,5 +14,5 @@ import config from "~/vex.config.server"
 export const { POST } = createVexRevalidateRoute({
   config,
   getToken,
-  getAuth: () => fetchAuthQuery(api.auth.api.getUserOrg, {}),
+  getAuth: getUserOrg,
 })

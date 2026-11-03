@@ -25,7 +25,18 @@ export const { mutation: vexMutation, internalMutation: vexInternalMutation } = 
   internalMutation,
 });
 
-export const { find, get, search, create, update, remove, livePreviewUrl } = collectionsApi({
+export const {
+  find,
+  get,
+  search,
+  create,
+  update,
+  remove,
+  livePreviewUrl,
+  listViews,
+  saveView,
+  removeView,
+} = collectionsApi({
   config,
   getAuth,
   query,

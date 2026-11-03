@@ -1,0 +1,167 @@
+---
+title: richtext field
+description: Stores a single locale-agnostic rich text document — headings, marks, links, and inline images — edited via a pluggable editor adapter like @vexcms/richtext-plate.
+---
+
+A `richtext()` field stores one `RichTextDocument` — an ordered array of
+block-level nodes, each either an element (`{ type, children }`) or a text
+leaf (`{ text, ...marks }`). Core only owns this structural contract; the
+actual node catalogue (headings, bold, links, images, tables, …) is supplied
+entirely by whichever **editor adapter** is configured on `VexClientConfig`'s
+`editor` option. Without one, the admin `Input` renders a configuration
+error instead of an editor.
+
+`@vexcms/richtext-plate` is the built-in editor adapter, built on
+[Plate](https://platejs.org) (`platejs`). It ships both the interactive
+editor (admin panel) and a server-safe static renderer (frontend) behind one
+`plateEditor()` call.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `mediaCollectionSlug` | `MediaCollectionSlug` | — | Media collection inline images upload into. Validated against `VexConfig.mediaCollections` at `defineConfig()` time, exactly like `upload()`'s `to`. Absent means the editor's image feature is hidden entirely — no dropzone, no paste/drag upload, no "insert image" toolbar button — rather than rendering a feature that would fail every upload. |
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `defaultValue` | `RichTextDocument` | `[]` | Pre-filled document shown when creating a new document. |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the editor as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `string` | `"100%"` | CSS width of the field in the edit form. Meaningful as a child of `row()`. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment used for this field's column in the list-view table. |
+| `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
+| `validate` | `(props) => Promise<void> \| void` | — | Server-only async validation; `value` is typed as `RichTextDocument`. |
+
+## Schema output
+
+Richtext documents are stored as `v.array(v.any())` — Convex validators
+cannot express the recursive element/leaf shape, so the element-level
+contract (every entry is `{ type, children }` or `{ text }`) is enforced
+only by the admin form's Zod schema, not the database schema:
+
+```ts
+// Optional (required: false — default)
+body: v.optional(v.array(v.any()))
+
+// Required
+summary: v.array(v.any())
+```
+
+## Usage
+
+```ts
+import { defineCollection, richtext, text } from "@vexcms/core";
+
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text({ required: true }),
+
+    // Plain body, no inline images
+    body: richtext({
+      label: "Body",
+      description: "Rich text content for the post.",
+    }),
+
+    // Allows inline images, uploaded into the "images" media collection
+    content: richtext({
+      label: "Content",
+      mediaCollectionSlug: "images",
+      required: true,
+    }),
+  },
+});
+```
+
+## The editor adapter
+
+A `richtext()` field needs an **editor adapter** registered on the client
+config's `editor` option — it supplies both the interactive admin editor
+component and the frontend renderer. Without it, every richtext field in the
+admin panel shows a configuration error instead of markup.
+
+```ts
+// vex.config.ts
+import { defineConfig, defineCollection, richtext } from "@vexcms/core";
+import { plateEditor } from "@vexcms/richtext-plate";
+
+export default defineConfig({
+  editor: plateEditor(),
+  collections: [
+    defineCollection({
+      slug: "posts",
+      fields: {
+        body: richtext({ mediaCollectionSlug: "images" }),
+      },
+    }),
+  ],
+});
+```
+
+### `plateEditor(options?)`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `features` | `VexEditorFeature[] \| ((defaults: VexEditorFeature[]) => VexEditorFeature[])` | `defaultFeatures` | Which node/mark features the editor enables. Pass an explicit array to replace the defaults, or a callback that filters/extends them. |
+
+`@vexcms/richtext-plate` ships one `VexEditorFeature` per node/mark —
+`BoldFeature`, `ItalicFeature`, `UnderlineFeature`, `StrikethroughFeature`,
+`CodeFeature`, `HeadingFeature`, `BlockquoteFeature`, `CodeBlockFeature`,
+`ListFeature`, `LinkFeature`, `ImageFeature`, `HorizontalRuleFeature`,
+`TableFeature` — all enabled by default via `defaultFeatures`, importable
+from `@vexcms/richtext-plate/editor`:
+
+```ts
+import { plateEditor } from "@vexcms/richtext-plate";
+import { BoldFeature, ItalicFeature, LinkFeature } from "@vexcms/richtext-plate/editor";
+
+export default defineConfig({
+  // Only bold, italic, and links
+  editor: plateEditor({ features: [BoldFeature, ItalicFeature, LinkFeature] }),
+});
+```
+
+```ts
+// Remove tables from the defaults, keep everything else
+editor: plateEditor({ features: (defaults) => defaults.filter((f) => f.key !== "table") }),
+```
+
+## Admin UI
+
+The editor renders inline in the document form — headings, marks (bold,
+italic, underline, strikethrough, code), blockquotes, code blocks, ordered
+and unordered lists, links, a horizontal rule, and tables, depending on
+which features are enabled. When `mediaCollectionSlug` is set, the image
+feature's toolbar button, drag-and-drop, and paste-to-upload all push new
+files into that media collection the same way an `upload()` field does;
+when it is unset, the image feature doesn't render at all.
+
+## Rendering on the frontend
+
+`@vexcms/richtext-plate`'s `RichText` component renders a saved
+`RichTextDocument` on the frontend. It's a **static, server-safe** renderer
+(`platejs/static`'s `PlateStatic`, no browser APIs) — safe to use in React
+Server Components:
+
+```tsx
+import { RichText } from "@vexcms/richtext-plate/render";
+
+export function PostBody({ body }: { body: RichTextDocument }) {
+  return <RichText content={body} className="prose" />;
+}
+```
+
+| Prop | Type | Description |
+|------|------|--------------|
+| `content` | `RichTextDocument` | The saved document to render. Renders nothing when empty. |
+| `className` | `string` | Wrapper class, e.g. a Tailwind Typography `prose` class. |
+| `resolveMedia` | `(props) => …` | Accepted for adapter parity with other render components; not currently supported by this static renderer (logs a warning if provided). |
+
+## Package exports
+
+| Entry | Exports |
+|-------|---------|
+| `@vexcms/richtext-plate` | `plateEditor`, `RichText`, element types (`ImageElement`, `LinkElement`, `TableElement`, `TableRowElement`, `TableCellElement`), `VexEditorFeature` |
+| `@vexcms/richtext-plate/editor` | `plateEditor`, every feature constant (`BoldFeature`, …), `defaultFeatures` |
+| `@vexcms/richtext-plate/render` | `RichText` |

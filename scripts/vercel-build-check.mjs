@@ -28,7 +28,7 @@
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
@@ -36,15 +36,46 @@ const ROOT = resolve(import.meta.dirname, "..");
 const APP = "apps/www";
 const KEEP = process.argv.includes("--keep");
 
-/** Placeholders mirroring `.github/workflows/release.yml` — real values never
- *  reach this run, and keeping validation ON means a newly required env var
- *  that nobody wired up still fails here (P-020). */
-const BUILD_ENV = {
+/** Placeholders mirroring `.github/workflows/release.yml` — keeping validation ON
+ *  means a newly required env var that nobody wired up still fails here (P-020). */
+const PLACEHOLDER_ENV = {
   BETTER_AUTH_SECRET: "ci-placeholder-not-a-real-secret",
   NEXT_PUBLIC_CONVEX_URL: "https://ci-placeholder.convex.cloud",
   NEXT_PUBLIC_CONVEX_SITE_URL: "https://ci-placeholder.convex.site",
   NEXT_PUBLIC_SITE_URL: "http://localhost:3030",
 };
+
+/** `/` prerenders through a live `vex.query`, so the Next build needs a reachable
+ *  Convex deployment — Vercel has the real one, a placeholder URL can never pass.
+ *  These public URLs come from the shell, else `apps/www/.env.local` (gitignored,
+ *  so absent from the pristine copy), else the placeholder. */
+const CONVEX_URL_KEYS = ["NEXT_PUBLIC_CONVEX_URL", "NEXT_PUBLIC_CONVEX_SITE_URL"];
+
+/**
+ * Reads `KEY=value` lines from a dotenv file — enough for the plain URLs above.
+ *
+ * @param {string} path - Absolute path to the env file.
+ * @returns {Record<string, string>} Parsed entries; empty when the file is missing.
+ */
+function readEnvFile(path) {
+  if (!existsSync(path)) return {};
+  const entries = {};
+  for (const line of readFileSync(path, "utf8").split("\n")) {
+    const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line);
+    if (!match) continue;
+    entries[match[1]] = match[2].replace(/^(['"])(.*)\1$/, "$2");
+  }
+  return entries;
+}
+
+const localEnv = readEnvFile(join(ROOT, APP, ".env.local"));
+const convexEnvSource = {};
+const BUILD_ENV = { ...PLACEHOLDER_ENV };
+for (const key of CONVEX_URL_KEYS) {
+  const value = process.env[key] || localEnv[key];
+  if (value) BUILD_ENV[key] = value;
+  convexEnvSource[key] = process.env[key] ? "shell" : localEnv[key] ? `${APP}/.env.local` : "placeholder";
+}
 
 let failures = 0;
 const step = (msg) => console.log(`\n\u001b[36m▶ ${msg}\u001b[0m`);
@@ -63,6 +94,31 @@ const files = execFileSync("git", ["ls-files", "-c", "-o", "--exclude-standard"]
   .split("\n")
   .filter(Boolean);
 ok(`${files.length} tracked + untracked-not-ignored files`);
+
+// A case-only rename on a case-insensitive filesystem (macOS default) leaves the
+// index with the OLD casing while the working tree and imports use the new one.
+// Every local build resolves the import anyway; Linux CI and Vercel check out
+// the index's casing and fail with "Cannot read file". The copy below runs on
+// the same insensitive filesystem, so it cannot surface this — compare each
+// tracked path against its real on-disk name instead.
+const dirEntries = new Map();
+const caseMismatches = files.filter((f) => {
+  if (f.endsWith("/") || !existsSync(join(ROOT, f))) return false;
+  let dir = ROOT;
+  for (const segment of f.split("/")) {
+    if (!dirEntries.has(dir)) dirEntries.set(dir, new Set(readdirSync(dir)));
+    if (!dirEntries.get(dir).has(segment)) return true;
+    dir = join(dir, segment);
+  }
+  return false;
+});
+if (caseMismatches.length > 0) {
+  for (const f of caseMismatches) {
+    bad(`git tracks "${f}" but the file on disk is cased differently — fix with \`git mv\` through a temp name`);
+  }
+} else {
+  ok("tracked path casing matches the working tree");
+}
 
 // `git ls-files -c` lists the INDEX, so a tracked file deleted in the working
 // tree is still listed while no longer existing on disk. A fresh clone of this
@@ -105,6 +161,16 @@ ok("dependencies installed");
 const vercelJson = JSON.parse(readFileSync(join(work, APP, "vercel.json"), "utf8"));
 const buildCommand = vercelJson.buildCommand ?? "pnpm build";
 step(`vercel.json buildCommand: ${buildCommand}`);
+for (const key of CONVEX_URL_KEYS) {
+  const source = convexEnvSource[key];
+  if (source === "placeholder") {
+    console.log(
+      `  \u001b[33m!\u001b[0m ${key}: placeholder — \`/\` prerenders from Convex, so \`pnpm build\` will fail; set it in the shell or ${APP}/.env.local`,
+    );
+  } else {
+    ok(`${key} from ${source}`);
+  }
+}
 
 // Split the command so `convex deploy` can be swapped for a push-free
 // equivalent while every other segment runs exactly as Vercel runs it.

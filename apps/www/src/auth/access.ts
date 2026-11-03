@@ -43,9 +43,21 @@ export const access = defineAccess({
       },
       themes: readOnly,
       images: readOnly,
+      // `_creationTime` added (Part 6 — "hidden unless listed" now applies to system
+      // fields too): this role's field map previously implicitly kept it visible;
+      // listed explicitly here so a real signed-in `user` (and the anonymous visitor
+      // `anonRole` resolves to) doesn't silently lose it. `updatedAt` is NOT a valid
+      // key on `siteSettings` — a global, not versioned (confirmed via typecheck:
+      // "field map returns a field not on this resource").
       siteSettings: {
         "*": false,
-        read: () => ({ adminTheme: true, ogImage: true, name: true, description: true }),
+        read: () => ({
+          adminTheme: true,
+          ogImage: true,
+          name: true,
+          description: true,
+          _creationTime: true,
+        }),
         update: () => ({ adminTheme: true }),
       },
     },

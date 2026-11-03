@@ -1,0 +1,387 @@
+---
+title: List views
+description: Everything the admin panel's collection list screen does — server-prerendered zero-shift loads, admin.view/admin.views config, columns, filters, saved views, the peek panel, commitTs, and more.
+---
+
+The admin panel's collection list screen (`/admin/collections/<slug>`) is a single React tree —
+`CollectionListView` — driven entirely by the URL. Every piece of state that affects what's on
+screen (search, sort, filter, visible/pinned/resized columns, the active saved view, the peek
+panel) round-trips through query params, which is what makes the server able to prerender the
+exact HTML the client would have produced.
+
+This guide uses `apps/test/src/vexcms/collections/testimonials.ts` as a running example — it's
+built specifically to exercise nearly everything described below in one collection.
+
+## Server prerender and zero layout shift
+
+`NextAdminPage` (the Next.js route the admin panel ships) parses the incoming `searchParams` with
+the same codec the client uses, resolves the active view (config, shared, or local — see
+[Saved views](#saved-views-local-vs-shared) below), and prefetches `findPaginated` with the
+**exact args** the client's own query will send: the same `where`, `sort`, page size, and search
+query. When the URL carries `?peek=<id>`, it prefetches that document's `get` too. The result is
+handed to the client as `initialData` (see the [Pagination guide](/guides/pagination/#seeding-the-first-render-from-the-server)
+for the underlying mechanism) — hydration never has to re-fetch or re-render with different data,
+so there's no flash from a skeleton/default state to the real one.
+
+This holds for every view source:
+
+- **Config** (the collection's own `admin.view`/`admin.views[n]`) — resolved from the loaded
+  config in memory, synchronously.
+- **Shared** (a `vex_views` row) — one indexed Convex read, which the tab bar needs on first
+  paint anyway.
+- **Local** (browser-only) — its full state travels in the URL itself the moment it's applied, so
+  the server can resolve it with no extra round-trip.
+
+Density, the visible row count used for the loading skeleton, and which local view tabs to render
+are all seeded from the `vex-admin`/`vex-admin:<collection>` cookies (see
+[Cookies](#cookies) below) for the same reason — so the very first server-rendered HTML already
+matches what the client would settle on.
+
+## `admin.view` and `admin.views`
+
+Every collection-wide list setting lives under `admin.view` (the default/"All" view) and
+`admin.views[n]` (preset tabs) — there is no separate `admin.table` key; it was removed entirely
+in favor of folding everything into one `VexViewState` shape used by both.
+
+```ts
+import { checkbox, defineCollection, number, relationship, select, text, textarea } from "@vexcms/core";
+
+export const testimonials = defineCollection({
+  slug: "testimonials",
+  admin: {
+    view: {
+      sort: { field: "updatedAt", order: "desc" },
+      searchFields: ["customerName", "company"],
+      columns: [
+        { field: "customerName", pinned: "left", width: 220 },
+        { field: "company", width: 180 },
+        { field: "rating", width: 90 },
+        { field: "source", width: 130 },
+        { field: "quote", hidden: true },
+      ],
+      bulkActions: { delete: true },
+    },
+    views: [
+      {
+        viewId: "featured",
+        name: "Featured",
+        description: "Testimonials flagged for homepage display — pins Rating on the right.",
+        state: {
+          where: { field: "featured", op: "eq", value: true },
+          columns: [
+            { field: "customerName", pinned: "left", width: 220 },
+            { field: "quote" },
+            { field: "rating", pinned: "right", width: 90 },
+          ],
+        },
+      },
+    ],
+  },
+  fields: {
+    customerName: text({ required: true, searchIndex: { name: "search_testimonials_customer_name", filterFields: [] } }),
+    company: text({ searchIndex: { name: "search_testimonials_company", filterFields: [] } }),
+    quote: textarea({ required: true }),
+    rating: number({ required: true, min: [1, "Rating must be at least 1."], max: [5, "Rating cannot exceed 5."] }),
+    source: select({ required: true, index: "by_source", admin: { enableSorting: true }, options: [/* … */] }),
+    featured: checkbox(),
+    contributorId: relationship({ collection: { slug: "users" } }),
+  },
+});
+```
+
+- `admin.view` resolves the default ("All") view's sort, columns, search fields, page-size
+  options, count cap, server page size, and bulk actions.
+- `admin.views[n]` are read-only preset tabs — a user can never rename/delete them, only "Save as
+  new" a local or shared copy starting from one. Each entry's `state` accepts the **same shape**
+  `admin.view` does: not just the query slice (`where`, `sort`, `search`, `searchField`,
+  `columns`, `pageSize`) but also the collection-wide settings (`searchFields`,
+  `pageSizeOptions`, `countLimit`, `serverPageSize`, `bulkActions`). An entry that omits one of
+  those collection-wide keys falls back to `admin.view`'s own value.
+
+## Columns: the `cols=` grammar and `ColumnEntry`
+
+A column is either a bare field slug or an object with explicit overrides:
+
+```ts
+type ColumnEntry<TFieldSlug> =
+  | TFieldSlug
+  | {
+      field: TFieldSlug;
+      width?: number;
+      pinned?: "left" | "right";
+      hidden?: boolean;
+      enableSorting?: boolean;
+      enableHiding?: boolean;
+    };
+```
+
+`admin.view.columns`/`admin.views[n].state.columns` is the **full, ordered column array** —
+every data field, visible or not — not just the visible subset. An unnamed field is treated as
+hidden by default (so a new field added to the collection doesn't silently appear in an old saved
+view's column set).
+
+The URL mirrors this with one token per column:
+
+```
+?cols=customerName:pl:w220,company:w180,rating:pr:w90,quote:h
+```
+
+Each suffix is optional and always serialized in this order (`:w<width>`, then `:pl`/`:pr` for
+left/right pinned, then `:h` for hidden) but parsed in any order, so a hand-edited URL still
+round-trips.
+
+- **Ordering** — drag a column header in the columns menu (mouse, with a live tracked clone) or
+  reorder via keyboard (Tab to the drag handle, Space to lift, arrow keys to move, Space to
+  drop).
+- **Pinning** — a 3-state control per row in the columns menu cycles a column between unpinned,
+  pinned left, and pinned right. Pinned columns form sticky groups at either edge of the table,
+  scrolling independently of the unpinned middle section. The `testimonials` default view pins
+  `customerName` left; its `featured` preset view pins `rating` right instead, proving a preset
+  can override pinning independently of the default.
+- **Resizing** — drag a column's right-edge divider, or focus it and use the arrow keys. The
+  committed width writes straight into that column's `ColumnEntry.width` (and `cols=`), so a
+  resize survives a hard reload with zero client-side correction — the server-rendered HTML
+  already has the final `width:<n>px` style.
+- **Dividers** — every column boundary renders a divider; resizable columns show a drag cursor on
+  hover, non-resizable ones don't.
+
+## Filtering
+
+### Per-field filter inputs and the filter builder
+
+The Filter popover lets you add rows (ANDed) and one level of OR groups. Each row picks a
+readable field, then an operator (the set depends on the field's type — e.g. a `number` field
+offers `is`/`is not`/`is greater than`/`is at least`/`is less than`/`is at most`), then a
+value control matched to that field type (a `DateTimePicker` for `date`/`commitTs`, a relationship
+picker for `relationship`, etc.). Applying a filter updates the URL's `filter=` param and shows
+one dismissible chip per leaf condition in the toolbar's chip row.
+
+### Hidden view filters
+
+A view's own `where` (its declared filter, whether that's `admin.view`/`admin.views[n]`'s config
+`where` or an **active, unmodified** shared view's saved `where`) ships to the client like an
+access rule, not a secret: the server applies it to narrow the query, but the UI never renders the
+raw condition — only a hidden-filter badge (showing the leaf-condition count) appears next to the
+view. The moment you edit away from that saved state (adding or clearing your own filter), the
+declared filter is gone and your own filter takes over.
+
+**The declared-filter exemption.** A view's own declared `where` is exempt from the
+unreadable-field check that would otherwise apply to a user-typed filter — it can narrow the
+query server-side using a field the current viewer can't read the *value* of, the same way an
+access rule's own `where` can. The viewer still never sees that field's value anywhere (list
+column, peek, filter chip); they just see the badge and the narrowed result set. `testimonials`'s
+`needs-review` preset view demonstrates this exactly: its `where` filters on `internalScore`, a
+field the `contributor`/`user` roles can't read at all — those roles see the "Needs Review" tab,
+its hidden-filter badge, and the (narrowed) rows, but never the `internalScore` value or
+condition itself.
+
+A **user-added** filter on a field the viewer can't read is different: it's dropped before the
+query ever runs, with a dismissible stale-filter notice naming the field's label — there's no
+exemption for a condition the user themselves typed in.
+
+### Stale saved-view notices
+
+If a saved view's `sort.field` or `searchField` no longer exists, is no longer indexed, or is no
+longer searchable, the list falls back to the collection's own default for just that one part —
+identically on the server and the client, so there's no hydration mismatch — and shows a small,
+dismissible toolbar notice ("This view's sort on 'X' is no longer available"). The saved view
+itself is never silently rewritten; hitting the view's own Save button is what repairs it.
+
+## Saved views: local vs. shared
+
+- **Local** views live entirely in the browser: the full view state (search, sort, filter,
+  columns, page size) travels in the URL, and a lightweight `{ viewId, name }` index is cached in
+  the `vex-admin:<collection>` cookie purely so the tabs render on first paint before
+  `localStorage` itself hydrates — the real state lives in `localStorage`.
+- **Shared** views are rows in the `vex_views` Convex table, org-scoped via
+  `access.organizations`/`orgCollectionSlug` when your [access config](/guides/access-control/)
+  declares one.
+
+Creating, renaming, and deleting either kind is gated by `VIEW_ACTIONS` — `readViews`,
+`createView`, `updateView`, `deleteView` — on your collection's access resource. These actions are
+**boolean-only**: either a plain `boolean`, or a callback of the single shape
+`(props: { user, organization? }) => boolean | undefined` — never a field map, never a
+`where`/`filter` object, since a saved view is one whole collection-level row, never read or
+written per-field or per-document:
+
+```ts
+// apps/test/src/auth/access.ts — the `contributor` role
+testimonials: {
+  "*": false,
+  read: () => ({ "*": true, internalScore: false }),
+  update: true,
+  readViews: true,
+  createView: ({ user }) => user.roles?.includes(USER_ROLES.contributor) === true,
+  updateView: false,
+  deleteView: false,
+},
+```
+
+## The count cap
+
+`find`/`search` count the first page's total with `take(countLimit + 1)` instead of
+`.collect()`-ing every matching row — the old unbounded scan re-ran on every write while the list
+was open and failed outright above Convex's ~32k-document transaction scan limit.
+`admin.view.countLimit` (or a per-view override on `admin.views[n]`) controls the cap, default
+10000. The response includes `totalDocsCapped: true` once the cap is hit, and the footer shows
+"Showing 25 of 10,000+" instead of a false-precision exact count. See the
+[Pagination guide](/guides/pagination/#showing-the-total-count) for the full `totalDocs`/`totalDocsCapped` contract.
+
+## Index pushdown
+
+`resolveQueryIndex({ collection, where, sort, drafts })` picks one declared index for both the
+sort and the equality half of the filter: field comparisons that lead a declared index become a
+real Convex `withIndex` range instead of a full table scan filtered in JS; whatever the index
+can't express (an `or`, a `neq`, a non-leading field) stays in `.filter()`. `testimonials`'s
+`source` field declares `index: "by_source"` with `admin.enableSorting: true` specifically to
+exercise this — sorting or filtering by `source` is pushed through that index rather than scanned.
+
+## Search with no flash-to-empty
+
+Switching views, editing the search box, or adjusting a filter while a previous query is still in
+flight keeps the previous results visible (dimmed) rather than clearing to a loading/empty frame —
+`useVexListQuery`'s underlying query passes `placeholderData: keepPreviousData`, the same
+mechanism used for every list-state transition (view switch, debounced search edit, filter edit).
+
+## The peek (Inspect) panel
+
+Double-clicking a row, or choosing its row-menu's "Edit" action and picking Inspect, opens a
+non-modal peek panel for that document — a bottom sheet under `md`, a fixed right-hand panel at
+`md` and above. Opening it sets `?peek=<id>` in the URL, which the server prerenders exactly like
+everything else on this page.
+
+- **Next/Previous** navigate within the currently loaded rows and **wrap**: Next on the last row
+  jumps to the first, Previous on the first jumps to the last. Both are disabled only when a
+  single row is loaded (or the peek was deep-linked to a row outside the loaded page).
+- **Fields tab** renders every readable field through the same per-field-type `display` component
+  registry the rest of the admin panel uses — the same field set and order the edit view itself
+  would show for this document, with a "Copy" button per row.
+- **JSON tab** shows the document's depth-0 keys — the exact set and order the Fields tab
+  resolves, so a relationship/upload field's value is the raw stored id(s), not a populated
+  object (list rows fetch at depth 1 for display convenience; the JSON tab re-fetches the same
+  document at depth 0 specifically to show what's actually stored).
+- **Panel width** is resizable — drag the handle on the panel's left edge, or use the arrow keys
+  once it's focused — clamped to `[PEEK_PANEL_MIN_WIDTH_PX, 60vw]`, with a one-click Reset back to
+  the default. A width you've dragged is a per-view preference (`peekWidth` on `VexViewState`,
+  saved alongside sort/columns/page size) that only starts persisting once you've actually resized
+  it for a view that didn't already declare one.
+- **Active tab** (Fields vs. JSON) is remembered admin-wide, the same "last used, not per-view"
+  tradeoff density and the sidebar's collapsed state make.
+
+## Slot contributions
+
+`admin.components` on a collection (or project-wide in `defineConfig()`) accepts seven
+additive list-view slots: `headerActions` (`list.header.actions`, beside the built-in "+ New"
+button), `toolbar` (`list.toolbar`), `filters` (`list.filters`), `beforeTable`/`afterTable`
+(`list.beforeTable`/`list.afterTable`), `rowActions` (`list.row.actions`, rendered as
+`DropdownMenuItem`s in the per-row ⋯ menu alongside the built-in Open/Inspect/Copy ID/Delete
+actions), and `bulkActions` (`list.bulkActions`, rendered inline in the toolbar's
+bulk-selection group). Each entry is `{ id, component }`, merged with the project-wide
+defaults declared the same way at the root of `defineConfig()`.
+
+A contribution receives `{ collection }` as its own props — deliberately minimal, mirroring
+edit-view slots. The rest of the list's live state (URL state, selection, density, columns,
+the active view's hidden-filter summary, the peek opener, and more) comes from
+`useListViewContext()`, exported from `@vexcms/react`:
+
+```ts
+import { useListViewContext } from "@vexcms/react";
+
+const {
+  collection,        // the resolved CollectionConfig
+  urlState,           // useListViewUrlState()'s return — q/qf/sort/filter/size/view/cols + setters
+  selection,          // row selection: selectedIds, isSelected, toggle, clear, …
+  density,             // "comfortable" | "compact"
+  onDensityChange,
+  columns,             // the active view's full ColumnEntry<string>[] (every field, visible or not)
+  onColumnsChange,
+  peekWidth,
+  onPeekWidthChange,
+  columnMenuEntries,   // readable columns for the columns menu
+  hasActiveView,
+  activeViewHiddenFilter, // { count, description? } | undefined
+  isSearchFetching,
+  onInspect,           // opens the Inspect peek for a document id
+  viewPrefetch,
+  effectiveFilterWhere,
+} = useListViewContext();
+```
+
+`list.row.actions`/`list.bulkActions` contributions additionally receive `docs: TDocument[]`
+(exactly one document for a row action, every selected document for a bulk action) as their own
+prop, alongside `useListViewContext()` for the rest of the list's state. A custom row action
+that opens the edit view for its row, reading both together:
+
+```tsx
+import type { TDocument } from "@vexcms/core";
+import { useListViewContext } from "@vexcms/react";
+
+function ExportRowAction(props: { docs: TDocument[] }) {
+  const { collection } = useListViewContext();
+  return (
+    <button onClick={() => exportDocument(collection.slug, props.docs[0]!._id)}>
+      Export
+    </button>
+  );
+}
+
+// vex.config.ts
+admin: {
+  components: {
+    rowActions: [{ id: "acme.exportRow", component: ExportRowAction }],
+    bulkActions: [{ id: "acme.exportSelected", component: ExportRowAction }],
+  },
+},
+```
+
+A bulk action reads `props.docs` for every selected row instead of just the first, and can read
+`selection` off `useListViewContext()` to clear the selection after it runs.
+
+## `commitTs()` and the auto-injected `updatedAt`
+
+Every collection gets an `updatedAt` field automatically unless `timestamps: false` is set — it's
+typed `commitTs()`, not a plain `date()`. A `commitTs` field is read-only, resolves to Convex's own
+commit-time timestamp (not `Date.now()`) rather than client-chosen wall-clock time, and is stamped
+on whichever events its `on` option names (`"save"` — the injected `updatedAt`'s default —
+`"publish"`, or `"all"`). It's always auto-indexed (`by_<fieldKey>`) and therefore always
+sortable: `testimonials`'s `admin.view.sort` targets exactly this field, `{ field: "updatedAt",
+order: "desc" }`, proving the default view sorts by it. In the admin UI it renders with
+`admin.format: "datetime"` by default.
+
+## Density
+
+Row height toggles between Comfortable and Compact from the columns menu, and is stored in the
+`vex-admin` cookie — collection-agnostic, shared across every list in the admin panel.
+
+## Cookies
+
+The admin panel's UI preferences — density, filter-chip visibility, local saved-view index, last
+row counts, peek width/tab, sidebar state — are split across exactly two cookies,
+`vex-admin` (panel-wide) and `vex-admin:<collection>` (per collection). See the
+[Admin cookies guide](/guides/admin-cookies/) for the full shape and size bounds.
+
+## Anonymous admin access
+
+A role with no signed-in session can be granted scoped, read-only admin access via `anonRole` in
+your access config — a pure config decision, no app code branching. `testimonials`'s `guest` role
+demonstrates field-level filtering for an anonymous caller: it reads every testimonial field
+except `internalScore`. See the [Access control guide](/guides/access-control/#read-only-public-admin-via-anonrole)
+for the full mechanism, including the two gate points a framework adapter needs to agree on.
+
+## The `/admin/collections` and `/admin/globals` index pages
+
+`/admin/collections` lists every collection the current caller can read in the same card-grid
+style the dashboard uses; `/admin/globals` lists every global the caller can read (the same
+permission check the dashboard's own Globals section runs — a global you can't read never
+appears, even reached directly by URL). Both are generated from one shared section component so
+all three index pages (dashboard, collections, globals) render identical markup, and both show an
+empty state when the caller can read nothing at all rather than silently rendering a blank
+section.
+
+## Keyboard shortcuts — specced, not shipped
+
+A core keyboard-shortcut set (`/` to focus search, `Esc` to close/clear, arrow keys to move row
+focus, `Enter` to open, `Space` to toggle the peek, `X`/`Shift+X` to select) was designed as part
+of this overhaul but deferred to the backlog in favor of a single, later cross-view pass that
+covers the list and edit views together with consistent input-focus/dialog guards. Nothing in the
+shipped list view currently binds these keys — don't document or rely on any shortcut as live.

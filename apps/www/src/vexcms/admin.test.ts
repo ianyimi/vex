@@ -1,4 +1,4 @@
-import { text, TextFieldInput, type TextField } from "@vexcms/react"
+import { text, TextFieldAdmin, type TextField } from "@vexcms/react"
 import { runVexReactSuite, type FieldFixture } from "@vexcms/next/testing"
 
 import { access } from "~/auth/access"
@@ -17,7 +17,7 @@ import { access } from "~/auth/access"
  *
  * `metaTitleFixture` is this app's own `text` field configuration — not one
  * of the fixtures core registers in `fieldFixtures` — paired with the real,
- * publicly exported `TextFieldInput` to prove `custom` drives a
+ * publicly exported `TextFieldAdmin` to prove `custom` drives a
  * project-authored fixture through the same `runFieldInputContractSuite`
  * machinery every core field type runs through.
  */
@@ -34,5 +34,5 @@ runVexReactSuite({
   // Real VexAccessConfig this app ships — resolves through the real
   // VexConfigProvider (config.access), not a hand-typed stand-in.
   access,
-  custom: [{ ...metaTitleFixture, Component: TextFieldInput }],
+  custom: [{ ...metaTitleFixture, Component: TextFieldAdmin }],
 })

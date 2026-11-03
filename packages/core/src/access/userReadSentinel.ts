@@ -1,5 +1,5 @@
 /**
- * Builds the `user` a constraints callback receives when the caller is
+ * Builds the `user` a rule's `withIndex` / `where` callback receives when the caller is
  * sessionless (`user` is `null`/`undefined`), plus a way to tell afterward
  * whether the callback ever read anything off it.
  *

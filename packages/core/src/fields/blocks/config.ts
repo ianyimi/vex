@@ -102,9 +102,10 @@ export function defineBlock(options: BlockConfigInput): BlockConfig {
  */
 export function blocks<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 >(
-  options: BlocksFieldInput<TCollectionSlug, TFieldMeta>,
+  options: BlocksFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): BlocksField<TCollectionSlug, TFieldMeta> {
   // Validate unique slugs
   const seen = new Set<string>();
@@ -146,6 +147,8 @@ export function blocks<
       position: "main",
       width: "100%",
       cellAlignment: "left",
+      enableSorting: false,
+      enableHiding: true,
       placeholder: "",
       ...options?.admin,
       components: resolveFieldComponents({ components: options?.admin?.components }),

@@ -39,6 +39,34 @@ export const DRAFT_ACTIONS = {
 export type DraftAction = (typeof DRAFT_ACTIONS)[keyof typeof DRAFT_ACTIONS];
 
 /**
+ * Access actions gating SHARED (`vex_views`) saved views (decision 13).
+ * Present on every collection that has a resolved `admin.view` (see
+ * {@link HasListView} in `access/types.ts`) — globals have no list view and
+ * never carry them.
+ *
+ * - `readViews` is query-shaped (see {@link QUERY_ACTIONS} below) — it
+ *   gates `listViews`, the use of shared views, and `find`'s shared-view
+ *   allow-list (decision 26).
+ * - `createView` gates saving a new shared view and promoting a local view.
+ * - `updateView` gates saving changes to and renaming a shared view.
+ * - `deleteView` gates deleting a shared view.
+ *
+ * Undeclared like every other action (P-007): a role matrix that never
+ * mentions one of these resolves it to denied, so shared-view reads and
+ * writes are all fail-closed by default. A caller without `createView` can
+ * still save views locally — `savedListViews/localSavedListViewsStore.ts` (Step 12) never
+ * calls `hasPermission` for the `local` source.
+ */
+export const VIEW_ACTIONS = {
+  readViews: "readViews",
+  createView: "createView",
+  updateView: "updateView",
+  deleteView: "deleteView",
+} as const;
+/** View action union, derived from {@link VIEW_ACTIONS}. */
+export type ViewAction = (typeof VIEW_ACTIONS)[keyof typeof VIEW_ACTIONS];
+
+/**
  * Actions whose read shape is a query rather than a single-document check —
  * the only actions an indexed `{ filter, withIndex }` permission check may
  * target (design doc §3: `withIndex` on `create`/`update`/`delete` would
@@ -47,6 +75,7 @@ export type DraftAction = (typeof DRAFT_ACTIONS)[keyof typeof DRAFT_ACTIONS];
 export const QUERY_ACTIONS = {
   read: CRUD_ACTIONS.read,
   readDrafts: DRAFT_ACTIONS.readDrafts,
+  readViews: VIEW_ACTIONS.readViews,
 } as const;
 /** Query-shaped action union, derived from {@link QUERY_ACTIONS}. */
 export type QueryAction = (typeof QUERY_ACTIONS)[keyof typeof QUERY_ACTIONS];

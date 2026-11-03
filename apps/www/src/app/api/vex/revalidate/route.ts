@@ -1,7 +1,7 @@
 import { api } from "@convex/_generated/api"
 import { createVexRevalidateRoute } from "@vexcms/next/cache"
 
-import { fetchAuthQuery, getToken } from "~/auth/server"
+import { getToken, getUserOrg } from "~/auth/server"
 import { vex } from "~/lib/vex"
 import config from "~/vex.config.server"
 
@@ -24,7 +24,7 @@ import config from "~/vex.config.server"
  */
 export const { POST } = createVexRevalidateRoute({
   config,
-  getAuth: () => fetchAuthQuery(api.auth.api.getUserOrg, {}),
+  getAuth: getUserOrg,
   getToken,
   listCollection: async (collection) => {
     if (collection !== "pages") return []

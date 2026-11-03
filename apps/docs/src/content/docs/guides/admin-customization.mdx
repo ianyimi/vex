@@ -221,16 +221,322 @@ Nested `admin.components` keys map 1:1 onto these: `admin.components.beforeInput
 on a field resolves `SLOT_IDS.field.beforeInput`; `admin.components.itemActions`
 on a `blocks()` field resolves `SLOT_IDS.blocks.itemActions`.
 
+## Edit-view slots
+
+Collection and global edit views expose eight slots under
+`admin.components.edit`, set at the root of `defineConfig()` for every
+resource or on one collection/global's own `admin.components.edit`:
+
+```ts
+import { defineConfig } from "@vexcms/core"
+
+export default defineConfig({
+  admin: {
+    components: {
+      edit: {
+        header: {
+          actions: [{ id: "acme.exportPdf", component: ExportPdfAction }],
+          before: [],
+          after: [{ id: "acme.envBadge", component: EnvBadge }],
+        },
+        actionsMenu: {
+          items: [{ id: "acme.exportCsv", component: ExportCsvMenuItem }],
+        },
+        beforeFields: [],
+        afterFields: [],
+        sidebar: {
+          before: [],
+          after: [{ id: "acme.cacheNote", component: CacheNote }],
+        },
+      },
+    },
+  },
+})
+```
+
+`SLOT_IDS.edit` names them: `edit.header.actions`, `edit.header.before`,
+`edit.header.after`, `edit.actionsMenu`, `edit.beforeFields`,
+`edit.afterFields`, `edit.sidebar.before`, `edit.sidebar.after`. All eight are
+additive contribution lists — the same `ComponentContributionInput` shape as
+`blocks.item.actions` — merged root → collection/global level with the same
+`order`/`before`/`after`/`hidden`/`access`/`condition` resolution as every
+other slot in this guide. Every entry's `component` receives
+`EditSlotProps`: `{ kind: "collection" | "global"; slug: string }`.
+
+### Built-in edit actions
+
+Save, Publish/Unpublish, Delete and Cancel render through `edit.header.actions`
+as `vex.*` contributions, under `BUILTIN_CONTRIBUTION_IDS.edit`. Header order
+(left to right, after the ⋯ menu and status badge): Preview, Save (Draft),
+Publish or Unpublish, Cancel, Delete.
+
+Save (Draft)/Publish-or-Unpublish/Cancel (and, for a non-versioned resource,
+Save/Cancel) are ALWAYS rendered — greyed out (disabled) when not applicable
+(no permission, no unsaved changes, viewing a read-only version), never hidden
+by state. Hiding any of these by state would shift every button after it on
+every edit; a project that genuinely wants one gone uses a `hidden` directive
+(below) instead, an explicit opt-in rather than a side effect of document
+state.
+
+Publish and Unpublish share one spot — both ids (`vex.publish`/`vex.unpublish`)
+are adjacent in header order, but exactly one ever renders: Unpublish when the
+document is published, the form is clean, and no newer draft/viewed-version
+exists; Publish otherwise. Both buttons share a fixed minimum width (the wider
+"Unpublish" label's width), so the swap between them never shifts Cancel or
+Delete beside it.
+
+```ts
+import { BUILTIN_CONTRIBUTION_IDS } from "@vexcms/core"
+
+BUILTIN_CONTRIBUTION_IDS.edit.save            // "vex.save"
+BUILTIN_CONTRIBUTION_IDS.edit.publish         // "vex.publish"
+BUILTIN_CONTRIBUTION_IDS.edit.unpublish       // "vex.unpublish"
+BUILTIN_CONTRIBUTION_IDS.edit.delete          // "vex.delete"
+BUILTIN_CONTRIBUTION_IDS.edit.cancel          // "vex.cancel"
+BUILTIN_CONTRIBUTION_IDS.edit.versionHistory  // "vex.versionHistory"
+BUILTIN_CONTRIBUTION_IDS.edit.livePreview     // "vex.livePreview"
+BUILTIN_CONTRIBUTION_IDS.edit.revalidate      // "vex.revalidate"
+BUILTIN_CONTRIBUTION_IDS.edit.duplicate       // "vex.duplicate"
+```
+
+`Delete` renders with a trash icon on the header button, the collapsed ⋯ menu
+item, and the confirmation dialog's own Delete button — all three share the
+same `Trash2` icon.
+
+`vex.versionHistory` ("History", versioned resources only), `vex.revalidate`
+(a manual ISR purge) and `vex.duplicate` ("Duplicate", collection documents
+only — not media or globals) render through `edit.actionsMenu` instead of
+`edit.header.actions`: a ⋯ menu to the left of the status badge
+(`DocumentEditActionsMenu`), for actions used rarely enough that a standalone
+header button isn't worth the width. Resolved order: Preview (only when the
+responsive collapse below has moved it in — otherwise Preview stays inline
+and History is the menu's first item), History, Revalidate, Duplicate, then
+Delete (only once collapsed in, always last). The menu renders no trigger at
+all when its resolved, access-filtered contribution list is empty — a global
+with nothing contributed to `edit.actionsMenu` and nothing responsively
+collapsed into it (see below) gets no empty ⋯ button. This depends on EVERY
+item gating its own visibility through `access` (checked by `useResolvedEditSlot`
+before anything mounts) rather than returning `null` from render — a
+`null`-rendering item still counts as present in the resolved list, so a
+collection-only item like `vex.revalidate` declares
+`access: (ctx) => ctx.resource?.kind === "collection"` on its contribution
+entry instead of bailing out inside the component.
+
+Selecting History opens a dialog listing every version (newest first) — the
+same content `VersionHistoryDropdown` renders standalone, reused through
+`useEditActionsMenuDialog` (below) so the list survives the ⋯ menu closing on
+select.
+
+Hide one the same way as a block action — a hide directive naming the id, in
+whichever slot's resolved list the id actually renders in (`edit.header.actions`
+for `vex.delete`, `edit.actionsMenu` for `vex.duplicate`):
+
+```ts
+import { BUILTIN_CONTRIBUTION_IDS } from "@vexcms/core"
+
+admin: {
+  components: {
+    edit: {
+      header: {
+        actions: [{ id: BUILTIN_CONTRIBUTION_IDS.edit.delete, hidden: true }],
+      },
+    },
+  },
+}
+```
+
+### Wrapping a built-in edit action
+
+Unlike `blocks`/`array` actions, each `edit.*` slot that carries built-ins also
+takes an `overrides` map keyed by the built-in's id — the key names what is
+wrapped, each entry's own `id` names the wrapper, and array order is
+composition order (first = outermost):
+
+```ts
+import { BUILTIN_CONTRIBUTION_IDS } from "@vexcms/core"
+
+admin: {
+  components: {
+    edit: {
+      header: {
+        overrides: {
+          [BUILTIN_CONTRIBUTION_IDS.edit.save]: [
+            { id: "acme.save.confirm", component: ConfirmBeforeSave },
+          ],
+        },
+      },
+    },
+  },
+}
+```
+
+`ConfirmBeforeSave` receives `renderDefault` — the built-in Save button (or
+the next wrapper in, if more than one targets `vex.save`) — the same
+override-chain contract as `Input`/`Cell`. An override keyed to an id that
+isn't in that slot's resolved list throws `VexComponentConfigError`, same as
+a duplicate id within one resolved list.
+
+### Contributing to `edit.actionsMenu`
+
+A project item in `edit.actionsMenu` renders through `EditActionsMenuItem`
+(`@vexcms/react`) — a styled `DropdownMenuItem` wrapper, so a project's own
+menu entries read identically to the built-ins (icon + label, disabled/
+destructive states):
+
+```tsx
+import { EditActionsMenuItem } from "@vexcms/react"
+import { useVexDocument } from "@vexcms/react"
+
+function ExportCsvMenuItem() {
+  const document = useVexDocument()
+  return (
+    <EditActionsMenuItem
+      icon={<DownloadIcon />}
+      onSelect={() => exportCsv(document.id)}
+    >
+      Export CSV
+    </EditActionsMenuItem>
+  )
+}
+```
+
+### `useEditActionsMenuDialog`
+
+Selecting any item in the ⋯ menu closes it — base-ui unmounts
+`DropdownMenuContent` and every item inside it the instant a
+`DropdownMenuItem`'s `onSelect` runs. A contribution that wants to open a
+dialog, or do anything after a promise that resolves once the menu is
+already gone (the built-in Duplicate's conflict dialog, which opens only
+after its create request rejects), cannot render that dialog inline from
+its own JSX — by the time the promise settles, the item is already
+unmounted and its state is gone.
+
+`useEditActionsMenuDialog()` (`@vexcms/react`) opens content through the
+menu's host instead — rendered by `DocumentEditActionsMenu` itself, as a
+sibling of the dropdown, so it survives the dropdown closing:
+
+```tsx
+import { EditActionsMenuItem, useEditActionsMenuDialog } from "@vexcms/react"
+
+function ArchiveMenuItem() {
+  const dialog = useEditActionsMenuDialog()
+  return (
+    <EditActionsMenuItem
+      onSelect={() =>
+        archiveDocument().catch((error) => {
+          // The menu has already closed by the time this runs — `dialog.open`
+          // still renders, because the host lives outside DropdownMenuContent.
+          dialog.open(<ArchiveConflictDialog error={error} onClose={dialog.close} />)
+        })
+      }
+    >
+      Archive
+    </EditActionsMenuItem>
+  )
+}
+```
+
+`open(node)` replaces whatever dialog node is currently showing; `close()`
+clears it. Throws outside a `DocumentEditActionsMenu`-rendered contribution,
+the same pattern as `useVexDocument`/`useDocumentEditRuntime`.
+
+### Responsive header collapse
+
+`CollectionEditView`/`GlobalEditView` keep the header on one row at every
+width instead of wrapping: as the row narrows, the title truncates first
+(plain CSS — no hard minimum, so it can truncate all the way to empty), and
+only once it's narrower than a conceptual floor
+(`HEADER_TITLE_VALUE_MIN_WIDTH_PX` in `useHeaderActionsCollapse`) does
+`vex.livePreview` move into `edit.actionsMenu` (right after `vex.versionHistory`,
+which already lives there permanently for a versioned resource), then
+`vex.delete` (last item) — collection documents only, since globals have no
+delete. `vex.save`/`vex.cancel` and, for versioned resources, Publish/Unpublish
+never collapse; on a narrow-enough viewport with
+many of those always-inline actions (e.g. a versioned collection's full
+button row on a phone), the title can legitimately truncate to nothing once
+both collapsible actions are already in the menu and there is still no room
+left.
+
+`useHeaderActionsCollapse` (`@vexcms/react`) drives this by measuring, not by
+a fixed breakpoint: it compares the header row's available width against the
+title's floor plus the actions group's current natural width (both
+`shrink-0`, so their rendered width is always exact, collapsed or not), via
+`ResizeObserver`. Each collapse's freed width is remembered and used as the
+threshold to restore it, so a resize that lands exactly on the boundary
+doesn't thrash between the two states. A project's own `edit.header.actions`/
+`edit.actionsMenu` contributions are unaffected — only the two built-ins
+above ever move between the two slots.
+
+## `useVexDocument`
+
+Built-in and third-party edit-view contributions read document-level state
+through `useVexDocument()` (`@vexcms/react`), not through form state:
+
+```tsx
+import { useVexDocument } from "@vexcms/react"
+
+function PublishedSince() {
+  const document = useVexDocument()
+  if (document.status !== "published") return null
+  return <span>Published</span>
+}
+```
+
+```ts
+type VexDocumentState = {
+  kind: "collection" | "global"
+  slug: string
+  id?: string          // absent on a new, unsaved document
+  saved: Record<string, unknown> | undefined // last saved values, not live form state
+  isDirty: boolean
+  status?: "draft" | "published" // versioned resources only
+  canEdit: boolean
+}
+```
+
+It deliberately excludes live field values — `useVexForm` already exposes
+those, and re-exporting them here would re-render every `useVexDocument()`
+consumer on every keystroke. It throws outside `VexDocumentProvider`, which
+both edit views mount.
+
+## `useVexNavigate`
+
+A contribution that navigates after its own mutation — not a click, which `VexLink` already
+covers — calls `useVexNavigate()` (`@vexcms/react`) instead of its framework's own
+`useRouter().push`: it returns `(href) => void` guarded by the same unsaved-changes check as
+an in-app link click, falling back to a full page navigation when the current adapter has no
+`useNavigate` capability. A raw framework `router.push` bypasses that guard entirely.
+
+```tsx
+import { useVexNavigate } from "@vexcms/react"
+
+function ArchiveAndLeave() {
+  const navigate = useVexNavigate()
+  return <button onClick={() => navigate("/admin/collections/posts")}>Archive</button>
+}
+```
+
 ## Rendering, in `@vexcms/react`
 
-Slots render through `SlotOutlet` (`packages/react/src/components/slots/SlotOutlet.tsx`),
+Slots render through `SlotOutlet` (`packages/react/src/slots/SlotOutlet.tsx`),
 which merges a call site's built-in contributions with the project/field's own
 list, re-resolves order over the merged array (so a project's `before`/`after`
 can target a built-in id), evaluates `access`/`condition`, and wraps each
 surviving contribution in `ComponentErrorBoundary`. Override chains resolve
-through `resolveFieldInputComponent`/`resolveFieldCellComponent`
-(`packages/react/src/components/fields`), composing field → project-type →
+through `resolveFieldComponent`/`resolveFieldCellComponent`
+(`packages/react/src/slots`), with `Input` overrides applied per field by
+`useFieldControlOverride` (`packages/react/src/fields`), composing field → project-type →
 built-in into one `renderDefault` chain.
 
 A duplicate id within one resolved list — two real contributions sharing an
 id, not a hide directive naming one — throws `VexComponentConfigError`.
+
+Edit-view slots render through the same `SlotOutlet` via
+`DocumentEditSlotOutlet` (`packages/react/src/documents/DocumentEditSlotOutlet.tsx`), which also
+resolves each slot's `overrides` map and wraps every override layer — like
+every other override chain in this guide — in its own `ComponentErrorBoundary`
+keyed by the override id. `edit.actionsMenu` resolves through the same
+`useResolvedEditSlot`/`EditSlotContribution` machinery, shared with
+`DocumentEditSlotOutlet` and reused by `DocumentEditActionsMenu`
+(`packages/react/src/documents/DocumentEditActionsMenu.tsx`), the ⋯ menu's
+own component.

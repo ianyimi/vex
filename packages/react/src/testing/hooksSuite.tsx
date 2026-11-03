@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ConvexReactClient } from "convex/react";
 import type { ReactNode } from "react";
 
-import { createFakeConvexClient } from "./convex/bridge";
+import { createFakeConvexClient, fakeCollectionAdminViewOverrides } from "./convex/bridge";
 import schema, {
   seedDocuments,
   seedMedia,
@@ -18,13 +18,17 @@ import schema, {
 import { useTableSelection } from "../hooks/useTableSelection";
 import { usePaginatedQuery } from "../hooks/usePaginatedQuery";
 import { usePaginatedSearch } from "../hooks/usePaginatedSearch";
-import type { CollectionConfig, MediaCollectionConfig } from "@vexcms/core";
+import { useVexListQuery } from "../hooks/useVexListQuery";
+import { useVexDocQuery } from "../hooks/useVexDocQuery";
+import type { CollectionConfig, MediaCollectionConfig, VexWhereNode } from "@vexcms/core";
 
 /** Which hook `runHooksSuite` is currently exercising, for per-member test labeling. */
 export type HooksSuiteMember =
   | "useTableSelection"
   | "usePaginatedQuery"
-  | "usePaginatedSearch";
+  | "usePaginatedSearch"
+  | "useVexListQuery"
+  | "useVexDocQuery";
 
 /**
  * `useTableSelection`'s `state.mode` and `state.selectedIds` alone determine
@@ -95,9 +99,27 @@ function makeWrapper(queryClient: QueryClient) {
 function makeDocumentsCollection(): CollectionConfig {
   return {
     slug: "documents",
-    fields: {},
+    fields: {
+      title: { searchIndex: { name: "search_title", filterFields: [] } },
+    },
     labels: { singular: "Document", plural: "Documents" },
-    admin: { useAsTitle: "title", components: {} },
+    admin: {
+      useAsTitle: "title",
+      components: {},
+      view: {
+        viewId: "default",
+        name: "All",
+        state: {
+          sort: { field: "_creationTime", order: "desc" },
+          columns: [],
+          pageSize: 10,
+          serverPageSize: 100,
+          pageSizeOptions: [10, 25, 50, 100],
+          bulkActions: { delete: true },
+        },
+      },
+      views: [],
+    },
     meta: {},
   } as unknown as CollectionConfig;
 }
@@ -230,6 +252,324 @@ function describePaginatedSearch() {
 }
 
 /**
+ * Registers the `useVexListQuery` describe block, driven by real seeded rows
+ * through the convex-test bridge — both the `find`-mode path and the
+ * search-mode path against `documents`' real `search_title` index.
+ */
+function describeVexListQuery() {
+  describe("useVexListQuery", () => {
+    it("reveals pageSize rows per page, independent of the collection's larger serverPageSize", async () => {
+      const t = convexTest(schema, testModules);
+      await seedDocuments(t, 15);
+      const { queryClient } = buildQueryClient(t);
+      const collection = makeDocumentsCollection();
+
+      const { result } = renderHook(() => useVexListQuery({ collection, pageSize: 5 }), {
+        wrapper: makeWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.isPending).toBe(false));
+      expect(result.current.results.map((doc) => doc.title)).toEqual([
+        "Doc 0",
+        "Doc 1",
+        "Doc 2",
+        "Doc 3",
+        "Doc 4",
+      ]);
+      expect(result.current.isDone).toBe(false);
+
+      act(() => result.current.loadMore());
+      await waitFor(() =>
+        expect(result.current.results.map((doc) => doc.title)).toEqual([
+          "Doc 0",
+          "Doc 1",
+          "Doc 2",
+          "Doc 3",
+          "Doc 4",
+          "Doc 5",
+          "Doc 6",
+          "Doc 7",
+          "Doc 8",
+          "Doc 9",
+        ]),
+      );
+    });
+
+    it("forwards where to filter results", async () => {
+      const t = convexTest(schema, testModules);
+      await seedDocuments(t, 5);
+      const { queryClient } = buildQueryClient(t);
+      const collection = makeDocumentsCollection();
+
+      const { result } = renderHook(
+        () =>
+          useVexListQuery({
+            collection,
+            where: { field: "title", op: "eq", value: "Doc 2" },
+            pageSize: 10,
+          }),
+        { wrapper: makeWrapper(queryClient) },
+      );
+      await waitFor(() => expect(result.current.isPending).toBe(false));
+      expect(result.current.results.map((doc) => doc.title)).toEqual(["Doc 2"]);
+      expect(result.current.isDone).toBe(true);
+    });
+
+    it("reports totalDocsCapped when find hits the count cap", async () => {
+      const t = convexTest(schema, testModules);
+      await seedDocuments(t, 3);
+      const { queryClient } = buildQueryClient(t);
+      const collection = makeDocumentsCollection();
+      // `find` only runs its countLimit-capped count query when the first
+      // server page isn't already `isDone` (otherwise it returns the exact
+      // page length for free) — `numItems` is `max(serverPageSize,
+      // pageSize)`, so both must stay below the seeded count for this test
+      // to reach that branch.
+      collection.admin.view.state.serverPageSize = 2;
+      // Production `find` resolves `admin.view.state.countLimit` from a
+      // server-held `VexConfig`, never from the wire — this kit's
+      // `"vex:find"` handler has nothing else to read it from, so the cap
+      // is registered with the bridge directly (see
+      // `fakeCollectionAdminViewOverrides`'s own doc comment).
+      fakeCollectionAdminViewOverrides.documents = { countLimit: 2 };
+      try {
+        const { result } = renderHook(() => useVexListQuery({ collection, pageSize: 2 }), {
+          wrapper: makeWrapper(queryClient),
+        });
+        await waitFor(() => expect(result.current.isPending).toBe(false));
+        expect(result.current.totalDocsCapped).toBe(true);
+      } finally {
+        delete fakeCollectionAdminViewOverrides.documents;
+      }
+    });
+
+    it("search mode dispatches to the collection's declared search index without throwing", async () => {
+      const t = convexTest(schema, testModules);
+      await seedDocuments(t, 5);
+      const { queryClient } = buildQueryClient(t);
+      const collection = makeDocumentsCollection();
+
+      const { result } = renderHook(
+        () =>
+          useVexListQuery({
+            collection,
+            search: "Doc 2",
+            searchField: "title",
+            pageSize: 10,
+          }),
+        { wrapper: makeWrapper(queryClient) },
+      );
+
+      await waitFor(() => expect(result.current.isPending).toBe(false));
+      expect(Array.isArray(result.current.results)).toBe(true);
+      expect(result.current.totalDocsCapped).toBe(false);
+    });
+
+    it("keeps the previous search's rows on screen while a new search term is pending (keep-previous-data)", async () => {
+      const t = convexTest(schema, testModules);
+      await seedDocuments(t, 5);
+      const { queryClient } = buildQueryClient(t);
+      const collection = makeDocumentsCollection();
+
+      const { result, rerender } = renderHook(
+        (props: { search: string }) =>
+          useVexListQuery({
+            collection,
+            search: props.search,
+            searchField: "title",
+            pageSize: 10,
+          }),
+        { wrapper: makeWrapper(queryClient), initialProps: { search: "2" } },
+      );
+
+      await waitFor(() => expect(result.current.isPending).toBe(false));
+      const firstResults = result.current.results;
+      expect(firstResults.map((doc) => doc.title)).toEqual(["Doc 2"]);
+      expect(result.current.isFetching).toBe(false);
+
+      rerender({ search: "3" });
+      // The previous search's rows stay on screen — `allResults` is not
+      // eagerly cleared on a query-identity change — while `isFetching`
+      // (not `isPending`, which only covers the very first fetch) flags
+      // the in-flight refetch for the new term, for `ListViewSearch`'s own
+      // in-input spinner to read.
+      expect(result.current.results).toEqual(firstResults);
+      expect(result.current.isFetching).toBe(true);
+
+      await waitFor(() => expect(result.current.isFetching).toBe(false));
+      expect(result.current.results.map((doc) => doc.title)).toEqual(["Doc 3"]);
+    });
+
+    it("isSettling tracks the search-mode query identity reliably, unlike isFetching under a live-push backend (developer-reported regression)", async () => {
+      // `isFetching`/`isPlaceholderData` are reliable against THIS fake backend's genuinely-
+      // awaited `t.run()` (the test above asserts against `isFetching` directly) but NOT
+      // against the real Convex client, whose websocket subscription pushes a live update
+      // straight into the query cache via `queryClient.setQueryData` — never a tracked
+      // refetch — so those flags can read `false` throughout a visible query-identity
+      // change there (confirmed live, 2026-11-01 investigation; see `usePaginatedQuery.ts`'s
+      // own `isFetching`/`isSettling` doc comments). `isSettling` is derived from `results`
+      // itself having been synced for the CURRENT query identity, which works identically
+      // either way — this asserts it behaves correctly against the fake backend too, same
+      // as `isFetching` already does above.
+      const t = convexTest(schema, testModules);
+      await seedDocuments(t, 5);
+      const { queryClient } = buildQueryClient(t);
+      const collection = makeDocumentsCollection();
+
+      const { result, rerender } = renderHook(
+        (props: { search: string }) =>
+          useVexListQuery({
+            collection,
+            search: props.search,
+            searchField: "title",
+            pageSize: 10,
+          }),
+        { wrapper: makeWrapper(queryClient), initialProps: { search: "2" } },
+      );
+
+      await waitFor(() => expect(result.current.isSettling).toBe(false));
+      const firstResults = result.current.results;
+      expect(firstResults.map((doc) => doc.title)).toEqual(["Doc 2"]);
+
+      rerender({ search: "3" });
+      expect(result.current.results).toEqual(firstResults);
+      expect(result.current.isSettling).toBe(true);
+
+      await waitFor(() => expect(result.current.isSettling).toBe(false));
+      expect(result.current.results.map((doc) => doc.title)).toEqual(["Doc 3"]);
+    });
+
+    it("keeps find-mode's rows on screen while switching INTO search mode, no empty flash (cross-mode keep-previous-data)", async () => {
+      // The regression this guards (developer-reported, 2026-11-01): `find`-mode and
+      // `search`-mode are two SEPARATE `useQuery` instances with two separate state
+      // machines — each has its own within-mode `keepPreviousData`, but switching WHICH one
+      // is active hands off to a hook that has never run before (no previous data of its
+      // own to keep), even though the OTHER, now-disabled one still has perfectly good rows
+      // on screen. `useVexListQuery`'s own dispatcher bridges this gap.
+      const t = convexTest(schema, testModules);
+      await seedDocuments(t, 5);
+      const { queryClient } = buildQueryClient(t);
+      const collection = makeDocumentsCollection();
+
+      const { result, rerender } = renderHook(
+        (props: { search: string }) =>
+          useVexListQuery({
+            collection,
+            search: props.search,
+            searchField: "title",
+            pageSize: 10,
+          }),
+        { wrapper: makeWrapper(queryClient), initialProps: { search: "" } },
+      );
+
+      await waitFor(() => expect(result.current.isSettling).toBe(false));
+      const findResults = result.current.results;
+      expect(findResults.length).toBe(5);
+
+      rerender({ search: "2" });
+      // The find-mode rows stay on screen — not a skeleton, not an empty array — while the
+      // newly-active search-mode query (never run before this render) is still pending.
+      expect(result.current.results).toEqual(findResults);
+      expect(result.current.isSettling).toBe(true);
+
+      await waitFor(() => expect(result.current.isSettling).toBe(false));
+      expect(result.current.results.map((doc) => doc.title)).toEqual(["Doc 2"]);
+    });
+
+    it("search mode: loadMore for a NEW page does not re-append the PREVIOUS page while the new one is still pending (developer-reported: peek highlight landing on the wrong row after a view switch — traced to a duplicate React key from this exact double-append)", async () => {
+      // Parity gap with `usePaginatedQuery.ts`'s identical sync effect (Step 19's own
+      // find-mode fix): that effect gates on `!isPlaceholderData` so it only ever syncs
+      // genuinely fresh data; `useVexListQuerySearch`'s twin (inside `useVexListQuery`,
+      // search mode) was missing the same guard. Without it: `loadMore()` advancing from
+      // page 2 to page 3 changes the query's `cursor`, and `placeholderData:
+      // keepPreviousData` immediately re-serves page 2's own (already-appended) rows as a
+      // placeholder for the new `cursor` — the un-guarded effect's `cursor !== null` branch
+      // appends that placeholder AGAIN, before page 3's real answer ever arrives,
+      // duplicating every page-2 row's key (`getRowId: row => row._id`) in `allResults`.
+      const t = convexTest(schema, testModules);
+      await seedDocuments(t, 6);
+      const { queryClient } = buildQueryClient(t);
+      const collection = makeDocumentsCollection();
+      // Small server pages force a THIRD page fetch (`cursor` change) on the second
+      // `loadMore()` — the exact transition that exposes the missing guard.
+      collection.admin.view.state.serverPageSize = 2;
+
+      const { result } = renderHook(
+        () =>
+          useVexListQuery({
+            collection,
+            search: "Doc",
+            searchField: "title",
+            pageSize: 2,
+          }),
+        { wrapper: makeWrapper(queryClient) },
+      );
+      await waitFor(() => expect(result.current.isPending).toBe(false));
+      expect(result.current.results.length).toBe(2);
+
+      act(() => result.current.loadMore());
+      await waitFor(() => expect(result.current.results.length).toBe(4));
+      const idsAfterSecondPage = result.current.results.map((doc) => doc._id);
+      expect(new Set(idsAfterSecondPage).size).toBe(4);
+
+      // Advances to page 3 — `keepPreviousData` immediately re-serves page 2's rows as a
+      // placeholder for the new `cursor` on this SAME `act()` flush, before page 3's real
+      // answer arrives. Checked synchronously (no `await`): the buggy effect's `cursor !==
+      // null` append branch would double page 2's rows into `allResults` right here.
+      act(() => result.current.loadMore());
+      expect(result.current.results.length).toBe(4);
+      expect(new Set(result.current.results.map((doc) => doc._id)).size).toBe(4);
+
+      await waitFor(() => expect(result.current.results.length).toBe(6));
+      const finalIds = result.current.results.map((doc) => doc._id);
+      expect(new Set(finalIds).size).toBe(6);
+    });
+  });
+}
+
+/**
+ * Registers the `useVexDocQuery` describe block, driven by real seeded rows
+ * through the convex-test bridge's `"vex:get"` handler.
+ */
+function describeVexDocQuery() {
+  describe("useVexDocQuery", () => {
+    it("returns the document matching id, live", async () => {
+      const t = convexTest(schema, testModules);
+      const [id] = await seedDocuments(t, 1);
+      const { queryClient } = buildQueryClient(t);
+
+      const { result } = renderHook(() => useVexDocQuery({ collection: "documents", id }), {
+        wrapper: makeWrapper(queryClient),
+      });
+      await waitFor(() => expect(result.current.document?.title).toBe("Doc 0"));
+      expect(result.current.isPending).toBe(false);
+    });
+
+    it("skip: true never issues the query — document stays undefined", async () => {
+      const t = convexTest(schema, testModules);
+      const [id] = await seedDocuments(t, 1);
+      const { queryClient } = buildQueryClient(t);
+
+      const { result } = renderHook(
+        () => useVexDocQuery({ collection: "documents", id, skip: true }),
+        { wrapper: makeWrapper(queryClient) },
+      );
+      await waitFor(() => expect(result.current.document).toBeUndefined());
+    });
+
+    it("undefined id behaves like skip: true", async () => {
+      const t = convexTest(schema, testModules);
+      const { queryClient } = buildQueryClient(t);
+
+      const { result } = renderHook(
+        () => useVexDocQuery({ collection: "documents", id: undefined }),
+        { wrapper: makeWrapper(queryClient) },
+      );
+      await waitFor(() => expect(result.current.document).toBeUndefined());
+    });
+  });
+}
+
+/**
  * Runs the shared contract for this package's two custom hooks —
  * `useTableSelection`'s selection-state machine and `usePaginatedQuery`'s
  * cursor-accumulating pagination over a real Convex backend. Neither member
@@ -243,6 +583,8 @@ export function runHooksSuite(options?: { only?: HooksSuiteMember[] }): void {
     "useTableSelection",
     "usePaginatedQuery",
     "usePaginatedSearch",
+    "useVexListQuery",
+    "useVexDocQuery",
   ];
 
   if (only.includes("useTableSelection")) {
@@ -614,17 +956,21 @@ export function runHooksSuite(options?: { only?: HooksSuiteMember[] }): void {
         await waitFor(() => expect(result.current.isPending).toBe(false));
 
         act(() => result.current.loadMore());
-        await waitFor(() => expect(result.current.isPending).toBe(false));
+        // Not `isPending` — with `placeholderData: keepPreviousData` (Decision
+        // 46), it reports `false` immediately (serving the previous page as a
+        // placeholder), before the next page has actually landed.
+        await waitFor(() =>
+          expect(result.current.results.map((doc) => doc.title)).toEqual([
+            "Doc 0",
+            "Doc 1",
+            "Doc 2",
+            "Doc 3",
+          ]),
+        );
 
         // Regression guard (HOOK-4): loadMore advances clientPageIndex
         // unconditionally, so ONE call reveals ONE page instead of only
         // fetching it for the next call.
-        expect(result.current.results.map((doc) => doc.title)).toEqual([
-          "Doc 0",
-          "Doc 1",
-          "Doc 2",
-          "Doc 3",
-        ]);
         expect(result.current.isDone).toBe(false);
       });
 
@@ -648,19 +994,31 @@ export function runHooksSuite(options?: { only?: HooksSuiteMember[] }): void {
         await waitFor(() => expect(result.current.isPending).toBe(false));
 
         act(() => result.current.loadMore());
-        await waitFor(() => expect(result.current.isPending).toBe(false));
+        // Not `isPending` (see the single-loadMore test above) — waits for
+        // the actual next page to land before issuing the second loadMore,
+        // since `loadMore` reads `result.continueCursor`, which is still the
+        // PREVIOUS (placeholder) page's cursor until this settles.
+        await waitFor(() =>
+          expect(result.current.results.map((doc) => doc.title)).toEqual([
+            "Doc 0",
+            "Doc 1",
+            "Doc 2",
+            "Doc 3",
+          ]),
+        );
         act(() => result.current.loadMore());
-        await waitFor(() => expect(result.current.isPending).toBe(false));
+        await waitFor(() =>
+          expect(result.current.results.map((doc) => doc.title)).toEqual([
+            "Doc 0",
+            "Doc 1",
+            "Doc 2",
+            "Doc 3",
+            "Doc 4",
+          ]),
+        );
 
         // Regression guard (HOOK-4): each loadMore advances
         // clientPageIndex unconditionally, revealing pages in order.
-        expect(result.current.results.map((doc) => doc.title)).toEqual([
-          "Doc 0",
-          "Doc 1",
-          "Doc 2",
-          "Doc 3",
-          "Doc 4",
-        ]);
         expect(result.current.isDone).toBe(true);
       });
 
@@ -883,8 +1241,194 @@ export function runHooksSuite(options?: { only?: HooksSuiteMember[] }): void {
         ]);
         expect(second.result.current.isDone).toBe(false);
       });
+
+      it("resets cursor and accumulated results in place when the query's where changes, without a remount", async () => {
+        const t = convexTest(schema, testModules);
+        await seedDocuments(t, 5);
+        const { queryClient } = buildQueryClient(t);
+
+        const { result, rerender } = renderHook(
+          (where?: VexWhereNode<"documents">) =>
+            usePaginatedQuery({
+              query: { collection: "documents", where, paginationOpts: { numItems: 2, cursor: null } },
+            }),
+          { wrapper: makeWrapper(queryClient) },
+        );
+        await waitFor(() => expect(result.current.isPending).toBe(false));
+
+        act(() => result.current.loadMore());
+        await waitFor(() =>
+          expect(result.current.results.map((doc) => doc.title)).toEqual([
+            "Doc 0",
+            "Doc 1",
+            "Doc 2",
+            "Doc 3",
+          ]),
+        );
+
+        rerender({ field: "title", op: "eq", value: "Doc 2" });
+        // Not `isPending` — with `placeholderData: keepPreviousData` (Decision
+        // 46), the query reports `isPending: false` immediately upon a
+        // `where` change (it's serving the PREVIOUS where's stale results as
+        // a placeholder, not actually pending), so `results` only settles to
+        // the NEW where's rows once `isPlaceholderData` clears — waiting on
+        // `results` itself (retried by `waitFor`) is what actually observes that.
+        await waitFor(() =>
+          expect(result.current.results.map((doc) => doc.title)).toEqual(["Doc 2"]),
+        );
+        expect(result.current.isDone).toBe(true);
+      });
+
+      it("re-windows to page 1 at the new size when clientPageSize changes, without re-fetching already-loaded rows", async () => {
+        const t = convexTest(schema, testModules);
+        await seedDocuments(t, 6);
+        const { queryClient, fakeClient } = buildQueryClient(t);
+        const querySpy = vi.spyOn(
+          fakeClient as unknown as { query: (...args: unknown[]) => Promise<unknown> },
+          "query",
+        );
+
+        const { result, rerender } = renderHook(
+          (clientPageSize: number) =>
+            usePaginatedQuery({
+              query: { collection: "documents", paginationOpts: { numItems: 2, cursor: null } },
+              clientPageSize,
+            }),
+          { initialProps: 2, wrapper: makeWrapper(queryClient) },
+        );
+        await waitFor(() => expect(result.current.isPending).toBe(false));
+
+        act(() => result.current.loadMore());
+        await waitFor(() =>
+          expect(result.current.results.map((doc) => doc.title)).toEqual([
+            "Doc 0",
+            "Doc 1",
+            "Doc 2",
+            "Doc 3",
+          ]),
+        );
+        expect(result.current.isDone).toBe(false);
+        const callCountBeforeResize = querySpy.mock.calls.length;
+
+        rerender(10);
+        await waitFor(() => expect(result.current.isPending).toBe(false));
+
+        expect(querySpy.mock.calls.length).toBe(callCountBeforeResize);
+        expect(result.current.results.map((doc) => doc.title)).toEqual([
+          "Doc 0",
+          "Doc 1",
+          "Doc 2",
+          "Doc 3",
+        ]);
+        expect(result.current.isDone).toBe(false);
+      });
+
+      it("updates totalDocs to the current where's own count, not a stale one kept from before (All -> Published -> All)", async () => {
+        const t = convexTest(schema, testModules);
+        await seedDocuments(t, 8);
+        const { queryClient } = buildQueryClient(t);
+        const publishedWhere: VexWhereNode<"documents"> = {
+          and: [
+            { field: "title", op: "neq", value: "Doc 0" },
+            { field: "title", op: "neq", value: "Doc 1" },
+          ],
+        };
+
+        const { result, rerender } = renderHook(
+          (where?: VexWhereNode<"documents">) =>
+            usePaginatedQuery({
+              query: {
+                collection: "documents",
+                where,
+                paginationOpts: { numItems: 10, cursor: null, totalDocs: true },
+              },
+            }),
+          { wrapper: makeWrapper(queryClient) },
+        );
+        await waitFor(() => expect(result.current.isPending).toBe(false));
+        expect(result.current.totalDocs).toBe(8);
+
+        rerender(publishedWhere);
+        await waitFor(() => expect(result.current.results).toHaveLength(6));
+        // The regression: a latched total would still read 8 here.
+        expect(result.current.totalDocs).toBe(6);
+
+        rerender(undefined);
+        await waitFor(() => expect(result.current.results).toHaveLength(8));
+        expect(result.current.totalDocs).toBe(8);
+      });
+
+      it("keeps the first page's total after Load More, even though the next page's own response carries no totalDocs", async () => {
+        const t = convexTest(schema, testModules);
+        await seedDocuments(t, 5);
+        const { queryClient } = buildQueryClient(t);
+
+        const { result } = renderHook(
+          () =>
+            usePaginatedQuery({
+              query: {
+                collection: "documents",
+                paginationOpts: { numItems: 2, cursor: null, totalDocs: true },
+              },
+            }),
+          { wrapper: makeWrapper(queryClient) },
+        );
+        await waitFor(() => expect(result.current.isPending).toBe(false));
+        expect(result.current.totalDocs).toBe(5);
+
+        act(() => result.current.loadMore());
+        await waitFor(() =>
+          expect(result.current.results.map((doc) => doc.title)).toEqual([
+            "Doc 0",
+            "Doc 1",
+            "Doc 2",
+            "Doc 3",
+          ]),
+        );
+        // Page 2's own response has no `totalDocs` key at all (`find` only
+        // computes it for `cursor: null`) — the retained value from page 1
+        // must still be what's shown, not `undefined`.
+        expect(result.current.totalDocs).toBe(5);
+      });
+
+      it("refetches and updates totalDocs when the same query's underlying data changes (live insert)", async () => {
+        const t = convexTest(schema, testModules);
+        await seedDocuments(t, 5);
+        const { queryClient } = buildQueryClient(t);
+
+        const { result } = renderHook(
+          () =>
+            usePaginatedQuery({
+              query: {
+                collection: "documents",
+                paginationOpts: { numItems: 10, cursor: null, totalDocs: true },
+              },
+            }),
+          { wrapper: makeWrapper(queryClient) },
+        );
+        await waitFor(() => expect(result.current.isPending).toBe(false));
+        expect(result.current.totalDocs).toBe(5);
+
+        // Simulates a live write landing while the list stays open on the
+        // SAME query identity (no `where`/`sort`/`drafts`/`numItems`
+        // change, so no `resetKey` transition) — this test kit's fake
+        // Convex client has no real subscription push (`bridge.ts`'s
+        // `watchQuery` is a documented no-op stub), so the refetch itself
+        // is triggered directly, exactly like Convex's own reactivity
+        // would trigger one once the underlying query result changes.
+        await t.run(async (ctx) => {
+          await ctx.db.insert("documents", { title: "Doc 5" });
+        });
+        await act(async () => {
+          await queryClient.invalidateQueries();
+        });
+        await waitFor(() => expect(result.current.totalDocs).toBe(6));
+        expect(result.current.results).toHaveLength(6);
+      });
     });
   }
 
   if (only.includes("usePaginatedSearch")) describePaginatedSearch();
+  if (only.includes("useVexListQuery")) describeVexListQuery();
+  if (only.includes("useVexDocQuery")) describeVexDocQuery();
 }

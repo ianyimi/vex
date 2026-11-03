@@ -50,9 +50,10 @@ import type { VexResourceSlug } from "../../types/generated";
  */
 export function group<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 >(
-  options: GroupFieldInput<TCollectionSlug, TFieldMeta>,
+  options: GroupFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): GroupField<TCollectionSlug, TFieldMeta> {
   // Compute the TypeScript interface type string from sub-fields so that
   // generateVexTypes emits accurate per-field types rather than `object`.
@@ -75,6 +76,8 @@ export function group<
       position: "main",
       width: "100%",
       cellAlignment: "left",
+      enableSorting: false,
+      enableHiding: true,
       placeholder: "",
       defaultCollapsed: false,
       ...options?.admin,

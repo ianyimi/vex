@@ -1,16 +1,12 @@
-import { ConvexError, type Value } from "convex/values";
 import * as z from "zod";
 import type { ZodType } from "zod";
 import { AdminDataField, AdminField } from "./types";
 import { ADMIN_FIELDS } from "./constants";
 import { group } from "./group/config";
-import type { FieldCondition } from "./ui/types";
-import type { UIField } from "./ui/ui/types";
+import type { FieldCondition } from "./conditions";
+import type { UIField } from "./ui/types";
 import { adminFieldToInputSchema } from "./inputSchemas";
-import { createVexCallbackApi, type VexCallbackApi } from "../api/server";
-import type { VexConfig } from "../config";
-import type { TDocument } from "../api/convex";
-import type { VexMutationCtx } from "../types/generated";
+import type { TDocument } from "../documents/types";
 import { FieldLimit, FieldLimitInput } from "./baseTypes";
 import type {
   ComponentContributionInput,
@@ -73,6 +69,7 @@ export function resolveFieldLimit(props: {
 export function resolveFieldComponents(props: {
   components?: {
     Input?: ComponentOverrideInput<any, unknown>[];
+    Field?: ComponentOverrideInput<any, unknown>[];
     Cell?: ComponentOverrideInput<any, unknown>[];
     Label?: ComponentOverrideInput<any, unknown>[];
     Description?: ComponentOverrideInput<any, unknown>[];
@@ -85,6 +82,10 @@ export function resolveFieldComponents(props: {
     Input: resolveComponentOverrides({
       slotId: SLOT_IDS.field.input,
       overrides: input.Input ?? [],
+    }),
+    Field: resolveComponentOverrides({
+      slotId: SLOT_IDS.field.field,
+      overrides: input.Field ?? [],
     }),
     Cell: resolveComponentOverrides({
       slotId: SLOT_IDS.field.cell,
@@ -221,6 +222,7 @@ export function getFieldsInputSchema(props: {
   const res: Record<string, ZodType> = {};
   for (const [fieldKey, fieldDef] of Object.entries(getDataFields({ fields: props.fields }))) {
     if (fieldDef.admin.hidden) continue;
+    if (fieldDef.type === ADMIN_FIELDS.commitTs.type) continue;
     res[fieldKey] = adminFieldToInputSchema({
       field: fieldDef,
       ignoreRequired: props.ignoreRequired,
@@ -297,100 +299,6 @@ export function fieldsToFieldTypeMap(props: {
     .map(([fieldType, keys]) => `\t\t${fieldType}: ${keys.join(" | ")}\n`)
     .join("");
   return `\t${props.key}: {\n${body}\t}`;
-}
-
-/**
- * Runs each changed field's `validate()` against the merged document, skipping
- * fields whose key isn't in `keys` (unchanged on `update`, every field on
- * `create`), that don't define `validate`, or whose `admin.condition`
- * evaluates false — a condition-hidden field's `validate()` never runs,
- * matching `getFieldsInputSchema`'s schema-level skip (Step 9). `doc` stands
- * in for both `data` and `siblingData` here: `validateFields` only ever runs
- * a TOP-LEVEL field's own `validate()` (a `group`/`array`/`blocks`
- * sub-field's `validate()`, if any, runs through the container field's own
- * value, not individually), so the two are the same object at this depth —
- * exactly like `getFieldsInputSchema`'s top-level fields, where `siblingData`
- * is `data` itself.
- *
- * A field reports failure by **throwing**, not by returning a message: a
- * thrown error carries a stack, can be a project's own error subclass, and can
- * attach arbitrary structured data through `ConvexError`. A returned string
- * could carry none of that, and made the success path (`return undefined`)
- * easy to hit by accident.
- *
- * Whatever a field throws is re-thrown as a `ConvexError` carrying the field
- * key, so the admin panel can attribute the failure to one input. A
- * `ConvexError`'s own `data` is preserved verbatim — an object payload is
- * merged with `field`, a plain-string payload becomes `message` — so a project
- * can surface codes or hints of its own.
- *
- * @param props - The resource's field map (a collection's or a global's), resolved document, changed field keys, mutation
- *   ctx, and resolved config (needed to build the `vex` api each callback receives).
- * @returns Nothing; resolves once every applicable field's `validate()` has passed.
- * @throws {ConvexError} With `{ field, message, ... }` for the first field that throws.
- */
-export async function validateFields(props: {
-  fields: Record<string, AdminField>;
-  doc: Record<string, unknown>;
-  keys: Iterable<string>;
-  ctx: VexMutationCtx;
-  config: VexConfig;
-}): Promise<void> {
-  const keys = new Set(props.keys);
-  // Built once per write, not per field: it closes over nothing field-specific.
-  const vex = createVexCallbackApi({ ctx: props.ctx, config: props.config });
-  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: props.fields }))) {
-    if (!keys.has(fieldKey) || !field.validate) continue;
-    if (!isFieldConditionMet({ field, data: props.doc, siblingData: props.doc })) continue;
-    const validate = field.validate as unknown as (props: {
-      value: unknown;
-      doc: Record<string, unknown>;
-      fieldKey: string;
-      field: unknown;
-      ctx: VexMutationCtx;
-      vex: VexCallbackApi;
-    }) => Promise<void> | void;
-
-    try {
-      await validate({
-        value: props.doc[fieldKey],
-        doc: props.doc,
-        fieldKey,
-        field,
-        ctx: props.ctx,
-        vex,
-      });
-    } catch (thrown) {
-      throw toFieldValidationError({ thrown, fieldKey });
-    }
-  }
-}
-
-/**
- * Normalises whatever a field's `validate()` threw into one `ConvexError`
- * shape, so every consumer reads the failure the same way regardless of what
- * the project chose to throw.
- *
- * @param props.thrown - The value the field threw.
- * @param props.fieldKey - The field that rejected the write.
- * @returns A `ConvexError` whose data always carries `field` and `message`.
- */
-function toFieldValidationError(props: { thrown: unknown; fieldKey: string }): ConvexError<Value> {
-  const { thrown, fieldKey } = props;
-
-  if (thrown instanceof ConvexError) {
-    const data = thrown.data as unknown;
-    return new ConvexError(
-      typeof data === "object" && data !== null
-        ? ({ message: "Validation failed", ...data, field: fieldKey } as Value)
-        : { message: String(data), field: fieldKey },
-    );
-  }
-
-  return new ConvexError({
-    message: thrown instanceof Error ? thrown.message : String(thrown),
-    field: fieldKey,
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -700,4 +608,75 @@ export function getUIFieldsWithCell(props: {
   };
   walk(props.fields, undefined);
   return result;
+}
+
+/**
+ * Collects every `ui()` field's resolved key, reachable by hoisting through
+ * `tabs()`/`row()`/`collapsible()` nesting — the general counterpart of
+ * {@link getUIFieldsWithCell} (which additionally requires an
+ * `admin.components.Cell`, for list-column generation specifically). A
+ * caller that needs to know about EVERY `ui()` field a collection
+ * declares — not just the ones with a list column — uses this instead
+ * (access-system-fields plan: UI fields are gateable in a
+ * `FieldPermissionMap` "under the same rule" as data fields, so a caller
+ * counting hidden fields, e.g. the Inspect peek's own notice, needs the
+ * FULL set, `Cell` or not).
+ *
+ * Same scope/traversal as {@link getUIFieldsWithCell}: does not descend
+ * into `group()`/`array()`/`blocks()` (their own `ui()` sub-fields never
+ * surface as a top-level column OR a top-level peek row either — both
+ * consumers only ever ask about TOP-LEVEL UI fields); a named tab's
+ * `ui()` field is keyed `"<tabName>.<key>"`, matching how a DATA field in
+ * the same named tab is addressed (`getDataFields`'s own group-shaped key).
+ *
+ * @see {@link getUIFieldsWithCell} for the Cell-only counterpart this mirrors.
+ * @returns Every `ui()` field's resolved key.
+ */
+export function getUIFieldKeys(props: { fields: Record<string, AdminField> }): string[] {
+  const result: string[] = [];
+  const walk = (fields: Record<string, AdminField>, prefix: string | undefined): void => {
+    for (const [key, field] of Object.entries(fields)) {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+      if (field.type === ADMIN_FIELDS.ui.type) {
+        result.push(fullKey);
+        continue;
+      }
+      switch (field.type) {
+        case ADMIN_FIELDS.row.type:
+        case ADMIN_FIELDS.collapsible.type:
+          walk(field.fields, prefix);
+          continue;
+        case ADMIN_FIELDS.tabs.type:
+          for (const tab of field.tabs) {
+            const tabPrefix =
+              tab.name !== undefined ? (prefix ? `${prefix}.${tab.name}` : tab.name) : prefix;
+            walk(tab.fields, tabPrefix);
+          }
+          continue;
+        default:
+          continue;
+      }
+    }
+  };
+  walk(props.fields, undefined);
+  return result;
+}
+
+/**
+ * Whether a field's value counts as empty for a READ-ONLY display's own
+ * "—" placeholder and its copy button's disabled state — `undefined`,
+ * `null`, `""`, or an empty array. Deliberately narrower than JS
+ * truthiness: `0` and `false` are legitimate non-empty values for a
+ * `number`/`checkbox` field, so neither counts as empty here.
+ *
+ * Shared by every `Display` component's own "—" check and the peek's
+ * copy button (polish round) — one rule, not two definitions of
+ * "nothing to show" that could drift apart.
+ *
+ * @param value - The raw field value to test.
+ * @returns `true` for `undefined`/`null`/`""`/`[]`, `false` otherwise.
+ */
+export function isDisplayValueEmpty(value: unknown): boolean {
+  if (value === undefined || value === null || value === "") return true;
+  return Array.isArray(value) && value.length === 0;
 }

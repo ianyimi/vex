@@ -26,6 +26,7 @@ function buildAccess(permissions: VexAccessConfig["permissions"]): VexAccessConf
     enabled: true,
     defaultPermissionMode: "deny",
     resources: [],
+    organizations: false,
     permissions,
   } as VexAccessConfig;
 }
@@ -36,11 +37,11 @@ function buildAccessWithPosts(permissions: VexAccessConfig["permissions"]): VexA
 }
 
 /**
- * The slice of the constraint builder these tests use. The hand-assembled
+ * The slice of the predicate builder these tests use. The hand-assembled
  * configs above bypass `defineAccess`, so `q` arrives untyped.
  */
-type AccessQueryBuilderLike = {
-  filter: (build: (f: { eq: (field: string, value: unknown) => unknown }) => unknown) => unknown;
+type AccessWhereBuilderLike = {
+  eq: (field: string, value: unknown) => unknown;
 };
 
 const CALL = { resource: "posts", action: "update" } as const;
@@ -159,13 +160,12 @@ describe("resolveFieldPermissions", () => {
     expect(isFieldAllowed(published, "price")).toBe(false);
   });
 
-  it("resolves a map returned from `filter` beside `constraints`", () => {
+  it("resolves a map returned from `filter` beside `where`", () => {
     const access = buildAccess({
       editor: {
         posts: {
           update: {
-            constraints: ({ q }: { q: AccessQueryBuilderLike }) =>
-              q.filter((f) => f.eq("status", "draft")),
+            where: ({ q }: { q: AccessWhereBuilderLike }) => q.eq("status", "draft"),
             filter: () => ({ "*": false, title: true }),
           },
         },
@@ -186,8 +186,7 @@ describe("resolveFieldPermissions", () => {
       editor: {
         posts: {
           update: {
-            constraints: ({ q }: { q: AccessQueryBuilderLike }) =>
-              q.filter((f) => f.eq("status", "draft")),
+            where: ({ q }: { q: AccessWhereBuilderLike }) => q.eq("status", "draft"),
             filter: () => ({ "*": true }),
           },
         },
@@ -328,12 +327,67 @@ describe("stripDeniedFields", () => {
     expect(doc).toEqual({ _id: "1", title: "a", price: 10 });
   });
 
-  it("always retains system keys", () => {
+  it("always retains _id/_slug, but strips _creationTime like any other field once denied (developer decision, binding, \"access-system-fields\")", () => {
     const doc = { _id: "1", _creationTime: 0, _slug: "siteSettings", name: "x" };
     expect(stripDeniedFields(doc, { wildcard: false, fields: {} })).toEqual({
       _id: "1",
-      _creationTime: 0,
       _slug: "siteSettings",
     });
+  });
+
+  it("keeps _creationTime when the resolved map explicitly allows it, same as any gateable field", () => {
+    const doc = { _id: "1", _creationTime: 0, title: "a" };
+    expect(stripDeniedFields(doc, { wildcard: false, fields: { _creationTime: true } })).toEqual({
+      _id: "1",
+      _creationTime: 0,
+    });
+  });
+
+  it("strips _creationTime when the resolved map explicitly denies it, even under an otherwise-permissive wildcard", () => {
+    const doc = { _id: "1", _creationTime: 0, title: "a" };
+    expect(stripDeniedFields(doc, { wildcard: true, fields: { _creationTime: false } })).toEqual({
+      _id: "1",
+      title: "a",
+    });
+  });
+});
+
+// Developer-reported crash: an admin with full access (`"*"` or `"*": true`)
+// stopped receiving `_creationTime` — the peek's `new Date(document._creationTime)`
+// threw "RangeError: Invalid time value". Traced to confirm the underlying
+// `resolveFieldPermissions`/`stripDeniedFields` pipeline (both shapes of "full
+// access") was never actually affected by the system-fields change — this
+// locks that in as an explicit regression test, per the developer's own ask.
+describe("wildcard/full access grants system fields (developer-reported crash guard)", () => {
+  const doc = { _id: "1", _creationTime: 100, updatedAt: 200, vex_status: "published", title: "a" };
+
+  it("a role-level wildcard (\"*\": true, a flat boolean) never strips anything, including every system field", () => {
+    const access = buildAccess({ admin: { "*": true } });
+    const resolved = resolveFieldPermissions({ access, user: { roles: ["admin"] }, data: doc, ...CALL });
+    expect(resolved).toEqual({ wildcard: true, fields: {} });
+    expect(stripDeniedFields(doc, resolved)).toBe(doc);
+  });
+
+  it("a resource-level flat true (posts: true) never strips anything, including every system field", () => {
+    const access = buildAccess({ editor: { posts: true } });
+    const resolved = resolveFieldPermissions({ access, user: { roles: ["editor"] }, data: doc, ...CALL });
+    expect(resolved).toEqual({ wildcard: true, fields: {} });
+    expect(stripDeniedFields(doc, resolved)).toBe(doc);
+  });
+
+  it("a field-map wildcard (read: () => ({ \"*\": true })) also keeps every system field, including when another field is ALSO explicitly named", () => {
+    const access = buildAccess({
+      admin: { posts: { update: () => ({ "*": true, title: true }) } },
+    });
+    const resolved = resolveFieldPermissions({ access, user: { roles: ["admin"] }, data: doc, ...CALL });
+    expect(stripDeniedFields(doc, resolved)).toEqual(doc);
+  });
+
+  it("the inverse: a PARTIAL map that omits a system field strips it, same as any ungranted field (stripping is NOT globally broken, just correctly field-scoped)", () => {
+    const access = buildAccess({
+      viewer: { posts: { update: () => ({ "*": false, title: true }) } },
+    });
+    const resolved = resolveFieldPermissions({ access, user: { roles: ["viewer"] }, data: doc, ...CALL });
+    expect(stripDeniedFields(doc, resolved)).toEqual({ _id: "1", title: "a" });
   });
 });

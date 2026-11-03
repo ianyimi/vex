@@ -28,6 +28,7 @@ class ResizeObserverStub {
   unobserve() {}
 }
 
+
 /**
  * Inert `MediaQueryList`: never matches, never fires a change event. Good enough for
  * every current caller (`use-mobile.ts`'s viewport query, `ThemeProvider`'s
@@ -89,11 +90,21 @@ function installLocalStorage(): void {
 export function installDomPolyfills(): void {
   // cmdk observes its list for virtual sizing; jsdom has no ResizeObserver.
   globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+  // (No more `ui/useVisibleOnce.ts` consumer — removed along with the
+  // peek's two-layout design it existed for; `IntersectionObserverStub`
+  // removed alongside it, no other caller needed it.)
   // cmdk scrolls the highlighted item into view; jsdom has no layout.
   Element.prototype.scrollIntoView ??= () => undefined;
   // Base UI's ScrollAreaViewport calls this from a deferred timeout; jsdom
   // has no Web Animations API at all.
   Element.prototype.getAnimations ??= () => [];
+  // CodeMirror (`ui/JsonEditor`) measures text through `Range` rects from a
+  // hover/measure timer that can fire mid-test. jsdom's `Range` has neither
+  // method, so the measure threw an uncaught error AND left CodeMirror's
+  // measuring dummy ("abc def ghi jkl mno pqr stu") inside the editor's
+  // content, which a value assertion then read as typed text.
+  Range.prototype.getClientRects ??= () => [] as unknown as DOMRectList;
+  Range.prototype.getBoundingClientRect ??= () => new DOMRect();
   // jsdom has no CSS media-query engine at all.
   globalThis.matchMedia ??= ((query: string) => {
     const stub = new MediaQueryListStub();

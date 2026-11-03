@@ -4,7 +4,7 @@ import type { CellContext, ColumnDefResolved } from "@tanstack/react-table";
 import "../adapter";
 import { defineCollection, type AdminDataField, type CellComponentProps, type TDocument } from "@vexcms/core";
 
-import { fieldToCellComponent, getCollectionColumnDefs } from "../components/fields";
+import { fieldToCellComponent, getCollectionColumnDefs } from "../fields";
 import { makeCellRow } from "./fieldCellContract";
 import type { FieldFixture } from "./fixtures/types";
 

@@ -17,4 +17,14 @@ import type { GenericDataModel, GenericMutationCtx } from "convex/server";
  */
 export interface BaseHookProps<TDataModel extends GenericDataModel = GenericDataModel> {
   ctx: GenericMutationCtx<TDataModel>;
+  /**
+   * This write's unresolved `ctx.db.vars.commitTs` placeholder — the same
+   * value `stampCommitTsFields` writes into a matching `commitTs()` field.
+   * A hook MAY use it to stamp a RELATED document in the same mutation
+   * (e.g. a parent row's own `commitTs` field). It is NOT the resolved
+   * value — Convex resolves a `commitTs` placeholder only after the
+   * mutation commits, so reading it as a number/bigint here throws or
+   * returns the placeholder object itself, never a usable timestamp.
+   */
+  commitTs: unknown;
 }

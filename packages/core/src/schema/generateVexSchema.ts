@@ -1,6 +1,6 @@
 import type { VexClientConfig } from "../config/types";
 import { collectionConfigToVexSchema } from "../collections";
-import { versionFieldsToVexSchema } from "../versions/schema";
+import { VERSION_STATUS_SCHEMA_SOURCE, versionFieldsToVexSchema } from "../versions/schema";
 
 function fail(contents: string) {
   return { update: false, contents };
@@ -65,7 +65,7 @@ export function generateVexSchema(props: { config: VexClientConfig }): {
     "  collection: v.string(),",
     "  documentId: v.string(),",
     "  version: v.number(),",
-    '  status: v.union(v.literal("draft"), v.literal("published")),',
+    `  status: ${VERSION_STATUS_SCHEMA_SOURCE},`,
     "  snapshot: v.any(),",
     "  createdBy: v.optional(v.string()),",
     "  parentVersion: v.optional(v.number()),",
@@ -73,6 +73,26 @@ export function generateVexSchema(props: { config: VexClientConfig }): {
     "  publishedAt: v.optional(v.number()),",
     "})",
     '  .index("by_document_version", ["collection", "documentId", "version"])',
+  ].join("\n");
+
+  const vexViewsTable = [
+    "",
+    "/**",
+    " * VEX VIEWS — shared saved views for collection list tables",
+    " **/",
+    "",
+    "export const vex_views = defineTable({",
+    "  collection: v.string(),",
+    "  viewId: v.string(),",
+    "  name: v.string(),",
+    "  description: v.optional(v.string()),",
+    "  state: v.any(),",
+    "  organizationId: v.optional(v.string()),",
+    "  createdBy: v.string(),",
+    "})",
+    '  .index("by_collection", ["collection"])',
+    '  .index("by_collection_org", ["collection", "organizationId"])',
+    '  .index("by_view_id", ["viewId"])',
   ].join("\n");
 
   let globalsTable = "";
@@ -97,5 +117,7 @@ export function generateVexSchema(props: { config: VexClientConfig }): {
     ].join("\n");
   }
 
-  return success([header, imports, collectionSchemas, vexVersionsTable, globalsTable].join("\n"));
+  return success(
+    [header, imports, collectionSchemas, vexVersionsTable, vexViewsTable, globalsTable].join("\n"),
+  );
 }

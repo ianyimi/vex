@@ -62,9 +62,10 @@ import { SELECT_DISPLAYS } from "./types";
  */
 export function select<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 >(
-  options?: SelectFieldInput<TCollectionSlug, TFieldMeta>,
+  options?: SelectFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): SelectField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.select.type,
@@ -81,6 +82,8 @@ export function select<
       position: "main",
       width: "100%",
       cellAlignment: "left",
+      enableSorting: false,
+      enableHiding: true,
       placeholder: "",
       searchable: false,
       display: SELECT_DISPLAYS.dropdown,

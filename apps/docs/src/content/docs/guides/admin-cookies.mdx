@@ -1,0 +1,86 @@
+---
+title: Admin cookies
+description: The two cookies the admin panel uses to remember your preferences across a refresh — names, scope, contents, and size bounds.
+---
+
+The admin panel persists a handful of per-browser UI preferences — table row density, a
+collection's filter-chip visibility, your local (unshared) saved views, last-seen row counts
+for the loading skeleton, the live-preview panel's open/closed state and split width, and the
+sidebar's collapsed state — so a page refresh renders correctly on the very first paint
+instead of flashing to a default and then snapping to the real value after hydration.
+
+All of it lives in exactly **two** cookies, both scoped to your project's `basePath` (the
+`VexClientConfig.basePath` you pass to `defineConfig`, `/admin` by default) rather than the
+whole domain — a public page never sends either cookie, and neither is visible outside the
+admin panel's own routes.
+
+## `vex-admin`
+
+One cookie, shared across the whole admin panel for this browser. JSON-encoded:
+
+```ts
+{
+  v: 1,
+  density?: "comfortable" | "compact",
+  sidebarOpen?: boolean,
+  livePreview?: { panelOpen?: boolean; panelSize?: number },
+}
+```
+
+- `density` — the table row density (comfortable/compact), collection-agnostic.
+- `sidebarOpen` — the admin sidebar's collapsed/expanded state.
+- `livePreview` — the live-preview panel's state **for whichever global you last had it open
+  for**. Globals share this one field rather than each getting their own: you only ever view
+  one global's edit page at a time, so remembering "the last state you left the panel in" is
+  the state worth keeping.
+
+## `vex-admin:<collection>`
+
+One cookie per collection, holding that collection's own preferences:
+
+```ts
+{
+  v: 1,
+  chipsVisible?: boolean,
+  localViews?: { viewId: string; name: string }[],
+  rowCounts?: Record<string, { n: number; done: boolean }>,
+  livePreview?: { panelOpen?: boolean; panelSize?: number },
+}
+```
+
+- `chipsVisible` — whether the filter-chip row under the toolbar is showing.
+- `localViews` — a lightweight index (`{ viewId, name }` only) of your browser-local saved
+  views, so their tabs render on first paint before `localStorage` itself has hydrated. The
+  real, full view state lives in `localStorage`, not here — this index exists purely to avoid
+  a flash of missing tabs.
+- `rowCounts` — the last-settled row count (and whether that was the view's final page) per
+  view id, read server-side so the `<Suspense>` loading skeleton renders the right number of
+  placeholder rows and the right footer variant instead of guessing.
+- `livePreview` — this collection's own live-preview panel open state and split width.
+
+## Size bounds
+
+Both cookies stay well under the ~4KB a browser allows for a single cookie (name + value +
+attributes combined). `vex-admin:<collection>` is the one that can theoretically grow — a
+project with many local saved views or many distinct recently-viewed table views — so it's
+capped defensively:
+
+1. `localViews` entry names longer than 40 characters are truncated (not dropped) — a
+   first-paint tab label never needed more than that anyway.
+2. If the cookie would still exceed the cap, `rowCounts` is dropped first (cosmetic only —
+   the skeleton falls back to a `pageSize`-sized guess).
+3. If it's *still* too large, the oldest `localViews` entries are dropped one at a time. A
+   dropped entry's real, full view still exists in `localStorage` — only its first-paint tab
+   placeholder disappears, and it's restored the moment `localStorage` hydrates client-side.
+
+## Migrating from an older version
+
+Before this consolidation, the admin panel wrote up to five separately-named cookies per
+collection (`vex-list-density`, `vex-list-chips:<collection>`, `vex-list-views:<collection>`,
+`vex-list-rows:<collection>`, `vex-live-preview-panel:<slug>`,
+`vex-live-preview-layout:<slug>`) plus the sidebar's own `sidebar_state`, all at `path=/`. The
+admin shell clears every one of those names on mount, best-effort, the first time a returning
+browser loads the new version — nothing to do on your end. The cleanup runs in
+`AdminLayout`, so it only fires once the admin shell actually mounts — a visitor who only
+ever views public pages keeps the old `path=/` cookies around harmlessly (they're inert,
+just unread) until they next open `/admin` themselves.

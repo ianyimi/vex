@@ -1,13 +1,14 @@
-import { api } from "@convex/_generated/api";
-
-import { fetchAuthQuery, getToken } from "~/auth/server";
+import { getToken, getUserOrg } from "~/auth/server";
 import { AuthProvider } from "~/context/AuthContext";
 
 export async function AuthServerProvider(props: { children: React.ReactNode }) {
-  const sessionToken = await getToken();
+  // Started together, not sequentially — see `page.tsx`'s identical comment. Both calls
+  // are `cache()`-memoized (`auth/server.ts`), so this reuses whichever of `layout.tsx`'s/
+  // `page.tsx`'s own calls for the same values resolves first, instead of firing a third
+  // round trip for identical data (perf fix, developer-reported ~1s warm reloads).
+  const [sessionToken, auth] = await Promise.all([getToken(), getUserOrg()]);
   if (!sessionToken) {
     return <AuthProvider value={{ user: null }}>{props.children}</AuthProvider>;
   }
-  const auth = await fetchAuthQuery(api.auth.api.getUserOrg, {});
   return <AuthProvider value={auth}>{props.children}</AuthProvider>;
 }

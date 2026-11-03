@@ -26,9 +26,13 @@ import {
   posts,
   vex_versions,
   fields,
+  vex_views,
+  testimonials,
 } from "./vex.schema";
 
 export default defineSchema({
+  testimonials,
+  vex_views,
   fields,
   posts,
   vex_versions,

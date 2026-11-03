@@ -13,7 +13,7 @@ VexCMS separates its data model and admin logic from the UI layer via a framewor
 
 VexCMS uses a **Higher-Kinded Type (HKT)** pattern to describe framework components in a generic, type-safe way. The core idea:
 
-1. Each field type (`text`, `number`, etc.) defines `InputComponentProps<TField>` and `CellComponentProps<TField>` — the props each component must accept.
+1. Each field type (`text`, `number`, etc.) defines `FieldComponentProps<TField>` and `CellComponentProps<TField>` — the props each component must accept.
 2. Your framework defines an HKT that maps a props type to your framework's component type.
 3. `defineFrameworkAdapter` validates that you have implemented all required components with the right prop types.
 
@@ -42,56 +42,65 @@ interface ReactHKT extends ComponentHKT {
 }
 ```
 
-`this["_props"]` is a TypeScript polymorphic `this` type — it lets the HKT capture the concrete props type at the call site. When `defineFrameworkAdapter<ReactHKT>` resolves a slot for `InputComponentProps<TextField>`, it produces `ComponentType<InputComponentProps<TextField>>`.
+`this["_props"]` is a TypeScript polymorphic `this` type — it lets the HKT capture the concrete props type at the call site. When `defineFrameworkAdapter<ReactHKT>` resolves a slot for `FieldComponentProps<TextField>`, it produces `ComponentType<FieldComponentProps<TextField>>`.
 
 ---
 
-## Step 2 — Implement field input components
+## Step 2 — Implement field components
 
-Each field type needs an **input component** that renders in the document edit form.
+Each field type needs a **field component** that renders in the document edit form.
 
 The props interface your component must accept:
 
 ```ts
-interface InputComponentProps<TField extends AdminField = AdminField> {
+interface FieldComponentProps<TField extends AdminField = AdminField> {
   /** The field key name (e.g., "title") */
   name: string;
   /** The resolved field definition */
   fieldDef: TField;
   /** Whether the field is read-only from config or permissions */
   readOnly: boolean;
+  /** The config for the collection this field is attached to */
+  collection: CollectionConfig | GlobalConfig;
+  /** Renders the previous stage of the `Field` override chain */
+  renderDefault?: ComponentType<FieldComponentProps<TField>>;
 }
 ```
 
-**React — using `createFieldInput`:**
+**React — using `useFieldContext`:**
 
-`createFieldInput` is a React-specific factory that handles all TanStack Form wiring. Pass a render function that receives `InputComponentProps<TField> & { field: TypedFieldApi<TValue> }`:
+Every admin field component binds to its form field via `@vexcms/react/form`'s `useFieldContext()`, reached through `AdminFieldBinding` (which threads `name`/`field` down from the enclosing `<AppForm>`):
 
 ```tsx
-import { createFieldInput } from "@vexcms/react";
+import { AdminFieldBinding, type FieldComponentProps } from "@vexcms/react";
+import { useFieldContext } from "@vexcms/react/form";
 import type { TextField } from "@vexcms/core";
 
-export const TextFieldInput = createFieldInput<string, TextField>(
-  ({ name, fieldDef, readOnly, field }) => (
-    <div>
-      <label htmlFor={name}>{fieldDef.label || name}</label>
-      <input
-        id={name}
-        value={field.state.value ?? ""}
-        onChange={(e) => field.handleChange(e.target.value)}
-        onBlur={field.handleBlur}
-        placeholder={fieldDef.admin.placeholder}
-        readOnly={readOnly}
-      />
-      {field.state.meta.errors[0] && (
-        <p>{field.state.meta.errors[0]}</p>
-      )}
-    </div>
-  ),
-);
+function TextControl() {
+  const field = useFieldContext<string>();
+  return (
+    <input
+      id={field.name}
+      value={field.state.value ?? ""}
+      onChange={(e) => field.handleChange(e.target.value)}
+      onBlur={field.handleBlur}
+    />
+  );
+}
+
+export function TextFieldAdmin(props: FieldComponentProps<TextField>) {
+  return (
+    <AdminFieldBinding name={props.name}>
+      <div>
+        <label htmlFor={props.name}>{props.fieldDef.label || props.name}</label>
+        <TextControl />
+      </div>
+    </AdminFieldBinding>
+  );
+}
 ```
 
-The `field` parameter is a `TypedFieldApi<TValue>` — a TanStack Form `FieldApi` narrowed to the value type. `field.state.value`, `field.handleChange`, `field.handleBlur`, and `field.state.meta.errors` are all you need for standard form inputs.
+`AdminFieldBinding` opens the form's field for `props.name` and provides it through `fieldContext`, so any descendant reading `useFieldContext()` resolves the same `FieldApi` without prop threading.
 
 **For non-React frameworks:** You will need to build your own form-wiring equivalent. The contract is the same: render a UI element that reads and writes a value identified by `name` within a form.
 
@@ -147,7 +156,14 @@ interface DashboardProps {}
 
 interface CollectionListViewProps<TCollectionSlug extends CollectionSlug = CollectionSlug> {
   collection: TCollectionSlug;
-  initialData?: PaginationResult<VexDocument>;
+  // Optional server-resolved first-paint hints read from the `vex-admin:<collection>` cookie
+  // (density, local view tabs, skeleton row count/footer, filter-chip titles). Document data
+  // itself is never a prop — prefetch it into the TanStack Query cache instead.
+  initialPreferences?: ListViewConfigCookieValues;
+  initialLocalIndex?: LocalSavedListViewsIndexEntry[];
+  initialSkeletonRowCount?: number;
+  initialSkeletonDone?: boolean;
+  initialFilterValueTitles?: Record<string, string | null>;
 }
 
 interface CollectionEditViewProps<TCollectionSlug extends CollectionSlug = CollectionSlug> {
@@ -178,7 +194,7 @@ export const myAdapter = defineFrameworkAdapter<MyFrameworkHKT>({
   fields: {
     // One entry per AdminField union member
     text: {
-      input: MyTextFieldInput,  // must accept InputComponentProps<TextField>
+      field: MyTextFieldAdmin, // must accept FieldComponentProps<TextField>
       cell: MyTextFieldCell,    // must accept CellComponentProps<TextField>
     },
   },
@@ -236,7 +252,7 @@ The admin panel contains internal navigation links. Rather than hardcoding `<a>`
 
 ```tsx
 // Renders NextLink, RouterLink, etc. — falls back to <a> if nothing is configured
-<VexLink href="/admin/posts">Posts</VexLink>
+<VexLink href="/admin/collections/posts">Posts</VexLink>
 ```
 
 When building a framework adapter, inject your router's link component via `AdminLayout`'s `components` prop. `AdminLayout` puts it into context; `VexLink` and `VexImage` everywhere in the tree pick it up automatically.
@@ -262,26 +278,40 @@ The page component handles routing within the `/admin` area, fetches initial dat
 | URL | View |
 |---|---|
 | `/admin` | `DashboardView` |
-| `/admin/:collectionSlug` | `CollectionListView` |
-| `/admin/:collectionSlug/new` | `CollectionEditView` (empty) |
-| `/admin/:collectionSlug/:documentId` | `CollectionEditView` (editing) |
+| `/admin/collections` | `CollectionsIndexView` (collections-only index) |
+| `/admin/collections/:slug` | `CollectionListView` (or `MediaCollectionListView` for a media collection) |
+| `/admin/collections/:slug/new` | `CollectionEditView` (empty) |
+| `/admin/collections/:slug/:documentId` | `CollectionEditView` (editing), or `MediaCollectionEditView` |
+| `/admin/globals` | `GlobalsListView` (permission-filtered — only globals the caller can read) |
+| `/admin/globals/:slug` | `GlobalEditView` |
+
+An unknown first segment (anything besides `collections`/`globals`) is a 404. An unknown
+`:slug` under either section renders `AdminNotFound` instead of 404ing the whole route, so the
+rest of the shell (sidebar, top bar) still renders.
 
 **Next.js implementation pattern:**
 
 ```tsx
-// app/admin/[[...slug]]/page.tsx
+// app/admin/[[...path]]/page.tsx
 import { fetchQuery } from "convex/nextjs";
 import { vexConvexApi } from "@vexcms/core";
-import { DashboardView, CollectionListView, CollectionEditView } from "@vexcms/react";
+import { DashboardView, CollectionsIndexView, GlobalsListView, CollectionListView, CollectionEditView } from "@vexcms/react";
 
 export async function NextAdminPage(props: {
   config: VexConfig;
-  params: Promise<{ slug?: string[] }>;
+  params: Promise<{ path?: string[] }>;
 }) {
-  const { slug = [] } = await props.params;
-  const [collectionSlug, documentId] = slug;
+  const { path = [] } = await props.params;
+  const [section, collectionSlug, documentId] = path;
 
-  if (!collectionSlug) return <DashboardView />;
+  if (path.length === 0) return <DashboardView />;
+  if (section !== "collections" && section !== "globals") return <p>Not found.</p>;
+  if (section === "globals") {
+    if (!collectionSlug) return <GlobalsListView />;
+    // ...render GlobalEditView for /admin/globals/:slug, omitted for brevity
+  }
+
+  if (!collectionSlug) return <CollectionsIndexView />;
 
   const collection = props.config.collections.find(c => c.slug === collectionSlug);
   if (!collection) return <p>Collection not found.</p>;
@@ -294,14 +324,17 @@ export async function NextAdminPage(props: {
     return <CollectionEditView collection={collectionSlug} documentId={documentId} initialData={initialData} />;
   }
 
-  const initialData = await fetchQuery(vexConvexApi.list, { collection: collectionSlug });
-  return <CollectionListView collection={collectionSlug} initialData={initialData} />;
+  return <CollectionListView collection={collectionSlug} />;
 }
 ```
 
-The `initialData` pattern works because `CollectionListView` and `CollectionEditView` pass it to TanStack Query as `initialData`, so the list renders immediately without a loading state on first load. Subsequent navigations use the live Convex subscription.
+`CollectionEditView` passes `initialData` to TanStack Query as `initialData`, so the document renders immediately without a loading state on first load. `CollectionListView` takes no data prop: the real `NextAdminPage` prefetches the list query on the server (via `useVexListQuery`'s query key) into a `QueryClient` and hydrates it with a `HydrationBoundary`, so the table's first paint is server-rendered. Subsequent navigations use the live Convex subscription.
 
-**The `[[...slug]]` catch-all:** The optional catch-all route param is named `slug` (not `vex`, not `collection`) — this matches Next.js convention. The directory is `app/admin/[[...slug]]/page.tsx`.
+**The `[[...path]]` catch-all:** the optional catch-all route param is named `path` — this
+matches `NextAdminPage`'s own `params: Promise<{ path?: string[] }>` type (required, not just
+convention — a mismatched param name produces a compile error against the real signature).
+The directory is `app/admin/[[...path]]/page.tsx`.
+
 
 ---
 
@@ -322,7 +355,7 @@ export function NextAdminLayout(props: { children: ReactNode }) {
   const pathname = usePathname();
   // Derive active collection slug from pathname for sidebar highlighting
   const segments = pathname.split("/").filter(Boolean);
-  const activeSlug = segments[1]; // "posts" from "/admin/posts"
+  const activeSlug = segments[2]; // "posts" from "/admin/collections/posts"
 
   return (
     <AdminLayout
@@ -355,6 +388,147 @@ through the layout component.
 ```
 
 ---
+
+## Step 9 — Implement the navigation-blocker and navigate capabilities (both optional)
+
+`@vexcms/react` defines an unsaved-changes navigation guard framework-neutrally and asks the
+adapter for two independent, optional capabilities: intercepting in-app navigation
+(`navigationBlocker`) and performing a post-mutation programmatic navigation
+(`useNavigate`). An adapter that skips both still works — `beforeunload` still prompts on tab
+close / hard reload, but in-app navigation and a built-in's post-mutation redirect are
+unguarded.
+
+```ts
+interface NavigationBlockerAdapter {
+  useBlocker(props: {
+    when: boolean;
+    onBlock: (proceed: () => void) => void;
+  }): void;
+}
+```
+
+`useBlocker` is a hook: while `when` is `true`, the adapter intercepts in-app navigation and
+calls `onBlock(proceed)` instead of letting it through. Calling `proceed()` lets the
+navigation that triggered the block continue; not calling it cancels that navigation attempt.
+`@vexcms/react`'s `useUnsavedChangesGuard`
+(`packages/react/src/documents/useUnsavedChangesGuard.ts`) is the only caller — it supplies
+`onBlock` and owns the Stay/Leave dialog; the adapter owns nothing about *why* navigation is
+blocked, only *how* to intercept it. `beforeunload` is handled by `@vexcms/react` directly
+(every framework runs in a browser), so the adapter contract has no unload hook. Without
+`navigationBlocker`, in-app navigation is unguarded but `beforeunload` still works.
+
+There is no `pushState`/`replaceState` patching, and no patching of a framework router's own
+`push`/`replace`, in this contract. `@vexcms/next`'s implementation
+(`useNextNavigationBlocker`, `packages/next/src/navigation/`) intercepts only the two surfaces
+that fire BEFORE a route change commits: same-origin anchor clicks, in the capture phase
+(skipping modifier-key clicks, clicks on an anchor with a `target`, and clicks on a
+cross-origin or same-page-hash `href`), and browser back/forward, via a same-URL `popstate`
+sentinel pushed on mount that lets the hook catch and correct the first back-press. Next
+itself calls `pushState` only AFTER the new route has already committed (from
+`HistoryUpdater`'s `useInsertionEffect`), and patches `pushState`/`replaceState` itself — by
+the time either fires, the outgoing page is already unmounted, so intercepting there is too
+late to prevent anything. A raw `<button onClick={() => router.push(...)}>` or any other
+programmatic navigation is therefore invisible to `navigationBlocker` by design.
+
+```ts
+useNavigate?: () => (href: string) => void;
+```
+
+`useNavigate` closes that gap a different way: it is consumed only by `@vexcms/react`'s
+`useVexNavigate()`, the supported path for programmatic navigation inside the admin — used by
+built-ins for a post-mutation redirect (after delete, after a duplicate's create resolves).
+`useVexNavigate` consults the same blocking state as `navigationBlocker` itself before calling
+through, so every built-in that navigates after a mutation stays guarded without
+`navigationBlocker`'s involvement. Everything clickable keeps using `VexLink`/`Link`, covered
+by `navigationBlocker` above — a raw framework `router.push` called from third-party code is
+NOT guarded, only `useVexNavigate` is. Omitting `useNavigate` falls back to
+`window.location.assign`, a full page navigation.
+
+Provide both capabilities through the same framework-components mechanism as `Link`/`Image`
+(Step 6, above) — `@vexcms/next` supplies `navigationBlocker: { useBlocker:
+useNextNavigationBlocker }` and `useNavigate: useNextNavigate` (wrapping `useRouter().push`
+from `next/navigation`) from `NextAdminLayoutClient.tsx`, mounted once above the admin route
+tree alongside `Link`/`Image`.
+
+**For non-React or server-rendered frameworks:** implement `useBlocker` against your router's
+own navigation-interception primitive, and `useNavigate` against its programmatic-navigation
+API. A framework with no client-side router (full page loads only) has no in-app navigation to
+intercept and no programmatic navigation to wrap — omit both; `beforeunload` alone still
+covers it, since that is handled outside the adapter.
+
+## Step 10 — Implement the auth capability (optional)
+
+`AdminTopNav` renders a sign-in/out control at the opposite edge of the bar from the
+sidebar-trigger/breadcrumbs/"View site" cluster — but only when the adapter configures it:
+
+```ts
+auth?: {
+  signInHref: (redirectTo: string) => string;
+  signOut: () => Promise<void>;
+};
+```
+
+Omitted (the default), the control renders nothing — identical to before this capability
+existed.
+
+The signed-in/signed-out determination itself does NOT come from this adapter — it comes
+from `useVexAuth()`, the same server-resolved `{ user, organization }` every other
+RBAC-aware component in the tree reads, so there is no client-only flash. `user === null`
+or `user.isAnonymous === true` (Better Auth's `anonymous()` plugin convention — relevant
+once you have configured `anonRole` for read-only public admin access, see the Access
+Control guide) both render "Sign in"; anything else renders "Sign out".
+
+`signInHref` receives the current admin URL (no query string) as `redirectTo`, and must
+return the full sign-in route URL to link to — typically appending it as a query param
+your sign-in page/route-level auth guard already reads (the same convention a `redirect()`
+to the sign-in page from a server component gate should already be using, see
+`app/admin/[[...path]]/page.tsx` above). `signOut` must perform the ENTIRE sign-out
+sequence your framework needs (your auth client's own sign-out call AND whatever
+server-aware refresh makes the server-resolved auth state and route guard re-evaluate on
+return — Next.js: `router.refresh()`), not just the auth-client call — `AdminTopNav` shows
+a pending state for exactly as long as the returned promise takes to settle, and only
+calls it once per click (a second click while pending is a no-op, the control disables
+itself).
+
+Provide it through the same framework-components mechanism as `Link`/`Image`/
+`navigationBlocker`/`useNavigate` — `@vexcms/next` supplies this one differently, though:
+`NextAdminLayout`/your admin `layout.tsx` are both server components, so a `signOut`
+closure over your app's own auth client cannot reach them as a prop. Instead,
+`@vexcms/next/auth` exports `VexAdminAuthAdapterProvider` — a context provider you mount
+anywhere above `NextAdminLayout` in your own CLIENT tree (both ends are client components,
+so the boundary that blocks a prop does not apply to a context). The template projects
+mount it inside their own Better Auth client provider:
+
+```tsx
+// components/providers/client.tsx or auth/client.tsx ("use client")
+import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth";
+import { useRouter } from "next/navigation";
+import { signOut } from "~/auth/client";
+
+function AuthAdapterProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  return (
+    <VexAdminAuthAdapterProvider
+      value={{
+        signInHref: (redirectTo) => `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}`,
+        signOut: () =>
+          signOut()
+            .then(() => router.refresh())
+            .catch(() => router.refresh()), // refresh either way — a stale client
+            // cache after a failed sign-out is worse than a redundant refresh.
+      }}
+    >
+      {children}
+    </VexAdminAuthAdapterProvider>
+  );
+}
+```
+
+**For non-React or server-rendered frameworks:** implement `signInHref` against your own
+sign-in route's URL scheme, and `signOut` against your auth library's own sign-out call
+plus whatever "make the server re-check auth state" mechanism your framework offers (a
+full reload is always a safe fallback). A framework with no sign-in/out concept at all —
+omit `auth` entirely; the control simply does not render.
 
 ## Wiring it into an app
 
@@ -413,17 +587,44 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 }
 ```
 
-**`app/admin/[[...slug]]/page.tsx`**:
+**`app/admin/[[...path]]/page.tsx`**:
 ```tsx
+import { canAccessAdminPanel } from "@vexcms/core";
 import { NextAdminPage } from "@vexcms/next/server";
+import { redirect } from "next/navigation";
+
+import { getToken, getUserOrg } from "~/auth/server";
 import config from "../../../../vex.config.server";
 
-export default function AdminPage({
+export default async function AdminPage({
   params,
+  searchParams,
 }: {
-  params: Promise<{ slug?: string[] }>;
+  params: Promise<{ path?: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  return <NextAdminPage config={config} params={params} />;
+  const token = await getToken();
+  const auth = await getUserOrg();
+  if (
+    !canAccessAdminPanel({ access: config.access, user: auth.user, organization: auth.organization })
+  ) {
+    // Only redirect to sign-in when there was genuinely no token — a signed-in caller
+    // whose own role still fails the check goes to /unauthorized instead. Don't
+    // hard-redirect on a missing token before this check: an app whose `anonRole`
+    // grants `adminPanel.access` (see the Access Control guide's "Read-only public
+    // admin via anonRole" section) needs this check to run for an anonymous caller too.
+    redirect(token ? "/unauthorized" : "/auth/sign-in?redirectTo=/admin");
+  }
+
+  return (
+    <NextAdminPage
+      config={config}
+      params={params}
+      searchParams={searchParams}
+      tokenPromise={Promise.resolve(token)}
+      authPromise={Promise.resolve(auth)}
+    />
+  );
 }
 ```
 
@@ -452,7 +653,6 @@ The collection slug in `vex.config.ts` must match the Convex table name in your 
 
 The following are planned but not yet built:
 
-- **Data table** — `CollectionListView` shows a document count but not a real table. TanStack Table with column definitions derived from field config is planned.
 - **Form submission** — `CollectionEditView` renders the form but the Save button is a no-op. Create/update mutations will be wired in a future spec.
 - **Additional field types** — only `text` is implemented. Number, checkbox, select, textarea, and date are planned.
 - **Auth** — no authentication layer yet. The admin panel is currently unprotected.

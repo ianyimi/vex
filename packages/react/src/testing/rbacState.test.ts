@@ -3,9 +3,9 @@ import { useForm } from "@tanstack/react-form";
 import { describe, expect } from "vitest";
 import { runRbacStateSuite } from "./rbacState";
 import { testCollection } from "./harness/accessFixtures";
-import { AppForm } from "../components/form/AppForm";
-import { TextFieldInput } from "../components/fields/text/Input";
-import { textFieldFixture } from "../components/fields/text/testFixture";
+import { AppForm } from "../forms";
+import { TextFieldAdmin } from "../fields/text/Field";
+import { textFieldFixture } from "../fields/text/testFixture";
 
 /**
  * `AppForm` narrowed to the two props this harness passes — same documented
@@ -43,13 +43,13 @@ describe("runRbacStateSuite — synthetic permission-gated component", () => {
   });
 });
 
-/** Mounts `TextFieldInput` behind a real `useForm`/`AppForm` pair, same mounting mechanism as `runFieldInputContractSuite`. */
+/** Mounts `TextFieldAdmin` behind a real `useForm`/`AppForm` pair, same mounting mechanism as `runFieldInputContractSuite`. */
 function TextFieldHarness(props: { readOnly: boolean }) {
   const form = useForm({ defaultValues: { title: textFieldFixture.valid } });
   return createElement(
     AppFormBoundary,
     { form } as { form: unknown; children: ReactNode },
-    createElement(TextFieldInput, {
+    createElement(TextFieldAdmin, {
       name: "title",
       fieldDef: textFieldFixture.fieldDef,
       collection: testCollection,
@@ -58,7 +58,7 @@ function TextFieldHarness(props: { readOnly: boolean }) {
   );
 }
 
-describe("runRbacStateSuite — TextFieldInput readOnly derived from usePermission", () => {
+describe("runRbacStateSuite — TextFieldAdmin readOnly derived from usePermission", () => {
   runRbacStateSuite({
     render: (permission) => createElement(TextFieldHarness, { readOnly: !permission }),
     assert: (utils, scenario, permission) => {

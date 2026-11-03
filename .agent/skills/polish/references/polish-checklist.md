@@ -23,6 +23,22 @@ with a one-line reason.
 - Were all edge cases listed in the spec's "## Edge cases" section actually implemented?
 - Are there any `throw new Error("Not implemented")` stubs still in the code?
 
+## Layout stability [BLOCKING]
+Zero layout shift is a repo-wide goal (`docs/standards/frontend/layout-stability.md`). Check
+every touched UI surface, with file:line:
+- Does first paint (SSR/prefetched `initialData`) match the hydrated UI, i.e. the same query args,
+  the same visible controls, the same row count? A client-only fetch that fills a region after
+  hydration is a shift.
+- Is layout-affecting state (density, collapsed/expanded panels, active tab or view, column
+  visibility) read on the server (cookie or URL), not from `localStorage` after mount?
+- Do async regions (lists, menus, badges, counts, images) reserve their final size with fixed
+  heights, skeletons of the settled size, or `min-h`?
+- Do loading → loaded, empty → filled, and error states keep the same outer dimensions?
+- Does toggling a control (selection bar, filter chips, modified indicator) reflow
+  surrounding content, or does it replace content in place?
+- Do responsive switches (`useIsMobile`, measured collapse) render the server-correct variant
+  first, with no flash of the wrong one?
+
 ## Design smells (baseline) [WARN]
 
 A structural-quality floor from Fowler's catalog. Project standards

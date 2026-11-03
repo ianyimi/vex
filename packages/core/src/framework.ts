@@ -1,15 +1,17 @@
 import type {
   AdminDataField,
-  ApplyComponent,
   BaseFieldMeta,
   CellComponentProps,
-  ComponentHKT,
   DataFieldType,
-  InputComponentProps,
+  DisplayComponentProps,
+  FieldComponentProps,
+  FilterInputProps,
 } from "./fields";
-import type { VexDocument } from "./api/convex";
+import type { ApplyComponent, ComponentHKT } from "./components/types";
+import type { VexDocument } from "./documents/types";
 import { CollectionSlug, GlobalSlug, VexDocumentGlobal } from "./types/generated";
-import { PaginationResult } from "./api/types";
+import type { ListViewConfigCookieValues } from "./collections/listView/listViewConfigCookies";
+import type { LocalSavedListViewsIndexEntry } from "./collections/savedListViews/localSavedListViewsCookie";
 
 /**
  * Maps every field type in the `AdminField` union to the framework's input component type
@@ -18,7 +20,7 @@ import { PaginationResult } from "./api/types";
  * Keyed by `AdminField['type']` — as new field types are added to the union, TypeScript
  * automatically requires a matching component slot in this map.
  *
- * Each slot resolves to `ApplyComponent<F, InputComponentProps<MatchingFieldDef>>`, which
+ * Each slot resolves to `ApplyComponent<F, FieldComponentProps<MatchingFieldDef>>`, which
  * means the component must accept the input props for that specific field type. This gives
  * the component full autocomplete for field-specific properties (e.g. `fieldDef.max`
  * on the text slot).
@@ -32,11 +34,31 @@ export type FieldComponentMap<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 > = {
   [K in DataFieldType]: {
-    input: ApplyComponent<
+    field: ApplyComponent<
       F,
-      InputComponentProps<TFieldMeta, Extract<AdminDataField<TFieldMeta>, { type: K }>>
+      Omit<
+        FieldComponentProps<TFieldMeta, Extract<AdminDataField<TFieldMeta>, { type: K }>>,
+        "renderDefault"
+      >
     >;
     cell: ApplyComponent<F, CellComponentProps<Extract<AdminDataField<TFieldMeta>, { type: K }>>>;
+    /**
+     * The read-only display component for this field type (polish round),
+     * beside `field`/`cell`/`filterInput` — OPTIONAL: `fieldToDisplayComponent`
+     * falls back to this type's `cell` when no `display` is registered, so a
+     * type with no richer read-only presentation (most scalar types) needs
+     * no entry here at all.
+     */
+    display?: ApplyComponent<F, DisplayComponentProps<Extract<AdminDataField<TFieldMeta>, { type: K }>>>;
+    /**
+     * The filter row value control for this field type (Decision 50),
+     * beside `field`/`cell` — OPTIONAL, unlike those two: UI-only
+     * container types (`tabs`/`collapsible`/`row`/`ui`) and structured
+     * data types with no meaningful single-value comparison (`json`/
+     * `richtext`/`array`/`blocks`/`group`) register none, same absence
+     * `field`/`cell` already show for the UI-only set.
+     */
+    filterInput?: ApplyComponent<F, FilterInputProps<Extract<AdminDataField<TFieldMeta>, { type: K }>>>;
   };
 };
 
@@ -56,23 +78,60 @@ export interface DashboardProps {}
  * `TCollectionSlug` narrows to a literal collection slug when the caller
  * supplies one; every real caller in this codebase passes a runtime string
  * (from a URL segment or a config lookup), so it resolves to the full
- * `CollectionSlug` union in practice. `TDoc` defaults to `VexDocument` and
- * can be narrowed when the caller has a typed initial data array.
+ * `CollectionSlug` union in practice.
  *
  * @see {@link ViewComponentMap}
  */
-export interface CollectionListViewProps<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TDoc extends VexDocument = VexDocument,
-> {
+export interface CollectionListViewProps<TCollectionSlug extends CollectionSlug = CollectionSlug> {
   /** The slug of the collection being listed, resolved from `useVexConfig()`. */
   collection: TCollectionSlug;
   /**
-   * Pre-fetched documents from the server. Passed as `initialData` to
-   * the TanStack Query so the list renders immediately on first load.
-   * Omit when rendering client-side only.
+   * Layout-affecting list preferences resolved server-side from cookies
+   * (`parseListViewConfigCookies`, Decision 42) — density today, extended by
+   * later steps. Seeds `CollectionListView`'s own state so the row height
+   * the server rendered and the client's first paint agree. Omit when
+   * rendering client-side only (falls back to `"comfortable"`).
    */
-  initialData?: PaginationResult<TDoc>;
+  initialPreferences?: ListViewConfigCookieValues;
+  /**
+   * The consolidated `vex-admin:<collection>` cookie's `localViews` field
+   * (Decision 41/51), read server-side by `NextAdminPage` (Step 14) —
+   * renders a local view's tab on first paint before `localStorage`
+   * hydrates it. Omit when rendering client-side only.
+   */
+  initialLocalIndex?: LocalSavedListViewsIndexEntry[];
+  /**
+   * The consolidated `vex-admin:<collection>` cookie's `rowCounts` field for the active view
+   * (Decision 49 follow-up/51, developer decision), read server-side by `NextAdminPage` — the
+   * `<Suspense>` loading-skeleton fallback (`CollectionListView.tsx`) renders exactly this many
+   * skeleton rows instead of a fixed `pageSize` guess, matching the row count this view's
+   * result last actually settled with. `undefined` (no cookie entry for this view yet) falls
+   * back to `pageSize`; `0` renders no skeleton rows and no footer, matching the settled empty
+   * state's own shape as closely as a data-free skeleton can.
+   */
+  initialSkeletonRowCount?: number;
+  /**
+   * The SAME cookie entry's `done` flag (zero-footer-shift fix, developer decision) — whether
+   * the active view's last settled result showed "That's everything" (`true`) or a Load More
+   * `Button` (`false`). `DataTable`'s own `isPending` skeleton footer renders the MATCHING
+   * variant instead of always reserving the taller `Button`'s height. `undefined` (no cookie
+   * entry yet) falls back to the `Button` variant (the prior, safer-default behavior).
+   */
+  initialSkeletonDone?: boolean;
+  /**
+   * Server-resolved titles for every `relationship`/`upload` id the ACTIVE
+   * filter names (Decision 50) — `NextAdminPage` walks `resolved.where`
+   * via `collectListViewFilterRelationshipValues`, fetches each distinct target
+   * document, and reduces to `{ [id]: doc[useAsTitle] ?? doc._id }`
+   * (`null` for not-found/denied, degrade-never-crash per Decision 9/32).
+   * Seeds `ListViewContext`'s own `filterValueTitles` so a
+   * relationship/upload filter chip/row shows the target's TITLE, not its
+   * raw id, on the very first paint — no flash from id to title once the
+   * client's own picker-driven lookups would otherwise resolve it later.
+   * `undefined`/missing entries fall back to the raw id (never a blocking
+   * state).
+   */
+  initialFilterValueTitles?: Record<string, string | null>;
 }
 
 /**
@@ -100,16 +159,16 @@ export interface CollectionEditViewProps<
    */
   initialData?: TDocument | null;
   /**
-   * The live-preview panel's initial open state, read server-side from the
-   * `vex-live-preview-panel:<slug>` cookie (or the collection/global's
+   * The live-preview panel's initial open state, read server-side (Decision 51) from the
+   * `vex-admin:<collection>` cookie's `livePreview.panelOpen` field (or the collection's
    * `admin.livePreview.defaultOpen` when no cookie exists) by `NextAdminPage`.
    */
   initialPreviewPanelOpen?: boolean;
   /**
    * The live-preview split's handle position — the form column's percentage of
-   * the pane — read server-side from the `vex-live-preview-layout:<slug>`
-   * cookie by `NextAdminPage`, so a remembered width renders on the first
-   * paint instead of snapping into place after hydration.
+   * the pane — read server-side (Decision 51) from the `vex-admin:<collection>`
+   * cookie's `livePreview.panelSize` field by `NextAdminPage`, so a remembered width
+   * renders on the first paint instead of snapping into place after hydration.
    */
   initialPreviewPanelSize?: number;
   /**
@@ -139,16 +198,16 @@ export interface GlobalEditViewProps<
    */
   initialData?: TDocument | null;
   /**
-   * The live-preview panel's initial open state, read server-side from the
-   * `vex-live-preview-panel:<slug>` cookie (or the collection/global's
+   * The live-preview panel's initial open state, read server-side (Decision 51) from the
+   * shared `vex-admin` cookie's `livePreview.panelOpen` field (or the global's
    * `admin.livePreview.defaultOpen` when no cookie exists) by `NextAdminPage`.
    */
   initialPreviewPanelOpen?: boolean;
   /**
    * The live-preview split's handle position — the form column's percentage of
-   * the pane — read server-side from the `vex-live-preview-layout:<slug>`
-   * cookie by `NextAdminPage`, so a remembered width renders on the first
-   * paint instead of snapping into place after hydration.
+   * the pane — read server-side (Decision 51) from the shared `vex-admin`
+   * cookie's `livePreview.panelSize` field by `NextAdminPage`, so a remembered width
+   * renders on the first paint instead of snapping into place after hydration.
    */
   initialPreviewPanelSize?: number;
   /**
@@ -208,7 +267,7 @@ export type ViewComponentMap<F extends ComponentHKT> = {
  *   name: 'react',
  *   version: '0.1.0',
  *   fields: {
- *     text: TextInputComponent,  // must accept InputComponentProps<TextField>
+ *     text: TextFieldComponent,  // must accept FieldComponentProps<TextField>
  *   },
  *   cells: {
  *     text: TextCellComponent,   // must accept CellComponentProps<TextField>

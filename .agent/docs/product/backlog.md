@@ -925,3 +925,294 @@ outside the editor.
 
 **Why deferred.** Low priority; the storage saving is small, and ids stay the default because
 they enable those identity features. Revisit whenever document size becomes a user concern.
+
+## Per-view access for saved views (role-scoped views)
+
+**What.** Restrict which roles can see and use a saved view — and therefore its hidden filter —
+instead of every role that can read the collection seeing every view.
+
+**Why.** Technical users build views for specific audiences (support triage, finance review);
+today (spec `2026-10-26-list-view-overhaul`) any role with `readViews` sees every shared and
+config view, and the declared-filter allow-list accepts any view's hidden filter.
+
+**Lift.** Small and additive. As of the 2026-11 polish round, view actions (`readViews` / `createView` /
+`updateView` / `deleteView`) return only `boolean` (field-permission maps are a type error and fail
+closed at runtime), and their callbacks take a single props object (`({ user, organization }) =>
+boolean`), so adding a `view` prop is non-breaking. `vex_views` rows already store `createdBy`
+(user id, `""` for anonymous); `organizationId` is stamped under `access.organizations`.
+- Data: add `updatedBy` (optional; existing rows lack it) and an `updatedAt` via `commitTs()` to
+  `vex_views` in `generateVexSchema`; stamp both in `saveView`.
+- Types: view-action callbacks gain `view` (the stored row: `createdBy`, `updatedBy`,
+  `organizationId`, `name`, `state`…); `createView` receives the view about to be stored.
+- Server: `listViews` evaluates `readViews` per shared row (it can't be pushed to an index;
+  fine at tens of views); `saveView`/`removeView` evaluate `updateView`/`deleteView` against the
+  existing row; `loadSharedSavedListViewWheres` trusts only views the caller can read (so the
+  declared-filter exemption follows per-view access).
+- Config views: an optional `access` on `admin.views[]` entries, checked by `toClientSavedListViewConfig`
+  consumers and by `matchDeclaredSavedListViewFilter` before trusting a hidden filter.
+- UI: per-view Rename/Delete/Promote enabled by the same callback (e.g. "only the creator can
+  delete"), hidden tabs for unreadable views, and optionally a role picker in the save dialog.
+- Tests + the access docs (`access-control.mdx`) + a changeset.
+
+**Blocks.** Nothing.
+
+**Why deferred.** Not needed for v0.1.0. The developer asked (2026-11-01) to future-proof the
+callback shape now and build this later.
+
+## Admin-wide keyboard shortcut pass (list + edit views)
+
+**What.** One coherent keyboard-shortcut layer across the admin panel: the list
+view's core set from the list-view spec's Step 15 (`/` focus search, `Esc`
+layering, `↑`/`↓` row focus, `Enter` open, `Space` peek, `X`/`Shift+X`
+selection via a `listView/useListShortcuts` hook on `useEventListener`), plus
+an equivalent pass over the edit view, designed together so bindings and the
+input-focus/dialog/composition guards are consistent.
+
+**Why.** Developer call (2026-10-28): shortcuts should ship as one
+cross-view pass, not per-view fragments.
+
+**Blocks.** Nothing — purely additive; Step 16 of
+`2026-10-26-list-view-overhaul` explicitly doesn't depend on Step 15.
+
+**Why deferred.** Deferred out of `2026-10-26-list-view-overhaul` (Step 15
+unimplemented) so the list view ships; the full design lives in that spec's
+Step 15 section (spec.md § "Step 15 — Keyboard shortcuts", Decision 30).
+
+---
+
+## React hooks lint pass (deferred)
+
+**What.** Enable `eslint-plugin-react-hooks` in the root `eslint.config.mjs`
+(`react-hooks/rules-of-hooks: error`, `react-hooks/exhaustive-deps: warn`,
+matching the plugin's own `recommended` severities) and fix/triage every
+finding it surfaces across `packages/*/src`.
+
+**Why.** The root config currently has no `react-hooks` plugin registered at
+all — confirmed by investigation, not assumed. Several files carry
+`// eslint-disable-next-line react-hooks/exhaustive-deps` comments that
+pre-date this gap and error as "unknown rule" directives; those 14 invalid
+directives were already removed (see below). With the plugin OFF, neither
+`rules-of-hooks` (conditional/early-return-gated hook calls — real bugs) nor
+`exhaustive-deps` (stale-closure risk) is checked at all right now.
+
+**Lift.** Attempted and fully reverted this session (2026-11) after the
+developer flagged that hook-rule violations are deliberate in some places and
+the plugin should not land as a side effect of an unrelated JSDoc lint pass.
+Everything below was found, triaged, and (for `rules-of-hooks`) fixed once —
+the fixes are not preserved, but the investigation is, so a future pass starts
+from a known list instead of re-discovering it.
+
+**`rules-of-hooks` findings (all real bugs — hooks called after an early
+return or inside a loop/callback; every one of these needs restructuring, not
+a disable):**
+
+- `admin/AdminSidebar.tsx` L74,81,88 — `usePermission` called inside three
+  `.filter()` callbacks (hook-in-loop; count varies with
+  `config.collections/globals/mediaCollections.length`). Fix shape: hoist
+  `useVexAccess()`/`useVexAuth()` once, call the plain `hasPermission()`
+  predicate (not the `usePermission` hook) inside each filter.
+- `collections/editView/CollectionEditView.tsx` L127 — `useState` called
+  after `if (!collection) return <p>...</p>`. Fix shape: hoist the `useState`
+  above the guard (it doesn't depend on `collection`).
+- `collections/listView/CollectionListView.tsx` — ~19 hooks (`useState`×4,
+  `useRef`, `useEffect`, `useFieldPermissions`, `useMemo`×3,
+  `useColumnsWithActions`, `useListViewPrefetch`, `useListViews`,
+  `useListUrlState`, `usePermission`×2, `useQueryState`) all called after
+  `if (!collection) return <AdminNotFound .../>`. Fix shape: split into an
+  early-return-only wrapper plus an inner component that receives the
+  resolved `collection` as a prop and runs every hook unconditionally (same
+  pattern as `CollectionEditView.tsx`'s existing
+  `CollectionEditView`/`CollectionEditViewData` split).
+- `fields/array/Cell.tsx` L37, `fields/checkbox/Cell.tsx` L30,
+  `fields/color/Cell.tsx` L32, `fields/commitTs/Cell.tsx` L26,
+  `fields/date/Cell.tsx` L33, `fields/email/Cell.tsx` L31,
+  `fields/number/Cell.tsx` L29, `fields/select/Cell.tsx` L30,
+  `fields/url/Cell.tsx` L29 — same pattern across all 9 field cell
+  components: `useVexConfig()` called after an early `return <span>—</span>`
+  for a null/undefined/empty value. Fix shape: move `useVexConfig()` above
+  the early return in each (trivial, no dependency on `props.value`).
+- `fields/relationship/Field.tsx` L129-130 — `useFormContext()`/`useStore()`
+  called after `if (!targetCollection) return <div>...</div>`. Fix shape:
+  hoist both above the guard.
+- `fields/richtext/Field.tsx` L204-205 — same pattern, guard is
+  `if (!config.editor) return <FieldGroupBox>...</FieldGroupBox>`.
+- `media/CreateMediaModal.tsx` L39,44 — `useQueryState`/`useRef` called after
+  `if (!collection) return null`. Fix shape: hoist both above the guard.
+- `media/MediaCollectionListView.tsx` L102,104,110,121,126 — same
+  early-return-before-hooks pattern as `CollectionListView.tsx` (smaller:
+  `useState`, `useFieldPermissions`, `useMemo`, `usePermission`×2). Fix
+  shape: same wrapper/inner-component split.
+- `slots/formData.ts` L60 — `useStore` called conditionally:
+  `form ? useStore(form.store, selector) : undefined`. No trivial hoist
+  fix — needs a stable fallback "store" object (`{get, subscribe}` shape,
+  per `@tanstack/react-store`'s actual minimal requirement for `useStore`'s
+  first argument — no need to depend on `@tanstack/store` directly) so
+  `useStore` can run unconditionally. **Pitfall hit and fixed once already:**
+  the fallback's `get()` must return the SAME cached reference every call,
+  not a fresh object/array literal — otherwise `useSyncExternalStoreWithSelector`
+  never settles and the component infinite-loops ("Maximum update depth
+  exceeded"), which happened live on `:3020` this session when the fix
+  briefly had this bug (caught via the `slots/*.test.tsx` suite, not live
+  monitoring — see `.agent/docs/session-log/` around 2026-11-01 for the
+  incident writeup if still present).
+
+**`exhaustive-deps` findings: 44 total**, reviewed in detail for 17 of them
+(verdicts recorded, not preserved in code):
+
+- Deliberate (ref-guarded one-time effects, two-way sync guards,
+  notify-parent-on-value-only effects, TanStack Form's stable-instance
+  guarantee, narrow-primitive-over-whole-object deps) — 15 sites across
+  `admin/AdminLayout.tsx` L166, `collections/editView/CollectionEditView.tsx`
+  L330, `collections/listView/CollectionListView.tsx` L447/L872/L875,
+  `collections/listView/ListFilterBuilder.tsx` L530,
+  `collections/listView/ListSearch.tsx` L79/L90,
+  `collections/listView/ListViewTabs.tsx` L633,
+  `collections/listView/listViewStore.ts` L268/L286,
+  `collections/listView/useListViews.ts` L371,
+  `fields/relationship/FilterInput.tsx` L58, `fields/upload/FilterInput.tsx`
+  L51, `livePreview/useLivePreviewPanelState.ts` L171.
+- Real bugs, fixed once — `collections/listView/CollectionListView.tsx` L916
+  (`emptyState` `useMemo` reads `props.urlState.setQf/setQ/setFilter` inside
+  closures but didn't depend on `props.urlState`, which itself changes
+  identity whenever `viewState` changes — add `props.urlState` to the deps,
+  no loop risk since it's a `useMemo` not an effect) and
+  `collections/listView/useListViews.ts` L423 (`const sharedViews =
+  (sharedQuery.data ?? []) as ...` created a fresh `[]` every render while
+  `sharedQuery.data` was falsy, defeating the `views` `useMemo`'s own
+  memoization downstream — wrap `sharedViews` in its own `useMemo` keyed on
+  `sharedQuery.data`).
+- Not yet investigated (27 sites, subagents were mid-triage when this pass
+  was reverted) — `fields/collapsible/Field.tsx` L54, `fields/date/Field.tsx`
+  L78, `fields/tabs/Field.tsx` L121, `fields/useLiveFieldMerge.ts` L59,
+  `forms/AppForm.tsx` L92, `forms/BlocksField.tsx` L238,
+  `forms/GroupField.tsx` L57 (⚠ no deps array at all on an effect that calls
+  `setOpenValue` — ESLint's own infinite-loop warning, investigate first) and
+  L67, `globals/GlobalEditView.tsx` L278, `media/MediaUploadDropzone.tsx`
+  L100/L124, `ui/JsonEditorView.tsx` L152, `ui/datetime/date-picker.tsx`
+  L274/L512/L524/L649/L678, `ui/datetime/input.tsx` L165/L172/L496 (deps
+  list not a static array literal), `ui/datetime/time-picker.tsx` L121,
+  `ui/multi-select.tsx` L337 (ref read in cleanup, not the ref snapshot from
+  the effect body), `versions/VersionPublishAction.tsx` L72 (same
+  memo-defeat shape as `useListViews.ts` L423 above), `versions/useResetWhenSaved.ts`
+  L73, `richtext-plate/src/editor/PlateEditorField.tsx` L150 (likely
+  deliberate — existing comment already explains keying on `plugins` only).
+  The `ui/datetime/*` cluster (11 of the 27) is the highest-risk group: a
+  picker's displayed state not re-deriving from `value`/`hour`/`minute`/etc.
+  is a real, user-visible bug class, but several of these effects both read
+  AND set the same state they're missing from deps — blind dep-adding risks
+  the same infinite-loop class as the `formData.ts` incident above; restructure
+  (derive via `useMemo` keyed on external inputs only) rather than just adding
+  deps.
+
+**Blocks.** Nothing technically — purely additive once scoped correctly.
+
+**Why deferred.** Developer decision: the plugin is not part of this change
+set because hook-rule violations are deliberate in some places in the
+current codebase, and enabling it needs its own scoped pass (with the
+`rules-of-hooks` fixes reviewed individually, not bundled behind an
+unrelated JSDoc lint cleanup).
+
+**Detail.** No separate doc — this entry is the full record. When picked
+back up: re-add `eslint-plugin-react-hooks` to `pnpm-workspace.yaml`'s
+catalog if dropped (it was already catalogued at `7.1.1` when this was
+tried) and to root `package.json#devDependencies`, register it in
+`eslint.config.mjs`'s `packages/*/src` block, then work the two finding
+lists above top to bottom. Smoke-test each `rules-of-hooks` restructuring
+and each real `exhaustive-deps` fix against a live admin session before
+moving to the next one — `packages/react/src/**` edits hot-reload instantly
+into any running `apps/test`/`apps/www` dev server via
+`next.config.ts`'s `workspaceSourceAliases()` (Turbopack `source` export
+condition), so a broken intermediate state is live immediately, not just in
+the editor.
+
+## HTTP API for vex server functions (API-key auth)
+
+**What.** An exported helper (e.g. `registerVexHttpRoutes(http, { internal, verifyKey, basePath: "/api/vex" })`)
+that apps call from `convex/http.ts` to expose REST routes over the vex server API, authenticated by
+API keys that act as their creating user (same `hasPermission`/field maps/row rules).
+
+**Why.** External services and scripts need data access without a browser session; the access layer
+already enforces everything from a resolved `VexApiAuth`, so HTTP becomes a transport, not a second
+permission system.
+
+**What exists already.** Both apps run better-auth's `apiKey()` plugin (key create/hash/verify/revoke,
+the `apikey` table, `apiKeyClient`); `convex/http.ts` exists (auth routes only); permissions resolve
+from the user's CURRENT roles per request, so a key loses access when its user does.
+
+**The constraint.** Convex `httpAction`s have no `ctx.db`; they can only `ctx.runQuery`/`runMutation`,
+and inside those `ctx.auth` is the request's identity (none for an API key). So:
+1. `vexServerApi` also registers INTERNAL variants (`internal.vex.find`, `get`, `create`, …) that take a
+   pre-resolved `auth` arg instead of reading `ctx.auth`. Internal functions aren't client-callable, so
+   the arg can't be spoofed.
+2. The router helper, per request: verify `Authorization: Bearer <key>` (better-auth) → load the user
+   → resolve the organization (stored on the key at creation, or an `X-Organization-Id` header validated
+   against memberships) → parse args (reuse the list URL codec: `filter`/`sort`/`cols`/`q`/`size`) → run
+   the internal function → map errors (access → 403, not found → 404, `INVALID_*` → 400).
+3. Routes: `GET/POST /collections/:slug`, `GET/PATCH/DELETE /collections/:slug/:id`, the same for
+   globals; `depth`, `drafts`, cursor pagination.
+4. Admin key management: create (shown once)/name/expire/revoke; `createdBy`, `lastUsedAt`.
+
+**Open decisions.** Scoped keys (key scopes ∩ the user's permissions, recommended, vs the user's full
+permissions); how a key picks its organization; rate limiting (`@convex-dev/rate-limiter`); CORS;
+media uploads (two-step upload-URL flow); optional OpenAPI generation from the vex config.
+
+**Phasing.** Phase 1, read-only: internal variants + the router helper + key auth + GET routes + error
+mapping + tests (~2–3 agent-days). Phase 2: writes, scoped keys, org selection, the key UI, rate
+limiting, uploads, docs (~1–2 weeks).
+
+**Blocks.** Nothing; purely additive.
+
+**Why deferred.** Developer request (2026-11-01): design captured now, built later.
+
+## Define `vex_versions` / `vex_views` as internal collections
+
+**What.** Move the hard-coded `vex_versions` and `vex_views` table strings out of
+`packages/core/src/schema/generateVexSchema.ts` into collection definitions in
+`packages/core/src/collections/internal/index.ts`, so schema (and optionally types) generate from the
+same pipeline as user collections.
+
+**Why.** Less hand-written schema in the generator; one source of truth for field/index shape.
+
+**What it takes** (not just a move: `internalCollections` is appended to `config.collections` today,
+so an internal collection is treated like any collection):
+- An internal-collection flag that keeps it OUT of the admin UI (sidebar, `/admin/collections`,
+  dashboard, list/edit routes), the generated public client API (`find`/`create`/… must NOT be
+  exposed for `vex_views`/`vex_versions`; views stay reachable only via `listViews`/`saveView`/
+  `removeView`, which enforce org scoping, `INVALID_VIEW` and creator stamping), and the access
+  resources, while still emitting its schema.
+- An exemption from the reserved `vex_` slug rule and from the injected `updatedAt` (`timestamps: false`).
+- Field mappings that reproduce the exact schema: `v.any()` (`snapshot`/`state`), the
+  version-status literal union, optional numbers/strings, and the indexes (`by_document_version`
+  on 3 fields, `by_collection`, `by_collection_org`, `by_view_id`).
+- A snapshot test proving the generated `vex.schema.ts` is byte-identical before/after.
+- `vex_globals` stays as is (its version fields are conditional).
+
+**Effort.** ~0.5–1 agent-day; pure refactor, no behavior change.
+
+**Why deferred.** Developer decision (2026-11-02): not before release.
+
+---
+
+## Total-count cap for large collections (`admin.view.countLimit`, redesign)
+
+**What.** A proper large-collection story for the list footer's total. Today
+`admin.view.countLimit` (Decision 35, `packages/core/src/collections/types.ts`)
+makes `find` count with `take(countLimit + 1)` and shows "X of N+" once hit,
+with a silent default of `1000`. The redesign should cap only when a count is
+genuinely expensive. Show the exact total by default up to what one Convex query
+can scan (~32k documents), and use a cap or an alternative (aggregate component,
+maintained counter, estimated count) beyond that. It should fit the current
+features: views (`view.state.countLimit`), filters, search, and the draft-pair
+merge.
+
+**Why.** Developer expectation (2026-11-02): collections under ~32k docs should
+show their real `totalDocs`. The 1000 default and the per-collection `50` demo
+cap on `testimonials` (now removed) both read as wrong totals, not as an
+optimization.
+
+**Blocks.** Nothing. It touches `find`/`search` server count paths,
+`resolveCountCap`, `usePaginatedQuery`'s `totalDocsCapped`, and the
+`DataTable` footer.
+
+**Why deferred.** Developer decision (2026-11-02): implement properly later,
+not as a tweak during the list-view overhaul.

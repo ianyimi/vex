@@ -7,6 +7,7 @@ import { textareaFieldToInputSchema } from "../textarea";
 import { numberFieldToInputSchema } from "../number";
 import { checkboxFieldToInputSchema } from "../checkbox";
 import { dateFieldToInputSchema } from "../date";
+import { commitTsFieldToInputSchema } from "../commitTs";
 import { selectFieldToInputSchema } from "../select";
 import { urlFieldToInputSchema } from "../url";
 import { colorFieldToInputSchema } from "../color";
@@ -131,6 +132,8 @@ export function adminFieldToInputSchema(props: {
       return checkboxFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.date.type:
       return dateFieldToInputSchema({ field: effectiveField });
+    case ADMIN_FIELDS.commitTs.type:
+      return commitTsFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.select.type:
       return selectFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.url.type:

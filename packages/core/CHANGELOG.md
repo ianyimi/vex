@@ -1,5 +1,529 @@
 # @vexcms/core
 
+## 0.1.0-alpha.28
+
+### Patch Changes
+
+- b937b2b: Bumped `patch` despite being breaking, per this track's own `config-client-server-split`
+  convention — see that changeset's note on the `alpha` pre-release base.
+
+  **Breaking: a field-permission map that lists only some fields now ALSO hides system fields
+  and UI (`ui()`-type) fields it doesn't list, the same "hidden unless listed" rule that
+  already applied to data fields.** Field-permission maps accept the real system field names as
+  keys now — `_creationTime`, `updatedAt`, and `vex_status` (the last only on a
+  versioned/drafts-enabled collection) — plus `ui()`-type fields (e.g. a computed `wordCount`),
+  typed per collection. `_id` stays the one permanently ungateable key, always readable, never a
+  valid map entry. The wildcard key (`"*"`) covers system and UI fields too, same as before.
+  Stripping runs on every read path: `find`, `get`, `search`, and the versions endpoints.
+
+  **Migration:** a partial field-permission map that previously implicitly showed
+  `_creationTime`/`updatedAt`/`vex_status`/every `ui()` field (since there was no key to gate
+  them on) now hides them unless you add the key, or switch that map to `'*'`. Audit every role
+  in your `access.ts` after upgrading — `apps/test`'s and `apps/www`'s own configs needed exactly
+  this audit (e.g. a `guest` role's `posts` map gained an explicit `updatedAt` entry to keep
+  showing it, while deliberately leaving `vex_status`/`_creationTime` hidden).
+
+  One carve-out, unchanged: sorting by `_creationTime` is always allowed, even when its own
+  value is hidden from that caller — this was already correct before this change and is now
+  covered by an explicit regression test.
+
+  **Client:** a new `useCanReadField` hook (`@vexcms/react`) lets a component check "can I read
+  field X" for system/UI fields the same way it already could for data fields — used by the
+  peek's Created row, JSON tab, and hidden-fields notice.
+
+- 30b4c10: **Breaking: collection admin URLs moved to `/admin/collections/<slug>`.**
+  `/admin/<slug>` and `/admin/<slug>/<id>` now 404 — there is no redirect.
+  Global URLs (`/admin/globals/<slug>`) and the dashboard (`/admin`) are
+  unchanged.
+
+  Every in-app link (`adminHref`, sidebar, dashboard cards, globals list, every
+  field type's title-column `Cell.tsx`) already resolved through `adminHref` or
+  `NextAdminPage`'s own route parser, so this is a one-file change in each
+  package: `adminHref.ts`'s `"collection"`, `"document"` and `"create"` targets
+  now emit the `/collections/` prefix, and `NextAdminPage` now requires a
+  `collections/<slug>[/<id>]` or `globals/<slug>` first segment, `notFound()`ing
+  on anything else.
+
+  If you bookmarked or hand-built an admin collection URL outside this package
+  (a custom nav, an email link, a saved browser bookmark), update it to the new
+  `/admin/collections/<slug>` shape.
+
+- b937b2b: Bumped `patch` despite being breaking, per this track's own convention (see
+  `config-client-server-split`'s changeset): the `alpha` pre-release keeps every package on the
+  `0.1.0` base, and the breaking surface is itemized here and in the commit's `BREAKING CHANGE:`
+  footer.
+
+  Removed `admin.table`/`CollectionTableConfigInput`/`CollectionTableConfig` entirely.
+  `admin.view` (the default view) and `admin.views` (preset views) now carry everything that
+  used to live on `admin.table`, not just view identity: `name?`, `description?`, `where?`,
+  `sort?`, `pageSize?`, `searchField?`, `columns?`, plus the collection-wide settings
+  `searchFields?` (renamed, plural, from the old `admin.table.searchField` — it was colliding
+  with this same shape's own per-view singular `searchField`), `pageSizeOptions?`,
+  `countLimit?`, `serverPageSize?`, and `bulkActions?`. `admin.views[n]` accepts the identical
+  shape — a preset view can override any collection-wide setting too, falling back to
+  `admin.view`'s own resolved value, then the global default.
+
+  **`@vexcms/core`.** `columns` entries are now `ColumnEntry<TFieldSlug> = TFieldSlug |
+{ field, width?, pinned?, hidden?, enableSorting?, enableHiding? }` — order, visibility, pin
+  side, width, and the sortable/hideable capability flags are all one array, one per-field
+  entry; a view's own entry always wins over `field.admin.*`, which is only consulted when
+  unset. `field.admin.width` is renamed `columnWidth` (the existing `width` key is the field's
+  own CSS row-width in the edit form, an unrelated axis). The reserved id for the always-first
+  selection-checkbox column is `"select"`; a versioned collection's synthetic `vex_status`
+  status column is a full `ColumnEntry` participant (reorderable/hideable/pinnable/resizable),
+  with an existing saved view's absence of `vex_status` back-filling as unpinned-but-visible,
+  first position — not hidden, so no pre-existing view silently loses its status badge.
+  `validateTableConfig.ts` is renamed `validateViewConfig.ts`; its checks now run per view
+  (`admin.view` and every `admin.views[n]`), and a view's own `enableSorting: true` override
+  still must lead a declared index, same as a field's.
+
+  **`@vexcms/react`.** Every `visibleColumns`/`columnOrder`/`columnPinning` consumer collapses
+  onto the one `columns: ColumnEntry[]` prop/state; `getCollectionColumnDefs` now resolves each
+  field's `enableSorting`/`enableHiding` through `resolveColumnConfig` (the view's own entry can
+  override a field's own default) instead of reading `field.admin.*` directly.
+
+  **Migration:** every `admin.table.*` config key, column ordering/visibility/pinning state, and
+  reader across core/react/next is moved — there is no shim or dual-read period.
+
+- 4d504e7: **Breaking — `find` and `search` take `where` instead of `filter`.** Fields are named
+  directly, with no `q.field(...)`:
+
+  ```ts
+  // before
+  find({
+    ctx,
+    collection: "posts",
+    filter: (q) => q.eq(q.field("published"), true),
+  });
+  // after
+  find({ ctx, collection: "posts", where: (q) => q.eq("published", true) });
+  ```
+
+  `where` uses the same builder as access rules: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `and`,
+  `or`, `not`. `withIndex` is unchanged at the call site; its `range` is now typed from your
+  generated index declarations rather than the Convex data model.
+
+  **Breaking — access rules: `constraints` splits into `withIndex` and `where`.** Each maps onto
+  the `find` argument of the same name. `withIndex` (query actions only) is the same
+  `{ name, range }` object `find` takes, or a function of the caller returning one; `where`
+  builds a predicate with `q`. Either callback may return `true` (no restriction from this half)
+  or `false` (deny). The rule-level `filter` property is unchanged. Any combination is allowed.
+
+  ```ts
+  // before
+  read: { constraints: ({ q }) => q.withIndex("by_status", (ix) => ix.eq("status", "published")) }
+  read: { constraints: ({ user, q }) => q.withIndex("by_author", (ix) => ix.eq("author", user._id)) }
+  update: { constraints: ({ user, q }) => q.filter((f) => f.eq("author", user._id)) }
+  // after
+  read: { withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") } }
+  read: { withIndex: ({ user }) => ({ name: "by_author", range: (ix) => ix.eq("author", user._id) }) }
+  update: { where: ({ user, q }) => q.eq("author", user._id) }
+  ```
+
+  `@vexcms/react/testing`'s access fixtures use the new shape.
+
+  **Breaking — a field's `index` takes a name or an object; field-level indexes win.**
+  `index: "by_slug"` is unchanged. The object form `index: { name, additionalFields?, draftStatus? }`
+  declares a compound index led by the field, and replaces the sibling `indexDraftStatus`:
+
+  ```ts
+  // before
+  author: relationship({
+    to: "users",
+    index: "by_author",
+    indexDraftStatus: true,
+  });
+  // after
+  author: relationship({
+    to: "users",
+    index: { name: "by_author", draftStatus: true },
+  });
+  // new: compound index led by the field → .index("by_author_status", ["author", "status"])
+  author: relationship({
+    to: "users",
+    index: { name: "by_author_status", additionalFields: ["status"] },
+  });
+  ```
+
+  - An explicit field-level index now wins over a collection-level `indexes` entry of the same
+    name (previously the collection-level entry won), which wins over a relationship field's
+    automatic `by_<fieldKey>` index. A relationship field that wants `draftStatus` on its
+    automatic index names it explicitly, as above.
+  - Two fields declaring the same index name now throw at `defineCollection`. Previously the
+    schema emitted both (which Convex rejects) while the generated types merged them.
+  - `additionalFields` names are checked against the collection's fields at `defineCollection`.
+    Field factories take the field's own key as an optional second generic
+    (`text<"articles", "slug">`) to type `additionalFields` against the collection's other
+    fields; `TFieldMeta` moves to the third generic.
+
+  **New — `VexError`.** Throw it from a field's `validate()` instead of `ConvexError`; the admin
+  receives the same structured data with the failing `field` added.
+
+  **New — `where` accepts a plain data form.** Besides the builder callback, `where` now also
+  accepts `VexWhereNode<S>`, the same filter as plain JSON — for a filter that needs to be saved
+  or sent over the wire, which a function cannot be:
+
+  ```ts
+  find({
+    ctx,
+    collection: "posts",
+    where: { and: [{ field: "featured", op: "eq", value: true }] },
+  });
+  ```
+
+  Convert a builder callback to this shape with `whereToNode`; validate an untrusted one (a
+  saved view, a URL param) with `validateWhereNode`, which throws a `VexError` on a malformed
+  shape (including an empty `and` / `or`), an unknown operator, or an unknown field name.
+
+  **New — `where` on the client.** `find` and `search` from `@vexcms/react/client` accept
+  `where` in either form; a callback is converted to the plain form before it is sent. A `where`
+  on a field the caller cannot read (field-level RBAC) excludes the documents where it is hidden,
+  so a filter cannot be used to probe hidden values.
+
+- f837f20: Breaking (pre-0.1.0): `@vexcms/core/convex` is removed — it was always an identical alias of
+  `@vexcms/core/server`. Import `collectionsApi`, `globalsApi`, `versionsApi`, `vexServerApi`,
+  `createVexCallbackApi` and every raw server function from `@vexcms/core/server` instead; no
+  export name changes, only the subpath goes away.
+
+  Internal: `src/api/` is dissolved — collection, global and version server operations now live
+  beside their domain (`collections/api/`, `globals/api/`, `versions/api/`), `media/api/` moved
+  to the same `<op>/server.ts` scheme, and the shared read/write pipeline moved to `src/db/`.
+  All four document shapes (`VexDocument`/`TDocument`/`VexVersionDocument`/`VexMediaDocument`)
+  now live together in `src/documents/types.ts`, re-exported from `src/versions/`/`src/media/`
+  for feature-barrel importers; version constants never moved. `vexConvexApi` moved from
+  `api/convex.ts` to its own `src/vexConvexApi.ts`. No
+  public import path outside the removed `./convex` subpath changes.
+
+  Breaking (pre-0.1.0): `@vexcms/react`'s admin field components are renamed —
+  `TextFieldInput`/`EmailFieldInput`/`TextareaFieldInput`/`JsonFieldInput`/`UrlFieldInput`/
+  `NumberFieldInput`/`CheckboxFieldInput`/`SelectFieldInput`/`DateFieldInput`/`ColorFieldInput`/
+  `ArrayFieldInput`/`BlocksFieldInput`/`GroupFieldInput`/`RelationshipFieldInput`/
+  `UploadFieldInput`/`RichTextFieldInput` are now `TextFieldAdmin`/`EmailFieldAdmin`/…/
+  `RichTextFieldAdmin` (matching the existing `*FieldCell` pairing). The old `createFieldInput`
+  factory and its entire `components/form/` module (`AppForm`, `AppFormContext`, `FormArray`,
+  `FormBlocks`, `FormGroup`, `FormTabs`, `FormCollapsible`, `FormRow`, `FormUI`, `FormLabel`,
+  `FormError`, `FormDescription`, `RenderFields`, `FieldConditionGate`) are removed — every admin
+  field now composes through the new `@vexcms/react/form` entry (`useAppForm`, `AppForm`, the
+  `forms/*Field.tsx` components) instead. `useAppForm`/`AppForm` are now also re-exported from
+  `@vexcms/react`'s root for callers who only need the app form, not its full `/form` surface.
+
+  Breaking (pre-0.1.0): `@vexcms/core`'s `InputComponentProps` is removed — it was the per-field
+  edit-form props shape; `FieldComponentProps` now carries that same shape directly (no more
+  `extends InputComponentProps`), and the new `FieldControlProps` is the narrower shape an
+  `admin.components.Input` control-level override receives. `admin.components.Field` is a new
+  whole-field override slot, composed the same way `admin.components.Input` already was.
+
+- b937b2b: `CollectionConfig` gains an optional 8th type parameter `TFieldSlug` (default
+  `CollectionDataFieldSlug<TFields, TTimestamps>`), used by `admin` and `indexes[].fields`, and
+  `defineCollection` passes it explicitly. Deriving the slugs via `keyof TFields` inside the
+  interface made TypeScript < 6's variance probe treat `TFields` as invariant, so every concrete
+  collection failed assignment to `CollectionConfig` in editors running TS 5.x (e.g. vtsls with
+  bundled TS 5.8.3) even though `tsc` 6 accepted it. No change for code that omits the parameter.
+- b937b2b: Bumped `patch` despite being breaking, per this track's own `config-client-server-split`
+  convention — see that changeset's note on the `alpha` pre-release base.
+
+  The list URL's `cols=` parameter changes grammar from a plain comma-separated field-slug list
+  (`cols=title,author,status`) to `cols=<field>[:w<width>][:pl|:pr][:h]`, comma-separated, one
+  suffix combination per entry in a fixed order — carrying the full per-column state
+  (width, pin side, hidden) that `ColumnEntry` now unifies, not just display order. A bare field
+  slug with no suffixes still parses (a previously-shipped order-only `cols=` link keeps
+  working), but `serializeListParams` never emits the old grammar again. Diff-only against the
+  active view's own resolved array, always present for an active `local` view, unchanged.
+
+  No back-compat shim for a stored view's own `columns` array: an old view's bare-slug-only
+  array parses fine (every entry is a valid bare-slug `ColumnEntry`), it just has no width/pin
+  overrides until resaved.
+
+- b937b2b: New `access.organizations?: boolean` config flag (default `false`) — the SOLE trigger for
+  saved-view organization scoping. Requires `access.orgCollectionSlug` to also be set (a
+  dev-mode warning fires otherwise); `orgCollectionSlug` alone no longer scopes anything by
+  itself — it only ever meant "where organization data lives, so a project's own permission
+  callbacks can read `organization`," a separate mechanism (`hasPermission`,
+  `resolveAccessRule`, `resolveFieldPermissions`, `SubjectMap`/`PermissionCallbackProps`, a
+  project's own `create`/`update`/`remove` callbacks) unaffected by this change — a project can
+  use `organization` in its own callbacks without opting into view scoping.
+
+  With `access.organizations: true`, `listViews`/`loadSharedViewWheres`/`saveView`/`removeView`
+  and the client's `useCanAccessSharedViews` all route through one shared predicate
+  (`isViewOrganizationScopingEnabled`/`resolveViewOrganizationId`, new
+  `packages/core/src/access/resolveViewOrganizationScope.ts`) so none of them can drift
+  independently: `listViews`/`loadSharedViewWheres` return `[]` for a caller whose own
+  organization doesn't resolve; a caller whose organization resolves sees only that
+  organization's own rows. `saveView`/`removeView` deny a caller whose own organization doesn't
+  resolve outright, for any `viewId`, before reaching the database; a caller whose organization
+  resolves may only touch an EXISTING row whose `organizationId` exactly matches theirs — a
+  cross-org row, an org-less row, and a genuinely missing row all throw the identical `No view
+"<viewId>" found for collection "<collection>"` error (no existence leak). A new insert always
+  stamps the caller's own resolved organization. A `vex_views` row saved before this flag was
+  enabled (no `organizationId`) is invisible and inert — not adopted by whoever saves it next.
+
+  **With the flag unset (the default — unaffected, no migration needed):** exactly the
+  pre-scoping behavior. `listViews`/`loadSharedViewWheres` read everything unscoped;
+  `saveView`/`removeView` can create/patch/delete any shared view, cross-org-labeled or
+  org-less, as long as the caller holds the relevant `VIEW_ACTIONS` permission;
+  `useCanAccessSharedViews` returns `true`. Local (cookie/`localStorage`) views are entirely
+  unaffected either way — they never touch `vex_views` or any organization logic.
+
+- 30b4c10: Duplicate document. A `vex.duplicate` built-in, gated on the `create` permission, clones the
+  current document on every non-media collection (not globals, not media) — stripping `_id`,
+  `_creationTime`, `_status`, `_version` and timestamps and regenerating array/block item ids —
+  and creates it. On success it navigates to the new document; on a unique-value conflict it
+  opens a create modal prefilled with every field (`CreateDocumentForm`/`CreateDocumentModal`
+  gain `fields: "all"`, `initialValues`, and `submitOnOpen`) and submits immediately, so the
+  existing failed-submit focus/reveal behavior lands on the conflicting field. A duplicated
+  document in a versioned collection always creates as a draft.
+
+  Duplicate renders alongside a manual Revalidate purge (`vex.revalidate`) in the new
+  `edit.actionsMenu` ⋯ menu to the left of the status badge, not in `edit.header.actions` —
+  developer feedback after the initial header-actions placement moved both out of the primary
+  button row.
+
+- 30b4c10: Edit-view extension points. Eight new slots under `admin.components.edit` — `header.actions`,
+  `header.before`, `header.after`, `actionsMenu`, `beforeFields`, `afterFields`, `sidebar.before`,
+  `sidebar.after` — for collections and globals, resolved root → resource level with the same
+  `order`/`before`/`after`/`hidden`/`access`/`condition` model as every other slot. Save,
+  Publish, Unpublish, Delete, Cancel and the live-preview toggle are now
+  `vex.*` built-in contributions in `edit.header.actions`, from `BUILTIN_CONTRIBUTION_IDS.edit`
+  (left to right: Preview, Save, Publish-or-Unpublish, Cancel, Delete) — hideable,
+  reorderable, and wrappable through a new per-slot `overrides` map keyed by built-in id
+  (`overrides: { "vex.save": [...] }`). An override keyed to an id outside that slot's resolved
+  list throws `VexComponentConfigError`. Save (Draft)/Publish-or-Unpublish/Cancel are always
+  rendered, greyed out when inapplicable rather than hidden by state (layout never shifts).
+  `vex.publish`/`vex.unpublish` share one spot — exactly one renders at a time, with a shared
+  minimum width so the swap never shifts neighbouring buttons. Delete carries a trash icon on
+  its header button, its collapsed ⋯ menu item, and its confirm dialog's own Delete button.
+  `vex.versionHistory` ("History") moved out of `edit.header.actions` into the new
+  `edit.actionsMenu` — see below. A new `edit.actionsMenu` slot holds a ⋯ menu for
+  less-used actions — see the `duplicate-document` changeset for its other built-ins — rendered by
+  `DocumentEditActionsMenu`/`EditActionsMenuItem`, with a new `useEditActionsMenuDialog()` hook
+  for a menu item whose action opens a dialog after the menu has already closed. History renders
+  through this menu (right after Preview, when Preview is also collapsed in) as
+  `VersionHistoryMenuItem`, opening the same version list `VersionHistoryDropdown` renders
+  standalone in a dialog through that hook.
+
+  The header row stays on one line at every width instead of wrapping: the title truncates first
+  (measured, via a new `useHeaderActionsCollapse` hook), and only once it can't shrink any
+  further does `vex.livePreview`, then `vex.delete`, then (narrower still) `vex.cancel` move into
+  `edit.actionsMenu` — a versioned document's Save Draft/Publish-or-Unpublish/Cancel/⋯ set alone
+  can outgrow a ~375px header even with the title and both other candidates already collapsed.
+
+  `SlotAccessContext`'s `access` predicate (every `ComponentContributionInput`) gained an optional
+  `resource?: EditSlotProps`, populated for every `edit.*` slot (`undefined` for field-level
+  slots, which have no single resource kind) — lets a contribution that only makes sense for one
+  resource kind (e.g. a collection document's own id) declare that declaratively via `access`
+  instead of returning `null` at render time, which left a dead, empty ⋯ trigger on a resource
+  with nothing else in its menu (a project's root-level `edit.actionsMenu` item resolved as
+  present, even though it always rendered nothing for a global).
+
+  New `useVexDocument()` hook (`@vexcms/react`) exposes document-level state — `kind`, `slug`,
+  `id`, `saved`, `isDirty`, `status`, `canEdit` — to built-in and third-party edit-view
+  contributions; it throws outside its provider, which both edit views now mount.
+
+  Every override layer — in field `Input`/`Cell` chains and in the new edit-slot `overrides` —
+  now renders inside its own `ComponentErrorBoundary` keyed by the override id; a throwing
+  wrapper renders the layer beneath it plus an inline error instead of breaking the view. This
+  changes the field-override error behavior shipped in the field-input-consistency-pass
+  changeset.
+
+- b937b2b: `admin.view.searchFields: []` (or omitted) is now enforced server-side, not just hidden
+  client-side: the search endpoint returns `SEARCH_FIELD_NOT_ALLOWED` for a collection with no
+  declared search fields, regardless of what a client sends. Hiding the search bar was never
+  itself a security boundary.
+- b937b2b: New optional `display` field component slot, beside `field`/`cell`/`filterInput`.
+
+  `reactAdapter.fields[type]` now accepts a `display` component — a read-only
+  presentation of a field's value, used anywhere a value needs to be shown
+  without a form around it (the collection list's row-inspect peek is the
+  first consumer). `DisplayComponentProps<TField>` (new, `packages/core`):
+  `field`, `value`, `document`, `collection` — no table row, title-link
+  behavior, or column key, unlike `CellComponentProps`.
+
+  New `fieldToDisplayComponent(type)` (`@vexcms/react`) resolves a type's
+  registered `display`, falling back to its registered `cell` (adapted,
+  `isTitleField` forced `false`) when no `display` is registered — every data
+  field type resolves to something.
+
+  Nine built-in types register a dedicated `display`: `text`/`textarea` (full
+  value, unlike their `cell`'s truncation), `json` (the real `JsonEditor`,
+  read-only), `richtext` (the configured editor adapter's own
+  `renderComponent`, falling back to plain text with no adapter configured),
+  `relationship`/`upload` (one chip per related doc/file, titled, with the raw
+  id always reachable), and `group`/`array`/`blocks` (recurse into their own
+  sub-fields' `display`s, via the new shared `fields/DisplayFieldList.tsx`).
+  Every other data field type (`date`/`commitTs`/`checkbox`/`select`/
+  `number`/`email`/`url`/`color`) registers none — its `cell` is already a
+  reasonable read-only presentation.
+
+- b937b2b: Declared (config/default) and shared-view filters behave consistently around field
+  readability, closing several gaps the new access-system-fields rules exposed.
+
+  A config/default view's own hidden `where`, and an ACTIVE, UNMODIFIED shared view's own saved
+  `where`, both still apply server-side regardless of whether the current viewer can read the
+  field they reference (same treatment `vex_status`'s draft/publish filtering already had) — the
+  viewer never sees the value (no column, chip, or peek row for it), the view shows its
+  hidden-filter badge, and the viewer can't add their own filter on that field. The moment a
+  caller edits a shared view's own filter, it becomes their own and is checked like any other
+  user-supplied condition.
+
+  A user-added (URL or local-view) filter condition on a field the caller can no longer read is
+  now dropped BEFORE the query is built, not just hidden from the chip row after the fact — the
+  server already rejected it, so a dropped-but-still-sent condition used to produce a silently
+  broken or empty query with no visible chip to remove it. A small dismissible toolbar notice
+  explains the drop, naming the field's display label (aligned with the existing stale
+  sort/search notices, which also now show the label instead of the raw key).
+
+  **Bug fix:** a fully readable shared view's own saved filter now renders as normal, editable
+  chips (previously invisible for every caller, since an unmodified shared-view link carries no
+  URL-embedded filter state to read from) — new `resolveEffectiveFilterWhere` resolves the
+  right source (URL override, else the active shared view's own `where`, else nothing) for the
+  chip row, the visibility toggle, and the filter count badge alike.
+
+- b937b2b: `saveView` validates its input: `viewId`/`name` must be strings, `state` must be a plain
+  object — otherwise it throws `VexError({ code: "INVALID_VIEW" })`.
+
+  Every reader of `vex_views.state` (`listViews`, `loadSharedViewWheres`, anything else reading
+  a stored view's state) now skips a row whose `state` isn't a plain object instead of crashing
+  on it, with a dev-only one-time warning — a single malformed row no longer breaks the whole
+  view list for every other user.
+
+- b937b2b: A `where` clause comparing a `commitTs` field against a non-integer or non-finite number
+  (`NaN`, `Infinity`, `1.5`, …) now throws `VexError({ code: "INVALID_WHERE" })`, naming the
+  field, instead of silently coercing the value or matching nothing. `commitTs`'s underlying
+  `int64` comparison has no meaningful fractional value.
+- b937b2b: The collection list view is rebuilt around a URL-driven, server-prerendered `CollectionListView`:
+  per-collection search, sort, an AND/OR filter builder with per-field `FilterInput` components,
+  column visibility/order/pinning/resizing, page size, density, local (`localStorage`) and shared
+  (`vex_views` table, `listViews`/`saveView`/`removeView`) saved list views, a peek panel, per-row
+  actions (`list.row.actions` slot) and inline bulk actions (`list.bulkActions` slot). Data loads
+  through the new `useVexListQuery` / `useVexDocQuery` hooks, prefetched by `NextAdminPage` on the
+  server. See the List views guide.
+
+  **Structure + renames (no aliases).** Core `collections/` splits into `savedListViews/`,
+  `listView/`, and `query/`; React `collections/listView/` gains `toolbar/`, `create/`,
+  `savedListViews/`, `filters/`, `peek/`, `rowActions/` subfolders. Exported names follow:
+  `composeViewWhere` → `composeSavedListViewWhere`, `parseListParams`/`serializeListParams` →
+  `parseListViewUrlState`/`serializeListViewUrlState` (`ListParams` → `ListViewUrlState`),
+  `resolveListQueryState` → `resolveListViewQueryState`, `resolveColumnConfig` →
+  `resolveListViewColumnConfig`, `ListPreferences`/`parseListPreferences` →
+  `ListViewConfigCookieValues`/`parseListViewConfigCookies`, `ListViewsIndexEntry` →
+  `LocalSavedListViewsIndexEntry`, `BulkDeleteModal` → `DataTableBulkDeleteModal`,
+  `CreateDocumentModal`/`CreateDocumentForm` → `ListViewCreateDocumentModal`/`ListViewCreateDocumentForm`,
+  `ListViewTabs` → `SavedListViewTabs`, `ListFilterBuilder` → `ListViewFilterBuilder`, `ListPeek` →
+  `ListViewPeek`. `VexConfigError` now lives in core's `errors.ts`; `DENSITY_ROW_CLASS` moves from
+  `@vexcms/core` to `@vexcms/react`. `useListViewContext` (formerly internal `useCollectionList`) is
+  now exported from `@vexcms/react` for custom list slot contributions.
+
+  **Migration:** rename imports per the list above; there are no deprecated aliases.
+
+- b937b2b: The document peek panel is now resizable on desktop: a drag handle on its left edge (same
+  look and keyboard behavior as a `DataTable` column resize — full-height highlight on
+  hover/focus/drag, a grip, `role="separator"`, `ArrowLeft`/`ArrowRight`), clamped to
+  `[320px, 60vw]`. The width persists per view, mirroring `pageSize`'s own mechanics — but ONLY
+  for a view that has its own saved width: that view shows "Modified" when the current width
+  differs and Reset restores the saved one, while a view with no saved width (the default "All"
+  view and any config view that never set one included) never shows "Modified" for peek width
+  and Reset leaves it alone — it's just a remembered preference there, not view state. Saving a
+  view that has no saved width only starts saving one if you resized the peek while that view
+  was active. It survives a reload via the same admin preference cookie every other
+  per-collection UI preference uses.
+
+  The panel is also now structurally ONE element at every viewport width, switching between a
+  full-width bottom sheet and a fixed right panel via plain CSS instead of two separately
+  mounted layouts, and now renders BEFORE the table in DOM order — both changes together are
+  the confirmed, controlled fix for a hard browser freeze that could occur opening or navigating
+  the peek on certain rows (reduced from two separate, structurally different root causes found
+  across this investigation, not a single simple bug).
+
+  A few smaller peek changes land in the same pass: Previous/Next now WRAP within the loaded
+  rows (Previous on the first row jumps to the last, Next on the last jumps to the first) instead
+  of disabling at either end; the header's edit-page link reads "Edit" instead of the previously
+  ambiguous "Open" (the row ⋯ menu's matching action was renamed the same way); the panel's
+  sidebar offset now animates in lockstep with the admin sidebar's own toggle instead of jumping
+  instantly; the JSON tab now reads from a dedicated raw (depth-0) fetch instead of the same
+  populated row the Fields tab uses, so a relationship/upload field shows its actual stored id(s)
+  there, not a populated document; and the panel remembers which tab (Fields or JSON) you last
+  had open, admin-wide, the same way density/sidebar-collapsed state already persist.
+
+  No public API change — this is an internal implementation change to an existing component
+  (`ListPeek`) with new persisted user preference state, not a new prop or exported type.
+
+- b937b2b: Removed `CollectionListViewProps.initialData`/`.initialQueryError`/`.initialViews`/
+  `.initialPeekDoc` and `ListPeek.initialDoc`, along with the client branches that only existed
+  to support them (e.g. the `hasLiveQueryResultRef` fallback) and their tests. Nothing in the
+  codebase wrote to any of them — `NextAdminPage` and every other caller already seed the
+  TanStack Query cache instead.
+
+  **Migration:** if you were passing any of these props from a non-Next integration, prefetch
+  through the query cache instead — call the same query (`useVexListQuery`'s underlying
+  `findPaginated`/`search`, or the single doc-query key builder for a peek/edit view) on the
+  server and hydrate the `QueryClient` you hand to the client tree, the same way `NextAdminPage`
+  does. There is no `initial*`-prop seeding path left to fall back to.
+
+- b937b2b: A saved (shared or local) view whose `sort.field` or `searchField` no longer exists, is no
+  longer indexed, or is no longer searchable now falls back to the collection's own default for
+  just that one part — identically on the server and the client, so there's no
+  first-paint/hydration mismatch — and shows a small, dismissible toolbar notice ("This view's
+  sort on 'X' is no longer available").
+
+  The saved view itself is never silently rewritten by this fallback; it only changes if the
+  user explicitly saves over it.
+
+- b937b2b: `find`/`search` no longer `.collect()` the whole matching set to count it — a query above
+  Convex's ~32k-document transaction scan limit used to fail outright, and `totalDocs` reported
+  `null` once a collection crossed that threshold. Both now count at most
+  `admin.view.countLimit + 1` rows (`countLimit` default `10000`, collection-wide,
+  settable per view too; `search` always clamps it to `1023`, since a Convex search query returns
+  at most 1024 results) and return `totalDocs: number` always, plus a new
+  `totalDocsCapped: boolean` — `true` once the cap is hit, meaning the real count is `>=
+totalDocs`, not exact.
+
+  `usePaginatedQuery`'s own `totalDocs` no longer latches to the first response it ever saw: it
+  re-reads `totalDocs`/`totalDocsCapped` from every `cursor === null` response, so switching a
+  filter or view, or a live insert landing while the hook is mounted, updates the displayed
+  total — not just a one-time value frozen at first mount.
+
+  **Migration:** `totalDocs: number | null | undefined` stays the same TypeScript type (a
+  consumer handling `null` still compiles), but `null` is no longer a value either function
+  ever actually returns — replace a `totalDocs == null` "over 10,000+" fallback with
+  `totalDocsCapped` if you want the capped-count UI back.
+
+- b937b2b: Bumped `patch` despite being breaking, per this track's own `config-client-server-split`
+  convention — see that changeset's note on the `alpha` pre-release base.
+
+  `defineCollection`'s auto-injected `updatedAt` field switches from `date({ on: "save" })` to
+  the new `commitTs({ on: "save" })` field type — Convex's own database-stamped commit
+  timestamp (`v.commitTs()`), resolved to an `int64` the server converts to a plain Unix-ms
+  `number` before it's ever visible to a reader. `stampUpdatedAt` is removed entirely, replaced
+  by `stampCommitTsFields`, which stamps every `commitTs`-typed field (not just `updatedAt`) on
+  a configurable set of write events (`create`/`update`/`publish`/`unpublish`/`draftSave`, via
+  each field's own `on` policy).
+
+  A `where` clause on a `commitTs` field with a non-integer or non-finite number throws
+  `VexError({ code: "INVALID_WHERE" })` naming the field.
+
+  **No migration path** (pre-release, no-data-loss requirement waived by design): an existing
+  dev row's numeric `updatedAt` fails Convex schema validation the moment the regenerated
+  schema (`v.optional(v.commitTs())`) pushes. Unset `updatedAt` on every row before
+  redeploying, or drop the table. App-facing reads are unaffected — `find`/`get`/`search`
+  still return `updatedAt` as a plain Unix-ms number; only the write-time field type and the
+  injection default changed.
+
+- b937b2b: **Breaking: `readViews`/`createView`/`updateView`/`deleteView` (`VIEW_ACTIONS`) no longer
+  type-accept a field-permission map or a `{ where, filter, withIndex }` constrained-query
+  object** — both forms were always meaningless for them (a saved view is one whole
+  collection-level row in `vex_views`, never read or written per-field or per-document). The new
+  `ViewPermissionCheck<TUser, TOrg>` type is `boolean | ((props: { user, organization? }) =>
+boolean | undefined)` only — a single props object, matching every other permission callback's
+  shape (no `data`), so a future per-view property can be added later without another breaking
+  change.
+
+  **Migration:** a view action already returning a plain boolean or a boolean-returning callback
+  reading only `user`/`organization` needs no change. One that returned a field-permission map or
+  a constrained-query object now fails to typecheck — replace it with a boolean or a callback
+  that computes one. If such a config somehow reaches runtime anyway (an untyped config, an `as`
+  cast), it now fails closed with a dev-only console warning instead of being read as an implicit
+  allow.
+
 ## 0.1.0-alpha.27
 
 ### Patch Changes

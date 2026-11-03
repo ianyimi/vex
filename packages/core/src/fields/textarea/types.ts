@@ -50,8 +50,9 @@ import { VexResourceSlug } from "../../types";
  */
 export interface TextareaFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -82,7 +83,7 @@ export interface TextareaFieldInput<
  * Resolved configuration for a `textarea()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<TextareaField>` and `CellComponentProps<TextareaField>`
+ * `fieldDef` in `FieldComponentProps<TextareaField>` and `CellComponentProps<TextareaField>`
  * is this type.
  *
  * @see {@link TextareaFieldInput} for the user-facing input type

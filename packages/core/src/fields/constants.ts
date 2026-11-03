@@ -73,6 +73,14 @@ export const ADMIN_FIELDS = {
     kind: "data",
     inputMasks: false,
   },
+  commitTs: {
+    type: "commitTs",
+    interfaceType: "number",
+    validator: "v.commitTs()",
+    defaultValue: undefined,
+    kind: "data",
+    inputMasks: false,
+  },
   select: {
     type: "select",
     interfaceType: "string[]",
@@ -171,6 +179,7 @@ export const ADMIN_FIELDS = {
     inputMasks: false,
   },
 } as const;
+
 /** Union of all supported field type name strings (e.g. `"text"` | `"number"` | `"checkbox"` | ...). */
 export type AdminFieldType = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["type"];
 /** Union of all Convex validator strings for the supported field types (e.g. `"v.string()"` | `"v.number()"` | ...). */
@@ -199,6 +208,9 @@ export type CheckboxFieldType = typeof ADMIN_FIELDS.checkbox.type;
 /** Literal type `"date"` — the discriminant value on {@link DateField}. */
 export type DateFieldType = typeof ADMIN_FIELDS.date.type;
 
+/** Literal type `"commitTs"` — the discriminant value on {@link CommitTsField}. */
+export type CommitTsFieldType = typeof ADMIN_FIELDS.commitTs.type;
+
 /** Literal type `"select"` — the discriminant value on {@link SelectField}. */
 export type SelectFieldType = typeof ADMIN_FIELDS.select.type;
 
@@ -207,3 +219,30 @@ export type RelationshipFieldType = typeof ADMIN_FIELDS.relationship.type;
 
 /** Literal type `"array"` — the discriminant value on {@link ArrayField}. */
 export type ArrayFieldType = typeof ADMIN_FIELDS.array.type;
+
+/** Literal type `"textarea"` — the discriminant value on {@link TextareaField}. */
+export type TextareaFieldType = typeof ADMIN_FIELDS.textarea.type;
+
+/** Literal type `"group"` — the discriminant value on {@link GroupField}. */
+export type GroupFieldType = typeof ADMIN_FIELDS.group.type;
+
+/** Literal type `"blocks"` — the discriminant value on {@link BlocksField}. */
+export type BlocksFieldType = typeof ADMIN_FIELDS.blocks.type;
+
+/** Literal type `"upload"` — the discriminant value on {@link UploadField}. */
+export type UploadFieldType = typeof ADMIN_FIELDS.upload.type;
+
+/** Literal type `"richtext"` — the discriminant value on {@link RichTextField}. */
+export type RichTextFieldType = typeof ADMIN_FIELDS.richtext.type;
+
+/** Literal type `"json"` — the discriminant value on {@link JsonField}. */
+export type JsonFieldType = typeof ADMIN_FIELDS.json.type;
+
+/** Literal type `"tabs"` — the discriminant value on {@link TabsField}. */
+export type TabsFieldType = typeof ADMIN_FIELDS.tabs.type;
+
+/** Literal type `"collapsible"` — the discriminant value on {@link CollapsibleField}. */
+export type CollapsibleFieldType = typeof ADMIN_FIELDS.collapsible.type;
+
+/** Literal type `"row"` — the discriminant value on {@link RowField}. */
+export type RowFieldType = typeof ADMIN_FIELDS.row.type;

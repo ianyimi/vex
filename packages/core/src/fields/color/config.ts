@@ -52,9 +52,10 @@ import type { ColorFieldInput, ColorField } from "./types";
  */
 export function color<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 >(
-  options?: ColorFieldInput<TCollectionSlug, TFieldMeta>,
+  options?: ColorFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): ColorField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.color.type,
@@ -77,6 +78,8 @@ export function color<
       position: "main",
       width: "100%",
       cellAlignment: "left",
+      enableSorting: false,
+      enableHiding: true,
       // Optional admin properties (no defaults)
       placeholder: "",
       ...options?.admin,

@@ -8,6 +8,8 @@ import { createAuthClient } from "better-auth/react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
+import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth"
+
 import { env } from "~/env.mjs"
 
 /**
@@ -33,6 +35,13 @@ export const { signIn, signOut, useSession } = authClient
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 authClient.$store.listen("$sessionSignal", () => {})
 
+/**
+ * Also mounts `VexAdminAuthAdapterProvider` (`@vexcms/next/auth`) so the admin
+ * panel's top-bar sign-in/out control (`AdminTopNav`) has a `signInHref`/`signOut`
+ * to call. `signOut` signs out then refreshes either way (success or failure — a
+ * stale client cache after a failed sign-out is worse than a redundant refresh) so
+ * the admin panel's server-resolved auth state and route guard re-evaluate.
+ */
 export default function BetterAuthClientProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   return (
@@ -47,7 +56,18 @@ export default function BetterAuthClientProvider({ children }: { children: React
       }}
       replace={router.replace}
     >
-      {children}
+      <VexAdminAuthAdapterProvider
+        value={{
+          signInHref: (redirectTo) =>
+            `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}`,
+          signOut: () =>
+            signOut()
+              .then(() => router.refresh())
+              .catch(() => router.refresh()),
+        }}
+      >
+        {children}
+      </VexAdminAuthAdapterProvider>
     </AuthUIProvider>
   )
 }

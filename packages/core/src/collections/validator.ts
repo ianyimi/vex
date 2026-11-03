@@ -5,6 +5,7 @@ import { CollectionConfig } from "./types";
 import type { VexClientConfig } from "../config";
 import { CONVEX_SYSTEM_FIELDS } from "./constants";
 import { versionFieldsToVexSchema } from "../versions/schema";
+import { resolveCollectionIndexes } from "./resolveCollectionIndexes";
 
 /**
  * Describes a relationship field in another collection that points to a given collection.
@@ -130,8 +131,8 @@ export function resolveTitleSearchIndex(props: {
  *
  * Iterates the collection's fields, builds each field's Convex validator via
  * `adminFieldToValidator`, and appends index chains:
- * - `.index()` for fields with an explicit `field.index` property
- * - `.index("by_<fieldKey>", ["<fieldKey>"])` auto-generated for every relationship field
+ * - `.index()` for every index `resolveCollectionIndexes` resolves — field-level indexes
+ *   may be compound, and win over a collection-level entry of the same name
  * - `.searchIndex()` for fields declaring their own `field.searchIndex`
  * - a `.searchIndex(...)` for `useAsTitle` auto-generated when another collection has a
  *   relationship pointing HERE, via `resolveTitleSearchIndex` — reuses the `useAsTitle`
@@ -164,41 +165,10 @@ export function collectionConfigToVexSchema(props: {
   const fieldsBlock = [];
   const indexes = [];
   const searchIndexes: string[] = [];
-  for (const index of props.collection.indexes ?? []) {
-    if (index.draftStatus === true) {
-      indexes.push(`\t.index("${index.name}", ${JSON.stringify(["vex_status", ...index.fields])})`);
-    } else if (index.draftStatus === "both") {
-      indexes.push(`\t.index("${index.name}", ${JSON.stringify(index.fields)})`);
-      indexes.push(
-        `\t.index("${index.name}__draftStatus", ${JSON.stringify(["vex_status", ...index.fields])})`,
-      );
-    } else {
-      indexes.push(`\t.index("${index.name}", ${JSON.stringify(index.fields)})`);
-    }
-  }
 
   for (const [fieldKey, field] of Object.entries(getDataFields({ fields: props.collection.fields }))) {
     const validator = adminFieldToValidator({ field });
     fieldsBlock.push(`\t${fieldKey}: ${validator},`);
-
-    const fieldIndexName = field.index
-      ? field.index
-      : field.type === ADMIN_FIELDS.relationship.type
-        ? `by_${fieldKey}`
-        : undefined;
-    // collection indexes preferred since they can be compound indexes
-    if (fieldIndexName && !props.collection.indexes?.find((i) => i.name === fieldIndexName)) {
-      if (field.indexDraftStatus === true) {
-        indexes.push(`\t.index("${fieldIndexName}", ${JSON.stringify(["vex_status", fieldKey])})`);
-      } else if (field.indexDraftStatus === "both") {
-        indexes.push(`\t.index("${fieldIndexName}", ["${fieldKey}"])`);
-        indexes.push(
-          `\t.index("${fieldIndexName}__draftStatus", ${JSON.stringify(["vex_status", fieldKey])})`,
-        );
-      } else {
-        indexes.push(`\t.index("${fieldIndexName}", ["${fieldKey}"])`);
-      }
-    }
 
     if ("searchIndex" in field && field.searchIndex) {
       searchIndexes.push(`\t.searchIndex("${field.searchIndex.name}", {\n
@@ -207,6 +177,19 @@ export function collectionConfigToVexSchema(props: {
       })`);
     }
   }
+
+  for (const index of resolveCollectionIndexes({ collection: props.collection })) {
+    const plain = JSON.stringify(index.fields);
+    const prefixed = JSON.stringify(["vex_status", ...index.fields]);
+    if (index.draftStatus === true) {
+      indexes.push(`\t.index("${index.name}", ${prefixed})`);
+    } else if (index.draftStatus === "both") {
+      indexes.push(`\t.index("${index.name}", ${plain})`, `\t.index("${index.name}__draftStatus", ${prefixed})`);
+    } else {
+      indexes.push(`\t.index("${index.name}", ${plain})`);
+    }
+  }
+
 
   const relationships = getIncomingRelationships({
     collection: props.collection,
