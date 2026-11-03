@@ -1,5 +1,775 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.28
+
+### Patch Changes
+
+- a2441a0: Fixed form label, description, and field spacing — `FormFieldLayout` and `ui/field.tsx`
+  now space labels, descriptions, and controls consistently across every field type, so inputs
+  are better spaced and edit views are easier to scan.
+
+- b937b2b: Bumped `patch` despite being breaking, per this track's own `config-client-server-split`
+  convention — see that changeset's note on the `alpha` pre-release base.
+
+  **Breaking: a field-permission map that lists only some fields now ALSO hides system fields
+  and UI (`ui()`-type) fields it doesn't list, the same "hidden unless listed" rule that
+  already applied to data fields.** Field-permission maps accept the real system field names as
+  keys now — `_creationTime`, `updatedAt`, and `vex_status` (the last only on a
+  versioned/drafts-enabled collection) — plus `ui()`-type fields (e.g. a computed `wordCount`),
+  typed per collection. `_id` stays the one permanently ungateable key, always readable, never a
+  valid map entry. The wildcard key (`"*"`) covers system and UI fields too, same as before.
+  Stripping runs on every read path: `find`, `get`, `search`, and the versions endpoints.
+
+  **Migration:** a partial field-permission map that previously implicitly showed
+  `_creationTime`/`updatedAt`/`vex_status`/every `ui()` field (since there was no key to gate
+  them on) now hides them unless you add the key, or switch that map to `'*'`. Audit every role
+  in your `access.ts` after upgrading — `apps/test`'s and `apps/www`'s own configs needed exactly
+  this audit (e.g. a `guest` role's `posts` map gained an explicit `updatedAt` entry to keep
+  showing it, while deliberately leaving `vex_status`/`_creationTime` hidden).
+
+  One carve-out, unchanged: sorting by `_creationTime` is always allowed, even when its own
+  value is hidden from that caller — this was already correct before this change and is now
+  covered by an explicit regression test.
+
+  **Client:** a new `useCanReadField` hook (`@vexcms/react`) lets a component check "can I read
+  field X" for system/UI fields the same way it already could for data fields — used by the
+  peek's Created row, JSON tab, and hidden-fields notice.
+
+- 30b4c10: **Breaking: collection admin URLs moved to `/admin/collections/<slug>`.**
+  `/admin/<slug>` and `/admin/<slug>/<id>` now 404 — there is no redirect.
+  Global URLs (`/admin/globals/<slug>`) and the dashboard (`/admin`) are
+  unchanged.
+
+  Every in-app link (`adminHref`, sidebar, dashboard cards, globals list, every
+  field type's title-column `Cell.tsx`) already resolved through `adminHref` or
+  `NextAdminPage`'s own route parser, so this is a one-file change in each
+  package: `adminHref.ts`'s `"collection"`, `"document"` and `"create"` targets
+  now emit the `/collections/` prefix, and `NextAdminPage` now requires a
+  `collections/<slug>[/<id>]` or `globals/<slug>` first segment, `notFound()`ing
+  on anything else.
+
+  If you bookmarked or hand-built an admin collection URL outside this package
+  (a custom nav, an email link, a saved browser bookmark), update it to the new
+  `/admin/collections/<slug>` shape.
+
+- b937b2b: The admin panel's per-browser UI preferences (table row density, a collection's filter-chip
+  visibility, local saved views, last-seen row counts, the live-preview panel's open/closed
+  state and split width, the sidebar's collapsed state) consolidate from up to seven
+  separately-named cookies down to exactly two: `vex-admin` (shared, collection-agnostic) and
+  `vex-admin:<collection>` (one per collection). Both are scoped to `Path=<basePath>` (the
+  project's `VexClientConfig.basePath`, `/admin` by default) instead of the whole domain — a
+  public page never sends either cookie.
+
+  Retires `vex-list-density`, `vex-list-chips:<collection>`, `vex-list-views:<collection>`,
+  `vex-list-rows:<collection>`, `vex-live-preview-panel:<slug>`, `vex-live-preview-layout:<slug>`
+  (all previously at `path=/`), and the sidebar's own `sidebar_state`. `AdminLayout` clears every
+  retired name, best-effort, the first time a returning browser's admin shell mounts — nothing
+  to do on your end, and a visitor who never opens `/admin` keeps the old cookies around
+  harmlessly until they do.
+
+  Each project-scoped cookie stays well under the ~4KB browser cap: `localViews` entry names
+  longer than 40 characters are truncated, `rowCounts` is dropped first if the cookie would
+  still exceed the cap, then the oldest `localViews` entries one at a time — a dropped entry's
+  full view still exists in `localStorage`, only its first-paint tab placeholder disappears.
+  See the new `apps/docs/src/content/docs/guides/admin-cookies.mdx` guide for the full shape.
+
+- b937b2b: New shared `AdminNotFound` state, styled like `ListEmptyState`: icon, title ("Collection not
+  found" / "Global not found" / "Document not found"), a detail line, and a button back to the
+  dashboard (a document's own not-found goes back to its collection's list instead) — server-
+  rendered on first paint with zero layout shift, same frame size as settled content. Replaces
+  every ad hoc not-found placeholder string previously shown for an unknown collection, global,
+  or document.
+
+  Exported from `@vexcms/react`'s main entry (not `@vexcms/react/server`): its back button
+  uses `VexLink` for genuine in-app navigation, and `VexLink` depends on a `createContext`-
+  backed hook that the server entry's tsup bundling can't isolate behind its own `"use client"`
+  boundary (confirmed via `pnpm check:vercel` — a production build, unlike `next dev`, fails
+  statically on this). Rendering it as a client component from `NextAdminPage` (a Server
+  Component) costs nothing: React still renders a client component's own output into the
+  initial server-rendered HTML, same as `AdminTopNav`/`CollectionListView`/every other view
+  already does — only its interactivity hydrates afterward.
+
+- b937b2b: New sign-in/out control in the admin top bar, enabled by anonymous admin access via
+  `anonRole`: a visitor browsing the admin panel anonymously now has a visible way to sign
+  in, and a signed-in user a visible way to sign out, right from `AdminTopNav`.
+
+  `@vexcms/react`'s `FrameworkComponents` (`useFrameworkComponents`) gains an optional
+  `auth` field — a `{ signInHref, signOut }` adapter. Omitted (the default), the control
+  renders nothing, same as before this release. The signed-in/out determination itself
+  comes from the existing `useVexAuth()` (`{ user, organization }`, server-resolved, no
+  client-only flash) — `user === null` or `user.isAnonymous === true` (Better Auth's
+  `anonymous()` plugin convention) both render "Sign in"; anything else renders "Sign out".
+
+  Placement: the opposite edge of the bar from the sidebar-trigger/breadcrumbs/"View site"
+  cluster, derived from the SAME `config.admin.sidebar.side` the cluster itself reads — a
+  `"right"` sidebar puts the control at the far left, a `"left"`/default sidebar at the far
+  right.
+
+  `@vexcms/next` provides the Next.js adapter: `VexAdminAuthAdapterProvider`/
+  `useVexAdminAuthAdapter` from the new `@vexcms/next/auth` subpath. A context, not a prop
+  threaded through `NextAdminLayout`/your admin `layout.tsx`, because both of those are
+  server components and the sign-in href builder/`signOut` function are app-specific client
+  values that cannot cross that boundary as props — mount the provider anywhere above
+  `NextAdminLayout` in your own client tree (e.g. alongside your Better Auth client
+  provider) instead. See `VexAdminAuthAdapterContext`'s own doc comment for a full example.
+
+  `apps/test`, `apps/www`, and the `create-vexcms` `base-nextjs` template (inherited
+  unchanged by the `marketing-site` overlay) now wire this up in their own
+  `BetterAuthClientProvider`, so every scaffolded project gets the control by default with
+  no per-app configuration beyond the generated auth client itself.
+
+- b937b2b: Bumped `patch` despite being breaking, per this track's own convention (see
+  `config-client-server-split`'s changeset): the `alpha` pre-release keeps every package on the
+  `0.1.0` base, and the breaking surface is itemized here and in the commit's `BREAKING CHANGE:`
+  footer.
+
+  Removed `admin.table`/`CollectionTableConfigInput`/`CollectionTableConfig` entirely.
+  `admin.view` (the default view) and `admin.views` (preset views) now carry everything that
+  used to live on `admin.table`, not just view identity: `name?`, `description?`, `where?`,
+  `sort?`, `pageSize?`, `searchField?`, `columns?`, plus the collection-wide settings
+  `searchFields?` (renamed, plural, from the old `admin.table.searchField` — it was colliding
+  with this same shape's own per-view singular `searchField`), `pageSizeOptions?`,
+  `countLimit?`, `serverPageSize?`, and `bulkActions?`. `admin.views[n]` accepts the identical
+  shape — a preset view can override any collection-wide setting too, falling back to
+  `admin.view`'s own resolved value, then the global default.
+
+  **`@vexcms/core`.** `columns` entries are now `ColumnEntry<TFieldSlug> = TFieldSlug |
+{ field, width?, pinned?, hidden?, enableSorting?, enableHiding? }` — order, visibility, pin
+  side, width, and the sortable/hideable capability flags are all one array, one per-field
+  entry; a view's own entry always wins over `field.admin.*`, which is only consulted when
+  unset. `field.admin.width` is renamed `columnWidth` (the existing `width` key is the field's
+  own CSS row-width in the edit form, an unrelated axis). The reserved id for the always-first
+  selection-checkbox column is `"select"`; a versioned collection's synthetic `vex_status`
+  status column is a full `ColumnEntry` participant (reorderable/hideable/pinnable/resizable),
+  with an existing saved view's absence of `vex_status` back-filling as unpinned-but-visible,
+  first position — not hidden, so no pre-existing view silently loses its status badge.
+  `validateTableConfig.ts` is renamed `validateViewConfig.ts`; its checks now run per view
+  (`admin.view` and every `admin.views[n]`), and a view's own `enableSorting: true` override
+  still must lead a declared index, same as a field's.
+
+  **`@vexcms/react`.** Every `visibleColumns`/`columnOrder`/`columnPinning` consumer collapses
+  onto the one `columns: ColumnEntry[]` prop/state; `getCollectionColumnDefs` now resolves each
+  field's `enableSorting`/`enableHiding` through `resolveColumnConfig` (the view's own entry can
+  override a field's own default) instead of reading `field.admin.*` directly.
+
+  **Migration:** every `admin.table.*` config key, column ordering/visibility/pinning state, and
+  reader across core/react/next is moved — there is no shim or dual-read period.
+
+- 4d504e7: **Breaking — `find` and `search` take `where` instead of `filter`.** Fields are named
+  directly, with no `q.field(...)`:
+
+  ```ts
+  // before
+  find({
+    ctx,
+    collection: "posts",
+    filter: (q) => q.eq(q.field("published"), true),
+  });
+  // after
+  find({ ctx, collection: "posts", where: (q) => q.eq("published", true) });
+  ```
+
+  `where` uses the same builder as access rules: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `and`,
+  `or`, `not`. `withIndex` is unchanged at the call site; its `range` is now typed from your
+  generated index declarations rather than the Convex data model.
+
+  **Breaking — access rules: `constraints` splits into `withIndex` and `where`.** Each maps onto
+  the `find` argument of the same name. `withIndex` (query actions only) is the same
+  `{ name, range }` object `find` takes, or a function of the caller returning one; `where`
+  builds a predicate with `q`. Either callback may return `true` (no restriction from this half)
+  or `false` (deny). The rule-level `filter` property is unchanged. Any combination is allowed.
+
+  ```ts
+  // before
+  read: { constraints: ({ q }) => q.withIndex("by_status", (ix) => ix.eq("status", "published")) }
+  read: { constraints: ({ user, q }) => q.withIndex("by_author", (ix) => ix.eq("author", user._id)) }
+  update: { constraints: ({ user, q }) => q.filter((f) => f.eq("author", user._id)) }
+  // after
+  read: { withIndex: { name: "by_status", range: (ix) => ix.eq("status", "published") } }
+  read: { withIndex: ({ user }) => ({ name: "by_author", range: (ix) => ix.eq("author", user._id) }) }
+  update: { where: ({ user, q }) => q.eq("author", user._id) }
+  ```
+
+  `@vexcms/react/testing`'s access fixtures use the new shape.
+
+  **Breaking — a field's `index` takes a name or an object; field-level indexes win.**
+  `index: "by_slug"` is unchanged. The object form `index: { name, additionalFields?, draftStatus? }`
+  declares a compound index led by the field, and replaces the sibling `indexDraftStatus`:
+
+  ```ts
+  // before
+  author: relationship({
+    to: "users",
+    index: "by_author",
+    indexDraftStatus: true,
+  });
+  // after
+  author: relationship({
+    to: "users",
+    index: { name: "by_author", draftStatus: true },
+  });
+  // new: compound index led by the field → .index("by_author_status", ["author", "status"])
+  author: relationship({
+    to: "users",
+    index: { name: "by_author_status", additionalFields: ["status"] },
+  });
+  ```
+
+  - An explicit field-level index now wins over a collection-level `indexes` entry of the same
+    name (previously the collection-level entry won), which wins over a relationship field's
+    automatic `by_<fieldKey>` index. A relationship field that wants `draftStatus` on its
+    automatic index names it explicitly, as above.
+  - Two fields declaring the same index name now throw at `defineCollection`. Previously the
+    schema emitted both (which Convex rejects) while the generated types merged them.
+  - `additionalFields` names are checked against the collection's fields at `defineCollection`.
+    Field factories take the field's own key as an optional second generic
+    (`text<"articles", "slug">`) to type `additionalFields` against the collection's other
+    fields; `TFieldMeta` moves to the third generic.
+
+  **New — `VexError`.** Throw it from a field's `validate()` instead of `ConvexError`; the admin
+  receives the same structured data with the failing `field` added.
+
+  **New — `where` accepts a plain data form.** Besides the builder callback, `where` now also
+  accepts `VexWhereNode<S>`, the same filter as plain JSON — for a filter that needs to be saved
+  or sent over the wire, which a function cannot be:
+
+  ```ts
+  find({
+    ctx,
+    collection: "posts",
+    where: { and: [{ field: "featured", op: "eq", value: true }] },
+  });
+  ```
+
+  Convert a builder callback to this shape with `whereToNode`; validate an untrusted one (a
+  saved view, a URL param) with `validateWhereNode`, which throws a `VexError` on a malformed
+  shape (including an empty `and` / `or`), an unknown operator, or an unknown field name.
+
+  **New — `where` on the client.** `find` and `search` from `@vexcms/react/client` accept
+  `where` in either form; a callback is converted to the plain form before it is sent. A `where`
+  on a field the caller cannot read (field-level RBAC) excludes the documents where it is hidden,
+  so a filter cannot be used to probe hidden values.
+
+- b937b2b: **Breaking (narrow): `Button`'s icon+label content is no longer space-between by default.**
+  Grouped/centered content (icon and label staying together, centered within a stretched-width
+  button) is now the default; space-between is an explicit opt-in via the new
+  `contentJustify?: "center" | "between" | "start"` prop (default `"center"`). The previous
+  default was correct for exactly one caller (a full-width mobile view-switcher wanting a
+  label-left/icon-right split) and visibly wrong for every other full-width labeled button,
+  which wants its icon and label to stay grouped together.
+
+  **Migration:** a full-width labeled `Button` that relied on the old space-between default
+  needs `contentJustify="between"` added explicitly to keep that layout — everything else
+  renders correctly with no change. `"start"` is new, for a left-aligned icon+label pair (e.g. a
+  menu-style overflow item) that shouldn't center within extra width.
+
+  Also fixed in the same pass: `hasLabel` (drives the icon's own margin) now correctly ignores a
+  raw icon element passed as `children` with no `icon` prop, and respects an explicit
+  `iconPosition="center"` even when `children` is present (an `sr-only` accessibility label no
+  longer miscounts as visible label content).
+
+- f837f20: Breaking (pre-0.1.0): `@vexcms/core/convex` is removed — it was always an identical alias of
+  `@vexcms/core/server`. Import `collectionsApi`, `globalsApi`, `versionsApi`, `vexServerApi`,
+  `createVexCallbackApi` and every raw server function from `@vexcms/core/server` instead; no
+  export name changes, only the subpath goes away.
+
+  Internal: `src/api/` is dissolved — collection, global and version server operations now live
+  beside their domain (`collections/api/`, `globals/api/`, `versions/api/`), `media/api/` moved
+  to the same `<op>/server.ts` scheme, and the shared read/write pipeline moved to `src/db/`.
+  All four document shapes (`VexDocument`/`TDocument`/`VexVersionDocument`/`VexMediaDocument`)
+  now live together in `src/documents/types.ts`, re-exported from `src/versions/`/`src/media/`
+  for feature-barrel importers; version constants never moved. `vexConvexApi` moved from
+  `api/convex.ts` to its own `src/vexConvexApi.ts`. No
+  public import path outside the removed `./convex` subpath changes.
+
+  Breaking (pre-0.1.0): `@vexcms/react`'s admin field components are renamed —
+  `TextFieldInput`/`EmailFieldInput`/`TextareaFieldInput`/`JsonFieldInput`/`UrlFieldInput`/
+  `NumberFieldInput`/`CheckboxFieldInput`/`SelectFieldInput`/`DateFieldInput`/`ColorFieldInput`/
+  `ArrayFieldInput`/`BlocksFieldInput`/`GroupFieldInput`/`RelationshipFieldInput`/
+  `UploadFieldInput`/`RichTextFieldInput` are now `TextFieldAdmin`/`EmailFieldAdmin`/…/
+  `RichTextFieldAdmin` (matching the existing `*FieldCell` pairing). The old `createFieldInput`
+  factory and its entire `components/form/` module (`AppForm`, `AppFormContext`, `FormArray`,
+  `FormBlocks`, `FormGroup`, `FormTabs`, `FormCollapsible`, `FormRow`, `FormUI`, `FormLabel`,
+  `FormError`, `FormDescription`, `RenderFields`, `FieldConditionGate`) are removed — every admin
+  field now composes through the new `@vexcms/react/form` entry (`useAppForm`, `AppForm`, the
+  `forms/*Field.tsx` components) instead. `useAppForm`/`AppForm` are now also re-exported from
+  `@vexcms/react`'s root for callers who only need the app form, not its full `/form` surface.
+
+  Breaking (pre-0.1.0): `@vexcms/core`'s `InputComponentProps` is removed — it was the per-field
+  edit-form props shape; `FieldComponentProps` now carries that same shape directly (no more
+  `extends InputComponentProps`), and the new `FieldControlProps` is the narrower shape an
+  `admin.components.Input` control-level override receives. `admin.components.Field` is a new
+  whole-field override slot, composed the same way `admin.components.Input` already was.
+
+- b937b2b: New `/admin/collections` route — a collections-only index page (`CollectionsIndexView`,
+  exported from `@vexcms/react`), in the same card-grid style as the dashboard but showing
+  only collections and media collections, no globals. Reuses a new shared section
+  component, `AdminCardSection`, also now exported — `DashboardView` and `GlobalsListView`
+  were refactored onto it so all three index pages render identical markup instead of three
+  near-copies.
+
+  `AdminHrefTarget` gains `{ type: "collections" }` (→ `/{basePath}/collections`), parallel
+  to the pre-existing `{ type: "globals" }`. `NextAdminPage`'s route parser renders the new
+  `CollectionsIndexView` for `collections` with no slug — previously a `notFound()`.
+  `AdminTopNav`'s breadcrumb trail gains a "Collections" crumb for the new route, parallel
+  to its existing "Globals" crumb.
+
+  **Breaking (narrow): `GlobalsListView` is now permission-filtered.** It used to render
+  every configured global unconditionally — not a real boundary, since `/admin/globals` is
+  reachable directly by URL for any caller, including an anonymous one via `anonRole`. It
+  now runs the SAME `hasPermission` (`read`, `scope: "any"`) check `DashboardView`'s own
+  Globals section already ran, so a caller only sees globals they can actually read. A
+  project whose `access.ts` already grants broad global read access sees no behavior
+  change; one relying on the sidebar/dashboard alone to hide an unreadable global's card
+  from `/admin/globals` directly should audit that this is now enforced at the route level
+  too (it always was at the data level — Convex's own per-query RBAC never depended on this
+  component).
+
+  The "collection not found" / "global not found" screens' back links now point at the new
+  collections/globals indexes (`/admin/collections`, `/admin/globals`) instead of the
+  dashboard — more specific, since the caller was trying to reach something under that
+  section.
+
+  Both index pages now show a proper empty state (`AdminIndexEmptyState`, also exported —
+  same visual shape as `ListEmptyState`'s own `"empty"` variant) when the caller can read
+  nothing at all, instead of silently rendering nothing below the page title.
+
+- b937b2b: Bumped `patch` despite being breaking, per this track's own `config-client-server-split`
+  convention — see that changeset's note on the `alpha` pre-release base.
+
+  The list URL's `cols=` parameter changes grammar from a plain comma-separated field-slug list
+  (`cols=title,author,status`) to `cols=<field>[:w<width>][:pl|:pr][:h]`, comma-separated, one
+  suffix combination per entry in a fixed order — carrying the full per-column state
+  (width, pin side, hidden) that `ColumnEntry` now unifies, not just display order. A bare field
+  slug with no suffixes still parses (a previously-shipped order-only `cols=` link keeps
+  working), but `serializeListParams` never emits the old grammar again. Diff-only against the
+  active view's own resolved array, always present for an active `local` view, unchanged.
+
+  No back-compat shim for a stored view's own `columns` array: an old view's bare-slug-only
+  array parses fine (every entry is a valid bare-slug `ColumnEntry`), it just has no width/pin
+  overrides until resaved.
+
+- 30b4c10: Duplicate document. A `vex.duplicate` built-in, gated on the `create` permission, clones the
+  current document on every non-media collection (not globals, not media) — stripping `_id`,
+  `_creationTime`, `_status`, `_version` and timestamps and regenerating array/block item ids —
+  and creates it. On success it navigates to the new document; on a unique-value conflict it
+  opens a create modal prefilled with every field (`CreateDocumentForm`/`CreateDocumentModal`
+  gain `fields: "all"`, `initialValues`, and `submitOnOpen`) and submits immediately, so the
+  existing failed-submit focus/reveal behavior lands on the conflicting field. A duplicated
+  document in a versioned collection always creates as a draft.
+
+  Duplicate renders alongside a manual Revalidate purge (`vex.revalidate`) in the new
+  `edit.actionsMenu` ⋯ menu to the left of the status badge, not in `edit.header.actions` —
+  developer feedback after the initial header-actions placement moved both out of the primary
+  button row.
+
+- 30b4c10: Edit-view extension points. Eight new slots under `admin.components.edit` — `header.actions`,
+  `header.before`, `header.after`, `actionsMenu`, `beforeFields`, `afterFields`, `sidebar.before`,
+  `sidebar.after` — for collections and globals, resolved root → resource level with the same
+  `order`/`before`/`after`/`hidden`/`access`/`condition` model as every other slot. Save,
+  Publish, Unpublish, Delete, Cancel and the live-preview toggle are now
+  `vex.*` built-in contributions in `edit.header.actions`, from `BUILTIN_CONTRIBUTION_IDS.edit`
+  (left to right: Preview, Save, Publish-or-Unpublish, Cancel, Delete) — hideable,
+  reorderable, and wrappable through a new per-slot `overrides` map keyed by built-in id
+  (`overrides: { "vex.save": [...] }`). An override keyed to an id outside that slot's resolved
+  list throws `VexComponentConfigError`. Save (Draft)/Publish-or-Unpublish/Cancel are always
+  rendered, greyed out when inapplicable rather than hidden by state (layout never shifts).
+  `vex.publish`/`vex.unpublish` share one spot — exactly one renders at a time, with a shared
+  minimum width so the swap never shifts neighbouring buttons. Delete carries a trash icon on
+  its header button, its collapsed ⋯ menu item, and its confirm dialog's own Delete button.
+  `vex.versionHistory` ("History") moved out of `edit.header.actions` into the new
+  `edit.actionsMenu` — see below. A new `edit.actionsMenu` slot holds a ⋯ menu for
+  less-used actions — see the `duplicate-document` changeset for its other built-ins — rendered by
+  `DocumentEditActionsMenu`/`EditActionsMenuItem`, with a new `useEditActionsMenuDialog()` hook
+  for a menu item whose action opens a dialog after the menu has already closed. History renders
+  through this menu (right after Preview, when Preview is also collapsed in) as
+  `VersionHistoryMenuItem`, opening the same version list `VersionHistoryDropdown` renders
+  standalone in a dialog through that hook.
+
+  The header row stays on one line at every width instead of wrapping: the title truncates first
+  (measured, via a new `useHeaderActionsCollapse` hook), and only once it can't shrink any
+  further does `vex.livePreview`, then `vex.delete`, then (narrower still) `vex.cancel` move into
+  `edit.actionsMenu` — a versioned document's Save Draft/Publish-or-Unpublish/Cancel/⋯ set alone
+  can outgrow a ~375px header even with the title and both other candidates already collapsed.
+
+  `SlotAccessContext`'s `access` predicate (every `ComponentContributionInput`) gained an optional
+  `resource?: EditSlotProps`, populated for every `edit.*` slot (`undefined` for field-level
+  slots, which have no single resource kind) — lets a contribution that only makes sense for one
+  resource kind (e.g. a collection document's own id) declare that declaratively via `access`
+  instead of returning `null` at render time, which left a dead, empty ⋯ trigger on a resource
+  with nothing else in its menu (a project's root-level `edit.actionsMenu` item resolved as
+  present, even though it always rendered nothing for a global).
+
+  New `useVexDocument()` hook (`@vexcms/react`) exposes document-level state — `kind`, `slug`,
+  `id`, `saved`, `isDirty`, `status`, `canEdit` — to built-in and third-party edit-view
+  contributions; it throws outside its provider, which both edit views now mount.
+
+  Every override layer — in field `Input`/`Cell` chains and in the new edit-slot `overrides` —
+  now renders inside its own `ComponentErrorBoundary` keyed by the override id; a throwing
+  wrapper renders the layer beneath it plus an inline error instead of breaking the view. This
+  changes the field-override error behavior shipped in the field-input-consistency-pass
+  changeset.
+
+- b937b2b: New optional `display` field component slot, beside `field`/`cell`/`filterInput`.
+
+  `reactAdapter.fields[type]` now accepts a `display` component — a read-only
+  presentation of a field's value, used anywhere a value needs to be shown
+  without a form around it (the collection list's row-inspect peek is the
+  first consumer). `DisplayComponentProps<TField>` (new, `packages/core`):
+  `field`, `value`, `document`, `collection` — no table row, title-link
+  behavior, or column key, unlike `CellComponentProps`.
+
+  New `fieldToDisplayComponent(type)` (`@vexcms/react`) resolves a type's
+  registered `display`, falling back to its registered `cell` (adapted,
+  `isTitleField` forced `false`) when no `display` is registered — every data
+  field type resolves to something.
+
+  Nine built-in types register a dedicated `display`: `text`/`textarea` (full
+  value, unlike their `cell`'s truncation), `json` (the real `JsonEditor`,
+  read-only), `richtext` (the configured editor adapter's own
+  `renderComponent`, falling back to plain text with no adapter configured),
+  `relationship`/`upload` (one chip per related doc/file, titled, with the raw
+  id always reachable), and `group`/`array`/`blocks` (recurse into their own
+  sub-fields' `display`s, via the new shared `fields/DisplayFieldList.tsx`).
+  Every other data field type (`date`/`commitTs`/`checkbox`/`select`/
+  `number`/`email`/`url`/`color`) registers none — its `cell` is already a
+  reasonable read-only presentation.
+
+- b937b2b: Declared (config/default) and shared-view filters behave consistently around field
+  readability, closing several gaps the new access-system-fields rules exposed.
+
+  A config/default view's own hidden `where`, and an ACTIVE, UNMODIFIED shared view's own saved
+  `where`, both still apply server-side regardless of whether the current viewer can read the
+  field they reference (same treatment `vex_status`'s draft/publish filtering already had) — the
+  viewer never sees the value (no column, chip, or peek row for it), the view shows its
+  hidden-filter badge, and the viewer can't add their own filter on that field. The moment a
+  caller edits a shared view's own filter, it becomes their own and is checked like any other
+  user-supplied condition.
+
+  A user-added (URL or local-view) filter condition on a field the caller can no longer read is
+  now dropped BEFORE the query is built, not just hidden from the chip row after the fact — the
+  server already rejected it, so a dropped-but-still-sent condition used to produce a silently
+  broken or empty query with no visible chip to remove it. A small dismissible toolbar notice
+  explains the drop, naming the field's display label (aligned with the existing stale
+  sort/search notices, which also now show the label instead of the raw key).
+
+  **Bug fix:** a fully readable shared view's own saved filter now renders as normal, editable
+  chips (previously invisible for every caller, since an unmodified shared-view link carries no
+  URL-embedded filter state to read from) — new `resolveEffectiveFilterWhere` resolves the
+  right source (URL override, else the active shared view's own `where`, else nothing) for the
+  chip row, the visibility toggle, and the filter count badge alike.
+
+- b937b2b: Renamed 10 client-helper functions that internally call `useConvexMutation` to their plain
+  name with a `use` prefix: `create`→`useCreate`, `update`→`useUpdate`, `remove`→`useRemove`
+  (`collections/api/*`), `updateGlobal`→`useUpdateGlobal` (`globals/api/upsert`),
+  `saveDraft`→`useSaveDraft`, `publish`→`usePublish`, `unpublish`→`useUnpublish`,
+  `deleteVersion`→`useDeleteVersion` (`versions/api/*`), and `saveView`→`useSaveView`,
+  `removeView`→`useRemoveView` (`collections/api/{saveView,removeView}`).
+
+  A function that calls a hook internally but isn't itself named with a `use` prefix is treated
+  as a plain, memoizable value by the React Compiler (`reactCompiler: true`, enabled in
+  `apps/test`) — on a later render the compiler can skip re-invoking it entirely, silently
+  dropping the internal `useConvexMutation` call and crashing with a hooks-order mismatch. This
+  surfaced live as a real crash in `ListViewModifiedControls.tsx`'s `saveView()`/`removeView()`
+  calls; renaming those two first, then sweeping every other case of the same shape, fixes the
+  hazard at its root rather than per-call-site.
+
+  No behavior change — every renamed function has the identical signature and return shape, just
+  a new name. Every call site across `@vexcms/react`/`@vexcms/next` is updated; there is no
+  re-export under the old name.
+
+- b937b2b: The collection list view is rebuilt around a URL-driven, server-prerendered `CollectionListView`:
+  per-collection search, sort, an AND/OR filter builder with per-field `FilterInput` components,
+  column visibility/order/pinning/resizing, page size, density, local (`localStorage`) and shared
+  (`vex_views` table, `listViews`/`saveView`/`removeView`) saved list views, a peek panel, per-row
+  actions (`list.row.actions` slot) and inline bulk actions (`list.bulkActions` slot). Data loads
+  through the new `useVexListQuery` / `useVexDocQuery` hooks, prefetched by `NextAdminPage` on the
+  server. See the List views guide.
+
+  **Structure + renames (no aliases).** Core `collections/` splits into `savedListViews/`,
+  `listView/`, and `query/`; React `collections/listView/` gains `toolbar/`, `create/`,
+  `savedListViews/`, `filters/`, `peek/`, `rowActions/` subfolders. Exported names follow:
+  `composeViewWhere` → `composeSavedListViewWhere`, `parseListParams`/`serializeListParams` →
+  `parseListViewUrlState`/`serializeListViewUrlState` (`ListParams` → `ListViewUrlState`),
+  `resolveListQueryState` → `resolveListViewQueryState`, `resolveColumnConfig` →
+  `resolveListViewColumnConfig`, `ListPreferences`/`parseListPreferences` →
+  `ListViewConfigCookieValues`/`parseListViewConfigCookies`, `ListViewsIndexEntry` →
+  `LocalSavedListViewsIndexEntry`, `BulkDeleteModal` → `DataTableBulkDeleteModal`,
+  `CreateDocumentModal`/`CreateDocumentForm` → `ListViewCreateDocumentModal`/`ListViewCreateDocumentForm`,
+  `ListViewTabs` → `SavedListViewTabs`, `ListFilterBuilder` → `ListViewFilterBuilder`, `ListPeek` →
+  `ListViewPeek`. `VexConfigError` now lives in core's `errors.ts`; `DENSITY_ROW_CLASS` moves from
+  `@vexcms/core` to `@vexcms/react`. `useListViewContext` (formerly internal `useCollectionList`) is
+  now exported from `@vexcms/react` for custom list slot contributions.
+
+  **Migration:** rename imports per the list above; there are no deprecated aliases.
+
+- b937b2b: Fixed the list view's view-tab row (`ListViewTabs`):
+
+  - **Double menu on click.** Clicking the "All views" overflow trigger could open two menus
+    at once — one correctly positioned, one at the viewport's top-left corner. Root cause: up
+    to four per-breakpoint overflow triggers could be mounted simultaneously (depending on how
+    many saved views a collection had), all sharing one `open` boolean — opening the
+    CSS-visible one also opened every other mounted trigger's popover, including a CSS-hidden
+    one whose zero-size anchor portalled its content to the top-left corner. Fixed by
+    collapsing to exactly one trigger, always, with no per-breakpoint duplicates.
+  - **Tab overflow is now content-aware**, not a fixed per-breakpoint guess. The tab row wraps
+    via `flex-wrap` inside a fixed one-line-height, `overflow-hidden` container — whatever
+    doesn't fit the first line wraps onto an invisible second-plus line and is fully clipped
+    (never partially cut, never scrolled). Every saved view's tab is reachable from the "All
+    views" menu regardless of whether its own tab fits. Pure CSS/container-query, zero
+    `ResizeObserver` measurement, no layout shift.
+  - **Tabs size to their own content on medium/large screens**, not stretched to fill the row —
+    Save view/⋯/the views trigger sit right after the tabs, not pushed to the far edge. The
+    tab-wrap container can still shrink (triggering the clip-and-overflow behavior above) but
+    no longer grows to fill available space.
+  - **The view-switcher trigger's label**: a static "All views" on medium/large screens (where
+    the tab row itself is visible, so the active tab's own underline already shows which view
+    is active) — only below a narrow container breakpoint, where the tab row and Save
+    view/⋯ hide and the trigger is the only thing left, does the label become the active
+    view's own name (e.g. "Published"), so the caller can still tell which view is active.
+    Both labels render unconditionally in the markup; pure CSS (container-query classes)
+    decides which is visible, so the server-rendered HTML is identical to the hydrated DOM.
+  - **SSR-correct**, including for an active SHARED view. `ListViewTabs` no longer splits its
+    tab strip into a `useSuspenseQuery`-inside-`<Suspense>` piece — that split existed only to
+    stream shared views in once `NextAdminPage`'s `listViews` prefetch was deliberately
+    un-awaited; that prefetch is now unconditionally awaited (an earlier fix), so by render
+    time the data is always already resolved, and the nested Suspense boundary turned out to
+    have a cost of its own even then (React's streaming SSR ships a nested boundary's fallback
+    in the first flush regardless of whether the underlying query had to wait at all). Reverted
+    to the plain `useListViews()` hook everywhere; confirmed via curl that the raw SSR HTML for
+    a shared-view URL now contains that view's real name in the trigger directly, no
+    flash-then-swap.
+  - **The shared-views error notice still works.** Removing the `<QueryErrorBoundary>` (part
+    of the now-retired Suspense split) could have dropped the existing "Couldn't load shared
+    views · Retry" toast — it didn't: `useListViews` now exposes `isError`/`error`/`refetch`
+    directly, and `ListViewTabs` surfaces the same notice from a plain `useEffect`, with the
+    tab row falling back to its default/config/local-only shape (same as a loading state —
+    zero shift) and Retry calling the query's own `refetch`.
+
+- 30b4c10: **Live preview no longer takes over the page when the window narrows.** `isMobile` (from
+  `useIsMobile()`, the 768px breakpoint) used to gate the SAME `LivePreviewPanel` between a
+  `ResizablePanel` and a bare `fixed inset-0` div — so narrowing the browser past that
+  breakpoint while the desktop split was open flipped straight into a full-screen takeover
+  with no warning, nothing to dismiss it but the panel's own close button.
+
+  `useLivePreviewPanelState` now owns the full responsive state machine: narrowing past the
+  breakpoint while open auto-closes the panel and remembers the close was automatic; widening
+  back past it reopens the panel ONLY if nothing explicit happened while narrow (any toggle —
+  open or close — clears that memory, so it then stays however the user left it). Automatic
+  transitions never write the `vex-live-preview-panel:<slug>` cookie; only an explicit
+  `toggle()` does, so a refresh at desktop width still respects the user's last deliberate
+  choice.
+
+  Opening the panel below the breakpoint (the header button or the ⋯ menu's "Preview" item)
+  now shows a new `LivePreviewMobileOverlay` — a `ui/sheet.tsx` bottom sheet, built on Base UI's
+  `Dialog`, that slides up and covers the screen except a thin strip of the page at the top.
+  Esc, a backdrop tap, or `LivePreviewPanel`'s own close button all dismiss it; focus is
+  trapped and the page behind doesn't scroll, for free from the Sheet primitive. The toolbar
+  keeps its existing `justify-between` layout (preview-in-a-new-tab link on the left, close on
+  the right).
+
+  `LivePreviewToggleAction`'s pressed icon and the ⋯ menu item now read the panel's `isOpen`
+  directly (previously `isSplit`, which read `false` while the mobile overlay was open —
+  leaving the header button showing "closed" even though the overlay was visibly open).
+
+- b937b2b: The document peek panel is now resizable on desktop: a drag handle on its left edge (same
+  look and keyboard behavior as a `DataTable` column resize — full-height highlight on
+  hover/focus/drag, a grip, `role="separator"`, `ArrowLeft`/`ArrowRight`), clamped to
+  `[320px, 60vw]`. The width persists per view, mirroring `pageSize`'s own mechanics — but ONLY
+  for a view that has its own saved width: that view shows "Modified" when the current width
+  differs and Reset restores the saved one, while a view with no saved width (the default "All"
+  view and any config view that never set one included) never shows "Modified" for peek width
+  and Reset leaves it alone — it's just a remembered preference there, not view state. Saving a
+  view that has no saved width only starts saving one if you resized the peek while that view
+  was active. It survives a reload via the same admin preference cookie every other
+  per-collection UI preference uses.
+
+  The panel is also now structurally ONE element at every viewport width, switching between a
+  full-width bottom sheet and a fixed right panel via plain CSS instead of two separately
+  mounted layouts, and now renders BEFORE the table in DOM order — both changes together are
+  the confirmed, controlled fix for a hard browser freeze that could occur opening or navigating
+  the peek on certain rows (reduced from two separate, structurally different root causes found
+  across this investigation, not a single simple bug).
+
+  A few smaller peek changes land in the same pass: Previous/Next now WRAP within the loaded
+  rows (Previous on the first row jumps to the last, Next on the last jumps to the first) instead
+  of disabling at either end; the header's edit-page link reads "Edit" instead of the previously
+  ambiguous "Open" (the row ⋯ menu's matching action was renamed the same way); the panel's
+  sidebar offset now animates in lockstep with the admin sidebar's own toggle instead of jumping
+  instantly; the JSON tab now reads from a dedicated raw (depth-0) fetch instead of the same
+  populated row the Fields tab uses, so a relationship/upload field shows its actual stored id(s)
+  there, not a populated document; and the panel remembers which tab (Fields or JSON) you last
+  had open, admin-wide, the same way density/sidebar-collapsed state already persist.
+
+  No public API change — this is an internal implementation change to an existing component
+  (`ListPeek`) with new persisted user preference state, not a new prop or exported type.
+
+- b937b2b: The edit view's Publish button now shows its pending spinner while a publish is in flight —
+  `VersionPublishAction` passes `isPending` from its `useVexMutation` to the button, which it
+  previously never did.
+- b937b2b: Load errors are now region-specific instead of an uncaught boundary or a silently blank
+  screen, each region reusing one shared error-boundary-style component with
+  `QueryErrorResetBoundary` for retry.
+
+  The table reuses the existing `ListQueryError` (generic "Couldn't load <plural>" + Retry; an
+  `UNINDEXED_SORT` failure offers "Remove sort" instead) — the toolbar stays usable, same frame
+  size as the table, zero layout shift. A peek that fails to load or isn't accessible shows the
+  existing "Can't show this document" copy either way — not-found and no-access read
+  identically, by design, no existence leak. A shared-view tab fetch failure leaves the
+  default/config/local tabs rendering and shows a small inline "Couldn't load shared views ·
+  Retry" in just the shared slot.
+
+  `useVexDocQuery` now returns an `error` field; the three edit views (collection/global/media)
+  show an inline error state with Retry instead of rendering a blank form when it's set.
+
+- b937b2b: Removed `CollectionListViewProps.initialData`/`.initialQueryError`/`.initialViews`/
+  `.initialPeekDoc` and `ListPeek.initialDoc`, along with the client branches that only existed
+  to support them (e.g. the `hasLiveQueryResultRef` fallback) and their tests. Nothing in the
+  codebase wrote to any of them — `NextAdminPage` and every other caller already seed the
+  TanStack Query cache instead.
+
+  **Migration:** if you were passing any of these props from a non-Next integration, prefetch
+  through the query cache instead — call the same query (`useVexListQuery`'s underlying
+  `findPaginated`/`search`, or the single doc-query key builder for a peek/edit view) on the
+  server and hydrate the `QueryClient` you hand to the client tree, the same way `NextAdminPage`
+  does. There is no `initial*`-prop seeding path left to fall back to.
+
+- b937b2b: Typing in the list search box no longer flashes the table to a loading skeleton and then an
+  empty state before settling — the previous results stay on screen (dimmed, same treatment a
+  view switch already gets) while a debounced search resolves, then swap in place with no
+  skeleton or empty-state flash in between.
+
+  Three compounding causes fixed together: the table's seed query re-suspended on every
+  search/sort/filter change with no previous-page fallback to fall back to; switching between
+  find-mode and search-mode pagination lost the OTHER mode's still-valid previous results the
+  instant the dispatch target changed; and the debounce itself was buggy (see the
+  `use-debounced-value` changeset). `isFetching`/`isPlaceholderData` are also unreliable signals
+  against a live Convex subscription (updates arrive via the websocket's own cache push, never a
+  tracked refetch) — the search spinner now tracks a dedicated `isSettling` state instead.
+
+- b937b2b: A saved (shared or local) view whose `sort.field` or `searchField` no longer exists, is no
+  longer indexed, or is no longer searchable now falls back to the collection's own default for
+  just that one part — identically on the server and the client, so there's no
+  first-paint/hydration mismatch — and shows a small, dismissible toolbar notice ("This view's
+  sort on 'X' is no longer available").
+
+  The saved view itself is never silently rewritten by this fallback; it only changes if the
+  user explicitly saves over it.
+
+- b937b2b: `ThemeScript` moves from `@vexcms/react` (re-exported through `ui/index.ts` → the main
+  `src/index.ts` barrel) to a new `@vexcms/react/server` entry.
+
+  `src/index.ts` carries its own `"use client"` directive deliberately — everything reachable
+  from it joins the client module graph. `ThemeScript` is a plain `<script>`-returning function
+  with no hooks, genuinely server-renderable, but got swept into that boundary anyway purely by
+  being re-exported through the same barrel. Rendered from a Server Component (`app/layout.tsx`)
+  it became a client component reference instead of running during the server's own render
+  pass — React's "Encountered a script tag while rendering React component" warning (meant for
+  SSR output, not a post-hydration client insertion) and a flash of the wrong theme before
+  hydration.
+
+  `import { ThemeScript } from "@vexcms/react/server"` instead of `"@vexcms/react"`. No other
+  change — same props, same rendered output.
+
+- b937b2b: `find`/`search` no longer `.collect()` the whole matching set to count it — a query above
+  Convex's ~32k-document transaction scan limit used to fail outright, and `totalDocs` reported
+  `null` once a collection crossed that threshold. Both now count at most
+  `admin.view.countLimit + 1` rows (`countLimit` default `10000`, collection-wide,
+  settable per view too; `search` always clamps it to `1023`, since a Convex search query returns
+  at most 1024 results) and return `totalDocs: number` always, plus a new
+  `totalDocsCapped: boolean` — `true` once the cap is hit, meaning the real count is `>=
+totalDocs`, not exact.
+
+  `usePaginatedQuery`'s own `totalDocs` no longer latches to the first response it ever saw: it
+  re-reads `totalDocs`/`totalDocsCapped` from every `cursor === null` response, so switching a
+  filter or view, or a live insert landing while the hook is mounted, updates the displayed
+  total — not just a one-time value frozen at first mount.
+
+  **Migration:** `totalDocs: number | null | undefined` stays the same TypeScript type (a
+  consumer handling `null` still compiles), but `null` is no longer a value either function
+  ever actually returns — replace a `totalDocs == null` "over 10,000+" fallback with
+  `totalDocsCapped` if you want the capped-count UI back.
+
+- 30b4c10: Unsaved-changes navigation guard. Both edit views now block navigating away from a dirty form
+  — in-app links and back/forward prompt with a styled Stay/Leave dialog; `beforeunload`
+  prompts with the browser's native dialog. A form is dirty when its values differ from their
+  default (`!isDefaultValue`); `useAutosave`'s new `hasUnsavedChanges` result field drives this
+  on an autosave-enabled document — true during the debounce window, while a save is in flight,
+  or after a failed save, false once a successful save's reset settles the diff to empty —
+  already-persisted autosaved work never prompts. The guard releases automatically after a
+  successful save, delete, or duplicate navigation.
+
+  New `useVexNavigate()` hook (`@vexcms/react`) is the supported path for a built-in's
+  post-mutation redirect (after delete, after a duplicate's create resolves) — it consults the
+  same blocking state and shows the same dialog as an in-app click or back/forward, falling back
+  to `window.location.assign` when the adapter has no `useNavigate`.
+
+  The interception itself is a framework-adapter capability (`NavigationBlockerAdapter`), not a
+  `@vexcms/react` dependency on `next/navigation` — `@vexcms/next` is the only adapter that
+  implements it today, intercepting same-origin anchor clicks in the capture phase and trapping
+  back/forward via `popstate`; no `pushState`/`replaceState` patching.
+
+- b937b2b: Bumped `patch` despite being breaking, per this track's own `config-client-server-split`
+  convention — see that changeset's note on the `alpha` pre-release base.
+
+  `defineCollection`'s auto-injected `updatedAt` field switches from `date({ on: "save" })` to
+  the new `commitTs({ on: "save" })` field type — Convex's own database-stamped commit
+  timestamp (`v.commitTs()`), resolved to an `int64` the server converts to a plain Unix-ms
+  `number` before it's ever visible to a reader. `stampUpdatedAt` is removed entirely, replaced
+  by `stampCommitTsFields`, which stamps every `commitTs`-typed field (not just `updatedAt`) on
+  a configurable set of write events (`create`/`update`/`publish`/`unpublish`/`draftSave`, via
+  each field's own `on` policy).
+
+  A `where` clause on a `commitTs` field with a non-integer or non-finite number throws
+  `VexError({ code: "INVALID_WHERE" })` naming the field.
+
+  **No migration path** (pre-release, no-data-loss requirement waived by design): an existing
+  dev row's numeric `updatedAt` fails Convex schema validation the moment the regenerated
+  schema (`v.optional(v.commitTs())`) pushes. Unset `updatedAt` on every row before
+  redeploying, or drop the table. App-facing reads are unaffected — `find`/`get`/`search`
+  still return `updatedAt` as a plain Unix-ms number; only the write-time field type and the
+  injection default changed.
+
+- b937b2b: New `useDebouncedValue` hook (`@vexcms/react`), replacing every internal call site that used
+  `@ts-hooks-kit/core`'s `useDebounceValue`: the list search box, the relationship picker's
+  search, the rich text editor's inline media picker search, and the shared
+  search-pagination hook under the media library grid.
+
+  The third-party hook had a real bug — its internal "last call" timer only updated on the
+  FIRST call of a burst, not on every subsequent one, so a 250ms debounce window tracked 250ms
+  after the first keystroke rather than the most recent one, behaving like a throttle at the
+  original interval instead of a true debounce. Typing at a normal pace fired a search roughly
+  every 250–300ms DURING typing instead of once after the user stopped, visibly swapping rows
+  mid-type.
+
+  No API change for existing callers beyond the swap — `useDebouncedValue(value, delayMs)`
+  returns the debounced value, same shape as the hook it replaces.
+
+- Updated dependencies [b937b2b]
+- Updated dependencies [30b4c10]
+- Updated dependencies [b937b2b]
+- Updated dependencies [4d504e7]
+- Updated dependencies [f837f20]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [30b4c10]
+- Updated dependencies [30b4c10]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+  - @vexcms/core@0.1.0-alpha.28
+  - @vexcms/better-auth@0.1.0-alpha.28
+
 ## 0.1.0-alpha.27
 
 ### Patch Changes

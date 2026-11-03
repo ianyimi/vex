@@ -1,5 +1,62 @@
 # www
 
+## 0.1.0-alpha.28
+
+### Patch Changes
+
+- 30b4c10: Fix dark-mode focus rings silently disappearing on `variant="outline"` buttons (and anything
+  else carrying `shadow-xs`). Tailwind v4 composes `box-shadow` as a 5-layer `var()` list; a bare
+  `none` keyword for any one layer is invalid inside a comma-separated shadow list, so the whole
+  composed declaration fails to parse at compute time and `box-shadow` collapses to its initial
+  value — silently eating the valid `focus-visible:ring-3` layer along with the (deliberately
+  absent) elevation shadow. `--shadow-xs-val`/`--shadow-sm-val`/`--shadow-md-val`/
+  `--shadow-lg-val` now resolve to `0 0 #0000` (zero-spread, transparent — visually identical to
+  `none`, but valid inside the composed list) in dark mode, in `apps/www/src/app/globals.css` and
+  both `create-vexcms` templates (`base-nextjs`, `marketing-site`).
+- Updated dependencies [b937b2b]
+- Updated dependencies [30b4c10]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [4d504e7]
+- Updated dependencies [b937b2b]
+- Updated dependencies [f837f20]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [30b4c10]
+- Updated dependencies [30b4c10]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [30b4c10]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [30b4c10]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+  - @vexcms/core@0.1.0-alpha.28
+  - @vexcms/react@0.1.0-alpha.28
+  - @vexcms/next@0.1.0-alpha.28
+  - @vexcms/better-auth@0.1.0-alpha.28
+  - @vexcms/file-storage-convex@0.1.0-alpha.28
+
 ## 0.1.0-alpha.27
 
 ### Patch Changes

@@ -1,5 +1,284 @@
 # @vexcms/admin-next
 
+## 0.1.0-alpha.28
+
+### Patch Changes
+
+- 30b4c10: **Breaking: collection admin URLs moved to `/admin/collections/<slug>`.**
+  `/admin/<slug>` and `/admin/<slug>/<id>` now 404 — there is no redirect.
+  Global URLs (`/admin/globals/<slug>`) and the dashboard (`/admin`) are
+  unchanged.
+
+  Every in-app link (`adminHref`, sidebar, dashboard cards, globals list, every
+  field type's title-column `Cell.tsx`) already resolved through `adminHref` or
+  `NextAdminPage`'s own route parser, so this is a one-file change in each
+  package: `adminHref.ts`'s `"collection"`, `"document"` and `"create"` targets
+  now emit the `/collections/` prefix, and `NextAdminPage` now requires a
+  `collections/<slug>[/<id>]` or `globals/<slug>` first segment, `notFound()`ing
+  on anything else.
+
+  If you bookmarked or hand-built an admin collection URL outside this package
+  (a custom nav, an email link, a saved browser bookmark), update it to the new
+  `/admin/collections/<slug>` shape.
+
+- b937b2b: The admin panel's per-browser UI preferences (table row density, a collection's filter-chip
+  visibility, local saved views, last-seen row counts, the live-preview panel's open/closed
+  state and split width, the sidebar's collapsed state) consolidate from up to seven
+  separately-named cookies down to exactly two: `vex-admin` (shared, collection-agnostic) and
+  `vex-admin:<collection>` (one per collection). Both are scoped to `Path=<basePath>` (the
+  project's `VexClientConfig.basePath`, `/admin` by default) instead of the whole domain — a
+  public page never sends either cookie.
+
+  Retires `vex-list-density`, `vex-list-chips:<collection>`, `vex-list-views:<collection>`,
+  `vex-list-rows:<collection>`, `vex-live-preview-panel:<slug>`, `vex-live-preview-layout:<slug>`
+  (all previously at `path=/`), and the sidebar's own `sidebar_state`. `AdminLayout` clears every
+  retired name, best-effort, the first time a returning browser's admin shell mounts — nothing
+  to do on your end, and a visitor who never opens `/admin` keeps the old cookies around
+  harmlessly until they do.
+
+  Each project-scoped cookie stays well under the ~4KB browser cap: `localViews` entry names
+  longer than 40 characters are truncated, `rowCounts` is dropped first if the cookie would
+  still exceed the cap, then the oldest `localViews` entries one at a time — a dropped entry's
+  full view still exists in `localStorage`, only its first-paint tab placeholder disappears.
+  See the new `apps/docs/src/content/docs/guides/admin-cookies.mdx` guide for the full shape.
+
+- b937b2b: `NextAdminPage`'s access gate now runs BEFORE anything streams, exactly like the existing
+  token check: `canAccessAdminPanel` is awaited, and a denied caller is redirected — the route
+  never streams any admin shell or content to them. The real shell streams exactly as it did
+  before this change (real title/tabs/toolbar/controls/checkboxes for an allowed caller, only
+  row data still resolves behind its own `<Suspense>` skeleton).
+
+  An earlier version of this change gated the content area behind a generic
+  `AdminContentSkeleton` instead of awaiting the check — reverted after a live review found it
+  made the loading state worse (layout shift, row-selection spinners, phantom skeletons,
+  pop-in). `AdminContentSkeleton` is deleted; there is no replacement component.
+
+- b937b2b: New shared `AdminNotFound` state, styled like `ListEmptyState`: icon, title ("Collection not
+  found" / "Global not found" / "Document not found"), a detail line, and a button back to the
+  dashboard (a document's own not-found goes back to its collection's list instead) — server-
+  rendered on first paint with zero layout shift, same frame size as settled content. Replaces
+  every ad hoc not-found placeholder string previously shown for an unknown collection, global,
+  or document.
+
+  Exported from `@vexcms/react`'s main entry (not `@vexcms/react/server`): its back button
+  uses `VexLink` for genuine in-app navigation, and `VexLink` depends on a `createContext`-
+  backed hook that the server entry's tsup bundling can't isolate behind its own `"use client"`
+  boundary (confirmed via `pnpm check:vercel` — a production build, unlike `next dev`, fails
+  statically on this). Rendering it as a client component from `NextAdminPage` (a Server
+  Component) costs nothing: React still renders a client component's own output into the
+  initial server-rendered HTML, same as `AdminTopNav`/`CollectionListView`/every other view
+  already does — only its interactivity hydrates afterward.
+
+- b937b2b: New sign-in/out control in the admin top bar, enabled by anonymous admin access via
+  `anonRole`: a visitor browsing the admin panel anonymously now has a visible way to sign
+  in, and a signed-in user a visible way to sign out, right from `AdminTopNav`.
+
+  `@vexcms/react`'s `FrameworkComponents` (`useFrameworkComponents`) gains an optional
+  `auth` field — a `{ signInHref, signOut }` adapter. Omitted (the default), the control
+  renders nothing, same as before this release. The signed-in/out determination itself
+  comes from the existing `useVexAuth()` (`{ user, organization }`, server-resolved, no
+  client-only flash) — `user === null` or `user.isAnonymous === true` (Better Auth's
+  `anonymous()` plugin convention) both render "Sign in"; anything else renders "Sign out".
+
+  Placement: the opposite edge of the bar from the sidebar-trigger/breadcrumbs/"View site"
+  cluster, derived from the SAME `config.admin.sidebar.side` the cluster itself reads — a
+  `"right"` sidebar puts the control at the far left, a `"left"`/default sidebar at the far
+  right.
+
+  `@vexcms/next` provides the Next.js adapter: `VexAdminAuthAdapterProvider`/
+  `useVexAdminAuthAdapter` from the new `@vexcms/next/auth` subpath. A context, not a prop
+  threaded through `NextAdminLayout`/your admin `layout.tsx`, because both of those are
+  server components and the sign-in href builder/`signOut` function are app-specific client
+  values that cannot cross that boundary as props — mount the provider anywhere above
+  `NextAdminLayout` in your own client tree (e.g. alongside your Better Auth client
+  provider) instead. See `VexAdminAuthAdapterContext`'s own doc comment for a full example.
+
+  `apps/test`, `apps/www`, and the `create-vexcms` `base-nextjs` template (inherited
+  unchanged by the `marketing-site` overlay) now wire this up in their own
+  `BetterAuthClientProvider`, so every scaffolded project gets the control by default with
+  no per-app configuration beyond the generated auth client itself.
+
+- b937b2b: Bumped `patch` despite being breaking, per this track's own convention (see
+  `config-client-server-split`'s changeset): the `alpha` pre-release keeps every package on the
+  `0.1.0` base, and the breaking surface is itemized here and in the commit's `BREAKING CHANGE:`
+  footer.
+
+  Removed `admin.table`/`CollectionTableConfigInput`/`CollectionTableConfig` entirely.
+  `admin.view` (the default view) and `admin.views` (preset views) now carry everything that
+  used to live on `admin.table`, not just view identity: `name?`, `description?`, `where?`,
+  `sort?`, `pageSize?`, `searchField?`, `columns?`, plus the collection-wide settings
+  `searchFields?` (renamed, plural, from the old `admin.table.searchField` — it was colliding
+  with this same shape's own per-view singular `searchField`), `pageSizeOptions?`,
+  `countLimit?`, `serverPageSize?`, and `bulkActions?`. `admin.views[n]` accepts the identical
+  shape — a preset view can override any collection-wide setting too, falling back to
+  `admin.view`'s own resolved value, then the global default.
+
+  **`@vexcms/core`.** `columns` entries are now `ColumnEntry<TFieldSlug> = TFieldSlug |
+{ field, width?, pinned?, hidden?, enableSorting?, enableHiding? }` — order, visibility, pin
+  side, width, and the sortable/hideable capability flags are all one array, one per-field
+  entry; a view's own entry always wins over `field.admin.*`, which is only consulted when
+  unset. `field.admin.width` is renamed `columnWidth` (the existing `width` key is the field's
+  own CSS row-width in the edit form, an unrelated axis). The reserved id for the always-first
+  selection-checkbox column is `"select"`; a versioned collection's synthetic `vex_status`
+  status column is a full `ColumnEntry` participant (reorderable/hideable/pinnable/resizable),
+  with an existing saved view's absence of `vex_status` back-filling as unpinned-but-visible,
+  first position — not hidden, so no pre-existing view silently loses its status badge.
+  `validateTableConfig.ts` is renamed `validateViewConfig.ts`; its checks now run per view
+  (`admin.view` and every `admin.views[n]`), and a view's own `enableSorting: true` override
+  still must lead a declared index, same as a field's.
+
+  **`@vexcms/react`.** Every `visibleColumns`/`columnOrder`/`columnPinning` consumer collapses
+  onto the one `columns: ColumnEntry[]` prop/state; `getCollectionColumnDefs` now resolves each
+  field's `enableSorting`/`enableHiding` through `resolveColumnConfig` (the view's own entry can
+  override a field's own default) instead of reading `field.admin.*` directly.
+
+  **Migration:** every `admin.table.*` config key, column ordering/visibility/pinning state, and
+  reader across core/react/next is moved — there is no shim or dual-read period.
+
+- b937b2b: New `/admin/collections` route — a collections-only index page (`CollectionsIndexView`,
+  exported from `@vexcms/react`), in the same card-grid style as the dashboard but showing
+  only collections and media collections, no globals. Reuses a new shared section
+  component, `AdminCardSection`, also now exported — `DashboardView` and `GlobalsListView`
+  were refactored onto it so all three index pages render identical markup instead of three
+  near-copies.
+
+  `AdminHrefTarget` gains `{ type: "collections" }` (→ `/{basePath}/collections`), parallel
+  to the pre-existing `{ type: "globals" }`. `NextAdminPage`'s route parser renders the new
+  `CollectionsIndexView` for `collections` with no slug — previously a `notFound()`.
+  `AdminTopNav`'s breadcrumb trail gains a "Collections" crumb for the new route, parallel
+  to its existing "Globals" crumb.
+
+  **Breaking (narrow): `GlobalsListView` is now permission-filtered.** It used to render
+  every configured global unconditionally — not a real boundary, since `/admin/globals` is
+  reachable directly by URL for any caller, including an anonymous one via `anonRole`. It
+  now runs the SAME `hasPermission` (`read`, `scope: "any"`) check `DashboardView`'s own
+  Globals section already ran, so a caller only sees globals they can actually read. A
+  project whose `access.ts` already grants broad global read access sees no behavior
+  change; one relying on the sidebar/dashboard alone to hide an unreadable global's card
+  from `/admin/globals` directly should audit that this is now enforced at the route level
+  too (it always was at the data level — Convex's own per-query RBAC never depended on this
+  component).
+
+  The "collection not found" / "global not found" screens' back links now point at the new
+  collections/globals indexes (`/admin/collections`, `/admin/globals`) instead of the
+  dashboard — more specific, since the caller was trying to reach something under that
+  section.
+
+  Both index pages now show a proper empty state (`AdminIndexEmptyState`, also exported —
+  same visual shape as `ListEmptyState`'s own `"empty"` variant) when the caller can read
+  nothing at all, instead of silently rendering nothing below the page title.
+
+- b937b2b: Bumped `patch` despite being breaking, per this track's own `config-client-server-split`
+  convention — see that changeset's note on the `alpha` pre-release base.
+
+  The list URL's `cols=` parameter changes grammar from a plain comma-separated field-slug list
+  (`cols=title,author,status`) to `cols=<field>[:w<width>][:pl|:pr][:h]`, comma-separated, one
+  suffix combination per entry in a fixed order — carrying the full per-column state
+  (width, pin side, hidden) that `ColumnEntry` now unifies, not just display order. A bare field
+  slug with no suffixes still parses (a previously-shipped order-only `cols=` link keeps
+  working), but `serializeListParams` never emits the old grammar again. Diff-only against the
+  active view's own resolved array, always present for an active `local` view, unchanged.
+
+  No back-compat shim for a stored view's own `columns` array: an old view's bare-slug-only
+  array parses fine (every entry is a valid bare-slug `ColumnEntry`), it just has no width/pin
+  overrides until resaved.
+
+- b937b2b: The collection list view is rebuilt around a URL-driven, server-prerendered `CollectionListView`:
+  per-collection search, sort, an AND/OR filter builder with per-field `FilterInput` components,
+  column visibility/order/pinning/resizing, page size, density, local (`localStorage`) and shared
+  (`vex_views` table, `listViews`/`saveView`/`removeView`) saved list views, a peek panel, per-row
+  actions (`list.row.actions` slot) and inline bulk actions (`list.bulkActions` slot). Data loads
+  through the new `useVexListQuery` / `useVexDocQuery` hooks, prefetched by `NextAdminPage` on the
+  server. See the List views guide.
+
+  **Structure + renames (no aliases).** Core `collections/` splits into `savedListViews/`,
+  `listView/`, and `query/`; React `collections/listView/` gains `toolbar/`, `create/`,
+  `savedListViews/`, `filters/`, `peek/`, `rowActions/` subfolders. Exported names follow:
+  `composeViewWhere` → `composeSavedListViewWhere`, `parseListParams`/`serializeListParams` →
+  `parseListViewUrlState`/`serializeListViewUrlState` (`ListParams` → `ListViewUrlState`),
+  `resolveListQueryState` → `resolveListViewQueryState`, `resolveColumnConfig` →
+  `resolveListViewColumnConfig`, `ListPreferences`/`parseListPreferences` →
+  `ListViewConfigCookieValues`/`parseListViewConfigCookies`, `ListViewsIndexEntry` →
+  `LocalSavedListViewsIndexEntry`, `BulkDeleteModal` → `DataTableBulkDeleteModal`,
+  `CreateDocumentModal`/`CreateDocumentForm` → `ListViewCreateDocumentModal`/`ListViewCreateDocumentForm`,
+  `ListViewTabs` → `SavedListViewTabs`, `ListFilterBuilder` → `ListViewFilterBuilder`, `ListPeek` →
+  `ListViewPeek`. `VexConfigError` now lives in core's `errors.ts`; `DENSITY_ROW_CLASS` moves from
+  `@vexcms/core` to `@vexcms/react`. `useListViewContext` (formerly internal `useCollectionList`) is
+  now exported from `@vexcms/react` for custom list slot contributions.
+
+  **Migration:** rename imports per the list above; there are no deprecated aliases.
+
+- b937b2b: `NextAdminPage` takes `searchParams?: Promise<Record<string, string | string[] | undefined>>`
+  (forwarded straight from the app route — only the collection list branch reads it, to resolve
+  `sort`/`filter`/`view`/`cols`/`q` server-side so the first paint matches what the client would
+  otherwise correct to after hydration) and `authPromise?: Promise<VexApiAuth>` (optional —
+  pass it once `config.access` is enabled, so the panel narrows itself server-side to what the
+  caller can actually see; a denied/unauthenticated caller still never receives real data
+  regardless, since Convex's own per-query RBAC is the actual data-safety boundary).
+
+  Omitting `searchParams` still compiles (`?:` ) but the server then resolves list state from
+  the collection's own defaults while the client reads the real URL — any `?sort=`/`filter=`/
+  `view=`/`cols=` link server-renders the wrong table, then visibly corrects after hydration.
+  Thread it through from your route's own `searchParams` prop, same as `params`.
+
+- 30b4c10: Unsaved-changes navigation guard. Both edit views now block navigating away from a dirty form
+  — in-app links and back/forward prompt with a styled Stay/Leave dialog; `beforeunload`
+  prompts with the browser's native dialog. A form is dirty when its values differ from their
+  default (`!isDefaultValue`); `useAutosave`'s new `hasUnsavedChanges` result field drives this
+  on an autosave-enabled document — true during the debounce window, while a save is in flight,
+  or after a failed save, false once a successful save's reset settles the diff to empty —
+  already-persisted autosaved work never prompts. The guard releases automatically after a
+  successful save, delete, or duplicate navigation.
+
+  New `useVexNavigate()` hook (`@vexcms/react`) is the supported path for a built-in's
+  post-mutation redirect (after delete, after a duplicate's create resolves) — it consults the
+  same blocking state and shows the same dialog as an in-app click or back/forward, falling back
+  to `window.location.assign` when the adapter has no `useNavigate`.
+
+  The interception itself is a framework-adapter capability (`NavigationBlockerAdapter`), not a
+  `@vexcms/react` dependency on `next/navigation` — `@vexcms/next` is the only adapter that
+  implements it today, intercepting same-origin anchor clicks in the capture phase and trapping
+  back/forward via `popstate`; no `pushState`/`replaceState` patching.
+
+- Updated dependencies [b937b2b]
+- Updated dependencies [30b4c10]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [4d504e7]
+- Updated dependencies [b937b2b]
+- Updated dependencies [f837f20]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [30b4c10]
+- Updated dependencies [30b4c10]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [30b4c10]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [30b4c10]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+- Updated dependencies [b937b2b]
+  - @vexcms/core@0.1.0-alpha.28
+  - @vexcms/react@0.1.0-alpha.28
+
 ## 0.1.0-alpha.27
 
 ### Patch Changes
