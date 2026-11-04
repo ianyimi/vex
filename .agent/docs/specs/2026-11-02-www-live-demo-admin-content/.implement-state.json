@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "slug": "2026-11-02-www-live-demo-admin-content",
+  "updated": "2026-11-03T10:26:07.522Z",
+  "groups": {
+    "Step 1": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> www@0.1.0-alpha.28 typecheck /Users/zaye/Documents/Projects/vex.git/dev/apps/www",
+        "> tsc --noEmit"
+      ]
+    },
+    "Step 2": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> www@0.1.0-alpha.28 typecheck /Users/zaye/Documents/Projects/vex.git/dev/apps/www",
+        "> tsc --noEmit"
+      ]
+    },
+    "Step 3": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> www@0.1.0-alpha.28 typecheck /Users/zaye/Documents/Projects/vex.git/dev/apps/www",
+        "> tsc --noEmit",
+        " WARN  Issue while reading \"/Users/zaye/Documents/Projects/vex.git/dev/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}",
+        " WARN  Issue while reading \"/Users/zaye/Documents/Projects/vex.git/dev/.npmrc\". Failed to replace env in config: ${NPM_TOKEN}"
+      ]
+    },
+    "Step 4": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> www@0.1.0-alpha.28 typecheck /Users/zaye/Documents/Projects/vex.git/dev/apps/www",
+        "> tsc --noEmit",
+        "> www@0.1.0-alpha.28 test /Users/zaye/Documents/Projects/vex.git/dev/apps/www",
+        "> NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/apps/www",
+        " Test Files  1 passed (1)",
+        "      Tests  43 passed (43)",
+        "   Start at  02:12:30",
+        "   Duration  3.57s (transform 496ms, setup 2.17s, import 88ms, tests 1.01s, environment 249ms)"
+      ]
+    },
+    "Step 6": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> www@0.1.0-alpha.28 typecheck /Users/zaye/Documents/Projects/vex.git/dev/apps/www",
+        "> tsc --noEmit",
+        "> www@0.1.0-alpha.28 test /Users/zaye/Documents/Projects/vex.git/dev/apps/www",
+        "> NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/apps/www",
+        " Test Files  1 passed (1)",
+        "      Tests  43 passed (43)",
+        "   Start at  02:26:09",
+        "   Duration  3.71s (transform 506ms, setup 2.27s, import 91ms, tests 1.01s, environment 284ms)"
+      ]
+    }
+  }
+}

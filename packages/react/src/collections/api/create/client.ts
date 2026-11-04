@@ -31,8 +31,8 @@ export interface CreateClientArgs extends GenericMutationClientParams {
  * prefix is REQUIRED, not just convention — a non-`use`-prefixed wrapper
  * around a hook call can be treated as a pure, memoizable function by the
  * React Compiler, silently dropping the internal hook call on a later
- * render and causing a hook-order mismatch crash; developer-reported,
- * confirmed live on the sibling `saveView`/`removeView` helpers). Call at
+ * render and causing a hook-order mismatch crash; confirmed live on the
+ * sibling `saveView`/`removeView` helpers). Call at
  * the top level of a React component, as its own statement, BEFORE
  * `useMutation` (not inlined as `useMutation`'s own `mutationFn` argument).
  *

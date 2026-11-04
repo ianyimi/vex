@@ -13,7 +13,7 @@ import type { ListViewFiltersSlotProps } from "./filters/ListViewFilterBuilder";
 import type { ListViewRowSlotProps } from "./rowActions/ListViewRowOpenAction";
 
 /**
- * `order` values that keep Decision 28's row-menu order (Edit, Inspect, Copy ID,
+ * `order` values that keep the row-menu order (Edit, Inspect, Copy ID,
  * contributions, Delete last) and bulk-delete-last regardless of how many contributions a
  * project adds — any contribution's own `order` defaults to `0`, which always lands between
  * `rowCopyId`/project contributions and the matching `Delete`.
@@ -35,7 +35,7 @@ export function listHeaderActionsBuiltins(): ComponentContributionInput<ReactHKT
 }
 
 /**
- * `list.row.actions`' built-in contributions, in Decision 28's order.
+ * `list.row.actions`' built-in contributions, in Edit/Inspect/Copy ID/Delete order.
  * @returns The Edit/Inspect/Copy ID/Delete row-action contributions, each tagged with its {@link LIST_BUILTIN_ORDER} value.
  */
 export function listRowActionsBuiltins(): ComponentContributionInput<ReactHKT, ListViewRowSlotProps>[] {
@@ -58,11 +58,11 @@ export function listBulkActionsBuiltins(): ComponentContributionInput<ReactHKT, 
 /**
  * `list.toolbar`'s built-in contributions — just `vex.list.search`.
  * `vex.list.columns` is NOT resolved here even though
- * `BUILTIN_CONTRIBUTION_IDS.list.columns` exists (Step 9): Decision 43's
+ * `BUILTIN_CONTRIBUTION_IDS.list.columns` exists: the
  * CSS-only fold needs `ListViewColumnsAction` mounted TWICE at once (inline +
  * menu placement), which a single `SlotOutlet` resolution of this slot
  * can't produce without rendering `vex.list.search` twice too (search
- * never collapses, Decision 22). `ListViewToolbar` mounts `ListViewColumnsAction`
+ * never collapses). `ListViewToolbar` mounts `ListViewColumnsAction`
  * directly instead, the same way it already owns Copy link/Rows-per-load
  * (neither of which has a `vex.list.*` id either).
  * @returns A single-entry contribution array mounting {@link ListViewSearchAction}.

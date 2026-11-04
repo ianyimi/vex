@@ -11,8 +11,7 @@ import type { ListViewRowSlotProps } from "./ListViewRowOpenAction";
 
 /**
  * `vex.list.bulk.delete` — the Delete action inside `ListViewToolbar`'s own inline bulk group
- * (count / "Select all N loaded" / this `list.bulkActions` slot / Clear — Decision 22,
- * Decision 28), self-gated on `CRUD_ACTIONS.delete`. Renders nothing while `props.docs` is
+ * (count / "Select all N loaded" / this `list.bulkActions` slot / Clear), self-gated on `CRUD_ACTIONS.delete`. Renders nothing while `props.docs` is
  * empty, so the surrounding `SlotOutlet` mounts no empty group. Ordered last within
  * `list.bulkActions` (`LIST_BUILTIN_ORDER.bulkDelete`), after any project contribution.
  *
@@ -21,7 +20,7 @@ import type { ListViewRowSlotProps } from "./ListViewRowOpenAction";
  * already owns the count, "Select all N loaded", and Clear for its surrounding bulk group;
  * wrapping this slot's own contribution in `DataTableBulkActions` too produced two visibly
  * separate bulk bars (duplicate count, duplicate Clear) once mounted through `ListViewToolbar`'s
- * `list.bulkActions` `SlotOutlet` (developer-reported live). `DataTableBulkActions` itself is
+ * `list.bulkActions` `SlotOutlet`. `DataTableBulkActions` itself is
  * unchanged — still used standalone, unmodified, by `MediaCollectionListView`, which has no
  * surrounding toolbar group of its own to own that chrome.
  *

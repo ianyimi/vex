@@ -131,7 +131,7 @@ describe("getGlobal (server) — field-level read shaping", () => {
     expect(result?.siteName).toBe("My Site");
   });
 
-  it("never strips _id or _slug, but strips _creationTime under a fully-restrictive wildcard (developer decision, binding, \"access-system-fields\")", async () => {
+  it("never strips _id or _slug, but strips _creationTime under a fully-restrictive wildcard (\"access-system-fields\")", async () => {
     const config = buildConfig({ editor: { siteSettings: { read: () => ({ "*": false }) } } });
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {

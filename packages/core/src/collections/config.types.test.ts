@@ -4,8 +4,7 @@ import type { CollectionDataFieldSlug } from "./types";
 
 /**
  * Compile-time regression pins for the auto-injected `updatedAt` `commitTs`
- * field's type-level visibility (developer-reported typing gap, Step 24 of
- * `2026-10-28-committs-field`): `DataFieldSlug<TFields>` is computed purely
+ * field's type-level visibility: `DataFieldSlug<TFields>` is computed purely
  * from the literal `fields` object a `defineCollection()` call is given, so
  * it never included `"updatedAt"` — `defineCollection` injects that field
  * at RUNTIME (`collections/config.ts`'s `fieldsWithTimestamp`), with no way

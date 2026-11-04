@@ -8,7 +8,7 @@ import type { DocumentBySlug } from "../../../types/generated";
 import * as _generatedApi from "../../../db/test/convex/_generated/api";
 import schema from "../../../db/test/convex/schema";
 import { find } from "./server";
-import { defineCollection, text, checkbox } from "../../../index";
+import { defineCollection, text, checkbox, select, relationship } from "../../../index";
 import { defineAccess } from "../../../access/config";
 
 // ── Minimal VexConfig fixture for depth tests ─────────────────────────────
@@ -1543,7 +1543,7 @@ describe("find (server) — access call options", () => {
   });
 });
 
-// ── Field-level read shaping (Step 5) ───────────────────────────────────────
+// ── Field-level read shaping ─────────────────────────────────────────────
 const fieldMapPostsResource = defineCollection({
   slug: "posts",
   fields: { title: text(), slug: text() },
@@ -1604,9 +1604,9 @@ describe("find (server) — field-level read shaping", () => {
 
   // `_creationTime` survives HERE because this map's wildcard is `true` and
   // never explicitly names it — NOT because it's unconditionally exempt like
-  // `_id` (developer decision, binding, "access-system-fields": `_creationTime`
-  // IS a real, gateable field-permission key now). The dedicated describe
-  // block below proves it actually strips once a map explicitly denies it.
+  // `_id` (`_creationTime` IS a real, gateable field-permission key now).
+  // The dedicated describe block below proves it actually strips once a
+  // map explicitly denies it.
   test("_id always survives; _creationTime survives here too, because the wildcard covers it (not because it's exempt)", async () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
@@ -1640,12 +1640,12 @@ describe("find (server) — field-level read shaping", () => {
   });
 });
 
-// Developer decision (binding, "access-system-fields"): `_creationTime`/
-// `updatedAt`/`vex_status` are real, gateable field-permission keys now —
-// proves `find`'s own `readableDocuments` pipeline strips them exactly like
-// any other denied field, server-side, through the real `find` call (not just
-// the isolated `resolveFieldPermissions`/`stripDeniedFields` unit).
-describe("find (server) — system field stripping (developer decision, binding, \"access-system-fields\")", () => {
+// `_creationTime`/`updatedAt`/`vex_status` are real, gateable
+// field-permission keys now — proves `find`'s own `readableDocuments`
+// pipeline strips them exactly like any other denied field, server-side,
+// through the real `find` call (not just the isolated
+// `resolveFieldPermissions`/`stripDeniedFields` unit).
+describe("find (server) — system field stripping (\"access-system-fields\")", () => {
   const systemFieldPostsResource = defineCollection({
     slug: "posts",
     fields: { title: text(), slug: text() },
@@ -2156,7 +2156,7 @@ describe("find (server) — per-index draftStatus composition", () => {
   });
 });
 
-// ── List-view-overhaul Step 11: `vex_status` as a built-in filter field,
+// ── `vex_status` as a built-in filter field,
 // and the isEmpty/isNotEmpty wire shape (a leaf missing `value` entirely —
 // Convex's own argument serialization drops an explicit `value: undefined`
 // property before the server ever sees it) ─────────────────────────────────
@@ -2203,7 +2203,7 @@ describe("find (server) — vex_status where filtering and the isEmpty/isNotEmpt
     expect((docs[0] as any).hasUnpublishedChanges).toBe(true);
   });
 
-  test("a where on vex_status still narrows correctly alongside the default _creationTime sort (Decision 36 pushdown has no declared index to push vex_status into, so it falls through to .filter() unchanged)", async () => {
+  test("a where on vex_status still narrows correctly alongside the default _creationTime sort (index pushdown has no declared index to push vex_status into, so it falls through to .filter() unchanged)", async () => {
     const t = convexTest(schema, modules);
     const { draftId, docs } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       const publishedId = await ctx.db.insert("posts", {
@@ -2284,7 +2284,141 @@ describe("find (server) — vex_status where filtering and the isEmpty/isNotEmpt
   });
 });
 
-// ── Step 6: portable sort + index pushdown ──────────────────────────────────
+// ── Array-stored field (select/relationship/upload) eq/empty-check bug fix —
+// `?filter=(status.eq.won)` returned zero rows against seeded `won` leads,
+// and `{ field: "contributorId", op: "neq", value: null }` matched every
+// row instead of excluding the empty ones (root cause + fix:
+// `normalizeArrayStoredWhere`, `db/queryArgs.ts`) ───────────────────────────
+const arrayStoredWhereResource = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text(),
+    category: select({
+      hasMany: false,
+      index: "by_category",
+      options: [{ label: "Won", value: "won" }, { label: "Lost", value: "lost" }],
+    }),
+    author: relationship({ collection: { slug: "authors" }, hasMany: false }),
+  },
+});
+const arrayStoredWhereConfig = { collections: [arrayStoredWhereResource] } as unknown as VexConfig;
+
+describe("find (server) — array-stored field (select/relationship/upload) eq/empty-check", () => {
+  test("eq on a single-select field matches the array-stored value", async () => {
+    const t = convexTest(schema, modules);
+    const { wonId, docs } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const wonId = await ctx.db.insert("posts", { title: "Won deal", slug: "won-deal", category: ["won"] });
+      await ctx.db.insert("posts", { title: "Lost deal", slug: "lost-deal", category: ["lost"] });
+      return {
+        wonId,
+        docs: await find({
+          ctx,
+          collection: "posts",
+          config: arrayStoredWhereConfig,
+          where: { field: "category", op: "eq", value: "won" } as unknown as VexWhere<"posts">,
+        }),
+      };
+    });
+    expect(docs.map((d) => d._id)).toEqual([wonId]);
+  });
+
+  test("eq still matches, and still uses the declared index, alongside a _creationTime sort (index pushdown)", async () => {
+    const t = convexTest(schema, modules);
+    const { wonId, docs } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const wonId = await ctx.db.insert("posts", { title: "Won deal", slug: "won-deal", category: ["won"] });
+      await ctx.db.insert("posts", { title: "Lost deal", slug: "lost-deal", category: ["lost"] });
+      return {
+        wonId,
+        docs: await find({
+          ctx,
+          collection: "posts",
+          config: arrayStoredWhereConfig,
+          where: { field: "category", op: "eq", value: "won" } as unknown as VexWhere<"posts">,
+          sort: { field: "_creationTime", order: "desc" },
+        }),
+      };
+    });
+    expect(docs.map((d) => d._id)).toEqual([wonId]);
+  });
+
+  test("neq with an explicit null value excludes only the empty relationship arrays (the \"From Contributors\" preset shape)", async () => {
+    const t = convexTest(schema, modules);
+    const { withAuthorId, docs } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const authorId = await ctx.db.insert("authors", { name: "Ada" });
+      const withAuthorId = await ctx.db.insert("posts", { title: "Has author", slug: "has-author", author: [authorId] });
+      await ctx.db.insert("posts", { title: "No author", slug: "no-author", author: [] });
+      return {
+        withAuthorId,
+        docs: await find({
+          ctx,
+          collection: "posts",
+          config: arrayStoredWhereConfig,
+          where: { field: "author", op: "neq", value: null } as unknown as VexWhere<"posts">,
+        }),
+      };
+    });
+    expect(docs.map((d) => d._id)).toEqual([withAuthorId]);
+  });
+
+  test("isNotEmpty (neq, no value key) excludes empty relationship arrays the same way", async () => {
+    const t = convexTest(schema, modules);
+    const { withAuthorId, docs } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const authorId = await ctx.db.insert("authors", { name: "Ada" });
+      const withAuthorId = await ctx.db.insert("posts", { title: "Has author", slug: "has-author", author: [authorId] });
+      await ctx.db.insert("posts", { title: "No author", slug: "no-author", author: [] });
+      return {
+        withAuthorId,
+        docs: await find({
+          ctx,
+          collection: "posts",
+          config: arrayStoredWhereConfig,
+          where: { field: "author", op: "neq" } as unknown as VexWhere<"posts">,
+        }),
+      };
+    });
+    expect(docs.map((d) => d._id)).toEqual([withAuthorId]);
+  });
+
+  test("isEmpty (eq, no value key) matches only the empty relationship arrays", async () => {
+    const t = convexTest(schema, modules);
+    const { emptyId, docs } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const authorId = await ctx.db.insert("authors", { name: "Ada" });
+      await ctx.db.insert("posts", { title: "Has author", slug: "has-author", author: [authorId] });
+      const emptyId = await ctx.db.insert("posts", { title: "No author", slug: "no-author", author: [] });
+      return {
+        emptyId,
+        docs: await find({
+          ctx,
+          collection: "posts",
+          config: arrayStoredWhereConfig,
+          where: { field: "author", op: "eq" } as unknown as VexWhere<"posts">,
+        }),
+      };
+    });
+    expect(docs.map((d) => d._id)).toEqual([emptyId]);
+  });
+
+  test("isEmpty also matches a legacy document that predates the field entirely (never written, not just [])", async () => {
+    const t = convexTest(schema, modules);
+    const { legacyId, docs } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const authorId = await ctx.db.insert("authors", { name: "Ada" });
+      await ctx.db.insert("posts", { title: "Has author", slug: "has-author", author: [authorId] });
+      const legacyId = await ctx.db.insert("posts", { title: "Legacy row", slug: "legacy-row" }); // `author` key never written
+      return {
+        legacyId,
+        docs: await find({
+          ctx,
+          collection: "posts",
+          config: arrayStoredWhereConfig,
+          where: { field: "author", op: "eq" } as unknown as VexWhere<"posts">,
+        }),
+      };
+    });
+    expect(docs.map((d) => d._id)).toEqual([legacyId]);
+  });
+});
+
+// ── Portable sort + index pushdown ──────────────────────────────────────────
 const sortPushdownResource = defineCollection({
   slug: "posts",
   fields: {
@@ -2417,7 +2551,7 @@ describe("find (server) — sort competes for the index slot like withIndex", ()
   });
 });
 
-// ── Step 6: declared config-view filter is exempt from the field-read check ─
+// ── Declared config-view filter is exempt from the field-read check ────────
 const declaredFilterBaseResource = defineCollection({
   slug: "posts",
   fields: { title: text(), slug: text(), featured: checkbox() },
@@ -2518,7 +2652,7 @@ describe("find (server) — declared view filter is exempt from the field-read c
   });
 });
 
-// ── Step 6 / Decision 26: shared-view filter exemption (readViews) ──────────
+// ── Shared-view filter exemption (readViews) ────────────────────────────────
 const sharedFilterAccessWithReadViews = {
   collections: [declaredFilterResource],
   access: defineAccess({
@@ -2671,7 +2805,7 @@ describe("find (server) — declared-filter exemption covers vex_status (Publish
     });
     expect(docs.map((d: any) => d.slug)).toEqual(["pub"]);
     // The exemption makes the FILTER work without ever making the FIELD
-    // readable (Decision 11) — `vex_status` itself must not come back.
+    // readable — `vex_status` itself must not come back.
     expect(docs[0].vex_status).toBeUndefined();
   });
 
@@ -2751,7 +2885,7 @@ describe("find (server) — declared-filter exemption covers vex_status (Publish
   });
 });
 
-// ── Step 6: total count cap ──────────────────────────────────────────────────
+// ── Total count cap ──────────────────────────────────────────────────────────
 const countCapBaseResource = defineCollection({ slug: "posts", fields: { title: text() } });
 const countCapResource = {
   ...countCapBaseResource,
@@ -3014,7 +3148,7 @@ describe("find (server) — draft-pair pagination fix (canonical-row merge)", ()
   });
 });
 
-// ── Polish fix: count cap must not under-report when rows are dropped at
+// ── Count cap must not under-report when rows are dropped at
 // the raw window's edge by read access (not by the `where` the caller sent) ──
 const undercountPostsResource = defineCollection({
   slug: "posts",

@@ -9,8 +9,8 @@ import { useResolvedEditSlot, EditSlotContribution } from "./DocumentEditSlotOut
 import { EditActionsMenuDialogContext, type EditActionsMenuDialogState } from "./EditActionsMenuDialogContext";
 
 /**
- * The ⋯ menu for a collection or global edit view's `edit.actionsMenu` slot (decision: Step 4
- * post-implementation note — least-used actions sit in a menu left of the status badge, instead
+ * The ⋯ menu for a collection or global edit view's `edit.actionsMenu` slot (least-used
+ * actions sit in a menu left of the status badge, instead
  * of standalone header buttons). Built-ins: `vex.revalidate`, `vex.duplicate`, both collection
  * documents only, appended to `props.builtins` by `CollectionEditView.tsx` the same way
  * `vex.delete` is appended to `edit.header.actions` — `GlobalEditView.tsx` passes no built-ins,

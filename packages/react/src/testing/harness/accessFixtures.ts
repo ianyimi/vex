@@ -41,7 +41,7 @@ const access = defineAccess({
   userCollectionSlug: "users",
   userRolesField: "roles",
   permissions: {
-    // No grants declared for `posts` — every action fails closed (P-007).
+    // No grants declared for `posts` — every action fails closed.
     denied: { posts: {} },
     // Role-level allow-all — the documented posture for "grants everything".
     allowed: { posts: { "*": true } },

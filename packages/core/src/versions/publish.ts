@@ -53,17 +53,16 @@ import type { VersionedTargetRows } from "./resolveVersionedTarget";
  *   `vex_status: "published"` — keeping its own `_id`; if there is no draft
  *   row either (only possible for a global with no rows at all — a
  *   collection always has a row), one is inserted directly as published.
- *   This is decision 1's id-stability invariant applied from a document's
+ *   This keeps the id-stability invariant intact from a document's
  *   FIRST publish onward: the only way a draft-only row's `_id` could
  *   become unstable here is if this function minted a different one for
- *   that first publish, and it does not. Decision 11 independently
- *   confirms this branch still exists post-redesign: it names "the
- *   promote-in-place branch of Step 9" as the thing that must now ALSO
- *   emit exactly one history row (previously none), which only makes sense
- *   if there is still a promote-in-place branch.
+ *   that first publish, and it does not. The promote-in-place branch
+ *   still exists post-redesign, and must now ALSO emit exactly one
+ *   history row (previously none), which only makes sense if there is
+ *   still a promote-in-place branch.
  *
- * Both branches record exactly one history row (decision 11: every publish
- * is attributed and emits one node, no exceptions).
+ * Both branches record exactly one history row: every publish is
+ * attributed and emits one node, no exceptions.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
  * @param props - Resolved target + rows, plus optional `data` to merge on

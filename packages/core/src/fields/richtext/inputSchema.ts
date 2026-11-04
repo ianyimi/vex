@@ -24,8 +24,7 @@ import { richTextToPlainText } from "./utils";
  * `uploadFieldToInputSchema`, not a `group`/`array`/`blocks` container with
  * sub-fields to recurse into — a draft-lenient pass reaches it the same way
  * it reaches `upload`, via `adminFieldToInputSchema`'s own
- * `{ ...field, required: false }` override before dispatch (wired when this
- * field joins that switch in Step 3).
+ * `{ ...field, required: false }` override before dispatch.
  *
  * @param props - Input props.
  * @param props.field - The resolved richtext field definition.

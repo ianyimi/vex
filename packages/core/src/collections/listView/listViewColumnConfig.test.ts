@@ -67,7 +67,7 @@ describe("resolveListViewColumnConfig", () => {
     expect(result.enableHiding).toBe(false);
   });
 
-  it("VIEWS ALWAYS WIN: the entry's enableSorting/enableHiding override the field's own, in both directions (Decision 48)", () => {
+  it("VIEWS ALWAYS WIN: the entry's enableSorting/enableHiding override the field's own, in both directions", () => {
     const overrideOff = resolveListViewColumnConfig({
       fieldKey: "featured",
       fieldDef: dataFields.featured!,

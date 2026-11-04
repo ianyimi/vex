@@ -3,7 +3,7 @@ import { Input } from "../../ui";
 
 /**
  * Text field filter row value control — a plain text `Input`, registered as
- * `reactAdapter.fields.text.filterInput` (Decision 50). `w-full min-w-0`
+ * `reactAdapter.fields.text.filterInput`. `w-full min-w-0`
  * fills the filter row's fixed-width value cell (`ListViewFilterBuilder.tsx`'s
  * 4-column grid), shrinking with it rather than reserving a literal width.
  *

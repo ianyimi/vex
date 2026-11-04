@@ -12,7 +12,7 @@ import { useVexListQuery } from "../../../hooks/useVexListQuery";
 import { resolveEffectiveViewState, type SavedListViewEntry } from "./useSavedListViews";
 
 /**
- * Reproduces a developer-reported regression report ("Load More no longer
+ * Reproduces a regression report ("Load More no longer
  * appends rows") that, on investigation (live instrumentation of
  * `usePaginatedQuery`'s own internal reset-key/clientPageIndex state), was
  * NOT a real regression — `resolveEffectiveViewState`'s output is a FRESH
@@ -21,7 +21,7 @@ import { resolveEffectiveViewState, type SavedListViewEntry } from "./useSavedLi
  * values never trips a reset. This test pins that property permanently: a
  * test hook rebuilds `resolveEffectiveViewState`'s result FRESH on every
  * render (mirroring `CollectionListView`'s real per-render call), feeding
- * `useVexListQuery` — exactly the shape Main's bug report named as the
+ * `useVexListQuery` — exactly the shape the bug report named as the
  * suspect — and confirms `loadMore()` still grows `results` across pages,
  * both with no active view and with one.
  */

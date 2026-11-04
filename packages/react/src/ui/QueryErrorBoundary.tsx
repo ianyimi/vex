@@ -66,8 +66,8 @@ export interface QueryErrorBoundaryProps {
 }
 
 /**
- * Shared error boundary for the admin panel's streamed query regions (polish fixes,
- * Decision 1) — a region whose `useSuspenseQuery` throws (a dehydrated `"error"`-status
+ * Shared error boundary for the admin panel's streamed query regions — a region whose
+ * `useSuspenseQuery` throws (a dehydrated `"error"`-status
  * query, e.g. a stale `?sort=` link's `UNINDEXED_SORT`, or an unreadable `?peek=`/shared-view
  * id) renders `fallbackRender`'s own region-specific UI instead of crashing the whole page.
  *

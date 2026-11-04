@@ -8,10 +8,10 @@ import { JsonEditor } from "../../../../ui/JsonEditor";
 import { PeekCopyButton } from "./ListViewPeekCopyButton";
 
 /**
- * System keys the `access-system-fields` plan (developer-approved, binding)
- * made gateable in a collection's `FieldPermissionMap` for reads, that
+ * System keys that are gateable
+ * in a collection's `FieldPermissionMap` for reads, that
  * ALSO need explicit handling here — `_id` deliberately excluded
- * (Decision 8: not a valid field-map key, always readable). `updatedAt`
+ * (not a valid field-map key, always readable). `updatedAt`
  * is ALSO excluded, despite being gateable: `defineCollection` injects it
  * as a REAL top-level `dataFields` entry (`kind: "data"`, `commitTs`
  * type) for every collection unless `timestamps: false` — confirmed
@@ -28,8 +28,8 @@ import { PeekCopyButton } from "./ListViewPeekCopyButton";
 const GATEABLE_SYSTEM_FIELD_KEYS = ["_creationTime", "vex_status"] as const;
 
 /**
- * The `ListViewPeek` JSON tab — the document's RAW (depth-0) shape
- * (Design Decision 26/27), split out of `ListPeekPanel`'s own body
+ * The `ListViewPeek` JSON tab — the document's RAW (depth-0) shape,
+ * split out of `ListPeekPanel`'s own body
  * verbatim (Phase 3 component-folder split, no behavior change).
  *
  * @param props.rawDocument - The depth-0 fetch's own document (a relationship/upload field holds the raw stored id(s), not populated docs) — `undefined` while that fetch is still in flight, independent of the rest of the panel.
@@ -73,7 +73,7 @@ export function ListViewPeekJsonTab(props: {
     // `get/server.test.ts`'s own "strips _creationTime, updatedAt, and
     // vex_status when a map explicitly denies them" case) — this loop
     // is defense-in-depth, not the real security boundary, matching
-    // `_id` never needing one at all (always readable, Decision 8).
+    // `_id` never needing one at all (always readable).
     for (const key of GATEABLE_SYSTEM_FIELD_KEYS) {
       if (!props.canReadField(key)) delete jsonDoc[key];
     }

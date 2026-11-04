@@ -33,8 +33,8 @@ export function useIsMobile() {
  * `SidebarMenuButton`, read from `SidebarProvider`'s `useIsMobile()` through
  * `SidebarContext`): `useIsMobile()` alone starts `false` on every FRESH mount, server or
  * client, which is safe as long as the consumer mounts (and hydrates) at the SAME time as the
- * provider — but a Suspense boundary that streams in on a later tick (an `authPromise` fetch,
- * Decision 44) can hydrate AFTER the provider's own `useIsMobile()` effect has already run and
+ * provider — but a Suspense boundary that streams in on a later tick (an `authPromise` fetch)
+ * can hydrate AFTER the provider's own `useIsMobile()` effect has already run and
  * flipped context to `true` on a narrow viewport, so the LATE subtree's first render would
  * already see `true` where the server (which never runs effects) rendered `false` — a
  * hydration mismatch despite `useIsMobile()` itself being written correctly. Re-gating on

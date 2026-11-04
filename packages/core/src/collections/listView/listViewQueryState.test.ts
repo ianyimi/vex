@@ -47,7 +47,7 @@ describe("resolveListViewQueryState — no active view", () => {
   });
 });
 
-describe("resolveListViewQueryState — default view's own hidden where (Decision 45/48)", () => {
+describe("resolveListViewQueryState — default view's own hidden where", () => {
   const collectionWithDefaultWhere = defineCollection({
     slug: "featured_posts",
     fields: { title: text({ searchIndex: { name: "search_title", filterFields: [] } }) },
@@ -69,7 +69,7 @@ describe("resolveListViewQueryState — default view's own hidden where (Decisio
     expect(result.where).toEqual({ field: "title", op: "eq", value: "featured" });
   });
 
-  it("does not compose the default view's hidden where when a local view is active (Decision 41)", () => {
+  it("does not compose the default view's hidden where when a local view is active", () => {
     const result = resolveListViewQueryState({
       collection: collectionWithDefaultWhere,
       params: params({ view: "local:loc1" }),
@@ -138,7 +138,7 @@ describe("resolveListViewQueryState — shared view", () => {
   });
 });
 
-describe("resolveListViewQueryState — explicit clear sentinel, filter/q (developer-reported)", () => {
+describe("resolveListViewQueryState — explicit clear sentinel, filter/q", () => {
   const sharedView: VexStoredView = {
     viewId: "shared2",
     name: "Team view",
@@ -187,7 +187,7 @@ describe("resolveListViewQueryState — explicit clear sentinel, filter/q (devel
     expect(result.search).toBe("saved");
   });
 
-  it("a declared (config) view: filter null and undefined both just mean \"no additional user filter\" — no own visible filter to inherit (Decision 25)", () => {
+  it("a declared (config) view: filter null and undefined both just mean \"no additional user filter\" — no own visible filter to inherit", () => {
     const configView: VexViewConfig = {
       viewId: "cfg-clear",
       name: "Cfg",
@@ -209,7 +209,7 @@ describe("resolveListViewQueryState — explicit clear sentinel, filter/q (devel
 });
 
 describe("resolveListViewQueryState — local view", () => {
-  it("reads the URL's own full state directly — no configView/sharedView to merge (Design Decision 41)", () => {
+  it("reads the URL's own full state directly — no configView/sharedView to merge", () => {
     const sort = { field: "title", order: "asc" } as const;
     const filter = { field: "title", op: "eq", value: "z" } as const;
     const result = resolveListViewQueryState({ collection, params: params({ sort, filter, view: "local:loc1" }) });
@@ -217,7 +217,7 @@ describe("resolveListViewQueryState — local view", () => {
   });
 });
 
-describe("resolveListViewQueryState — columns (Decision 48)", () => {
+describe("resolveListViewQueryState — columns", () => {
   it("falls back to the collection's own default order when nothing is declared", () => {
     const result = resolveListViewQueryState({ collection, params: params() });
     expect(result.columns).toEqual(["title", "updatedAt"]);
@@ -291,7 +291,7 @@ describe("resolveListViewQueryState — columns (Decision 48)", () => {
     expect(result.columns).toEqual(["updatedAt", { field: "title", hidden: true }]);
   });
 
-  it("a local view's full state is in the URL (Decision 41) — columns resolves purely from cols, no view lookup needed", () => {
+  it("a local view's full state is in the URL — columns resolves purely from cols, no view lookup needed", () => {
     const result = resolveListViewQueryState({
       collection,
       params: params({ cols: ["title"], view: "local:loc1" }),
@@ -299,7 +299,7 @@ describe("resolveListViewQueryState — columns (Decision 48)", () => {
     expect(result.columns).toEqual(["title", { field: "updatedAt", hidden: true }]);
   });
 
-  it("a local view's URL WITHOUT cols (a stale pre-Decision-47 link) falls back to the collection default — same on both sides, matching, no silent narrowing the server can't see", () => {
+  it("a local view's URL WITHOUT cols (a stale pre-column-completion link) falls back to the collection default — same on both sides, matching, no silent narrowing the server can't see", () => {
     const result = resolveListViewQueryState({
       collection,
       params: params({ view: "local:loc1" }),
@@ -307,7 +307,7 @@ describe("resolveListViewQueryState — columns (Decision 48)", () => {
     expect(result.columns).toEqual(["title", "updatedAt"]);
   });
 
-  it("a versioned collection's columns include vex_status, FIRST and visible, through the full resolution chain — this is the shared server/client path both SSR and the client call (developer-reported: resizing/pinning vex_status used to silently no-op since it never reached here at all)", () => {
+  it("a versioned collection's columns include vex_status, FIRST and visible, through the full resolution chain — this is the shared server/client path both SSR and the client call (resizing/pinning vex_status used to silently no-op since it never reached here at all)", () => {
     const versionedCollection = defineCollection({
       slug: "versioned_posts",
       fields: { title: text({ required: false }) },
@@ -331,7 +331,7 @@ describe("resolveListViewQueryState — columns (Decision 48)", () => {
   });
 });
 
-describe("resolveListViewQueryState — stale sort/searchField fallback (Decision 7)", () => {
+describe("resolveListViewQueryState — stale sort/searchField fallback", () => {
   it("falls back to the collection default sort when a shared view's sort field no longer has an index, and reports staleSortField", () => {
     const sharedView: VexStoredView = {
       viewId: "stale-sort-shared",
@@ -426,13 +426,12 @@ describe("resolveListViewQueryState — stale sort/searchField fallback (Decisio
   });
 });
 
-// Developer-reported fix ("false Modified: preview width on refresh" for a shared view):
-// the active view's own saved width must be visible here, the SAME place `columns`
+// A view's own saved width must be visible here, the SAME place `columns`
 // already resolves view-aware, server/client-identically — `CollectionListView`/
 // `NextAdminPage` both seed their `peekWidth` state from `resolved.peekWidth`
 // (falling back to the `vex-admin:<collection>` cookie only when the view has none),
 // instead of purely from the cookie with no view awareness at all.
-describe("resolveListViewQueryState — peekWidth (developer-reported)", () => {
+describe("resolveListViewQueryState — peekWidth", () => {
   it("is undefined when no active view is named (the default view never declares one)", () => {
     const result = resolveListViewQueryState({ collection, params: params() });
     expect(result.peekWidth).toBeUndefined();
@@ -476,13 +475,13 @@ describe("resolveListViewQueryState — peekWidth (developer-reported)", () => {
     expect(result.peekWidth).toBe(500);
   });
 
-  it("is undefined for a local view — its own saved width isn't visible to configView/sharedView at all (Decision 41)", () => {
+  it("is undefined for a local view — its own saved width isn't visible to configView/sharedView at all", () => {
     const result = resolveListViewQueryState({ collection, params: params({ view: "local:loc1" }) });
     expect(result.peekWidth).toBeUndefined();
   });
 });
 
-describe("resolveListViewQueryState — drops a user-added filter condition on an unreadable field (access-system-fields.md Decision 11)", () => {
+describe("resolveListViewQueryState — drops a user-added filter condition on an unreadable field", () => {
   const denyVexStatus = { wildcard: true, fields: { vex_status: false } };
 
   it("the real reported case: a local view's filter (view=local:…, carried in the URL like any other local-view state) on an unreadable field is dropped, flagged staleFilterField, never reaches the server rejected", () => {
@@ -503,7 +502,7 @@ describe("resolveListViewQueryState — drops a user-added filter condition on a
     expect(result.staleFilterField).toBe("vex_status");
   });
 
-  it("a shared view's own saved where is EXEMPT from the drop — a declared filter per Decision 11, not user-editable — even naming an unreadable field (bug caught live: a shared 'Published' view signed out)", () => {
+  it("a shared view's own saved where is EXEMPT from the drop — a declared filter, not user-editable — even naming an unreadable field (a shared 'Published' view must not sign viewers out)", () => {
     const sharedView: VexStoredView = {
       viewId: "shared-unreadable",
       name: "Published",
@@ -521,7 +520,7 @@ describe("resolveListViewQueryState — drops a user-added filter condition on a
     expect(result.staleFilterField).toBeUndefined();
   });
 
-  it("the SAME exemption on a non-status field — can't be masked by vex_status happening to coincide with published-only visibility (developer-reported, the exact case that hid the bug)", () => {
+  it("the SAME exemption on a non-status field — can't be masked by vex_status happening to coincide with published-only visibility", () => {
     const denyTitle = { wildcard: true, fields: { title: false } };
     const sharedView: VexStoredView = {
       viewId: "shared-title-unreadable",
@@ -566,7 +565,7 @@ describe("resolveListViewQueryState — drops a user-added filter condition on a
     expect(result.staleFilterField).toBeUndefined();
   });
 
-  it("never drops a declared/config view's own hidden where, even naming an unreadable field — Decision 11's exemption", () => {
+  it("never drops a declared/config view's own hidden where, even naming an unreadable field", () => {
     const configView: VexViewConfig = {
       viewId: "cfg-status",
       name: "Published only",

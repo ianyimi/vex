@@ -27,7 +27,7 @@ import { CollectionListView } from "./index";
 // rather than the heavier `renderView` harness. Unlike those two files' own blanket
 // `useQuery` stub, this one recognizes `useSavedListViews`' own `sharedQuery` by its query key
 // (`vexConvexApi.listViews`) and seeds it with the SHARED-view fixture below directly (no
-// `CollectionListViewProps.initialViews` to thread through anymore, polish fixes Decision 11),
+// `CollectionListViewProps.initialViews` to thread through anymore),
 // instead of always reading back `undefined`.
 const project = "https://example.convex.cloud";
 
@@ -45,7 +45,7 @@ vi.mock("@convex-dev/react-query", async (importOriginal) => {
     convexQuery: (fn: unknown, args: unknown) => {
       convexQueryCalls.push({ fn, args });
       // No `CollectionListViewProps.initialData`/`initialViews` to short-circuit
-      // `useSuspenseQuery` anymore (polish fixes, Decision 11) — its `queryFn` genuinely
+      // `useSuspenseQuery` anymore — its `queryFn` genuinely
       // runs now, and TanStack Query disallows a query function resolving to `undefined`.
       // `findPaginated`/`search`'s own args always carry `paginationOpts`; `listViews`'s
       // own args (`{collection}`) never do — enough to tell the two apart and resolve each
@@ -72,8 +72,8 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof TanstackQueryModule>();
   return {
     ...actual,
-    // No `CollectionListViewProps.initialViews` to thread through anymore (polish fixes,
-    // Decision 11) — `useSavedListViews`'s own `sharedQuery` is instead recognized here by its
+    // No `CollectionListViewProps.initialViews` to thread through anymore —
+    // `useSavedListViews`'s own `sharedQuery` is instead recognized here by its
     // `queryKey[0]` (`convexQuery`'s mock above tags it `[fn, args]`) matching
     // `vexConvexApi.listViews`, and seeded with `sharedViewFixture` directly (declared
     // further down this file — safe to reference here: this arrow function's body only runs
@@ -118,7 +118,7 @@ const collection = defineCollection({
 });
 
 // A versioned sibling fixture — used ONLY by the `vex_status` server-parity
-// test below (Step 21 Part B follow-up, developer-reported: resizing/
+// test below (resizing/
 // pinning the synthetic status column used to silently no-op). Kept
 // SEPARATE from `collection` rather than enabling `versions.drafts` on
 // it directly — every other test in this file asserts on `drafts:
@@ -225,10 +225,10 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// `NextAdminPage` (server, Design Decision 39) and `CollectionListView` (client) must send
+// `NextAdminPage` (server) and `CollectionListView` (client) must send
 // IDENTICAL `findPaginated`/`search` Convex args for the same URL state, or the server's
 // prefetched `initialData` hydrates under the wrong query key and the list repaints right
-// after hydration (layout-stability.md) — the exact developer-reported bug this test guards
+// after hydration (layout-stability.md) — the exact bug this test guards
 // (reversed row order on first paint: the server defaulted `sort` to the collection's
 // `defaultView.sort`, the client sent no `sort` at all, Convex's own `.order()` default disagreed).
 // Both sides now go through core's `resolveListViewQueryState` — these tests prove
@@ -309,7 +309,7 @@ describe("CollectionListView — server parity (layout-stability.md)", () => {
     expect(clientArgs(expected.fn)).toContainEqual(expected.args);
   });
 
-  it("cols flows into resolved.columns identically on both sides — the server's own prerender order (Decision 48)", () => {
+  it("cols flows into resolved.columns identically on both sides — the server's own prerender order", () => {
     render(createElement(CollectionListView, { collection: "parity_posts" }), {
       wrapper: wrapper("?cols=featured,title,slug"),
     });
@@ -340,7 +340,7 @@ describe("CollectionListView — server parity (layout-stability.md)", () => {
     expect(headers).not.toContain("updatedAt");
   });
 
-  it("cols narrows the visible columns identically on BOTH sides' very FIRST render — no hidden-columns flash (developer-reported)", () => {
+  it("cols narrows the visible columns identically on BOTH sides' very FIRST render — no hidden-columns flash", () => {
     render(createElement(CollectionListView, { collection: "parity_posts" }), {
       wrapper: wrapper("?cols=title"),
     });
@@ -379,7 +379,7 @@ describe("CollectionListView — server parity (layout-stability.md)", () => {
     }
   });
 
-  it("cols' width/pinned overrides resolve identically on BOTH sides and render into the DOM on the client's very FIRST render (Step 21 Part B, Decision 48)", () => {
+  it("cols' width/pinned overrides resolve identically on BOTH sides and render into the DOM on the client's very FIRST render", () => {
     render(createElement(CollectionListView, { collection: "parity_posts" }), {
       wrapper: wrapper("?cols=title:w300:pl,slug,featured"),
     });
@@ -413,7 +413,7 @@ describe("CollectionListView — server parity (layout-stability.md)", () => {
     expect(titleHeader!.style.left).toBe("48px");
   });
 
-  it("a versioned collection's cols can resize vex_status directly, same as any real field, and it renders into the DOM on the client's very FIRST render (developer-reported: resizing it used to silently snap back since it had no ColumnEntry to persist against)", () => {
+  it("a versioned collection's cols can resize vex_status directly, same as any real field, and it renders into the DOM on the client's very FIRST render (resizing it used to silently snap back since it had no ColumnEntry to persist against)", () => {
     render(createElement(CollectionListView, { collection: "parity_versioned_posts" }), {
       wrapper: wrapper("?cols=vex_status:w220,title"),
     });

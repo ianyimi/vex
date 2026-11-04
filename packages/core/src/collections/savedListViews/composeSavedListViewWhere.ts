@@ -2,12 +2,12 @@ import type { VexWhereNodeOf } from "../../access/queryConstraintTypes";
 
 /**
  * Composes a config view's hidden `where` with the caller's own filter into
- * the single plain `where` the client sends to `find`/`search` (Decision
- * 25). `find`/`search` take no `view` argument and know nothing about views
+ * the single plain `where` the client sends to `find`/`search`.
+ * `find`/`search` take no `view` argument and know nothing about views
  * — the server only ever sees the result of this function, ANDed together
  * like any other caller `where`.
  *
- * `matchDeclaredSavedListViewFilter` (Step 6, SERVER-SIDE, inside `find`) is the one
+ * `matchDeclaredSavedListViewFilter` (SERVER-SIDE, inside `find`) is the one
  * place that re-derives which top-level AND part of the request `where` came
  * from a trusted config/default view — by deep-equality against the SAME
  * `viewWhere` this function composes from (the collection's own
@@ -15,7 +15,7 @@ import type { VexWhereNodeOf } from "../../access/queryConstraintTypes";
  * from anything the client sends). Changing the declared filter
  * client-side (dropping a condition, editing a value, nesting it in an
  * OR) breaks that deep-equality and the whole part falls back to the
- * ordinary field-read check (Decision 26).
+ * ordinary field-read check.
  *
  * @param props - Input props.
  * @param props.viewWhere - The active config view's raw `where`

@@ -101,7 +101,7 @@ function Button({
   // Whether `icon` and `children` are TWO DISTINCT, genuinely visible
   // items that need a margin between them (NOT a justify-content
   // decision anymore — that's `contentJustify`, above) — false in any of
-  // three cases, each developer-reported live:
+  // three cases:
   // 1. `icon` itself is unset — a caller passing a raw icon element AS
   //    `children` instead (`SurfacedAction`'s inline row-action buttons,
   //    `ui/ActionsMenu.tsx` — array/block duplicate/move/remove) has only
@@ -133,12 +133,12 @@ function Button({
         className={cn(
           // `inline-flex items-baseline` — NOT a plain (non-flex) `<span>` — so
           // `icon` and `children` are true flex items laid out on one row
-          // regardless of what `children` itself renders as (developer-reported:
+          // regardless of what `children` itself renders as:
           // a caller passing a `display: flex`/block-level nested element as
           // `children` — e.g. a growing, truncating label — forced that element
           // onto its own line in NORMAL inline flow, pushing a trailing
           // `iconPosition="right"` icon onto a second line below it).
-          // `items-baseline`, NOT `items-center` (developer-reported regression):
+          // `items-baseline`, NOT `items-center`:
           // a flex container's OWN first baseline — as seen by an ANCESTOR's
           // `items-baseline` row (`SavedListViewTabs.tsx`'s tab strip, hard-won over
           // 3 rounds) — is only the label's real text baseline when this span's

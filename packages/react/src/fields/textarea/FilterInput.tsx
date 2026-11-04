@@ -4,8 +4,8 @@ import { Input } from "../../ui";
 /**
  * Textarea field filter row value control — a plain text `Input` (not a
  * `textarea`: a filter compares one exact value, no multi-line editing
- * needed), registered as `reactAdapter.fields.textarea.filterInput`
- * (Decision 50). Same body as the `text` field's own filter input — this
+ * needed), registered as `reactAdapter.fields.textarea.filterInput`.
+ * Same body as the `text` field's own filter input — this
  * package's established one-component-per-type convention, mirroring
  * `Cell.tsx`'s own identical-body split for `text`/`email`/`url`/
  * `textarea`.

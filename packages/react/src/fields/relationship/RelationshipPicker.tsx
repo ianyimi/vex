@@ -42,7 +42,7 @@ export interface RelationshipPickerProps {
  * Selection is held locally until "Select" is clicked, so navigating between
  * tabs never loses in-progress picks. Creating a document while `hasMany` is
  * true auto-selects it and returns to the Select tab instead of closing;
- * single-select calls `onSelect` immediately (Decision 9 — a created document
+ * single-select calls `onSelect` immediately (a created document
  * is auto-selected). The dialog refuses to close (Escape/backdrop/Cancel)
  * while `ListViewCreateDocumentForm` reports an in-flight submit via
  * `onSubmittingChange`, same guard `ListViewCreateDocumentModal` applies.

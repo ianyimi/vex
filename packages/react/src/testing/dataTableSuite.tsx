@@ -140,7 +140,7 @@ export function runDataTableSuite(options?: DataTableSuiteOptions): void {
         expect(screen.getByRole("columnheader", { name: "Title" })).not.toHaveAttribute("aria-sort");
       });
 
-      it("every sortable column reports aria-sort=none while search is active (sort parked, Decision 7) — even one that was the active sort field a moment ago", () => {
+      it("every sortable column reports aria-sort=none while search is active (sort parked) — even one that was the active sort field a moment ago", () => {
         const sortableColumns: ColumnDef<Row>[] = [
           { accessorKey: "title", header: "Title", enableSorting: true, meta: { label: "Title" } },
         ];
@@ -236,7 +236,7 @@ export function runDataTableSuite(options?: DataTableSuiteOptions): void {
           expect(screen.getByRole("columnheader", { name: "Field C" })).toHaveClass("border-l");
         });
 
-        it("the first right-pinned column's own border-l (existing boundary rule) isn't duplicated by the generic rule, and the spacer before it draws NO border of its own (developer-reported: an earlier round's spacer border-l drew a SECOND line at this boundary)", () => {
+        it("the first right-pinned column's own border-l (existing boundary rule) isn't duplicated by the generic rule, and the spacer before it draws NO border of its own (an earlier round's spacer border-l drew a SECOND line at this boundary)", () => {
           render(
             <DataTable
               data={ROWS}
@@ -281,12 +281,12 @@ export function runDataTableSuite(options?: DataTableSuiteOptions): void {
           expect(cells[0]).toHaveClass("border-l");
         });
 
-        // Developer-reported follow-up: the LAST unpinned column's own
+        // Follow-up: the LAST unpinned column's own
         // resize grip sat at ITS OWN declared-width edge, but the spacer
         // (absorbing whatever slack remains before the pinned-right
         // group) could sit anywhere further right — a visible gap
         // between the grip and the TRUE boundary line. A later
-        // developer-reported bug (below, "no duplicate grip at the
+        // bug (below, "no duplicate grip at the
         // pinned-right boundary") found that relocating the grip here
         // ALWAYS, even when the pinned-right boundary column is itself
         // resizable (like `fieldD`), landed a SECOND grip right next to
@@ -765,7 +765,7 @@ export function runDataTableSuite(options?: DataTableSuiteOptions): void {
         expect(onSelectionChange).toHaveBeenLastCalledWith(["doc_3"]);
       });
 
-      it("spreads getRowProps onto each row's <tr>, including onDoubleClick (Step 13 follow-up — found this prop was declared but never wired at all)", () => {
+      it("spreads getRowProps onto each row's <tr>, including onDoubleClick (this prop was declared but never wired at all)", () => {
         const onPointerEnter = vi.fn();
         const onDoubleClick = vi.fn();
         render(

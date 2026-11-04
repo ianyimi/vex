@@ -65,7 +65,7 @@ const asUser = (role: string, _id = "u1"): Record<string, unknown> => ({ _id, ro
  * resource-level wildcard (`{ posts: { "*": true } }`) and role "scoped" only a `read`
  * constraint on `posts` — nothing for `create`/`update`/`delete`. Verified directly against
  * `packages/core/src/access/hasPermission.ts`: an undeclared action on a DECLARED resource
- * falls through `resolveActionCheck` to `defaultPermissionMode` (`false`, P-007), independent
+ * falls through `resolveActionCheck` to `defaultPermissionMode` (`false`), independent
  * of `scope`. Applies to every `create`/`update`/`delete` check against `testCollection`
  * ("posts") — identical to `runRbacStateSuite`'s own default probe (`action: "read"`, scope
  * "all"), because `scoped`'s `read` constraint with no `data` and scope "all" also resolves
@@ -235,7 +235,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
           }),
           { convex: t, access: options.access, auth: { user: null } },
         );
-        // No `initialData` (polish fixes, Decision 11) — the fake Convex client's own
+        // No `initialData` — the fake Convex client's own
         // `query` is genuinely async (`testing/convex/bridge.ts`), so every assertion here
         // waits for the live query to settle instead of asserting synchronously right after
         // `render()`.
@@ -253,11 +253,11 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         }),
         { convex: t },
       );
-      // Step 12: `ListViewLayout`'s own static "N documents" subtitle was
+      // `ListViewLayout`'s own static "N documents" subtitle was
       // replaced by `SavedListViewTabs`'s heading (plain collection name, or the
       // active view's name) — the row count now reads from `DataTable`'s
-      // own "Showing N" footer instead (Decision 35). With `initialData`
-      // gone (polish fixes, Decision 11), `pagination.totalCount` now
+      // own "Showing N" footer instead. With `initialData`
+      // gone, `pagination.totalCount` now
       // resolves to a REAL number from the live query (it used to be
       // `undefined` via the old `toPage()` helper, which never set a
       // `totalDocs`-equivalent) — the footer reads "Showing 3 of 3", not
@@ -281,9 +281,9 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         }),
         { convex: emptyT },
       );
-      // Step 10: a done, zero-row query renders `ListViewEmptyState` in place of
+      // A done, zero-row query renders `ListViewEmptyState` in place of
       // the table body, not a bare header row. `DataTable`'s "Showing N"
-      // footer renders only for `data.length > 0` (Step 12: no equivalent
+      // footer renders only for `data.length > 0` (no equivalent
       // "0 documents" text exists elsewhere once a view is active).
       expect(await utils.findByText("No posts yet")).toBeInTheDocument();
       expect(utils.queryAllByRole("row")).toHaveLength(0);
@@ -292,8 +292,8 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
 
     it("shows selection checkboxes for every role, but no bulk-delete button for a role without delete permission", async () => {
       // `DataTable`'s checkbox column is unconditional now — `ListViewRowDeleteAction`/
-      // `ListViewBulkDeleteAction` self-gate on delete access instead (Decision 37's review:
-      // a role without delete may still have a `list.bulkActions` contribution beyond
+      // `ListViewBulkDeleteAction` self-gate on delete access instead (a
+      // role without delete may still have a `list.bulkActions` contribution beyond
       // delete, e.g. a bulk-export plugin, so the checkbox column itself is not a delete
       // affordance).
       const noDeleteAccess = defineAccess({
@@ -347,10 +347,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       // accepts ANY field key, including a select/date/number column, not just a text one.
       // `getCollectionColumnDefs` (components/fields/index.tsx:220) marks whichever field's
       // key equals `useAsTitle` as `isTitleField` regardless of its type — the same shared
-      // logic that makes Step 5's CELL-1 (9 of 12 Cell components silently ignore
+      // logic that makes CELL-1 (9 of 12 Cell components silently ignore
       // `isTitleField`) reachable in the first place. This proves the full-mount list view
-      // survives a non-text title column; whether that column ends up clickable is Step 5's
-      // own contract, not asserted here.
+      // survives a non-text title column; whether that column ends up clickable is a separate
+      // matter, not asserted here.
       const priorityTitleCollection = defineCollection({
         slug: "posts",
         fields: {
@@ -629,7 +629,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         // handler (`testing/convex/bridge.ts`) doesn't run that merge (its own `config` has
         // no `versions` info for `mergeDraftCounterparts`'s gate to pass), so this seeds the
         // ALREADY-merged shape directly into the query cache (`seedFindPaginatedQueryData`,
-        // polish fixes Decision 11 — replacing the removed `CollectionListViewProps
+        // replacing the removed `CollectionListViewProps
         // .initialData`), matching what a real SSR prefetch returns, rather than the two raw
         // rows `CollectionListView` used to collapse itself.
         const draftRow = await ctx.db.get(draftId);
@@ -1155,7 +1155,7 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
 
 /**
  * `GlobalsListView` now filters via `hasPermission` DIRECTLY (`read`, `scope: "any"`) —
- * developer-reported: it used to render every configured global unconditionally, relying
+ * it used to render every configured global unconditionally, relying
  * entirely on the sidebar/dashboard never linking to one the caller couldn't read, which
  * is not a real boundary since `/admin/globals` is reachable directly by URL. Same
  * `MATRIX_UNDECLARED` fixture `DashboardView`'s own Globals section already uses — the
@@ -2145,7 +2145,7 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
       expect(link?.getAttribute("href")).toBe(
         "/auth/sign-in?redirectTo=%2Fadmin%2Fcollections%2Fposts",
       );
-      // iconPosition="right" (developer correction — not icon-only): the icon is the LAST
+      // iconPosition="right" (not icon-only): the icon is the LAST
       // element child of its own content span, after the visible "Sign in" text node.
       const icon = link?.querySelector("svg");
       expect(icon).not.toBeNull();

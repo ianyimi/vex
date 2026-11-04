@@ -8,7 +8,7 @@ import { env } from "~/env.mjs"
  * Allows crawlers across the public site and points them at the generated
  * sitemap. `/admin` and `/api` are disallowed: the admin panel is
  * authenticated, and neither belongs in an index. Purely static — no Convex
- * call, so the placeholder-env build concern (P-020) does not apply here.
+ * call, so the placeholder-env build concern does not apply here.
  *
  * @returns The robots directives for the public site.
  */

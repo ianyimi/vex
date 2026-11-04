@@ -77,7 +77,7 @@ describe("getVersionSnapshot (server) — collection target", () => {
     });
   });
 
-  test("strips a denied field, including a system field, from the restore-preview snapshot (developer-reported fix, binding, \"access-system-fields\" — the snapshot's own doc comment has always claimed it's stripped; nothing enforced it before this)", async () => {
+  test("strips a denied field, including a system field, from the restore-preview snapshot", async () => {
     const t = convexTest(schema, modules);
     const result = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       const id = await ctx.db.insert("posts", {

@@ -9,7 +9,7 @@ import { VexConfigError } from "../../errors";
  * Collects every field name a {@link VexWhereNodeOf} tree constrains on,
  * walking `and`/`or`/`not` recursively. Used by `validateSavedListViewConfig`'s
  * where-field check — a view's `where` is `VexWhereNodeOf<unknown>`
- * (portable, collection-structure-agnostic, per Decision 9/25), so field
+ * (portable, collection-structure-agnostic), so field
  * names are only checkable against the real collection here, not by
  * `TFieldSlug`.
  *
@@ -43,15 +43,14 @@ const SELECTION_COLUMN_ID = "select";
 
 /**
  * Validates a collection's `admin.view`/`admin.views` surface against its
- * fields and declared indexes (Decisions 3, 6, 25, 45 FINAL, 48). Every
- * check runs over `[collection.admin.view, ...collection.admin.views]`
- * uniformly — both share the same `VexViewState` shape (Decision 45's
- * developer answer), and `defineCollection` has already resolved each
- * `admin.views[n]`'s own collection-wide keys (`searchFields`/
- * `pageSizeOptions`/`countLimit`/`serverPageSize`/`bulkActions`) against
- * `admin.view`'s own value by the time this runs, so reading `view.state.X`
- * below is always that view's OWN effective value, whichever tier it
- * actually came from.
+ * fields and declared indexes. Every check runs over
+ * `[collection.admin.view, ...collection.admin.views]` uniformly — both
+ * share the same `VexViewState` shape, and `defineCollection` has already
+ * resolved each `admin.views[n]`'s own collection-wide keys
+ * (`searchFields`/`pageSizeOptions`/`countLimit`/`serverPageSize`/`bulkActions`)
+ * against `admin.view`'s own value by the time this runs, so reading
+ * `view.state.X` below is always that view's OWN effective value,
+ * whichever tier it actually came from.
  *
  * Checks, per view:
  * 1. Every `state.searchFields` entry names a field that declares its own
@@ -84,7 +83,7 @@ const SELECTION_COLUMN_ID = "select";
  *    column. An object-shaped entry setting `enableSorting: true` must
  *    lead a declared index — the SAME check #2 already runs for
  *    `field.admin.enableSorting: true`, now also applied to a view-level
- *    override, naming the offending view (Decision 48).
+ *    override, naming the offending view.
  *
  * @param props - Input props.
  * @param props.collection - The resolved collection (after `defineCollection`'s

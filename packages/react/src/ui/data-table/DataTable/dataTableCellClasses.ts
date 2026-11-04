@@ -20,7 +20,7 @@ export const DENSITY_ROW_CLASS: Record<ListDensity, string> = {
  * factory (`components/fields/<type>/columnDef.tsx`) sets `label`/`align`/
  * `isTitleField`, read back through this local type since the library's own
  * `ColumnMeta` is an empty interface this package never augments. Width no
- * longer lives on `meta` (Step 21 Part B) — `getCollectionColumnDefs` now
+ * longer lives on `meta` — `getCollectionColumnDefs` now
  * resolves a field's width straight into `ColumnDef.size`, and every render
  * loop in `DataTableHeader`/`DataTableBody` reads it via `liveWidth()`
  * (`useDataTableColumnResize`'s own custom resize state, not TanStack's
@@ -50,7 +50,7 @@ export const ALIGNMENT_CLASS: Record<Alignment, string> = {
  * width unconditionally, regardless of container width or column count —
  * `table-layout: fixed` under the table's own (unmodified) `width: 100%`
  * (`ui/table.tsx`'s shared default — `DataTable` does NOT override it; an
- * EARLIER `width: auto` override round was superseded, developer-reported: it
+ * EARLIER `width: auto` override round was superseded: it
  * fixed the 0px-collapse case but broke a DIFFERENT one, a pinned-right group not
  * reaching the frame's own right edge when there was slack) resolves the table's
  * own used width as the GREATER of 100% and the sum of every column's own
@@ -78,7 +78,7 @@ export function resolveColumnWidthStyle(
  * `SELECTION_CELL_SHARED_CLASS`/`ACTIONS_CELL_SHARED_CLASS` below — both
  * values happen to always resolve to `0` anyway, since they're always the
  * outermost entry in their own pinning group), but an arbitrary user-pinned
- * DATA column (Decision 48) needs a DYNAMIC offset: `column.getStart("left")`
+ * DATA column needs a DYNAMIC offset: `column.getStart("left")`
  * (the cumulative width of every pinned-left column before this one,
  * including the `select` column — it's always `columnPinning.left[0]`, so its
  * own 48px is automatically included) or `column.getAfter("right")` (the
@@ -98,7 +98,7 @@ export function resolvePinnedOffsetStyle(
 /**
  * The header row's OWN opaque background — a flat `color-mix()` blend of
  * `--muted` (50%) and `--background` (50%), NOT the translucent
- * `bg-muted/50` `TableHeader` itself uses (developer-reported: "every
+ * `bg-muted/50` `TableHeader` itself uses ("every
  * header cell, sticky ones included, must be opaque with that same
  * color, so scrolled content never shows through" — a translucent
  * background on a STICKY header cell lets horizontally-scrolled content
@@ -167,7 +167,7 @@ export const HEADER_OPAQUE_BG_CLASS = "bg-[color-mix(in_oklab,var(--muted)_50%,v
  * every plain single-axis sticky element (`z-10`: the rest of the header row) to never get
  * visually overlapped during a diagonal scroll. The BODY cell is `z-[5]`, strictly below the
  * `<thead>`'s `z-10`: with a tie, stacking falls back to DOM order and the later `<tbody>`
- * cell painted OVER the sticky header during vertical scroll (developer-reported; same root
+ * cell painted OVER the sticky header during vertical scroll (same root
  * cause and fix as `ACTIONS_CELL_BODY_CLASS` and `PINNED_DATA_CELL_BODY_CLASS`).
  */
 export const SELECTION_CELL_SHARED_CLASS = "sticky left-0 w-12 min-w-12 max-w-12 border-r px-0";
@@ -192,7 +192,7 @@ export const SELECTION_CHECKBOX_WRAPPER_CLASS = "flex items-center justify-cente
  * (`ListViewLayout`'s `columnsWithActions` sets `header: ""`) but still gets the same sticky,
  * opaque, same-width treatment so the header row's divider lines up with the body's.
  *
- * The BODY cell's own z-index is `z-[5]` (not `z-10`) — developer-reported: the dots-menu
+ * The BODY cell's own z-index is `z-[5]` (not `z-10`) — the dots-menu
  * trigger painted ON TOP of the sticky header during vertical scroll instead of
  * disappearing underneath it like the rest of a scrolled row. Root cause: `TableHeader`
  * itself is `sticky top-0 z-10` (below); this cell previously tied that exact value, and
@@ -208,7 +208,7 @@ export const ACTIONS_CELL_HEADER_CLASS = `${ACTIONS_CELL_SHARED_CLASS} z-20 ${HE
 export const ACTIONS_CELL_BODY_CLASS = `${ACTIONS_CELL_SHARED_CLASS} bg-background z-[5] group-hover/row:bg-[color-mix(in_oklab,var(--muted)_50%,var(--background)_50%)] group-data-[state=highlighted]/row:!bg-[color-mix(in_oklab,var(--primary)_10%,var(--background)_90%)] group-data-[state=selected]/row:bg-muted`;
 
 /**
- * A user-pinned DATA column's own classes (Step 21 Part B, Decision 48) — the
+ * A user-pinned DATA column's own classes — the
  * SAME sticky/opaque/z-index treatment `SELECTION_CELL_*`/`ACTIONS_CELL_*`
  * use (see their own doc comment for the full "why"), generalized to an
  * arbitrary field: no hardcoded `left-0`/`right-0`/`w-12` here (the offset is
@@ -230,17 +230,13 @@ export const PINNED_DATA_CELL_BODY_CLASS = `${PINNED_DATA_CELL_SHARED_CLASS} bg-
  * `table-layout: fixed` leaves free to absorb slack or squeeze to 0, see
  * {@link resolveColumnWidthStyle}'s own doc comment) — rendered as a plain
  * flowing (NOT sticky) cell in the CENTER/scrollable region, right before
- * the pinned-right group begins (Main-reported, developer-reported
- * follow-up: without it, a pinned-right group — `actions` included — just
+ * the pinned-right group begins — without it, a pinned-right group — `actions` included — just
  * sat wherever the declared columns' own sum happened to end, floating
  * mid-frame with empty space after it instead of flush against the
- * frame's own right edge). `border-b` only — NEVER `border-l`/`border-r`
- * (developer-reported follow-up, a REVERSAL of an earlier round's own
- * "every cell closes its own left edge" rule: giving the spacer its own
+ * (REVERSAL of an earlier round's own
  * `border-l` drew a SECOND line — the spacer's own, right after the last
  * real data column's own grip/edge, THEN a visible gap, THEN the pinned-
- * right group's own existing `border-l` — where the developer wants
- * exactly ONE. The spacer is deliberately undecorated so it reads as a
+ * right group's own existing `border-l` — where exactly ONE line is wanted. The spacer is deliberately undecorated so it reads as a
  * seamless, borderless CONTINUATION of the last real data column instead
  * of a cell in its own right; the ONE divider at this boundary is the
  * pinned-right group's own `border-l`, unchanged, already unconditional —
@@ -253,8 +249,7 @@ export const PINNED_DATA_CELL_BODY_CLASS = `${PINNED_DATA_CELL_SHARED_CLASS} bg-
  * uniformly, confirmed live: this cell, the one before it, and a real data
  * cell all read the exact same computed `background-color` in every row
  * state) — together this reads as a seamless continuation of the
- * preceding column, not a separate dead zone (developer-reported
- * follow-up). The settled body loop renders it empty (no real content to
+ * preceding column, not a separate dead zone. The settled body loop renders it empty (no real content to
  * show); the SKELETON loop additionally renders a matching `w-full`
  * loading bar inside it, so the loading row's bar visually reaches the
  * pinned group instead of stopping at the preceding column's own declared
@@ -282,14 +277,14 @@ export function findRightPinnedInsertIndex<T>(items: T[], getPinned: (item: T) =
 /**
  * The column whose own resize grip/handle/divider-highlight RELOCATES
  * into the spacer cell, instead of staying at that column's own (now
- * visually meaningless) right edge — developer-reported follow-up: the
+ * visually meaningless) right edge — the
  * LAST unpinned/center column's own grip sat at ITS OWN declared-width
  * edge, but the spacer (absorbing whatever slack remains before the
  * pinned-right group) could sit anywhere from 0 to hundreds of pixels
  * further right — leaving a visible GAP between the grip the user sees
  * and the actual boundary line (the pinned-right group's own `border-l`)
  * they'd expect it to sit on. Dragging still resizes the SAME column
- * (Main: "no new width model") — only the grip/handle/highlight's own
+ * (no new width model) — only the grip/handle/highlight's own
  * RENDER LOCATION moves, from that column's own cell into the spacer's.
  *
  * Returns `undefined` (no relocation) when:
@@ -303,7 +298,7 @@ export function findRightPinnedInsertIndex<T>(items: T[], getPinned: (item: T) =
  *   column (e.g. a pinned-right `vex_status`/Status): relocating a
  *   SECOND grip into the spacer here would land it immediately next to
  *   the pinned column's OWN `left-0` grip — two `role="separator"`
- *   elements stacked on the same divider (developer-reported: "one on
+ *   elements stacked on the same divider ("one on
  *   the unpinned column's side (does nothing) and one on the pinned
  *   column's side (works)" — confirmed via rects: two separators within
  *   a few px of each other at the boundary). The pinned-right column's
@@ -345,7 +340,7 @@ export function resolveSpacerGripHeader<
 /**
  * Whether the column at `index` sits immediately before the first
  * pinned-right column AND that pinned-right column draws its own grip
- * there — developer-reported: both sides of this ONE divider
+ * there — both sides of this ONE divider
  * independently rendered a resize grip (and highlight), stacking two
  * `role="separator"` elements on the same boundary; the pinned-right
  * column's own (higher `resolveDividerZIndexClass` tier) painted over
@@ -445,7 +440,7 @@ export function previousDrawsBorderRight(
  *
  * The spacer cell is NOT routed through this function at all — it draws
  * NO border of its own (`SPACER_CELL_CLASS` is just `"border-b"`,
- * developer-reported follow-up: an EARLIER round's own `border-l` there
+ * an EARLIER round's own `border-l` there
  * drew a SECOND line at this boundary — see that constant's own doc
  * comment for the full story). It reads as a borderless continuation of
  * the last real data column before it; the pinned-right group's own
@@ -466,7 +461,7 @@ export function resolveCellDividerClass(props: {
 
 /**
  * The z-index for a resizable column's own grip/handle/divider-highlight
- * — developer-reported: an UNPINNED column's resize handle painted ON
+ * — an UNPINNED column's resize handle painted ON
  * TOP of a sticky (pinned-left/right, selection, actions) cell during
  * horizontal scroll instead of sliding underneath it like the rest of
  * the scrolled content, because its `z-20`/`z-10` was UNCONDITIONAL

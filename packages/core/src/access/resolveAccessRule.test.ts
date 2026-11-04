@@ -40,7 +40,7 @@ const asUser = (roles: string | string[], _id = "u1") => ({ _id, roles });
  * fallback role and is itself indexed.
  *
  * Each indexed rule keeps its `filter` for now: `hasPermission` does not interpret
- * the constraint form yet (that is Step 10), so dropping `filter` here would silently
+ * the constraint form yet, so dropping `filter` here would silently
  * relax the per-document check these fixtures also stand in for.
  */
 

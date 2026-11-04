@@ -81,7 +81,7 @@ function computeAppliedWhere(groups: readonly DraftFilterGroup[]): VexWhereNode<
   return fromListViewFilterGroups({ groups: appliedGroups });
 }
 
-/** Props the `list.filters` slot's contributions receive — none of its own (Decision 37's "list.* built-ins take no props of their own"), matching `list.toolbar`'s `ListViewToolbarSlotProps`. The eye toggle and chip row that used to be threaded through here (Decision 10 revised 2026-10-27) moved OUT to `ListViewToolbar`'s own direct `ListViewFilterChips`/`ListViewFilterVisibilityToggle` rendering (further developer revision: chips are always inline in the toolbar row now, between the Filter trigger and the eye, never through this slot). */
+/** Props the `list.filters` slot's contributions receive — none of its own (list builtins take no props of their own), matching `list.toolbar`'s `ListViewToolbarSlotProps`. The eye toggle and chip row that used to be threaded through here moved OUT to `ListViewToolbar`'s own direct `ListViewFilterChips`/`ListViewFilterVisibilityToggle` rendering — chips are always inline in the toolbar row now, between the Filter trigger and the eye, never through this slot. */
 export type ListViewFiltersSlotProps = Record<string, never>;
 
 /** Props for {@link ListViewFilterBuilder}. */
@@ -89,35 +89,34 @@ export interface ListViewFilterBuilderProps {
   /** The collection the list view renders — its data fields populate the field picker. */
   collection: CollectionConfig;
   /**
-   * The list's current filter, in plain `VexWhereNode` form — Decision 9's
-   * URL `filter` param, Decision 11's saved-view `state.where`. Always the
-   * USER's own filter: a config view's hidden `where` (Decision 25) is
+   * The list's current filter, in plain `VexWhereNode` form — the
+   * URL `filter` param, or a saved-view's `state.where`. Always the
+   * USER's own filter: a config view's hidden `where` is
    * composed server-side and never reaches this prop.
    */
   where: VexWhereNode<string> | undefined;
-  /** Replaces `where` wholesale — the caller (`listView/ListViewFiltersAction.tsx`, backed by `useListViewUrlState`'s `setFilter`) owns persistence. Called only with the APPLIED where — see "live apply" below. `null` means the user's edit reduced the filter to zero conditions (distinct from `undefined`, developer-reported — "Clear all"/removing the last row on a view with its own saved filter must not silently re-inherit it); `applyDraft` only emits `null` when `props.where` was non-empty BEFORE this specific edit, never as a no-op echo of an already-empty filter. */
+  /** Replaces `where` wholesale — the caller (`listView/ListViewFiltersAction.tsx`, backed by `useListViewUrlState`'s `setFilter`) owns persistence. Called only with the APPLIED where — see "live apply" below. `null` means the user's edit reduced the filter to zero conditions (distinct from `undefined` — "Clear all"/removing the last row on a view with its own saved filter must not silently re-inherit it); `applyDraft` only emits `null` when `props.where` was non-empty BEFORE this specific edit, never as a no-op echo of an already-empty filter. */
   onWhereChange: (where: VexWhereNode<string> | undefined | null) => void;
 }
 
 /**
  * The groups-of-rows editor rendered by the `vex.list.filters` built-in
- * (`listView/ListViewFiltersAction.tsx`) for Decision 10's DNF `where`: AND
+ * (`listView/ListViewFiltersAction.tsx`) for a DNF `where`: AND
  * rows within a group, OR between groups, applied live as each row becomes
  * complete. Renders read-only when `props.where` is not in that normal
  * form (`toListViewFilterGroups` returns `null`), e.g. a config-authored `admin.views`
  * entry's hidden filter leaking into view state as a hand-written tree.
  *
  * Wraps its own trigger — a "Filter" `Button` with an active-condition
- * count badge (further developer revision, same day as the fixed-grid
- * row layout: the eye/crossed-eye chip-visibility toggle that used to be
+ * count badge (the eye/crossed-eye chip-visibility toggle that used to be
  * a grouped sibling here moved OUT, to `ListViewToolbar`'s own
  * `ListViewFilterVisibilityToggle`, rendered AFTER the chip row itself — this
  * component has no awareness of chip visibility at all any more) — and
  * overlay, via `DataTableResponsiveMenu`: a `Popover` on wider
- * containers, a bottom `Sheet` below `768px` (`useIsMobile`, Decision
- * 22's "overlay CONTENT only" rule: the choice is made once, while the
- * overlay is already closed, so it never shifts first paint — list-view-
- * overhaul Step 16 unified this with `DataTableColumnsMenu`'s and
+ * containers, a bottom `Sheet` below `768px` (`useIsMobile` decides
+ * overlay CONTENT only: the choice is made once, while the
+ * overlay is already closed, so it never shifts first paint — this
+ * matches `DataTableColumnsMenu`'s and
  * `ListViewToolbar`'s own ⋯ overflow's identical mechanism). `ListViewFiltersAction`
  * stays a thin prop-forwarding wrapper with nothing of its own to render.
  *
@@ -141,7 +140,7 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
   const dataFields = useMemo(() => {
     const base = getDataFields({ fields: props.collection.fields });
     const readable = Object.fromEntries(Object.entries(base).filter(([key]) => canReadField(key)));
-    // `vex_status` is a SYSTEM field (Decision 8, access-system-fields.md)
+    // `vex_status` is a SYSTEM field
     // — hidden unless the field-permission map grants it, same "hidden
     // unless listed" default every data field already gets, never
     // unconditionally offered just because the collection has drafts.
@@ -207,14 +206,14 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
     // true no-op — e.g. seeding a fresh, empty draft on open) OR "the
     // user just removed the last condition" (a genuine explicit clear) —
     // distinguished by whether `props.where` (the filter BEFORE this
-    // edit) was itself non-empty (developer-reported).
+    // edit) was itself non-empty.
     props.onWhereChange(applied ?? (props.where !== undefined ? null : undefined));
   }
 
   const hasReadableFields = Object.keys(dataFields).length > 0;
 
   /**
-   * Builds a fresh, incomplete row for the first readable field — shared by `handleAddGroup`/`handleAddRow` (explicit "Add…" clicks) and `handleOpenChange` (Decision 10's "opens already showing one empty row, no click needed").
+   * Builds a fresh, incomplete row for the first readable field — shared by `handleAddGroup`/`handleAddRow` (explicit "Add…" clicks) and `handleOpenChange` (opening the filter builder already shows one empty row, no click needed).
    * @returns A new row seeded with the first readable field and its first offered operator, or `undefined` when the collection has no readable data field to seed.
    */
   function buildNewRow(): DraftFilterRow | undefined {
@@ -241,9 +240,9 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
   /**
    * Opens/closes the overlay. On OPEN, with no existing filter (`dnf` is a
    * real DNF tree, never `null`'s read-only branch, and `draftGroups` is
-   * still empty), seeds one incomplete row immediately — Decision 10's
-   * "opening the filter builder with no filters shows one empty row ready
-   * to edit, no 'Add filter' click needed". Seeded and `setOpen` together
+   * still empty), seeds one incomplete row immediately — opening the
+   * filter builder with no filters shows one empty row ready
+   * to edit, no "Add filter" click needed. Seeded and `setOpen` together
    * in the same handler so React batches them: the overlay never paints
    * the old empty-state "Add filter" button first. The seeded row stays
    * incomplete (`value: ""`) until filled, so `applyDraft` excludes it from
@@ -296,7 +295,7 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
   }
 
   /**
-   * Applies an operator `Select` change — **bug fix, developer-reported:**
+   * Applies an operator `Select` change —
    * sets `row.op` directly rather than round-tripping through the STORED
    * `{op, value}` shape (see {@link DraftFilterRow}'s own doc for exactly
    * how that round trip silently discarded or relabelled the user's pick).

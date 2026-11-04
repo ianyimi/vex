@@ -9,9 +9,9 @@ import type { ColumnEntry, CollectionConfig, CollectionTableSort, VexStoredView,
 
 /** {@link resolveListViewQueryState}'s result — one list query's fully-resolved, view-aware state, ready for `buildListViewFindQueryArgs`/`buildListViewSearchQueryArgs` (`collections/listView/listViewQueryArgs.ts`). */
 export interface ResolvedListViewQueryState<TFieldSlug extends string = string> {
-  /** A declared view's (default or config) hidden filter ANDed with the caller's own (Design Decision 25/45/48), or a shared/local view's own filter, or just the caller's filter. */
+  /** A declared view's (default or config) hidden filter ANDed with the caller's own, or a shared/local view's own filter, or just the caller's filter. */
   where: VexWhereNodeOf<unknown> | undefined;
-  /** Parked (`undefined`) whenever `search` is non-empty (Design Decision 7) — callers must check `search` before reading this. */
+  /** Parked (`undefined`) whenever `search` is non-empty — callers must check `search` before reading this. */
   sort: CollectionTableSort<TFieldSlug> | undefined;
   /** `""` means no search is active. */
   search: string;
@@ -21,7 +21,7 @@ export interface ResolvedListViewQueryState<TFieldSlug extends string = string> 
    * Set (to the field that was dropped) when the resolved `sort.field` — from a
    * shared/local view's own saved state, or the raw URL — no longer exists on the
    * live collection or leads no declared index, and {@link sort} fell back to the
-   * collection default's own sort instead (polish fix, Decision 7). `undefined`
+   * collection default's own sort instead. `undefined`
    * when `sort` needed no correction. The saved view itself is never rewritten —
    * this is a read-time degrade only, surfaced so the toolbar can show a dismissible
    * notice ("This view's sort on 'X' is no longer available").
@@ -36,11 +36,10 @@ export interface ResolvedListViewQueryState<TFieldSlug extends string = string> 
    * Set (to the field that was dropped) when a USER-added filter condition —
    * `params.filter`, or a shared/local view's own saved `where` (NEVER a
    * declared/config view's hidden `where`, which stays exempt and applied
-   * regardless of field readability, Decision 11 of
-   * `access-system-fields.md`) — names a field `props.fieldPermissions`
+   * regardless of field readability) — names a field `props.fieldPermissions`
    * says the caller can't read, and that condition was dropped from
    * {@link where} instead of being sent to the server (which would reject
-   * it, Decision 26, leaving the user with a now-hidden chip and no way to
+   * it, leaving the user with a now-hidden chip and no way to
    * remove it — the gap this closes). `undefined` when `props.fieldPermissions`
    * was not supplied (the check is skipped entirely, matching the old
    * unguarded behavior) or when no condition needed dropping. Same
@@ -49,7 +48,7 @@ export interface ResolvedListViewQueryState<TFieldSlug extends string = string> 
    */
   staleFilterField?: string;
   /**
-   * The FULL column list (Decision 48), ALWAYS complete — every one of
+   * The FULL column list, ALWAYS complete — every one of
    * the collection's own data fields, exactly once, in display order,
    * each a {@link ColumnEntry} (possibly carrying `width`/`pinned`/
    * `hidden`/`enableSorting`/`enableHiding` overrides). Resolved from
@@ -57,7 +56,7 @@ export interface ResolvedListViewQueryState<TFieldSlug extends string = string> 
    * collection.admin.view.state.columns`), then completed
    * (`completeListViewColumnOrder`) so a field none of the three layers names
    * still gets a definite position (appended, declaration order,
-   * explicitly hidden) — the SAME completion Decision 47 established,
+   * explicitly hidden) — the SAME completion {@link completeListViewColumnOrder} applies elsewhere,
    * now entry-aware. Every per-field width/sort/hide/pin value a
    * consumer (`getCollectionColumnDefs`, `DataTable`, `NextAdminPage`)
    * needs comes from passing an entry here through `resolveListViewColumnConfig`
@@ -66,16 +65,16 @@ export interface ResolvedListViewQueryState<TFieldSlug extends string = string> 
   columns: ColumnEntry<TFieldSlug>[];
   /**
    * The active view's OWN saved peek-panel width (px), `undefined` when it
-   * never saved one (Decision, developer-approved "peek-resize" — the
+   * never saved one (the
    * default/most config views never do). Deliberately NOT merged with the
    * `vex-admin:<collection>` cookie's own collection-wide `peekWidth`
    * default here — this function has no cookie access and stays pure,
    * exactly like `columns` above draws only from `configView`/`sharedView`/
    * `collection`; the caller (`CollectionListView`/`ListViewModifiedControls`'s
-   * diff, Decision "peek-resize-view-sync" below) applies
+   * diff) applies
    * `?? initialPreferences.peekWidth` itself. A `local` view's own width
-   * never reaches here either (its full state lives in the URL/localStorage,
-   * Decision 41, not `configView`/`sharedView`) — `CollectionListView`'s own
+   * never reaches here either (its full state always lives in the URL/localStorage,
+   * not `configView`/`sharedView`) — `CollectionListView`'s own
    * view-sync effect (the same one that already re-syncs `columnEntries` once
    * `localStorage` hydrates) picks that case up directly from the merged
    * `SavedListViewEntry.peekWidth` instead.
@@ -90,7 +89,7 @@ export interface ResolvedListViewQueryState<TFieldSlug extends string = string> 
  * checked at definition time (it's user data, not code), so it can go stale after the
  * field is removed or its index dropped — this re-checks it at resolve time instead.
  *
- * Exported (polish fix, Decision 7) so `@vexcms/react`'s `resolveEffectiveViewState`
+ * Exported so `@vexcms/react`'s `resolveEffectiveViewState`
  * can apply the IDENTICAL check — not just an equivalent one — to the "Modified"
  * diff/"Save as new"/"Save in place" state it builds client-side, so the two never
  * drift on what counts as stale.
@@ -118,33 +117,33 @@ export function isSearchFieldValid(props: { collection: CollectionConfig; field:
 
 /**
  * Resolves one list query's effective state by merging three layers, narrowest first: the
- * parsed URL (`params`, Design Decision 40's codec), the active view's own saved state
+ * parsed URL (`params`), the active view's own saved state
  * (`configView`/`sharedView`, whichever the caller resolved `params.view` to — or, when
  * neither resolves and `params.view` is unset, the collection's own resolved default
- * ("All") view, `collection.admin.view`, Decision 45/48), and that same default view as the
+ * ("All") view, `collection.admin.view`), and that same default view as the
  * terminal fallback below an incomplete shared/local view.
  *
  * This merge is what makes a bare `?view=shared:<id>` link — unmodified from the saved
- * view, so `serializeListViewUrlState` wrote none of its matching params (Design Decision 9:
+ * view, so `serializeListViewUrlState` wrote none of its matching params (
  * "only params that differ from the saved view appear") — render the SAME rows as the
  * view's own tab: without it, an omitted `sort`/`filter` would silently fall back to the
  * collection default instead of the view's. A **local** view never reaches here with
  * `configView`/`sharedView` set — its full state is always in the URL already (Design
- * Decision 41), so `params` alone is already complete for it, and `params.view` being set
+ * complete for it), so `params` alone is already complete for it, and `params.view` being set
  * (to a `local:…` value) keeps this function from ALSO substituting the default view.
  *
- * Called by `NextAdminPage` (server prerender, Design Decision 39, this step) and by
- * `CollectionListView` (client, Steps 9/10/12) before either builds its query args — the
+ * Called by `NextAdminPage` (server prerender) and by
+ * `CollectionListView` (client) before either builds its query args — the
  * ONE place this merge lives, so a link to an unmodified view can't render different rows
  * on the two sides (`layout-stability.md`).
  *
- * Decision 7 (polish fix): `sort`/`searchField` are validated against the live
+ * `sort`/`searchField` are validated against the live
  * collection before being returned — a stale value (the field no longer exists, or
  * leads no declared index/isn't in `searchFields`) falls back to the collection
  * default's own value for that part ONLY, and the fallback is reported via
  * `staleSortField`/`staleSearchField` so the caller can show a dismissible notice.
  * Same shape for a USER-added filter condition naming an unreadable field
- * (access-system-fields.md Decision 11) — dropped, reported via
+ * (per `access-system-fields.md`) — dropped, reported via
  * `staleFilterField`, when `props.fieldPermissions` is supplied.
  * The saved view/URL itself is never rewritten.
  *
@@ -171,21 +170,20 @@ export function resolveListViewQueryState<TFieldSlug extends string = string>(pr
 }): ResolvedListViewQueryState<TFieldSlug> {
   // The default ("All") view is the ACTIVE declared view whenever the URL
   // names no view at all — a local view's full state already lives in
-  // `params` (Decision 41), so this never substitutes for one; a resolved
+  // `params`, so this never substitutes for one; a resolved
   // config/shared view always wins over it.
   const isDefaultActive =
     props.configView === undefined && props.sharedView === undefined && props.params.view === undefined;
   const declaredView: VexViewConfig<TFieldSlug> | undefined =
     props.configView ?? (isDefaultActive ? (props.collection.admin.view as unknown as VexViewConfig<TFieldSlug>) : undefined);
   const viewState: VexViewState<TFieldSlug> | undefined = declaredView?.state ?? props.sharedView?.state;
-  // Decision 11 (access-system-fields.md, corrected — DraftPairPagination
-  // caught this live on a shared "Published" view, signed out): ONLY a
+  // (per `access-system-fields.md`, corrected — caught live on a shared "Published" view, signed out): ONLY a
   // truly USER-SUPPLIED condition is subject to the unreadable-field drop
   // below — a raw URL `filter=` override, or a LOCAL view's own saved
-  // filter (its full state always lives in the URL already, Decision 41,
+  // filter (its full state always lives in the URL already,
   // indistinguishable from "the user typed this just now"). A declared
   // view's own hidden `where` (config/default) AND a SHARED view's own
-  // saved `where` are BOTH "declared filters" per Decision 11's literal
+  // saved `where` are BOTH "declared filters" per this module's literal
   // grouping ("config/shared-view filters still apply server-side... the
   // exemption must handle vex_status") — curated by whoever created/
   // shared the view, trusted and enforced for every viewer regardless of
@@ -210,9 +208,9 @@ export function resolveListViewQueryState<TFieldSlug extends string = string>(pr
     : declaredView !== undefined || props.params.filter !== undefined
       ? ((props.params.filter ?? undefined) as VexWhereNodeOf<unknown> | undefined)
       : viewState?.where;
-  // Decision 11: a user-added filter condition naming a field the caller
+  // A user-added filter condition naming a field the caller
   // can't read must be dropped here, before it ever reaches the server —
-  // `find`/`search` reject such a condition (Decision 26), and
+  // `find`/`search` reject such a condition, and
   // `ListViewFilterChips` hides the chip that would let the user remove it, a
   // dead end without this. Never applied to `isSharedViewActive`'s own
   // where (`userFilter` is already `undefined` in that case, so there is
@@ -233,7 +231,7 @@ export function resolveListViewQueryState<TFieldSlug extends string = string>(pr
       ? composeSavedListViewWhere({
           viewWhere: declaredView.state.where,
           // A declared view has no "own visible filter" to inherit at all
-          // (Decision 25 — only its hidden `where` exists, composed above
+          // (only its hidden `where` exists, composed above
           // via AND) — `null` (explicit clear) and `undefined` (absent)
           // both collapse to "no additional user filter," so normalizing
           // here changes nothing for this branch.
@@ -249,7 +247,7 @@ export function resolveListViewQueryState<TFieldSlug extends string = string>(pr
 
   const defaultSort = props.collection.admin.view.state.sort as CollectionTableSort<TFieldSlug>;
   const resolvedSort = props.params.sort ?? viewState?.sort ?? defaultSort;
-  // Decision 7: a stale sort — the field no longer exists or leads no declared index —
+  // A stale sort — the field no longer exists or leads no declared index —
   // falls back to the collection default's own sort, server and client identically
   // (this function is the one place both sides call); the saved view itself is never
   // rewritten, only this read's OWN result. `defaultSort` is config-time-validated

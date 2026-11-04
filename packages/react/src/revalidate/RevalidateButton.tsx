@@ -27,8 +27,9 @@ export interface RevalidateButtonProps {
  *
  * Posts through {@link useVexRevalidate} to the same session-authorized route
  * `useVexMutation` posts to — no separate secret or API key. Gated on the
- * caller's write permission for `props.collection` (advisory only, per P-004 —
- * the route itself enforces via `hasPermission`), and renders the request's
+ * caller's write permission for `props.collection` (advisory only — RBAC
+ * checks run client-side by calling `hasPermission` directly; the route
+ * itself enforces via `hasPermission` server-side), and renders the request's
  * pending/error state rather than failing silently, since this is a
  * user-initiated action.
  *

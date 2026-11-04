@@ -6,10 +6,11 @@ import type { ConstraintBuilder, FilterConstraintBuilder } from "../access/query
 import { VexError } from "../errors";
 import * as _generatedApi from "./test/convex/_generated/api";
 import schema from "./test/convex/schema";
-import { checkbox, commitTs, row, tabs, text } from "../fields";
+import { checkbox, commitTs, relationship, row, select, tabs, text } from "../fields";
 import {
   andConvexQueryFilters,
   convertCommitTsWhereToNs,
+  normalizeArrayStoredWhere,
   referencedWhereFields,
   validateWhereNode,
   WHERE_DEPTH_LIMIT,
@@ -148,7 +149,7 @@ describe("validateWhereNode", () => {
     expect(() => validateWhereNode({ node: deep })).toThrow(VexError);
   });
 
-  test("accepts a leaf missing the `value` key as value: undefined (Decision 10's isEmpty/isNotEmpty wire form)", () => {
+  test("accepts a leaf missing the `value` key as value: undefined (isEmpty/isNotEmpty wire form)", () => {
     // Convex's own argument serialization drops an explicit `value: undefined`
     // property before the server ever sees it, so a stored `{ op: "eq", value:
     // undefined }` leaf (an `isEmpty` row) crosses the wire as `{ field, op }`
@@ -291,7 +292,7 @@ describe("convertCommitTsWhereToNs", () => {
   });
 
   /**
-   * Polish fix (Decision 4): `where` arrives on the wire as `v.any()`, so a
+   * `where` arrives on the wire as `v.any()`, so a
    * float or `NaN`/`Infinity` ms value on a `commitTs` field would
    * otherwise crash `BigInt(...)` with an uncaught `RangeError`. Converted
    * to a clear, caller-facing `VexError({ code: "INVALID_WHERE" })` naming
@@ -331,5 +332,184 @@ describe("convertCommitTsWhereToNs", () => {
   test("a non-integer value on a non-commitTs field is left untouched (out of scope)", () => {
     const where = { field: "title", op: "eq", value: 1.5 } as const;
     expect(convertCommitTsWhereToNs({ where: where as never, fields })).toEqual(where);
+  });
+});
+
+describe("normalizeArrayStoredWhere", () => {
+  // `select`/`relationship`/`upload` all store `v.array(...)` regardless of
+  // `hasMany` (`fields/{select,relationship,upload}/validator.ts`) — the
+  // bug this function fixes (`?filter=(status.eq.won)` returning zero rows
+  // against 12 seeded `won` leads, verified live 2026-11-03.
+  const fields = {
+    status: select({ hasMany: false, options: [{ label: "Won", value: "won" }, { label: "Lost", value: "lost" }] }),
+    tags: select({ hasMany: true, options: [{ label: "News", value: "news" }] }),
+    contributorId: relationship({ collection: { slug: "authors" }, hasMany: false }),
+    coAuthors: relationship({ collection: { slug: "authors" }, hasMany: true }),
+    title: text(),
+  };
+
+  test("undefined in, undefined out", () => {
+    expect(normalizeArrayStoredWhere({ where: undefined, fields })).toBeUndefined();
+  });
+
+  test("wraps a single-cardinality select field's eq value in a one-element array", () => {
+    const where = { field: "status", op: "eq", value: "won" } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual({
+      field: "status",
+      op: "eq",
+      value: ["won"],
+    });
+  });
+
+  test("wraps a single-cardinality relationship field's neq value the same way", () => {
+    const where = { field: "contributorId", op: "neq", value: "author_123" } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual({
+      field: "contributorId",
+      op: "neq",
+      value: ["author_123"],
+    });
+  });
+
+  test("leaves a hasMany field's eq value unwrapped — the membership/\"contains\" gap has no sound eq rewrite", () => {
+    const where = { field: "tags", op: "eq", value: "news" } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual(where);
+  });
+
+  test("leaves an already-array value unchanged (idempotent)", () => {
+    const where = { field: "status", op: "eq", value: ["won"] } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual(where);
+  });
+
+  test("leaves a non-array-stored field's eq value untouched", () => {
+    const where = { field: "title", op: "eq", value: "hi" } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual(where);
+  });
+
+  test("leaves gt/gte/lt/lte on an array-stored field untouched (not eq/neq)", () => {
+    const where = { field: "status", op: "gt", value: "lost" } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual(where);
+  });
+
+  test("rewrites isEmpty (eq with no value) on an array-stored field to match [] or a legacy missing field", () => {
+    const where = { field: "contributorId", op: "eq", value: undefined } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual({
+      or: [
+        { field: "contributorId", op: "eq", value: [] },
+        { field: "contributorId", op: "eq", value: undefined },
+      ],
+    });
+  });
+
+  test("rewrites isNotEmpty (neq with no value) the same way, negated", () => {
+    const where = { field: "contributorId", op: "neq", value: undefined } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual({
+      not: {
+        or: [
+          { field: "contributorId", op: "eq", value: [] },
+          { field: "contributorId", op: "eq", value: undefined },
+        ],
+      },
+    });
+  });
+
+  // The real-world shape `leads.ts`'s "From Contributors" preset ships:
+  // `{ field: "contributorId", op: "neq", value: null }` — an explicit
+  // `null`, not the `isEmpty` wire
+  // form's missing `value` key. Array-stored fields never store `null`
+  // (schema is always `v.array(...)`, optionally `v.optional(...)`), so
+  // `null` means the same "no value" intent as `undefined` here.
+  test("rewrites an explicit value: null leaf the same as isEmpty/isNotEmpty", () => {
+    const where = { field: "contributorId", op: "neq", value: null } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual({
+      not: {
+        or: [
+          { field: "contributorId", op: "eq", value: [] },
+          { field: "contributorId", op: "eq", value: undefined },
+        ],
+      },
+    });
+  });
+
+  test("recurses through and/or/not, rewriting only array-stored leaves", () => {
+    const where = {
+      and: [
+        { field: "status", op: "eq", value: "won" },
+        { or: [{ field: "title", op: "eq", value: "hi" }, { not: { field: "contributorId", op: "eq", value: undefined } }] },
+      ],
+    } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual({
+      and: [
+        { field: "status", op: "eq", value: ["won"] },
+        {
+          or: [
+            { field: "title", op: "eq", value: "hi" },
+            {
+              not: {
+                or: [
+                  { field: "contributorId", op: "eq", value: [] },
+                  { field: "contributorId", op: "eq", value: undefined },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  // Confirms the rewritten shape against the REAL Convex runtime (not just
+  // `valuesEqual`'s own JS reimplementation): both a declared index's range
+  // and a `.filter()` expression compare an array-valued `eq`/`neq` by
+  // CONTENT, exactly like `status: ["won"]` matching `eq ["won"]` needs to.
+  test("the rewritten array-eq shape matches by content on a real Convex index range and filter", async () => {
+    const t = convexTest(schema, modules);
+    const { wonId, lostId } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const wonId = await ctx.db.insert("posts", { title: "Won deal", slug: "won-deal", category: ["won"] });
+      const lostId = await ctx.db.insert("posts", { title: "Lost deal", slug: "lost-deal", category: ["lost"] });
+      return { wonId, lostId };
+    });
+    const where = normalizeArrayStoredWhere({
+      where: { field: "category", op: "eq", value: "won" } as never,
+      fields: { category: select({ hasMany: false, options: [{ label: "Won", value: "won" }] }) },
+    })!;
+    expect(where).toEqual({ field: "category", op: "eq", value: ["won"] });
+
+    const viaIndex = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db
+        .query("posts")
+        .withIndex("by_category", (q) => q.eq("category", (where as { value: string[] }).value))
+        .collect(),
+    );
+    expect(viaIndex.map((d) => d._id)).toEqual([wonId]);
+
+    const filter = whereToConvexQueryFilter({ where: where as VexWhere<string> })!;
+    const viaFilter = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("posts").filter(filter).collect(),
+    );
+    expect(viaFilter.map((d) => d._id).sort()).toEqual([wonId].sort());
+    expect(viaFilter.map((d) => d._id)).not.toContain(lostId);
+  });
+
+  // Confirms the empty-check rewrite's `neq []` half against the real
+  // Convex runtime: an empty array must NOT equal `null`/`undefined`
+  // (the exact bug `{ field: "contributorId", op: "neq", value: null }`
+  // hit — it matched every row because `[]` is never `=== null`), but DOES
+  // equal `[]` by content.
+  test("the rewritten empty-check shape excludes an empty array on a real Convex filter", async () => {
+    const t = convexTest(schema, modules);
+    const authorId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.insert("authors", { name: "Ada" }));
+    const { withAuthorId, emptyId } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const withAuthorId = await ctx.db.insert("posts", { title: "Has author", slug: "has-author", author: [authorId] });
+      const emptyId = await ctx.db.insert("posts", { title: "No author", slug: "no-author", author: [] });
+      return { withAuthorId, emptyId };
+    });
+    const where = normalizeArrayStoredWhere({
+      where: { field: "author", op: "neq", value: null } as never,
+      fields: { author: relationship({ collection: { slug: "authors" }, hasMany: false }) },
+    })!;
+    const filter = whereToConvexQueryFilter({ where: where as VexWhere<string> })!;
+    const docs = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.query("posts").filter(filter).collect());
+    expect(docs.map((d) => d._id)).toEqual([withAuthorId]);
+    expect(docs.map((d) => d._id)).not.toContain(emptyId);
   });
 });

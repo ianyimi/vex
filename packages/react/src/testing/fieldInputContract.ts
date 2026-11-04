@@ -88,7 +88,7 @@ export interface FieldInputContractOptions<
 /**
  * `AppForm` narrowed to the two props this harness passes.
  *
- * Spec 2026-09-07 Step 2 widened `AnyFormApi`'s validator-slot generics to
+ * Widening `AnyFormApi`'s validator-slot generics to
  * default to their own declared bound (`undefined | FormValidateOrFn<TFormData>`)
  * instead of the narrower `undefined`, per AP-006 — see `AppFormContext.ts`.
  * That fix does not reach this cast. `createElement(AppForm, props)` passes

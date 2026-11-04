@@ -5,9 +5,9 @@ import { UnsavedChangesGuardContext } from "../documents/useUnsavedChangesGuard"
 import { useFrameworkComponents } from "./useFrameworkComponents";
 
 /**
- * Client-side programmatic navigation (spec decision 2), for a built-in's
- * post-mutation redirect ONLY — after `vex.delete` resolves (Step 4), after
- * `vex.duplicate`'s create resolves (Step 6). Everything clickable keeps
+ * Client-side programmatic navigation, for a built-in's
+ * post-mutation redirect ONLY — after `vex.delete` resolves, after
+ * `vex.duplicate`'s create resolves. Everything clickable keeps
  * using `VexLink`; a raw `next/navigation` `useRouter().push` from
  * third-party code is NOT guarded by `UnsavedChangesGuardContext` — only
  * this hook is.

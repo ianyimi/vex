@@ -14,8 +14,8 @@ const RICHTEXT_CELL_EXCERPT_LENGTH = 77;
 /**
  * Rich text field cell component for the data-table list view.
  *
- * Renders a plain-text excerpt of the stored document — never markup (Design
- * Decision 5) — via `richTextToPlainText`. The visible text is cut to
+ * Renders a plain-text excerpt of the stored document — never markup —
+ * via `richTextToPlainText`. The visible text is cut to
  * {@link RICHTEXT_CELL_EXCERPT_LENGTH} characters; the full plain-text
  * conversion is kept on the `title` attribute for hover, same contract as
  * `text/Cell.tsx`. An empty or missing document shows an em-dash.

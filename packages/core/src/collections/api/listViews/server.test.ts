@@ -325,7 +325,7 @@ describe("listViews (server)", () => {
   });
 });
 
-describe("listViews (server) — bad state rows skipped (Decision 2)", () => {
+describe("listViews (server) — bad state rows skipped", () => {
   test("skips a row whose state is null, returning the valid rows only", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtxLike) => {

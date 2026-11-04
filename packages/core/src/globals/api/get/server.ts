@@ -46,8 +46,8 @@ export interface GetGlobalServerArgs<
   depth?: [TPopulate] extends [Record<string, never>] ? D : never;
   /**
    * When the resolved global declares `versions.drafts: true`, prefer the
-   * active draft row over the published row — the same knob Step 13 adds to
-   * `find`/`get`/`search` for collections. Ignored for a non-versioned
+   * active draft row over the published row — the same knob `find`/`get`/`search`
+   * use for collections. Ignored for a non-versioned
    * global. Defaults to `false`: the public/default read path never sees
    * draft content, matching design-review §3.1 — this is data integrity,
    * not a permission decision, so the default without the flag is "no

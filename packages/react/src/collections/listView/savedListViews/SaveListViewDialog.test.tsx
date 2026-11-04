@@ -86,7 +86,7 @@ describe("SaveListViewDialog", () => {
   });
 });
 
-describe("SaveListViewDialog — sharedViewsAvailable (org scoping, Decision 3 continued)", () => {
+describe("SaveListViewDialog — sharedViewsAvailable (org scoping)", () => {
   it("hides the 'Everyone with access' option entirely when sharedViewsAvailable is false, even with canCreateShared true", () => {
     render(
       <SaveListViewDialog

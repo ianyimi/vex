@@ -28,20 +28,20 @@ export const {
 } = convexBetterAuthNextJs({
   convexSiteUrl: env.NEXT_PUBLIC_CONVEX_SITE_URL,
   convexUrl: env.NEXT_PUBLIC_CONVEX_URL,
-  // BUG FIX (developer-reported jwtCache measured at ~170ms instead of a local
-  // decode's <5ms): `getToken`'s own jwtCache path reads `opts.cookiePrefix`
+  // Fixes jwtCache measuring at ~170ms instead of a local
+  // decode's <5ms: `getToken`'s own jwtCache path reads `opts.cookiePrefix`
   // (a TOP-LEVEL option, not nested under `jwtCache`) to find this app's own
   // `<prefix>.convex_jwt` cookie at all — without it, it looks for a
   // bare/`__Secure-` `convex_jwt` cookie that never exists here, so every call
   // silently fell through to the network path despite `jwtCache.enabled: true`.
   cookiePrefix: AUTH_COOKIE_PREFIX,
-  // Developer decision: trust a locally-decoded, non-expired JWT cookie
+  // Trust a locally-decoded, non-expired JWT cookie
   // instead of hitting `/api/auth/convex/token` on every request — this was
   // the single largest hop in the admin panel's own reload waterfall (perf
   // fix). Keeps the library's own default (short) JWT lifetime, not
   // extended here.
   //
-  // Tradeoff, accepted by the developer: an SSR permission change (a role
+  // Tradeoff, accepted: an SSR permission change (a role
   // edit, a ban, a revoked session) can lag by up to the JWT's own lifetime
   // before THIS cache notices — the stale local decode is trusted until it
   // expires or a query call fails with what `isAuthTokenError` recognizes as

@@ -12,8 +12,8 @@ import {
 } from "@vexcms/core";
 
 /**
- * Client-side write side of `@vexcms/core`'s `adminCookie.ts` codec
- * (Decision 51). Every OTHER client-side cookie writer in `@vexcms/react`
+ * Client-side write side of `@vexcms/core`'s `adminCookie.ts` codec.
+ * Every OTHER client-side cookie writer in `@vexcms/react`
  * (`writeListViewConfigCookies.ts`'s `writeListViewDensityCookie`/
  * `writeListViewChipsVisibleCookie`/`writeListViewSkeletonRowCountCookie`,
  * `localSavedListViewsStore.ts`'s local-view-index write, and
@@ -31,7 +31,7 @@ import {
 
 /**
  * Reads one cookie's raw value out of `document.cookie`'s own semicolon-separated
- * string. Exported (polish fix — Design Smells WARN) so the rest of
+ * string. Exported so the rest of
  * `@vexcms/react`'s cookie writers (`writeListViewConfigCookies.ts`, `localSavedListViewsStore.ts`)
  * reuse this ONE implementation instead of each carrying a byte-identical copy.
  *

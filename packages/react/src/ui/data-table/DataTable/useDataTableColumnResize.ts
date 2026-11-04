@@ -26,13 +26,12 @@ import {
 const DEFAULT_COLUMN_WIDTH_PX = 192;
 
 /**
- * The floor a column can be dragged/arrow-keyed down to (Step 21 Part B,
- * Decision 48) — narrow enough for a short label plus its sort/resize
+ * The floor a column can be dragged/arrow-keyed down to — narrow enough for a short label plus its sort/resize
  * affordances to stay legible, never zero or negative.
  */
 const MIN_COLUMN_WIDTH_PX = 60;
 
-/** Pixels a single `ArrowLeft`/`ArrowRight` keypress on a resize handle adjusts width by — matches the drag gesture's own granularity (Decision 48: "a fixed step matching the drag gesture's own granularity"), a comfortable, visibly-incremental jump without requiring many presses to reach a useful width. */
+/** Pixels a single `ArrowLeft`/`ArrowRight` keypress on a resize handle adjusts width by — matches the drag gesture's own granularity, a comfortable, visibly-incremental jump without requiring many presses to reach a useful width. */
 const RESIZE_STEP_PX = 12;
 
 /**
@@ -70,7 +69,7 @@ export interface UseDataTableColumnResizeResult {
    * dragging the mouse LEFT grows it, mirroring a normal/pinned-left
    * column's own RIGHT-edge handle, where dragging RIGHT grows). Locks
    * the `ScrollArea` `Viewport`'s own `scrollLeft` to its value at drag-start
-   * for the gesture's full duration (developer-reported: without this, a
+   * for the gesture's full duration (without this, a
    * drag on a pinned column also scrolled the table, since the handle
    * sits inside the SAME scrollable container the drag's own pointer
    * events bubble through). `scroll-area-viewport`, not `table-container`
@@ -93,7 +92,7 @@ export interface UseDataTableColumnResizeResult {
 
 /**
  * Owns the custom column-resize state `DataTable`'s header/body render loops
- * share: a transient, LIVE-DRAG-ONLY width override (Decision 48: "a resize
+ * share: a transient, LIVE-DRAG-ONLY width override ("a resize
  * commits a NEW explicit width... never a transient-only UI state that
  * forgets itself on reload") — every column's COMMITTED width already lives
  * in `columnDef.size` (resolved from `columnEntries` one level up, by

@@ -29,7 +29,7 @@ import type { VexResourceSlug } from "../../types/generated";
  * @param props.data - The full top-level document, forwarded unchanged to
  *   every sub-field so each can evaluate its own `admin.condition` and, if
  *   it is itself a container, continue threading `data` further down.
- *   Omitted entirely skips condition evaluation (Step 9).
+ *   Omitted entirely skips condition evaluation.
  * @param props.siblingData - This group's OWN resolved value — the object
  *   every one of its sub-fields sees as `siblingData` for its own condition
  *   check, since they are each other's true siblings. Computed by whichever

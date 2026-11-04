@@ -9,10 +9,10 @@ export interface ListViewQueryErrorProps {
   /**
    * The thrown/returned error — a `VexError`/`ConvexError` recovered via core's
    * `extractVexErrorData` (handles both a structured `.data` object and a local Convex dev
-   * server's own diagnostic-string wrapping) with `code: "UNINDEXED_SORT"` (Step 6's
-   * `resolveQueryIndex`) switching to that variant; a plain `{ code?, message? }` object
-   * (never an `Error` instance — `CollectionListView`'s `initialQueryError` prop, Design
-   * Decision 39/Step 14's zero-shift server prerender of this same state) is treated
+   * server's own diagnostic-string wrapping) with `code: "UNINDEXED_SORT"` (the
+   * `resolveQueryIndex` validation) switching to that variant; a plain `{ code?, message? }` object
+   * (never an `Error` instance — `CollectionListView`'s `initialQueryError` prop, the
+   * zero-shift server prerender of this same state) is treated
    * identically; anything else (a plain `Error`, a `VexError`/`ConvexError` whose data
    * doesn't match either shape, or a different `.code`) renders the generic message.
    */
@@ -50,7 +50,7 @@ function extractErrorData(error: unknown): { code?: string; message?: string } |
 /**
  * The collection list's query-error states (DESIGN-NOTES.md §5): a generic
  * "Couldn't load {plural}" for any runtime failure, and a specific
- * "Can't sort by {Field} yet" for a stale link hitting Step 6's
+ * "Can't sort by {Field} yet" for a stale link hitting the
  * `UNINDEXED_SORT` (config-time validation should make this rare, not
  * impossible — DEV-AGENT-BRIEF.md §5). Rendered by `DataTable` in place of
  * the table body.

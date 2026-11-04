@@ -30,10 +30,10 @@ export interface UseVexDocQueryProps<
   /**
    * Seed data the hook renders immediately, before its own query resolves.
    * Two callers use this: an SSR-prefetched document (`CollectionEditView`),
-   * and the Inspect peek (Step 13), which passes the row it already has from
+   * and the Inspect peek, which passes the row it already has from
    * `useVexListQuery`'s `results` so the panel opens instantly and this
-   * hook's own subscription only takes over once it resolves (Design
-   * Decision 27). `null` means "confirmed not found"; `undefined` means
+   * hook's own subscription only takes over once it resolves.
+   * `null` means "confirmed not found"; `undefined` means
    * "not loaded yet, use the live query".
    */
   initialData?: TDocument | null;
@@ -49,7 +49,7 @@ export interface UseVexDocQueryReturn<TDocument extends VexDocument = VexDocumen
    * The query's own error, if its last attempt failed — most commonly a `VexAccessError`
    * (unreadable document: `get` throws rather than returning `null`, which is reserved for
    * genuine not-found). `undefined` while pending/successful. Plain `useQuery` never
-   * rethrows on render (polish fixes, Decision 1/2) — the caller (`ListViewPeek`, the
+   * rethrows on render — the caller (`ListViewPeek`, the
    * collection/global/media edit views) is responsible for checking this and rendering its
    * own inline error state with Retry; `document` stays `undefined` alongside a set `error`,
    * so a caller that only checks `document` degrades to a blank/not-found-looking view
@@ -62,7 +62,7 @@ export interface UseVexDocQueryReturn<TDocument extends VexDocument = VexDocumen
 
 /**
  * Fetches a single document by id and collection — the data source every
- * edit view (and the Inspect peek) reads through (Design Decision 19), live
+ * edit view (and the Inspect peek) reads through, live
  * via a Convex subscription.
  *
  * Queries the generic `vexConvexApi.get` endpoint directly rather than the
@@ -149,8 +149,8 @@ export interface UseSuspenseVexDocQueryProps<
  *
  * An UNREADABLE document (permission denied) does NOT resolve to `null` — `get` throws a
  * `VexAccessError` server-side for that case (`null` is reserved for genuine not-found), and
- * `useSuspenseQuery` rethrows a dehydrated/live error during render (polish fixes, Decision
- * 1/2, corrected from this doc comment's own earlier, wrong claim that it resolved to
+ * `useSuspenseQuery` rethrows a dehydrated/live error during render (corrected from this
+ * doc comment's own earlier, wrong claim that it resolved to
  * `null`). The caller MUST wrap this in an error boundary (e.g. `QueryErrorBoundary`) to
  * degrade gracefully instead of crashing the whole page — see `ListViewPeek.tsx`'s own usage.
  *

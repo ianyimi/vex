@@ -8,29 +8,29 @@ import type { ActionPlacement } from "../../../ui/ActionsMenu";
 /** Props for {@link ListViewCopyLinkButton}. */
 export interface ListViewCopyLinkButtonProps {
   /**
-   * Builds the href to copy. Defaults to `window.location.href`. Step 12
-   * overrides this when a local view is active, serializing the full state
-   * via `serializeListViewUrlState` instead of `view=local:…`
-   * (Decision 11: "when you copy a link while a local view is active,
-   * serialize the full state").
+   * Builds the href to copy. Defaults to `window.location.href`.
+   * Overridden when a local view is active, serializing the full state via
+   * `serializeListViewUrlState` instead of `view=local:…` so copying a link
+   * while a local view is active shares the whole state, not just an id
+   * only this browser can resolve.
    */
   buildHref?: () => string;
   /**
    * Which surface this render is for (mirrors the edit view's
    * `DocumentCancelAction`/`LivePreviewToggleAction` convention) —
    * `"inline"` (default) renders the toolbar button, `"menu"` renders a
-   * full-width ghost row for `ListViewToolbar`'s ⋯ overflow (which, since
-   * list-view-overhaul Step 16, is itself a `DataTableResponsiveMenu` — a
-   * `Popover`/`Sheet`, never a `DropdownMenu` — so the menu form can't
-   * depend on Base UI's Menu primitives, unlike the edit view's own
-   * `EditActionsMenuItem`). No `vex.list.*` id (Decision 17 never names
-   * one) — rendered directly by `ListViewToolbar`, like `DataTablePageSizeSelect`.
+   * full-width ghost row for `ListViewToolbar`'s ⋯ overflow (which is
+   * itself a `DataTableResponsiveMenu` — a `Popover`/`Sheet`, never a
+   * `DropdownMenu` — so the menu form can't depend on Base UI's Menu
+   * primitives, unlike the edit view's own `EditActionsMenuItem`). No
+   * `vex.list.*` id — rendered directly by `ListViewToolbar`, like
+   * `DataTablePageSizeSelect`.
    *
    * `ListViewToolbar` mounts this component TWICE — once with `placement`
    * omitted (inline), once with `placement="menu"` — each wrapped in a CSS
-   * class showing it on opposite sides of the `@2xl/list` breakpoint
-   * (Decision 43). Both forms copy the same href; there is nothing to
-   * shrink beyond swapping the control itself.
+   * class showing it on opposite sides of the `@2xl/list` breakpoint. Both
+   * forms copy the same href; there is nothing to shrink beyond swapping
+   * the control itself.
    */
   placement?: ActionPlacement;
 }

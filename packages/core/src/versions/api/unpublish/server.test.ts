@@ -270,7 +270,7 @@ describe("unpublish (server) — global target", () => {
   });
 });
 
-describe("unpublish (server) — commitTs on-policy (spec Step 7)", () => {
+describe("unpublish (server) — commitTs on-policy", () => {
   test.each([
     ["save", true],
     ["all", true],

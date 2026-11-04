@@ -460,9 +460,9 @@ describe("create (server) — updatedAt stamp", () => {
         data: { slug: "hello", title: "Hello" },
       });
       const doc = await ctx.db.get(id as never);
-      // `convex-test` never resolves the `commitTs` placeholder (probe §1) —
+      // `convex-test` never resolves the `commitTs` placeholder —
       // the real resolved value is only observable against a live Convex
-      // backend (Step 8's dev-deployment smoke check).
+      // backend (dev-deployment smoke check).
       expect(doc?.updatedAt).toBeInstanceOf(CommitTsPlaceholder);
     });
   });
@@ -699,7 +699,7 @@ function postsFieldsWithCommitTsOverride(on: "save" | "publish" | "all"): Record
   return { title: text(), slug: text(), updatedAt: commitTs({ on, meta: { locked: true } }) };
 }
 
-describe("create (server) — commitTs on-policy (spec Step 7)", () => {
+describe("create (server) — commitTs on-policy", () => {
   test("an on: 'publish' field is NOT stamped on a versioned draft create", async () => {
     const draftPosts = defineCollection({
       slug: "posts",

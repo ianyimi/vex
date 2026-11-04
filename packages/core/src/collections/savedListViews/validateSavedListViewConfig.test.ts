@@ -32,7 +32,7 @@ describe("validateSavedListViewConfig — searchFields", () => {
     );
   });
 
-  it("throws VexConfigError naming the OFFENDING PRESET view when its own searchFields override has none (Decision 45 — admin.views entries accept the same settings as admin.view)", () => {
+  it("throws VexConfigError naming the OFFENDING PRESET view when its own searchFields override has none (admin.views entries accept the same settings as admin.view)", () => {
     expect(() =>
       defineCollection({
         slug: "posts",
@@ -131,7 +131,7 @@ describe("validateSavedListViewConfig — admin.view.searchField", () => {
     );
   });
 
-  it("validates a preset view's own searchField against ITS OWN searchFields, not admin.view's (Decision 45 two-tier fallback)", () => {
+  it("validates a preset view's own searchField against ITS OWN searchFields, not admin.view's (two-tier fallback)", () => {
     expect(() =>
       defineCollection({
         slug: "posts",
@@ -150,7 +150,7 @@ describe("validateSavedListViewConfig — admin.view.searchField", () => {
   });
 });
 
-describe("validateSavedListViewConfig — admin.views (Decision 45/48)", () => {
+describe("validateSavedListViewConfig — admin.views", () => {
   it("accepts a preset admin.views entry alongside the default view", () => {
     expect(() =>
       defineCollection({
@@ -232,7 +232,7 @@ describe("validateSavedListViewConfig — admin.views (Decision 45/48)", () => {
     );
   });
 
-  it("throws VexConfigError when an admin.views entry's columns name an unknown field (object-shaped entry, Decision 48)", () => {
+  it("throws VexConfigError when an admin.views entry's columns name an unknown field (object-shaped entry)", () => {
     expect(() =>
       defineCollection({
         slug: "posts",
@@ -249,7 +249,7 @@ describe("validateSavedListViewConfig — admin.views (Decision 45/48)", () => {
     );
   });
 
-  it("throws VexConfigError when a column entry names the reserved selection-column id \"select\" (Decision 48)", () => {
+  it("throws VexConfigError when a column entry names the reserved selection-column id \"select\"", () => {
     expect(() =>
       defineCollection({
         slug: "posts",
@@ -266,7 +266,7 @@ describe("validateSavedListViewConfig — admin.views (Decision 45/48)", () => {
     );
   });
 
-  it("throws VexConfigError when a view-level column entry sets enableSorting: true on a field that leads no index (Decision 48)", () => {
+  it("throws VexConfigError when a view-level column entry sets enableSorting: true on a field that leads no index", () => {
     expect(() =>
       defineCollection({
         slug: "posts",
@@ -286,7 +286,7 @@ describe("validateSavedListViewConfig — admin.views (Decision 45/48)", () => {
     );
   });
 
-  it("accepts a view-level column entry setting enableSorting: true on a field that leads a declared index, even when the field's own admin.enableSorting is false (Decision 48 — views always win)", () => {
+  it("accepts a view-level column entry setting enableSorting: true on a field that leads a declared index, even when the field's own admin.enableSorting is false (views always win)", () => {
     expect(() =>
       defineCollection({
         slug: "posts",

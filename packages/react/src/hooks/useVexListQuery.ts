@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { convexQuery } from "@convex-dev/react-query";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useAuthTransition, useVexAuth } from "../auth";
 import { buildListViewFindQueryArgs, buildListViewSearchQueryArgs, vexConvexApi } from "@vexcms/core";
 import type {
   CollectionConfig,
@@ -19,6 +20,18 @@ import { usePaginatedQuery } from "./usePaginatedQuery";
 import type { UsePaginatedQueryReturn } from "./usePaginatedQuery";
 
 /**
+ * Whether `error` is Convex's own `InvalidCursor` — see `usePaginatedQuery.ts`'s
+ * identical helper's doc comment.
+ *
+ * @param error - The query error to classify.
+ * @returns `true` when the message names `InvalidCursor`.
+ */
+function isInvalidCursorError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("InvalidCursor");
+}
+
+/**
  * Props for {@link useVexListQuery}.
  *
  * `collection` takes the resolved config object, not a bare slug — the same
@@ -28,10 +41,10 @@ import type { UsePaginatedQueryReturn } from "./usePaginatedQuery";
  * generic (those are two separate slug unions no single type parameter can
  * express without an overload pair this hook doesn't need).
  *
- * There is no `view` prop: `find`/`search` take no view argument (Design
- * Decision 25/26). A caller that needs a config view's hidden filter
+ * There is no `view` prop: `find`/`search` take no view argument. A caller that needs a
+ * config view's hidden filter
  * composes it into `where` itself with `composeSavedListViewWhere({ viewWhere,
- * filter })` (Step 5, `@vexcms/core`) before it ever reaches this hook —
+ * filter })` (`@vexcms/core`) before it ever reaches this hook —
  * the hook only ever sees one plain `where`.
  *
  * @typeParam TDocument - The document shape `results` resolves to.
@@ -42,20 +55,21 @@ export interface UseVexListQueryProps<TDocument extends VexDocument = VexDocumen
   /** Predicate over the collection's fields: a builder callback or a plain node. */
   where?: VexWhere<CollectionSlug>;
   /**
-   * Portable sort — never an index name (Design Decision 5). Ignored, and
-   * never sent, while `search` is a non-empty string (Design Decision 7).
+   * Portable sort — never an index name. Ignored, and
+   * never sent, while `search` is a non-empty string.
    */
   sort?: CollectionTableSort<string>;
   /**
    * Raw search text. `undefined`/`""` runs `find` + `sort`. A non-empty
    * value switches to a search-mode query against `searchField`'s declared
-   * index and parks `sort` — never sent to `search` (Design Decision 7).
+   * value switches to a search-mode query against `searchField`'s declared
+   * index and parks `sort` — never sent to `search`.
    */
   search?: string;
   /**
    * Which `admin.view.state.searchFields` entry `search` queries. Required when
-   * `search` is non-empty — the caller (Step 10's search picker) always
-   * supplies one, and `validateSavedListViewConfig` (Design Decision 3) guarantees
+   * `search` is non-empty — the caller (the search picker) always
+   * supplies one, and `validateSavedListViewConfig` guarantees
    * that entry has a declared `searchIndex`.
    */
   searchField?: string;
@@ -64,7 +78,7 @@ export interface UseVexListQueryProps<TDocument extends VexDocument = VexDocumen
   /**
    * Documents revealed per Load More click / page-size select — independent
    * of the server's larger fetch batch. Changing this prop, `where`, `sort`,
-   * or `search` resets the list to the first page (Design Decision 8): a
+   * or `search` resets the list to the first page: a
    * `where`/`sort`/`drafts` change clears the accumulated pages, and a
    * `pageSize`-only change re-windows the already-loaded rows to the new
    * size without an extra fetch. Both branches below inherit this from
@@ -83,7 +97,7 @@ export type UseVexListQueryReturn<TDocument extends VexDocument = VexDocument> =
 
 /**
  * Lists documents in a collection — the data source every list view reads
- * through (Design Decision 19). Convex is the only implementation; a
+ * through. Convex is the only implementation; a
  * plugin/adapter/adopted-table source is a later swap of this hook's body,
  * not its callers.
  *
@@ -99,12 +113,12 @@ export type UseVexListQueryReturn<TDocument extends VexDocument = VexDocument> =
  *
  * Each sub-hook has its own WITHIN-mode `keepPreviousData` (a sort/filter/search-text
  * change while staying in the same mode never blanks the table — `usePaginatedQuery`'s
- * own `resetKey` logic, `useVexListQuerySearch`'s own `resetKey` logic, both Decision 46).
+ * own `resetKey` logic, `useVexListQuerySearch`'s own `resetKey` logic).
  * But `find`/`search` are two SEPARATE hook instances with two separate state machines —
  * the moment a search starts (or is cleared), the dispatcher below switches which one is
  * active, and the NEWLY active one has never run before: it has no previous data of its
  * own for `keepPreviousData` to keep, even though the OTHER (now-disabled) one still has
- * perfectly good rows on screen (developer-reported: the table skeletons/empties for a
+ * perfectly good rows on screen (the table skeletons/empties for a
  * frame right as a search starts or is cleared). `lastSettledRef` below bridges that gap —
  * it remembers the last settled (non-pending) result regardless of which mode produced it,
  * and the newly-active mode's own rows are shown in its place only once THAT mode has
@@ -203,12 +217,12 @@ export function useVexListQuery<TDocument extends VexDocument = VexDocument>(
  * `vexConvexApi.search` against `searchField`'s declared index, windowed to
  * `pageSize` rows per Load More exactly like `usePaginatedQuery`'s own
  * `find`-mode accumulator, so the two branches are interchangeable to
- * {@link useVexListQuery}'s caller. `sort` is never part of this query
- * (Design Decision 7) — search results are relevance-ordered.
+ * {@link useVexListQuery}'s caller. `sort` is never part of this query —
+ * search results are relevance-ordered.
  *
  * @throws {Error} When `enabled` is `true` and `searchField` is missing, or
  *   names a field with no declared `searchIndex` — both are config-time
- *   errors `validateTableConfig` (Design Decision 3) already prevents, so
+ *   errors `validateTableConfig` already prevents, so
  *   reaching either here means a caller bug, not a config gap.
  * @returns The same shape {@link useVexListQuery} returns: the accumulated
  *   rows across all loaded pages, loading/exhausted status, and a
@@ -240,7 +254,16 @@ function useVexListQuerySearch<TDocument extends VexDocument = VexDocument>(prop
   // contravariant check on the builder-callback form of `VexWhere<S>`
   // doesn't distribute over a union slug type, even though any concrete
   // member of that union is assignable on its own.
+  const { user } = useVexAuth();
+  const { expectedIdentity, isTransitionPending, confirmTransition } = useAuthTransition();
+  const identity = (user?._id as string | undefined) ?? null;
   const resolvedWhere = whereArg(props.where as VexWhere<string> | undefined);
+  // `identity` is part of the reset key — see `usePaginatedQuery.ts`'s identical field's
+  // doc comment: a sign-in/sign-out changes the identity-dependent RBAC filter Convex
+  // bakes into this query, invalidating any `cursor` captured under the OLD identity
+  // (`InvalidCursor: ...cursor is from a different query`, reproduces once "Load More"
+  // has been clicked at least once before the identity change). `useVexAuth()`, not
+  // `useConvexAuth()` (`convex/react`) — see `usePaginatedQuery.ts`'s doc comment for why.
   const resetKey = JSON.stringify({
     collection: props.collection.slug,
     where: resolvedWhere,
@@ -248,6 +271,7 @@ function useVexListQuerySearch<TDocument extends VexDocument = VexDocument>(prop
     searchField: props.searchField,
     drafts: props.drafts,
     numItems: props.numItems,
+    identity,
   });
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
   // See `usePaginatedQuery.ts`'s identical `settledResetKey` doc comment — same Convex
@@ -264,7 +288,7 @@ function useVexListQuerySearch<TDocument extends VexDocument = VexDocument>(prop
     setCursor(null);
     setClientPageIndex(0);
     // `allResults`/`isDone` are DELIBERATELY left as-is here (no eager
-    // clear) — the developer-reported "table empties while the next
+    // clear) — the "table empties while the next
     // search is pending" bug: the previous search's (or `find`'s) rows
     // stay on screen, and `placeholderData: keepPreviousData` below keeps
     // `data` as the PREVIOUS query's result while the new one is in
@@ -292,7 +316,7 @@ function useVexListQuerySearch<TDocument extends VexDocument = VexDocument>(prop
     setClientPageIndex((prev) => prev + 1);
   }
 
-  // `buildListViewSearchQueryArgs` (Step 14) is the ONE place the `search` Convex
+  // `buildListViewSearchQueryArgs` is the ONE place the `search` Convex
   // args get built — shared with `NextAdminPage`'s server prerender, so the
   // two can't drift (layout-stability.md). `undefined` (disabled, or no
   // `searchField` — guarded above) falls through to the `"skip"` sentinel
@@ -322,10 +346,15 @@ function useVexListQuerySearch<TDocument extends VexDocument = VexDocument>(prop
     enabled: props.enabled,
     placeholderData: keepPreviousData,
   });
-  // Tracks the `data` object reference the sync effect below has already processed — see
-  // `usePaginatedQuery.ts`'s identical `lastProcessedDataRef` doc comment.
-  const lastProcessedDataRef = useRef<typeof data>(undefined);
 
+  // Recovers from a transient `InvalidCursor` in the SAME render, before anything
+  // paints — see `usePaginatedQuery.ts`'s identical block's doc comment for why
+  // (state set here, not in a `useEffect`) and why the `cursor !== null` guard
+  // can't loop.
+  if (cursor !== null && isError && isInvalidCursorError(error)) {
+    setCursor(null);
+    setClientPageIndex(0);
+  }
   const result = useMemo<PaginationResult<TDocument>>(() => {
     const empty = { page: [] as TDocument[], continueCursor: "", isDone: false };
     if (isLoading || isError || !data) return empty;
@@ -335,11 +364,11 @@ function useVexListQuerySearch<TDocument extends VexDocument = VexDocument>(prop
 
   useEffect(() => {
     // `isPlaceholderData` guards against syncing a STALE page — same fix, same reasoning as
-    // `usePaginatedQuery.ts`'s identical effect (Step 19's own find-mode regression fix):
+    // `usePaginatedQuery.ts`'s identical effect (its own find-mode regression fix):
     // with `placeholderData: keepPreviousData` above, `result.page` keeps showing the
     // PREVIOUS query's page for a render or two after `resetKey`/`cursor` changes, until the
     // new query actually resolves. This search-mode twin was missing the same guard —
-    // developer-reported: a view switch that changes `search`/`where` right after a Load
+    // a view switch that changes `search`/`where` right after a Load
     // More click (a `cursor !== null` append still in flight) could append that STALE
     // placeholder page again once the new query resolves, duplicating a row's key
     // (`getRowId: row => row._id`) in `allResults` — a duplicate React key the table then
@@ -347,25 +376,47 @@ function useVexListQuerySearch<TDocument extends VexDocument = VexDocument>(prop
     // landing on whichever of the two colliding fibers React happens to keep), which is
     // exactly the inconsistent "highlighted sometimes, not others" symptom. Waiting for
     // `isPlaceholderData` to clear means this effect only ever syncs genuinely fresh data.
-    if (result.page && !isPlaceholderData) {
-      if (cursor === null) {
-        setAllResults(result.page);
-        // See `usePaginatedQuery.ts`'s identical fix/comment — `result.page` is always a
-        // truthy array, even the `useMemo` above's own empty `isLoading`/`isError`/`!data`
-        // fallback, so this effect fires on the very first render too, before any real
-        // fetch completes; `data !== lastProcessedDataRef.current` is the genuine "this is
-        // a NEW answer" check that works under both the fake backend's tracked refetch and
-        // the real client's live websocket push.
-        if (data !== undefined && data !== lastProcessedDataRef.current) {
-          lastProcessedDataRef.current = data;
-          setSettledResetKey(resetKey);
-        }
-      } else {
-        setAllResults((prev) => [...prev, ...result.page]);
+    if (!result.page || isPlaceholderData) return;
+    if (cursor === null) {
+      // See `usePaginatedQuery.ts`'s identical block's doc comment: `isError` must be
+      // checked before treating `result.page` as real data — TanStack keeps a query's
+      // last-known `data` around even in `status: "error"`, so the `useMemo` above's
+      // safe `{ page: [] }` fallback used to get committed as if it were a genuine
+      // zero-row answer, wiping out rows that were already showing.
+      if (isError) return;
+      // See `usePaginatedQuery.ts`'s identical block's doc comment: a sign-in/out has
+      // no args-level signal here either, so this stays on the SAME TanStack query
+      // entry while Convex re-evaluates it under the changing identity — `search`
+      // stamps every page with `viewerId` for exactly this comparison. While a
+      // transition is pending, a page whose `viewerId` doesn't match the identity the
+      // client now expects isn't a genuine answer — ignore it, keep the current
+      // (dimmed) rows, wait for the match.
+      const pushViewerId = (data as { viewerId?: string | null } | undefined)?.viewerId;
+      if (isTransitionPending && pushViewerId !== undefined && pushViewerId !== expectedIdentity) {
+        return;
+      }
+      setAllResults(result.page);
+      if (data !== undefined) {
+        setSettledResetKey(resetKey);
       }
       setIsDone(result.isDone);
+      if (isTransitionPending) confirmTransition();
+    } else {
+      setAllResults((prev) => [...prev, ...result.page]);
+      setIsDone(result.isDone);
     }
-  }, [result.page, result.isDone, cursor, resetKey, isLoading, data, isPlaceholderData]);
+  }, [
+    result.page,
+    result.isDone,
+    cursor,
+    resetKey,
+    isError,
+    data,
+    isPlaceholderData,
+    isTransitionPending,
+    expectedIdentity,
+    confirmTransition,
+  ]);
 
   const isSettling = resetKey !== settledResetKey;
 
@@ -379,7 +430,14 @@ function useVexListQuerySearch<TDocument extends VexDocument = VexDocument>(prop
     isFetching,
     isSettling,
     isPlaceholderData,
-    error: isError ? error : undefined,
+    // See `usePaginatedQuery.ts`'s identical field's doc comment: a query error is
+    // never surfaced while EITHER this component has ever shown real data once
+    // (`settledResetKey !== null`) OR an auth transition is pending (an error has no
+    // `viewerId` to confirm against `expectedIdentity`, so "pending" alone is reason
+    // enough to distrust it) — only suppressed while `isSettling` (above) covers the
+    // stretch with the caller's existing "dim while settling, last good rows still
+    // visible" treatment.
+    error: isError && !isTransitionPending && settledResetKey === null ? error : undefined,
     retry: () => {
       void refetch();
     },

@@ -1,7 +1,7 @@
 import type { GenericDocument } from "convex/server";
 
 /**
- * Decision-35 count-cap evaluation, shared by `find` and `search` — counts
+ * Count-cap evaluation, shared by `find` and `search` — counts
  * at most `countLimit + 1` RAW rows off a query already narrowed by the
  * same index/filter as the main page query, instead of `.collect()`-ing
  * the whole matching set (the old unbounded count re-scanned every
@@ -14,13 +14,13 @@ import type { GenericDocument } from "convex/server";
  * length would under-report: a full raw window (`countLimit + 1`) with
  * some rows filtered out could still read as `<= countLimit` post-filter,
  * presenting an exact-looking total while more matching rows exist beyond
- * the window that were never scanned (polish fix).
+ * the window that were never scanned.
  *
  * @param props - Input props.
  * @param props.countQuery - A query already narrowed by the same
  *   index/filter as the caller's own main page query — this only calls
  *   `.take()` on it, never `.collect()` or `.paginate()`.
- * @param props.countLimit - `admin.view.state.countLimit` (Decision 35).
+ * @param props.countLimit - `admin.view.state.countLimit`.
  * @param props.readable - The caller's own `readableDocuments` closure.
  * @returns `totalDocs` (exact up to `countLimit`, never beyond it) and
  *   `totalDocsCapped` (`true` when more matching rows exist beyond the

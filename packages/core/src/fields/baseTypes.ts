@@ -334,16 +334,16 @@ export interface FieldAdminConfigInput<
   enableSorting?: boolean;
   /**
    * Allow this field's column to be hidden from the list table via the
-   * columns menu. Every column is hideable by default (list-view-overhaul
-   * Decision 47, revised) — set `false` to opt a specific field OUT (e.g.
+   * columns menu. Every column is hideable by default —
+   * set `false` to opt a specific field OUT (e.g.
    * a title/identity column the list should never let a user hide).
    *
    * Default: `true`
    */
   enableHiding?: boolean;
   /**
-   * Pixel width of this field's own column in the list table (Decision
-   * 48) — unlike `enableSorting`/`enableHiding`, this has no type-based
+   * Pixel width of this field's own column in the list table —
+   * unlike `enableSorting`/`enableHiding`, this has no type-based
    * resolution here: the default lives only in `resolveListViewColumnConfig`'s
    * own `FIELD_TYPE_DEFAULT_WIDTH` map, consulted when neither this nor
    * the active view's own column entry (`ColumnEntry.width`, which always

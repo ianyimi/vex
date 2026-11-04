@@ -9,7 +9,7 @@ import { vex } from "~/lib/vex"
  * Generates `/sitemap.xml` from every `pages` document plus the site root.
  *
  * Degrades to a root-only sitemap when Convex is unreachable — CI builds this
- * app with placeholder env (P-020), and a build must not fail because the
+ * app with placeholder env, and a build must not fail because the
  * sitemap could not be enumerated.
  *
  * No `lastModified` is emitted for page entries. The only timestamp available

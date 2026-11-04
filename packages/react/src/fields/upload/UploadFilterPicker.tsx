@@ -22,7 +22,7 @@ export interface UploadFilterPickerProps {
 
 /**
  * Standalone single-select media picker dialog for an `upload` field
- * filter row (Decision 50) — `media/MediaPicker.tsx` itself is NOT
+ * filter row — `media/MediaPicker.tsx` itself is NOT
  * reusable here: its `field` prop is a live TanStack Form field-API
  * object, not a plain value/callback pair (confirmed by reading its
  * props, `field: AnyFieldApi`, used only to seed its own local
@@ -31,7 +31,7 @@ export interface UploadFilterPickerProps {
  * (`MediaUploadForm`) PIECES — both already fully decoupled from the
  * form API — in the SAME Dialog/Tabs composition `MediaPicker` uses, the
  * same "reuse the pieces, not the form-coupled shell" pattern `ListViewPeek`
- * (Step 13) used for its own copy button vs. `ListViewCopyLinkButton`'s toast
+ * used for its own copy button vs. `ListViewCopyLinkButton`'s toast
  * convention. `RelationshipPickerProps`-shaped (`{ targetCollection,
  * selectedId, onSelect, onCancel }`, plus `fieldDef` like that picker
  * also carries) so `upload/FilterInput.tsx` mirrors

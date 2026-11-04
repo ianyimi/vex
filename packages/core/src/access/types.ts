@@ -41,12 +41,12 @@ export type AccessResource = CollectionConfig | GlobalConfig;
  * document identifier) is the only one; `_slug` (the synthetic global
  * discriminator `VexDocumentGlobal` adds) is the other.
  *
- * `_creationTime` is deliberately NOT here (developer decision, binding,
- * "access-system-fields") — it is a REAL gateable field-permission key now,
+ * `_creationTime` is deliberately NOT here —
+ * it is a REAL gateable field-permission key now,
  * same as `updatedAt`/`vex_status` (on versioned collections). A view/column
  * CAN hide it; `resolveQueryIndex.ts`'s own hardcoded sort carve-out is the
  * one place it stays usable regardless (sorting by it never reveals its
- * stored value, same reasoning Design Decision 26 already established for
+ * stored value, same reasoning already established for
  * every other field).
  */
 type SystemFieldKey = "_id" | "_slug";
@@ -197,7 +197,7 @@ type BasePermissionCheck<TData, TUser, TOrg> =
 
 /**
  * Permission check shape for {@link ViewAction}s (`readViews`/`createView`/
- * `updateView`/`deleteView`) — developer-reported: these actions type-accepted
+ * `updateView`/`deleteView`) — these actions type-accepted
  * a {@link FieldPermissionMap} return value exactly like `read`/`update` do,
  * which is meaningless for them. A saved view is a whole row in `vex_views`,
  * never read/written per-field or per-document-field the way a collection's
@@ -1008,8 +1008,7 @@ export interface VexAccessConfigInput<
 
   /**
    * Default: `false`. Whether organizations are an ENFORCED tenancy
-   * boundary in this project, not just available data — developer-approved,
-   * binding (the pre-existing behavior keyed `orgCollectionSlug` alone into
+   * boundary in this project, not just available data (the pre-existing behavior keyed `orgCollectionSlug` alone into
    * view scoping, which silently broke a project that only declared
    * `orgCollectionSlug` for its own callbacks' benefit, with no org data
    * ever seeded). Currently drives ONE thing: whether saved (`vex_views`)

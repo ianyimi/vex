@@ -23,27 +23,26 @@ export interface AssertNoDraftRelationshipsArgs<DataModel extends GenericDataMod
  * stores a reference to a target document that is itself a draft
  * (`vex_status === "draft"`).
  *
- * Developer decision (this spec's revision round): the relationship-field
- * picker (`useRelationshipPickerOptions`, Step 14) may surface draft targets
- * to an editor ONLY while the document being edited is itself a draft — but
- * that is a client-side convenience, not enforcement. This function is the
- * authoritative, server-side backstop: a document may never actually GO
- * LIVE while one of its relationship fields still points at unpublished
- * content, regardless of when or how that link was created (a stale link
- * from before the target was unpublished is rejected exactly the same as
- * one just picked). Checked generically by field PRESENCE on the fetched
- * target (`vex_status === "draft"`), not by looking the target's own
- * collection up in `VexConfig` — the same reasoning `populateDocs`' fix
- * (Step 13) already established: `vex_status` is schema-generated only onto
- * a versioned collection's rows, so its presence already means "this row
- * belongs to a versioned collection."
+ * The relationship-field picker (`useRelationshipPickerOptions`) may
+ * surface draft targets to an editor ONLY while the document being edited
+ * is itself a draft — but that is a client-side convenience, not
+ * enforcement. This function is the authoritative, server-side backstop: a
+ * document may never actually GO LIVE while one of its relationship fields
+ * still points at unpublished content, regardless of when or how that link
+ * was created (a stale link from before the target was unpublished is
+ * rejected exactly the same as one just picked). Checked generically by
+ * field PRESENCE on the fetched target (`vex_status === "draft"`), not by
+ * looking the target's own collection up in `VexConfig` — the same
+ * reasoning `populateDocs` relies on: `vex_status` is schema-generated only
+ * onto a versioned collection's rows, so its presence already means "this
+ * row belongs to a versioned collection."
  *
  * Throws the SAME normalized `ConvexError` shape `validateFields.ts` now
  * produces — `{ message, field }` (its `toFieldValidationError` re-throws
  * every field rejection as that, since `649cafa` changed a field's
  * `validate()` from "return a string" to "reject by throwing"). There is no
- * `error` key any more. `publish.server.ts`'s caller (`CollectionEditView`,
- * Step 10) recognizes this exact shape via `applyVexFieldErrors`, so no new
+ * `error` key any more. `publish.server.ts`'s caller (`CollectionEditView`)
+ * recognizes this exact shape via `applyVexFieldErrors`, so no new
  * client-side error handling is needed for this check.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).

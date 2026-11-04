@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { VexConfig } from "../../config";
 import { defineCollection } from "../config";
-import { text } from "../../fields";
+import { select, text } from "../../fields";
 import { defineAccess } from "../../access/config";
 import { resolveQueryIndex } from "./resolveQueryIndex";
 
@@ -353,8 +353,8 @@ describe("resolveQueryIndex — sort field read access", () => {
 
   // Strengthens the test above, which happens to pass even WITHOUT the carve-out
   // (that role's wildcard is `true`) — this role EXPLICITLY DENIES `_creationTime`
-  // for READ (developer decision, binding, "access-system-fields": `_creationTime`
-  // is now a real, gateable field-permission key), so sorting by it would throw
+  // for READ (`_creationTime`
+  // is a real, gateable field-permission key), so sorting by it would throw
   // `VexAccessError` here if the carve-out weren't genuinely skipping the check.
   it("sorting by _creationTime still succeeds even when a field map EXPLICITLY denies reading it — the carve-out is real, not coincidental", () => {
     const denyCreationTimeConfig = {
@@ -388,5 +388,71 @@ describe("resolveQueryIndex — sort field read access", () => {
     expect(
       resolveQueryIndex({ config: fieldAccessConfig, collection: "posts", sort: { field: "title", order: "asc" } }),
     ).toEqual({ indexName: "by_title", range: undefined, order: "asc", remainder: undefined });
+  });
+});
+
+// `find`/`search` run `normalizeArrayStoredWhere` (`db/queryArgs.ts`) BEFORE
+// calling `resolveQueryIndex` — by the time a `where` reaches pushdown, a
+// `select`/`relationship`/`upload` field's `eq` leaf already carries the
+// field's whole-array value (`eq "won"` → `eq ["won"]`). This confirms
+// pushdown treats that array value exactly like any other `eq` value: it
+// still builds a range and still wins the index, closing the loop on the
+// `?filter=(status.eq.won)` bug.
+const selectIndexedPosts = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text(),
+    status: select({
+      hasMany: false,
+      index: "by_status",
+      options: [{ label: "Won", value: "won" }, { label: "Lost", value: "lost" }],
+    }),
+  },
+});
+
+describe("resolveQueryIndex — array-stored (select/relationship/upload) field pushdown", () => {
+  it("pushes an already-normalized array-eq leaf into the declared index's range, under a _creationTime sort", () => {
+    const where = { field: "status", op: "eq", value: ["won"] } as const;
+    const result = resolveQueryIndex({
+      config: configOf(selectIndexedPosts),
+      collection: "posts",
+      where,
+      sort: { field: "_creationTime", order: "desc" },
+    });
+    expect(result.indexName).toBe("by_status");
+    expect(result.range).toBeInstanceOf(Function);
+    expect(result.order).toBe("desc");
+    expect(result.remainder).toBeUndefined();
+  });
+
+  it("still wins the index leading a plain field sort (zero-equality prefix)", () => {
+    expect(
+      resolveQueryIndex({
+        config: configOf(selectIndexedPosts),
+        collection: "posts",
+        sort: { field: "status", order: "asc" },
+      }),
+    ).toEqual({ indexName: "by_status", range: undefined, order: "asc", remainder: undefined });
+  });
+
+  it("does NOT push the empty-check rewrite's or/not shape — OR/NOT is excluded from pushdown", () => {
+    // `normalizeArrayStoredWhere` rewrites `isEmpty`/`isNotEmpty`/`value: null`
+    // on an array-stored field to `or(eq [], eq undefined)` — never a flat
+    // top-level `eq`, so pushdown correctly leaves it in `remainder` for
+    // `.filter()` instead of (incorrectly) trying to push it.
+    const where = {
+      or: [
+        { field: "status", op: "eq", value: [] },
+        { field: "status", op: "eq", value: undefined },
+      ],
+    } as const;
+    const result = resolveQueryIndex({
+      config: configOf(selectIndexedPosts),
+      collection: "posts",
+      where,
+      sort: { field: "_creationTime", order: "desc" },
+    });
+    expect(result.indexName).toBeUndefined();
+    expect(result.remainder).toEqual(where);
   });
 });

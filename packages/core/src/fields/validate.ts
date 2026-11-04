@@ -10,7 +10,7 @@ import { getDataFields, isFieldConditionMet } from "./utils";
  * fields whose key isn't in `keys` (unchanged on `update`, every field on
  * `create`), that don't define `validate`, or whose `admin.condition`
  * evaluates false — a condition-hidden field's `validate()` never runs,
- * matching `getFieldsInputSchema`'s schema-level skip (Step 9). `doc` stands
+ * matching `getFieldsInputSchema`'s schema-level skip. `doc` stands
  * in for both `data` and `siblingData` here: `validateFields` only ever runs
  * a TOP-LEVEL field's own `validate()` (a `group`/`array`/`blocks`
  * sub-field's `validate()`, if any, runs through the container field's own

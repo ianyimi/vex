@@ -17,10 +17,10 @@ import { DataTableResponsiveMenu } from "./DataTableResponsiveMenu";
 
 /**
  * One column's static display metadata, as resolved from a collection's
- * ALREADY read-access-filtered columns (Decision 26/47/48 — see
+ * ALREADY read-access-filtered columns (see
  * `CollectionListView`'s `columnMenuEntries` memo, which is this prop's
  * source) for {@link DataTableColumnsMenu}. Every READABLE column gets an
- * entry now (Decision 47, widened from "hideable columns only") — a
+ * entry now (widened from "hideable columns only") — a
  * non-hideable field still participates in drag-reordering/pinning, it
  * just can't be hidden. Unordered, and carries no width/pin/hidden state
  * of its own — that LIVE state is `columns: ColumnEntry[]` ({@link
@@ -43,17 +43,17 @@ export interface DataTableColumn<TFieldSlug extends string = string> {
  * @typeParam TFieldSlug - The collection's field slugs.
  */
 export interface DataTableColumnsMenuProps<TFieldSlug extends string = string> {
-  /** Every readable column's static label/hideable metadata (Decision 47 — widened from "hideable only"), unordered; display order/visibility/pin state comes from `columns`. */
+  /** Every readable column's static label/hideable metadata (widened from "hideable only"), unordered; display order/visibility/pin state comes from `columns`. */
   columnMenuEntries: DataTableColumn<TFieldSlug>[];
-  /** The active view's FULL column list (Decision 48) — every one of the collection's own data fields, exactly once, in display order, each a {@link ColumnEntry} (possibly carrying `width`/`pinned`/`hidden` overrides). Drives the row sequence, checkbox, AND pin-control state here. */
+  /** The active view's FULL column list — every one of the collection's own data fields, exactly once, in display order, each a {@link ColumnEntry} (possibly carrying `width`/`pinned`/`hidden` overrides). Drives the row sequence, checkbox, AND pin-control state here. */
   columns: ColumnEntry<TFieldSlug>[];
-  /** Replaces the full `columns` array after a drag-reorder, checkbox toggle, or pin-control change — the ONE setter for every interaction this menu offers (resizing is NOT controlled from here, only from the header's own drag handle, Decision 48). */
+  /** Replaces the full `columns` array after a drag-reorder, checkbox toggle, or pin-control change — the ONE setter for every interaction this menu offers (resizing is NOT controlled from here, only from the header's own drag handle). */
   onColumnsChange: (columns: ColumnEntry<TFieldSlug>[]) => void;
-  /** Whether a saved view is currently active — when `false`, a session-only notice is shown (Decision 15). */
+  /** Whether a saved view is currently active — when `false`, a session-only notice is shown. */
   hasActiveView?: boolean;
-  /** The current density preference — owned by `CollectionListView`/`useListViewContext()`, cookie-backed (Decision 42), never this component's own state. */
+  /** The current density preference — owned by `CollectionListView`/`useListViewContext()`, cookie-backed, never this component's own state. */
   density: ListDensity;
-  /** Replaces the density preference; the caller both updates its own state and writes it into the consolidated `vex-admin` cookie (`writeListViewDensityCookie`, Decision 51) so the next server render matches with no flash. */
+  /** Replaces the density preference; the caller both updates its own state and writes it into the consolidated `vex-admin` cookie (`writeListViewDensityCookie`) so the next server render matches with no flash. */
   onDensityChange: (density: ListDensity) => void;
   /**
    * Which surface this render is for (mirrors the edit view's
@@ -81,7 +81,7 @@ function entryHidden<TFieldSlug extends string>(entry: ColumnEntry<TFieldSlug>):
  * Applies a drag/keyboard reorder — `from`/`to` are indices WITHIN the
  * READABLE subsequence only (`readableFields`, the rows this menu
  * actually renders and `@hello-pangea/dnd` reports indices against) —
- * back onto the FULL column list (Decision 48), which may additionally
+ * back onto the FULL column list, which may additionally
  * include unreadable fields this viewer never sees a row for. An
  * unreadable field keeps its original absolute position (AND its own
  * entry, untouched) — only the readable fields shift among themselves, in
@@ -126,11 +126,11 @@ export function reorderColumns<TFieldSlug extends string = string>(props: {
 
 /**
  * A dropdown of checkboxes toggling which `enableHiding` columns are
- * visible in the list table, a 3-state pin control (left/none/right,
- * Decision 48) per column, plus a Density toggle (Decision 29).
+ * visible in the list table, a 3-state pin control (left/none/right)
+ * per column, plus a Density toggle.
  *
- * Column visibility, pin, AND density are all purely controlled — Decision 42
- * puts density in a cookie read on the server
+ * Column visibility, pin, AND density are all purely controlled — density
+ * is read from a cookie on the server
  * (`parseListViewConfigCookies`) and owned by `CollectionListView`, the same
  * split live preview's panel-open state already uses
  * (`readLivePreviewPanelCookie`/`writeLivePreviewPanelCookie`) — a
@@ -140,7 +140,7 @@ export function reorderColumns<TFieldSlug extends string = string>(props: {
  *
  * `placement="inline"` (default) renders through {@link DataTableResponsiveMenu}
  * (a `Popover` at `useIsMobile() === false`, a bottom `Sheet` below 768px) —
- * its own "Columns" label hides itself below `@xl/list` (Decision 43) via a
+ * its own "Columns" label hides itself below `@xl/list` via a
  * plain CSS class on its own `<span>`; `placement="menu"` renders the
  * identical checkbox/pin/density body as a labeled section for `ListViewToolbar`'s
  * ⋯ overflow — both forms share the exact same body JSX.
@@ -154,7 +154,7 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
   if (props.columnMenuEntries.length === 0) return null;
 
   const metaByField = new Map(props.columnMenuEntries.map((column) => [column.field, column]));
-  // `props.columns` is the FULL order (Decision 48) — restricted here to
+  // `props.columns` is the FULL order — restricted here to
   // the readable subset this menu actually shows a row for, in that same
   // relative order. A field absent from `props.columnMenuEntries`
   // (unreadable) never gets a row, but still occupies a slot (and its own
@@ -268,7 +268,7 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
   const body = (
     <>
       {/*
-       * `height={240}` (NOT `maxHeight`, developer-reported fix, binding):
+       * `height={240}` (NOT `maxHeight`):
        * `maxHeight` alone clamps `ScrollArea.Root`'s own rendered box
        * correctly (confirmed live — the Root measures exactly 240px), but
        * its `ScrollArea.Viewport` child sizes itself via `height: 100%`
@@ -280,11 +280,10 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
        * 240px, letting every row overflow the popover uncapped. Plain
        * `height` is always definite, so the Viewport's `100%` resolves
        * correctly and `overflow-y: scroll` (already set) takes over. The
-       * list is always exactly 240px tall now (not "240px or shorter"),
-       * matching Decision 31's "fixed max height" wording literally.
+       * list is always exactly 240px tall now (not "240px or shorter").
        */}
       {/*
-       * Developer-reported follow-up (binding): the `mb-4`-only fix above
+       * Follow-up: the `mb-4`-only fix above
        * still left a visible gap ABOVE the divider — `PopoverContent` (and,
        * in the mobile `placement="menu"` embedded form, its own `gap-2`
        * wrapper) is a flex column whose `gap-N` applies between EVERY
@@ -312,7 +311,7 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
               id="data-table-columns"
               onReorder={handleReorder}
               // `renderClone` portals the ACTIVELY-DRAGGED row to
-              // `document.body` (developer-reported fix, binding):
+              // `document.body`:
               // `@hello-pangea/dnd` positions the dragged item with `position:
               // fixed`, computed relative to the nearest ancestor with a CSS
               // `transform` — not the viewport — when one exists in between
@@ -355,7 +354,7 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
               }}
             >
               {/*
-               * `pr-3` (developer-reported fix, binding): reserves a gutter
+               * `pr-3` reserves a gutter
                * matching `ScrollBar`'s own `w-2.5` track width (+ its `p-px`
                * padding) — the Base UI `ScrollArea`'s scrollbar is an OVERLAY,
                * absolutely positioned at the Viewport's own right edge rather
@@ -389,7 +388,7 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
           </DndProvider>
         </ScrollSection>
         {/*
-         * `mr-3` (developer-reported fix, binding): the row list's own
+         * `mr-3`: the row list's own
          * `pr-3` (above) reserves a 12px gutter for the `ScrollBar`
          * OVERLAY, so whenever the column list actually overflows 240px
          * (the common case — this collection's columns, `testimonials`,
@@ -406,7 +405,7 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
         {/*
          * Density lives inside the SAME gap-free wrapper as the list and divider so the
          * divider sits exactly midway: the row list's own `pb-2` (inside the scroll content)
-         * above it, this section's matching `pt-2` below (developer-reported, 2026-11-02).
+         * above it, this section's matching `pt-2` below.
          */}
         <div className="mr-3 flex flex-col gap-2 px-2 pt-2 pb-1">
         <p className="text-xs font-medium text-muted-foreground">Density</p>

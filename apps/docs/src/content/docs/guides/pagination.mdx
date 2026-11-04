@@ -163,6 +163,19 @@ documents: the count reads up to `countLimit + 1` full documents in one query, a
 query at 8 MiB read (10,001 documents averaging ~800 bytes reach that). `search` always clamps the
 cap to 1023, since a Convex search query returns at most 1024 results.
 
+## Signing in and out while a list is open
+
+Every `find`/`search` page also carries `viewerId` — the id of the identity it was read as,
+`null` for an anonymous caller. While the Convex socket re-authenticates after a sign-in or
+sign-out, a page read as the previous identity can still arrive. Mount `AuthTransitionProvider`
+(`@vexcms/react`) around your Convex client tree and call `useAuthTransition().beginTransition(id)`
+from your sign-in/sign-out paths — the user's `_id` on sign-in, `null` on sign-out (the
+`create-vexcms` templates' `providers/convex.tsx` does this with a watcher on
+`authClient.useSession()`). Until a page with that `viewerId` arrives,
+`usePaginatedQuery`/`useVexListQuery` ignore pages read as any other identity. Without the
+provider every page commits as before. Independently, both hooks keep the current rows on screen
+while the query is in error instead of clearing them.
+
 > The admin panel's own table doesn't use `usePaginatedQuery` directly — it's built on
 > `useVexListQuery` (`@vexcms/react`), which adds server/local search switching, sort, and
 > filter `where` composition on top of the same pagination primitive. Reach for

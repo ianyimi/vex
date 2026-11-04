@@ -76,11 +76,11 @@ export interface VexErrorStructuredData {
  * A LOCAL Convex dev server additionally wraps the thrown error's own `.data` inside a
  * multi-line diagnostic STRING (a class name, a request id, `"Uncaught VexError: {json}"`,
  * then a stack trace with internal file paths) rather than forwarding the structured
- * `.data` object directly — confirmed live (a stale `?sort=` link hitting Step 6's
+ * `.data` object directly — confirmed live (a stale `?sort=` link hitting
  * `UNINDEXED_SORT`). This finds the line naming `VexError:` and parses only the JSON on
  * that one line; the class name, request id, and especially the stack trace's file paths
  * are NEVER part of the returned payload — callers that forward this to the browser (a
- * server-rendered `initialQueryError`, Design Decision 9/32) never leak them.
+ * server-rendered `initialQueryError`) never leak them.
  *
  * @param error - The caught error.
  * @returns The structured payload, or `undefined` when `error` isn't a `ConvexError` at

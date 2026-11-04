@@ -491,10 +491,11 @@ export const access = defineAccess({
 ```
 
 `anonRole` only applies when the caller's resolved roles are genuinely empty — an
-authenticated user with a declared role always keeps their own role. Two gates have to
-agree to let an anonymous visitor through, if your framework adapter puts a session gate
-in front of the route at all (Next.js middleware does): the route itself, and whatever
-runs before it reaches the route.
+authenticated user with a declared role always keeps their own role. The `create-vexcms`
+templates gate `/admin` only in the route itself — their `proxy.ts` matcher excludes `/admin`
+— so the route check below is the whole story there. An app that ALSO puts a session gate in
+front of the route (Next.js middleware) has two gates that must agree to let an anonymous
+visitor through.
 
 **The route** checks `canAccessAdminPanel` BEFORE redirecting on a missing session —
 never unconditionally:
@@ -509,7 +510,9 @@ import { redirect } from "next/navigation";
 if (!canAccessAdminPanel({ access: config.access, user: auth.user, organization: auth.organization })) {
   // Only redirect to sign-in when there was genuinely no token — a signed-in caller
   // whose own role still fails the check goes to /unauthorized instead.
-  redirect(token ? "/unauthorized" : "/auth/sign-in?redirectTo=/admin");
+  // `redirectTo` should carry the full requested path + query, so sign-in returns to the
+  // exact deep link (the templates rebuild it from `params`/`searchParams`).
+  redirect(token ? "/unauthorized" : `/auth/sign-in?redirectTo=${encodeURIComponent(requestedPath)}`);
 }
 ```
 

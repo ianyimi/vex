@@ -30,7 +30,7 @@ export type SaveDraftServerArgs<DataModel extends GenericDataModel> = {
   data: Record<string, unknown>;
   /**
    * The version number this save restores from, when the caller is reverting to
-   * an older snapshot (fetched separately via `getVersionSnapshot`, Step 8).
+   * an older snapshot (fetched separately via `getVersionSnapshot`).
    * Recorded on the emitted `vex_versions` row for lineage; otherwise unused.
    */
   restoredFrom?: number;

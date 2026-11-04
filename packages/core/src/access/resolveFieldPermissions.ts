@@ -16,8 +16,7 @@ import type { FieldPermissionMap, VexAccessConfig } from "./types";
  * Deliberately NOT the same set {@link stripDeniedFields}/
  * `warnOnUndeclaredFields` use for READ gating — see
  * {@link ALWAYS_READABLE_FIELD_KEYS} for that narrower set. `_creationTime`
- * is a REAL gateable field-permission key for READS (developer decision,
- * binding, "access-system-fields") but stays write-immutable and
+ * is a REAL gateable field-permission key for READS, but stays write-immutable and
  * where-clause-exempt here; the two concerns are independent axes.
  */
 export const SYSTEM_FIELD_KEYS = new Set(["_id", "_creationTime", "_slug"]);
@@ -106,7 +105,7 @@ function warnOnUndeclaredFields(props: {
     }
 
     // `vex_status` is a real, gateable field-permission key on a VERSIONED
-    // resource (developer decision, binding, "access-system-fields") — it is
+    // resource — it is
     // never a `declaredFields` entry (Convex column injected by the versioning
     // system, not a `CollectionConfig.fields` entry), so without this check a
     // legitimate `vex_status` map entry would misfire the generic "undeclared
@@ -251,8 +250,8 @@ export function isFieldAllowed(resolved: ResolvedFieldPermissions, field: string
  *
  * `_id`/`_slug` are always retained — stripping `_id` would break
  * `populateDocs`, admin row keys, and every `update({ id })` round trip.
- * `_creationTime` is NOT exempted here (developer decision, binding,
- * "access-system-fields") — it is a real gateable field-permission key for
+ * `_creationTime` is NOT exempted here —
+ * it is a real gateable field-permission key for
  * reads now, stripped like any other field a resolved map denies.
  *
  * @param doc - The document Convex returned.

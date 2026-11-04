@@ -26,6 +26,7 @@ import type { ConstraintResult } from "../../../access/queryConstraintTypes";
 import {
   andConvexQueryFilters,
   convertCommitTsWhereToNs,
+  normalizeArrayStoredWhere,
   whereFieldNames,
   whereToConvexQueryFilter,
   withIndexToConvexQueryIndex,
@@ -107,10 +108,9 @@ export interface FindServerArgs<
   /**
    * Portable sort — `{ field, order }`. The server resolves `field` to an
    * index via `resolveQueryIndex`, which also pushes matching equalities
-   * from `where` into that index's range when one is available (Design
-   * Decision 36) — callers never name an index directly (Design Decision
-   * 5). Mutually exclusive with `withIndex` — passing both throws a
-   * `VexError`.
+   * from `where` into that index's range when one is available — callers
+   * never name an index directly. Mutually exclusive with `withIndex` —
+   * passing both throws a `VexError`.
    *
    * The resolved index competes for the query's one `withIndex` slot
    * through the same `pickConvexQueryIndex` arbitration as `withIndex` (an
@@ -120,8 +120,7 @@ export interface FindServerArgs<
    * own over an access-contributed index.
    *
    * Rejected with a `VexAccessError` when the caller cannot read
-   * `sort.field` (Design Decision 26) — sort order alone would leak the
-   * field's values.
+   * `sort.field` — sort order alone would leak the field's values.
    *
    * @example
    * ```ts
@@ -190,7 +189,7 @@ export async function find<
  * Pass `paginationOpts: { ..., totalDocs: true }` to also count matching
  * documents on the first page (`cursor: null`) only. Counts with
  * `take(countLimit + 1)` instead of `.collect()`-ing the whole matching
- * set (Design Decision 35, default `countLimit` 10000) — `totalDocs` is
+ * set (default `countLimit` 10000) — `totalDocs` is
  * the exact count up to that cap, never `null`; `totalDocsCapped: true`
  * means more matching documents exist beyond the cap and `totalDocs`
  * equals `countLimit`, a floor rather than an exact count.
@@ -256,14 +255,16 @@ export async function find<
     action,
   });
   const collectionConfig = args.config?.collections.find((c) => c.slug === args.collection);
-  const where = convertCommitTsWhereToNs({
-    where: args.where as VexWhereNode<string> | undefined,
+  const where = normalizeArrayStoredWhere({
+    where: convertCommitTsWhereToNs({
+      where: args.where as VexWhereNode<string> | undefined,
+      fields: collectionConfig?.fields ?? {},
+    }),
     fields: collectionConfig?.fields ?? {},
   });
-  // Portable sort + filter-index pushdown (Design Decision 36). Skipped
-  // when the caller names an explicit `withIndex` — that index is
-  // authoritative, and automatic pushdown would otherwise compete for the
-  // same query slot.
+  // Portable sort + filter-index pushdown. Skipped when the caller names
+  // an explicit `withIndex` — that index is authoritative, and automatic
+  // pushdown would otherwise compete for the same query slot.
   const queryIndexResolution = args.withIndex
     ? undefined
     : resolveQueryIndex({
@@ -282,10 +283,10 @@ export async function find<
     : withIndexToConvexQueryIndex({
         withIndex: args.withIndex as { name: string; range?: (q: never) => ConstraintResult } | undefined,
       });
-  // `where` minus whatever Decision 36 pushed into the index's own range —
-  // those equalities are already enforced by `withIndex`, so re-applying
-  // them in `.filter()` would be redundant. The explicit-`withIndex` path
-  // ran no pushdown, so it keeps the caller's full `where`.
+  // `where` minus whatever pushdown above pushed into the index's own
+  // range — those equalities are already enforced by `withIndex`, so
+  // re-applying them in `.filter()` would be redundant. The explicit-`withIndex`
+  // path ran no pushdown, so it keeps the caller's full `where`.
   const pushdownRemainder = args.withIndex
     ? (where as VexWhereNode<string> | undefined)
     : queryIndexResolution?.remainder;
@@ -294,12 +295,11 @@ export async function find<
     fields: whereFieldNames({ config: args.config, collection: args.collection }),
   });
   // A request `where` part that deep-equals a config view's own `where` is
-  // trusted server config, exempt from the field-read check below (Design
-  // Decision 26's one exception); only the REMAINING parts of `where`
-  // still need every referenced field to be readable, with a lazy fall
-  // back to a readable shared view's own declared filter (Decision 26's
-  // "Shared views" bullet) — see `resolveWhereFields` for the pipeline,
-  // shared with `search/server.ts`.
+  // trusted server config, exempt from the field-read check below; only
+  // the REMAINING parts of `where` still need every referenced field to
+  // be readable, with a lazy fall back to a readable shared view's own
+  // declared filter — see `resolveWhereFields` for the pipeline, shared
+  // with `search/server.ts`.
   const whereFields = await resolveWhereFields({
     ctx: args.ctx,
     config: args.config as VexConfig,
@@ -323,7 +323,7 @@ export async function find<
   // Status narrowing is independent of RBAC (design-review.md §3.1) — it runs
   // whenever `requiresPublishedOnly` says so, whether or not `access` above is
   // `undefined` (bypassed or unconfigured). Also arbitrates the winning index's
-  // OWN `draftStatus` declaration (Step 13 D2–D4, `versions/statusQueryConstraint.ts`)
+  // OWN `draftStatus` declaration (`versions/statusQueryConstraint.ts`)
   // — a `drafts: true` read against a `draftStatus: true`-only index drops the
   // range and re-applies it as a filter, so no access inputs are needed here.
   const { resolvedIndex, accessFilter } = composeStatusQueryConstraint({
@@ -408,6 +408,13 @@ export async function find<
         )) as unknown as FindReturn<TCollectionSlug, TPopulate, D>);
 
   if (args.paginationOpts && convexPaginationResult) {
+    // The caller's identity, stamped onto every paginated page so the client can tell
+    // a page resolved under the IDENTITY IT EXPECTS apart from one that's merely
+    // arriving late from a subscription re-evaluating under a DIFFERENT (old or
+    // in-flight) identity — see `useVexListQuery.ts`'s auth-transition marker doc
+    // comment for the client half of this contract. `_id` (not `id`): `VexApiAuth.user`
+    // is a real Convex document by convention.
+    const viewerId = (args.auth?.user?._id as string | undefined) ?? null;
     if (args.paginationOpts.totalDocs && !args.paginationOpts.cursor) {
       if (convexPaginationResult.isDone) {
         return {
@@ -415,9 +422,10 @@ export async function find<
           page: finalDocs,
           totalDocs: finalDocs.length,
           totalDocsCapped: false,
+          viewerId,
         };
       }
-      // Counts at most `countLimit + 1` rows (Design Decision 35) instead
+      // Counts at most `countLimit + 1` rows instead
       // of `.collect()`-ing the whole matching set — the old unbounded
       // count re-scanned every matching row on each list open and failed
       // outright above Convex's ~32k-document transaction scan limit. See
@@ -437,6 +445,7 @@ export async function find<
         page: finalDocs,
         totalDocs,
         totalDocsCapped,
+        viewerId,
       };
     }
 
@@ -444,6 +453,7 @@ export async function find<
     return {
       ...convexPaginationResult,
       page: finalDocs,
+      viewerId,
     };
   }
 

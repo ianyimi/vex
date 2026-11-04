@@ -65,8 +65,8 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     // the (mocked) live `listViews` subscription — a real Convex mutation
     // doesn't return the new row directly to the caller; the SAME
     // reactive query picks it up, which is what `ListViewModifiedControls`
-    // relies on to see its own save reflected (the developer-reported
-    // "Modified stays stuck after Save" bug this file's new tests guard).
+    // relies on to see its own save reflected (guards the
+    // "Modified stays stuck after Save" bug this file's tests cover).
     useMutation: () => ({
       mutateAsync: async (args: {
         collection: string;
@@ -197,7 +197,7 @@ afterEach(() => {
 });
 
 describe("ListViewModifiedControls", () => {
-  it("renders nothing when no view param is present and state matches the default view exactly (Decision 45/48)", () => {
+  it("renders nothing when no view param is present and state matches the default view exactly", () => {
     renderControls(
       {
         urlState: buildBaselineUrlState({ view: undefined }),
@@ -208,7 +208,7 @@ describe("ListViewModifiedControls", () => {
     expect(screen.queryByText(/Modified:/)).not.toBeInTheDocument();
   });
 
-  it("shows Modified when state diverges from the default view while \"All\" is active (Decision 45/48 — the default is a real, diffable view now)", () => {
+  it("shows Modified when state diverges from the default view while \"All\" is active — the default is a real, diffable view", () => {
     renderControls({ urlState: buildModifiedUrlState({ view: undefined }) }, "canUpdate");
     expect(screen.getByText(/Modified:/)).toBeInTheDocument();
   });
@@ -226,7 +226,7 @@ describe("ListViewModifiedControls", () => {
       sort: { field: "_creationTime", order: "desc" as const },
     };
     // `loc1` never declared explicit `columns`, so its resolved
-    // `columnOrder` (Decision 47) is the collection's own default
+    // column order is the collection's own default
     // declaration order — `title` then the auto-injected `updatedAt`.
     renderControls(
       { urlState, columns: ["title", "updatedAt"] },
@@ -268,7 +268,7 @@ describe("ListViewModifiedControls", () => {
     expect(screen.getByLabelText("Name")).toHaveValue("Config View (copy)");
   });
 
-  it("the default (\"All\") view ALWAYS opens the fallback dialog — never updatable in place (Decision 13/45/48)", () => {
+  it("the default (\"All\") view ALWAYS opens the fallback dialog — never updatable in place", () => {
     const urlState = buildModifiedUrlState({ view: undefined });
     renderControls({ urlState }, "canUpdate");
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -276,7 +276,7 @@ describe("ListViewModifiedControls", () => {
     expect(screen.getByLabelText("Name")).toHaveValue("All (copy)");
   });
 
-  it("Reset reapplies the active view's own saved fields, including columns via onColumnsChange (developer-reported fix)", () => {
+  it("Reset reapplies the active view's own saved fields, including columns via onColumnsChange", () => {
     saveLocalSavedListView({
       basePath: "/admin",
       project,
@@ -293,9 +293,9 @@ describe("ListViewModifiedControls", () => {
     expect(onColumnsChange).toHaveBeenCalledWith(["title", "updatedAt"]);
   });
 
-  // Developer-reported: a local view's full state lives in the URL
-  // (Decision 41) — before its cookie-index PLACEHOLDER (Decision 41's
-  // `toIndexEntry`, present on a cold SSR/reload before `localStorage`
+  // A local view's full state lives in the URL —
+  // before its cookie-index PLACEHOLDER
+  // (`toIndexEntry`, present on a cold SSR/reload before `localStorage`
   // hydrates) is replaced by the real saved view, comparing the URL's own
   // (real) values against the placeholder's empty where/sort/search used
   // to falsely show "Modified: …" until hydration completed.
@@ -330,7 +330,7 @@ describe("ListViewModifiedControls", () => {
     expect(screen.getByText(/Modified:/)).toBeInTheDocument();
   });
 
-  // Developer-reported: after a successful Save, the Modified summary +
+  // After a successful Save, the Modified summary +
   // Reset + Save controls must disappear immediately — the save's own
   // updated data (local storage event, or the shared view's live query)
   // must be reflected without a reload. Could not reproduce this live in
@@ -399,14 +399,14 @@ describe("ListViewModifiedControls", () => {
     );
   });
 
-  // Developer-reported: clicking "Clear all" on a view with its own saved
+  // Clicking "Clear all" on a view with its own saved
   // filter wrote NOTHING distinguishable from "untouched" (both omit
   // `filter=`), so `resolveEffectiveViewState` silently re-inherited the
   // view's own filter — no Modified badge, no way to Reset/Save the
   // cleared state, and nothing durable persisted across a refresh. Fixed
   // via `filter: null` — the explicit clear sentinel, distinct from
   // `undefined` (absent/inherit).
-  describe("Clear all filter — explicit clear sentinel (developer-reported)", () => {
+  describe("Clear all filter — explicit clear sentinel", () => {
     it("shows Modified once the user clears a view's own saved filter", () => {
       saveLocalSavedListView({
         basePath: "/admin",
@@ -489,11 +489,11 @@ describe("ListViewModifiedControls", () => {
     });
   });
 
-  // Developer decision (binding, "peek-resize-save-rule"): peek width counts toward
+  // Peek width counts toward
   // "Modified" ONLY for a view with its OWN saved width; Save only starts persisting one
   // into a view that never had one when the user explicitly resized the peek while on it
   // (`peekWidthTouched`); Reset only restores a width for a view that has one.
-  describe("peekWidth Save/Reset rules (developer decision, binding, \"peek-resize-save-rule\")", () => {
+  describe("peekWidth Save/Reset rules", () => {
     it("Save persists a NEW width for a view that already had its own saved width (standard modified-state save)", () => {
       saveLocalSavedListView({
         basePath: "/admin",

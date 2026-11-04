@@ -227,9 +227,8 @@ export function defineCollection<
   });
 
   // `view.columns` falls back to every non-hidden data field, in field
-  // declaration order, when the project doesn't specify one (Step 4's
-  // original `defaultColumns` fallback, unchanged logic, new home under
-  // `admin.view` — Decision 45/48).
+  // declaration order, when the project doesn't specify one — new home under
+  // `admin.view`.
   const defaultViewColumns =
     input.admin?.view?.columns ??
     Object.entries(getDataFields({ fields: fieldsWithTimestamp }))
@@ -251,7 +250,7 @@ export function defineCollection<
     admin: {
       useAsTitle: "_id",
       ...input.admin,
-      // Decision 45 FINAL: `admin.table` is gone entirely — every
+      // `admin.table` is gone entirely — every
       // collection-wide list setting that used to live there now resolves
       // as part of `admin.view` itself (the same object the per-view
       // query-state defaults below resolve into), and falls back to
@@ -273,7 +272,7 @@ export function defineCollection<
           searchField: input.admin?.view?.searchField ?? input.admin?.view?.searchFields?.[0],
           searchFields: input.admin?.view?.searchFields ?? [],
           pageSizeOptions: input.admin?.view?.pageSizeOptions ?? [10, 25, 50, 100],
-          // Decision 35: caps the first-page total-count scan.
+          // Caps the first-page total-count scan.
           countLimit: input.admin?.view?.countLimit ?? 10000,
           serverPageSize: input.admin?.view?.serverPageSize ?? 100,
           bulkActions: {
@@ -282,8 +281,8 @@ export function defineCollection<
           },
         },
       },
-      // Decision 45 (developer answer — "admin.views entries accept the
-      // same settings as admin.view"): every `admin.views[n]`'s own
+      // `admin.views` entries accept the
+      // same settings as `admin.view`: every `admin.views[n]`'s own
       // collection-wide keys (`searchFields`/`pageSizeOptions`/
       // `countLimit`/`serverPageSize`/`bulkActions`), when unset, fall back
       // to `admin.view`'s own just-resolved value — the same two-tier
@@ -292,8 +291,8 @@ export function defineCollection<
       // (`where`/`sort`/`search`/`searchField`/`columns`/`pageSize`) stays
       // exactly as declared, unresolved here — `resolveListViewQueryState`'s
       // own existing three-tier chain (URL → active view → `admin.view`)
-      // already handles THAT fallback lazily, at query time, unchanged by
-      // this step. Supersedes the old `admin.table.views` (clean cutover).
+      // already handles THAT fallback lazily, at query time. Supersedes
+      // the old `admin.table.views` (clean cutover).
       views: (input.admin?.views ?? []).map((view) => ({
         ...view,
         state: {
@@ -323,7 +322,7 @@ export function defineCollection<
         ComponentHKT,
         TCollectionSlug
       >["livePreview"],
-      // Decision 17/18/37 (list-view-overhaul spec, step 9): the seven `list.*` slots are flat
+      // The seven `list.*` slots are flat
       // and additive with no override chains, so each one resolves here exactly like the root
       // project-wide `admin.components.blocks`/`array` lists (`config/config.ts`) — order/before/
       // after/hide directives applied now, built-ins merged in later by `SlotOutlet` at render
@@ -390,13 +389,12 @@ export function defineCollection<
     CollectionDataFieldSlug<TFields, TTimestamps>
   >;
 
-  // Config-time guard for Decisions 3 & 6: a `searchField` entry with no
+  // Config-time guard: a `searchField` entry with no
   // `searchIndex`, or a sortable field with no leading index, is a project
   // bug caught here rather than surfacing as a broken control in the browser.
-  // Every per-view check (Decision 25/45/48) — unique `viewId` (including the
+  // Every per-view check — unique `viewId` (including the
   // reserved `"default"`), `where`/sort/searchField/columns — also runs here,
-  // inside `validateSavedListViewConfig` (Step 5, revised Step 18, renamed Step 21), over
-  // `[collection.admin.view, ...collection.admin.views]` uniformly.
+  // inside `validateSavedListViewConfig`, over
   validateSavedListViewConfig({ collection });
 
   return collection;

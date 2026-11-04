@@ -39,22 +39,22 @@ export const DRAFT_ACTIONS = {
 export type DraftAction = (typeof DRAFT_ACTIONS)[keyof typeof DRAFT_ACTIONS];
 
 /**
- * Access actions gating SHARED (`vex_views`) saved views (decision 13).
+ * Access actions gating SHARED (`vex_views`) saved views.
  * Present on every collection that has a resolved `admin.view` (see
  * {@link HasListView} in `access/types.ts`) — globals have no list view and
  * never carry them.
  *
  * - `readViews` is query-shaped (see {@link QUERY_ACTIONS} below) — it
  *   gates `listViews`, the use of shared views, and `find`'s shared-view
- *   allow-list (decision 26).
+ *   allow-list.
  * - `createView` gates saving a new shared view and promoting a local view.
  * - `updateView` gates saving changes to and renaming a shared view.
  * - `deleteView` gates deleting a shared view.
  *
- * Undeclared like every other action (P-007): a role matrix that never
+ * Undeclared like every other action: a role matrix that never
  * mentions one of these resolves it to denied, so shared-view reads and
  * writes are all fail-closed by default. A caller without `createView` can
- * still save views locally — `savedListViews/localSavedListViewsStore.ts` (Step 12) never
+ * still save views locally — `savedListViews/localSavedListViewsStore.ts` never
  * calls `hasPermission` for the `local` source.
  */
 export const VIEW_ACTIONS = {

@@ -157,7 +157,7 @@ function prefetchArgs(endpoint: unknown) {
 
 /**
  * The `initialFilterValueTitles` prop `NextAdminPage`'s collection-list branch
- * passed to `<CollectionListView>` (Decision 50) — navigates the same element
+ * passed to `<CollectionListView>` — navigates the same element
  * tree `authValue`/`dehydratedQueryState` already drill into:
  * `VexAuthProvider > HydrationBoundaryClient > [AdminTopNav, <div>{children}</div>]`,
  * where `children` is the `<CollectionListView>` element itself (stubbed, but
@@ -206,7 +206,7 @@ describe("NextAdminPage — prefetch args match the view's client query", () => 
     expect(prefetchArgs(vexConvexApi.get)).toEqual({ id: "doc1", collection: "posts", drafts: true });
   });
 
-  it("edit page of a non-versioned collection prefetches with no drafts key at all (Decision 5: buildGetArgs omits drafts, never sends a concrete false)", async () => {
+  it("edit page of a non-versioned collection prefetches with no drafts key at all (buildGetArgs omits drafts, never sends a concrete false)", async () => {
     await render(["collections", "pages", "doc1"]);
     expect(prefetchArgs(vexConvexApi.get)).toEqual({ id: "doc1", collection: "pages" });
   });
@@ -225,7 +225,7 @@ const sharedViewFixture = {
   state: { sort: { field: "title", order: "desc" } as const, pageSize: 50 },
 };
 
-describe("NextAdminPage — list view prerender (Design Decision 39)", () => {
+describe("NextAdminPage — list view prerender", () => {
   beforeEach(() => {
     fetchQueryMock.mockReset().mockImplementation((fn: unknown) => {
       if (fn === vexConvexApi.listViews) return Promise.resolve([sharedViewFixture]);
@@ -295,7 +295,7 @@ describe("NextAdminPage — list view prerender (Design Decision 39)", () => {
     });
   });
 
-  it("peek= prefetches get with the same args ListViewPeek's useVexDocQuery sends (Decision 5: no drafts key for a non-versioned collection)", async () => {
+  it("peek= prefetches get with the same args ListViewPeek's useVexDocQuery sends (no drafts key for a non-versioned collection)", async () => {
     await render(["collections", "posts2"], { peek: "doc1" });
     expect(prefetchArgs(vexConvexApi.get)).toEqual({ id: "doc1", collection: "posts2" });
   });
@@ -331,8 +331,8 @@ describe("NextAdminPage — list view prerender (Design Decision 39)", () => {
     });
     // `NextAdminPage` itself never throws/rejects — the `.catch(() => undefined)` on the
     // unawaited `prefetchQuery` call only guards an unhandled-rejection warning; the
-    // rejection itself lands in the dehydrated query's OWN error state (Design Decision
-    // 9/32 — a URL must never crash the page), which `CollectionListViewData`'s
+    // rejection itself lands in the dehydrated query's OWN error state (a URL must
+    // never crash the page), which `CollectionListViewData`'s
     // `useSuspenseQuery` re-throws into on the client, rendering the SAME `ListViewQueryError`
     // this used to pass down as `initialQueryError` — now entirely the client's own
     // `pagination.error` handling (`CollectionListView.test.tsx` covers that directly).
@@ -348,8 +348,7 @@ describe("NextAdminPage — list view prerender (Design Decision 39)", () => {
       return Promise.resolve(null);
     });
     const element = await render(["collections", "posts2"], { peek: "denied-doc" });
-    // `peek` is no longer awaited by `NextAdminPage` at all (shell-streaming follow-up, part
-    // 2) — its dehydrated status at the moment `dehydrate()` runs depends on real network
+    // `peek` is no longer awaited by `NextAdminPage` at all — its dehydrated status at the moment `dehydrate()` runs depends on real network
     // timing, same as it would in production: "pending" (still streaming, the common case —
     // settles via a LATER chunk of the SAME response, `ListViewPeek`'s own `<Suspense>` boundary
     // catches it) or "error" (already settled by then) are both valid, non-crashing outcomes;
@@ -366,15 +365,15 @@ describe("NextAdminPage — list view prerender (Design Decision 39)", () => {
       return Promise.resolve(null);
     });
     const element = await render(["collections", "posts2"], { view: "shared:does-not-matter" });
-    // `listViews`'s own PREFETCH is now explicitly awaited for a `shared:` view (developer-
-    // reported column-flash fix, below) — its dehydrated status is deterministically
+    // `listViews`'s own PREFETCH is now explicitly awaited for a `shared:` view (a column-flash
+    // fix, below) — its dehydrated status is deterministically
     // "error" here (the rejection above has already been awaited by `dehydrate()` time),
     // same honesty as the `peek` test above; "undefined" (never registered) would be the bug.
     expect(dehydratedQueryState(element, vexConvexApi.listViews, { collection: "posts2" })?.status).toBe("error");
     expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({ collection: "posts2" });
   });
 
-  it("a shared view's listViews prefetch is awaited — dehydrated status is 'success', not 'pending' (developer-reported column-flash fix)", async () => {
+  it("a shared view's listViews prefetch is awaited — dehydrated status is 'success', not 'pending' (column-flash fix)", async () => {
     fetchQueryMock.mockReset().mockImplementation((fn: unknown) => {
       if (fn === vexConvexApi.listViews) return Promise.resolve([sharedViewFixture]);
       if (fn === vexConvexApi.findPaginated) return Promise.resolve({ page: [], isDone: true, continueCursor: "" });
@@ -395,7 +394,7 @@ describe("NextAdminPage — list view prerender (Design Decision 39)", () => {
     );
   });
 
-  it("a default view's listViews prefetch is awaited, so shared tabs are in the first paint (developer-reported pop-in fix — reverses the prior 'await only for shared' perf decision)", async () => {
+  it("a default view's listViews prefetch is awaited, so shared tabs are in the first paint (reverses an earlier 'await only for shared' perf optimization)", async () => {
     fetchQueryMock.mockReset().mockImplementation((fn: unknown) => {
       if (fn === vexConvexApi.listViews) return Promise.resolve([sharedViewFixture]);
       return Promise.resolve({ page: [], isDone: true, continueCursor: "" });
@@ -484,7 +483,7 @@ describe("NextAdminPage — list view prerender (Design Decision 39)", () => {
   });
 });
 
-describe("NextAdminPage — initialFilterValueTitles (Decision 50)", () => {
+describe("NextAdminPage — initialFilterValueTitles", () => {
   /** Encodes `where` into the `?filter=` URL grammar `relDocs` itself (`listViewUrlState.ts`) expects. */
   function filterParam(where: unknown) {
     const qs = serializeListViewUrlState({ params: { filter: where as never }, collection: relDocs }).toString();
@@ -522,7 +521,7 @@ describe("NextAdminPage — initialFilterValueTitles (Decision 50)", () => {
     expect(prefetchArgs(vexConvexApi.get)).toMatchObject({ collection: "images", id: "img1" });
   });
 
-  it("degrades to null for a not-found/denied id — never crashes the page (Decision 9/32)", async () => {
+  it("degrades to null for a not-found/denied id — never crashes the page", async () => {
     const element = await render(["collections", "rel_docs"], {
       filter: filterParam({ field: "page", op: "eq", value: "missing" }),
     });
@@ -591,7 +590,7 @@ describe("NextAdminPage — collections/globals index routes", () => {
   });
 });
 
-describe("NextAdminPage — server auth (Decision 44, revised: auth is optional)", () => {
+describe("NextAdminPage — server auth (auth is optional)", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -645,7 +644,7 @@ describe("NextAdminPage — server auth (Decision 44, revised: auth is optional)
     expect(authValue(first)).toEqual({ user: null });
     expect(authValue(second)).toEqual({ user: null });
     // An anonymous caller resolves no role at all, so NOTHING is readable — the search
-    // prefetch is skipped entirely (Decision 2's "no search bar" case), not just sent the
+    // prefetch is skipped entirely (the "no search bar" case), not just sent the
     // wrong searchField.
     expect(fetchQueryMock.mock.calls.some(([fn]) => fn === vexConvexApi.search)).toBe(false);
     expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({ collection: "posts2" });
@@ -678,7 +677,7 @@ describe("NextAdminPage — server auth (Decision 44, revised: auth is optional)
     expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({ collection: "posts2" });
   });
 
-  it("the real reported case: anonymous viewer, local-view filter on vex_status (unreadable via access.anonRole) — render succeeds, prefetch is unfiltered, never an error (access-system-fields.md Decision 11)", async () => {
+  it("the real reported case: anonymous viewer, local-view filter on vex_status (unreadable via access.anonRole) — render succeeds, prefetch is unfiltered, never an error", async () => {
     const cfg = configWithAccess({
       roles: ["public"],
       anonRole: "public",

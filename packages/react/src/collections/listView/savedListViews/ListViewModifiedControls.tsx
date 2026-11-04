@@ -33,7 +33,7 @@ import { SaveListViewDialog, type SaveListViewTarget } from "./SaveListViewDialo
 import { Button } from "../../../ui";
 import type { ListViewUrlStateSlice } from "../useListViewUrlState";
 
-/** "Modified: …" summary diff-category labels (moved from `SavedListViewTabs.tsx` — developer revision 2026-10-29 relocated the controls themselves, not just the labels). */
+/** "Modified: …" summary diff-category labels (shared with `SavedListViewTabs.tsx`'s own copy). */
 const DIFF_LABELS: Record<Exclude<ListViewDiffCategory, "filters">, string> = {
   search: "search",
   sort: "sort",
@@ -61,49 +61,47 @@ interface PendingCopyDialog<TFieldSlug extends string> {
 export interface ListViewModifiedControlsProps<TFieldSlug extends string = string> {
   collection: CollectionSlug;
   urlState: ListViewUrlStateSlice<TFieldSlug>;
-  /** `collection.admin.view.state.pageSize` — `urlState.size`'s value when omitted (Decision 9). */
+  /** `collection.admin.view.state.pageSize` — `urlState.size`'s value when omitted. */
   defaultPageSize: number;
-  /** The active view's FULL column list (Decision 48) — owned by `ListViewLayout` (`useListViewContext().columns`). */
+  /** The active view's FULL column list — owned by `ListViewLayout` (`useListViewContext().columns`). */
   columns: ColumnEntry<TFieldSlug>[];
-  /** Replaces the full `columns` array AND writes `cols=`, atomically (Decision 48) — used by Reset. Saving-as-copy uses `onColumnsStateChange` + `urlState.applyView` instead (below) — see that method's own doc comment for why. */
+  /** Replaces the full `columns` array AND writes `cols=`, atomically — used by Reset. Saving-as-copy uses `onColumnsStateChange` + `urlState.applyView` instead (below) — see that method's own doc comment for why. */
   onColumnsChange: (columns: ColumnEntry<TFieldSlug>[]) => void;
-  /** LOCAL STATE ONLY (no URL write) — used by `handleCopyDialogSubmit`, which writes `cols=` itself as part of `urlState.applyView`'s single atomic write (developer-reported: a separate `urlState.setCols` call here would diff against the STALE pre-switch baseline). */
+  /** LOCAL STATE ONLY (no URL write) — used by `handleCopyDialogSubmit`, which writes `cols=` itself as part of `urlState.applyView`'s single atomic write (a separate `urlState.setCols` call here would diff against the STALE pre-switch baseline). */
   onColumnsStateChange: (columns: ColumnEntry<TFieldSlug>[]) => void;
-  /** The peek panel's live width in px (Decision, developer-approved "peek-resize") — the cookie's current value, read by `CollectionListView` and threaded down for the "Modified" diff/Reset/Save. */
+  /** The peek panel's live width in px — the cookie's current value, read by `CollectionListView` and threaded down for the "Modified" diff/Reset/Save. */
   peekWidth: number;
-  /** Whether the user has explicitly resized the peek since the active view last changed (Decision, binding, "peek-resize-save-rule") — Save only starts persisting a `peekWidth` into a view that never had one of its own when this is `true`. */
+  /** Whether the user has explicitly resized the peek since the active view last changed — Save only starts persisting a `peekWidth` into a view that never had one of its own when this is `true`. */
   peekWidthTouched: boolean;
   /** Persists a new width (drag/keyboard commit) or `undefined` (Reset) via `writeListViewPeekWidthCookie` — `CollectionListView`'s own `onPeekWidthChange`. `source: "view"` (used by this component's own Reset) persists without counting as the user having touched the width. */
   onPeekWidthChange: (width: number | undefined, source?: "user" | "view") => void;
-  /** Server-prefetched shared views (Decision 39) — forwarded to `useSavedListViews`. */
+  /** Server-prefetched shared views — forwarded to `useSavedListViews`. */
   initialViews?: VexStoredView[];
-  /** Server-read local-view cookie index (Decision 41) — forwarded to `useSavedListViews`. */
+  /** Server-read local-view cookie index — forwarded to `useSavedListViews`. */
   initialLocalIndex?: LocalSavedListViewsIndexEntry[];
 }
 
 /**
  * The active view's modified-state controls — a dot, "Modified: …"
  * summary, Reset, and Save — rendered inline in `ListViewToolbar`'s row,
- * immediately right of the Filter+eye control group (developer revision
- * 2026-10-29, superseding the previous reserved-height row below the tab
- * strip in `SavedListViewTabs.tsx`). Returns `null` whenever there is no active
- * view or nothing has changed — unlike the superseded reserved-slot
- * treatment, this takes NO layout space at all while inactive; every
- * control here shares the toolbar's own `size="default"` height (developer-reported fix, 2026-10-30: every toolbar control is now one height, matching the search input's `h-8`), so the
+ * immediately right of the Filter+eye control group. Returns `null` whenever there is no active
+ * view or nothing has changed — this takes NO layout space at all while inactive; every
+ * control here shares the toolbar's own `size="default"` height (every toolbar control is one height,
+ * matching the search input's `h-8`), so the
  * toolbar row never changes height when these appear.
  *
  * Save's target branches on whether the caller may overwrite the active
- * view in place (developer revision 2026-10-29, part 3): a local view
+ * view in place: a local view
  * always saves in place; a shared view saves in place only with
  * `updateView`; a shared view WITHOUT `updateView`, or any config view
- * (never updatable — Decision 13), instead opens the save dialog
+ * (never updatable), instead opens the save dialog
  * pre-filled as a NEW LOCAL view named `"<view name> (copy)"` from the
  * CURRENT state. A config view's hidden filter is never part of that
- * state (Decision 25 — `currentState.where` is always the user's own
+ * state (`currentState.where` is always the user's own
  * visible filter, composed with the hidden condition only at the query
  * layer), so the copy never carries it forward.
  *
- * **Responsive (list-view-overhaul Step 16, developer's deferred note from Step 12):**
+ * **Responsive:**
  * sized by `@container/list`, not `md:` — below `@md/list` the "Modified: …" summary text
  * and the Reset/Save labels hide, leaving the dot plus two icon-only buttons
  * (`RotateCcw`/`Save`, fixed `aria-label`s so the accessible name never changes with width —
@@ -138,7 +136,7 @@ export function ListViewModifiedControls<TFieldSlug extends string = string>(
   const saveViewMutation = useMutation({ mutationFn: saveViewMutationFn });
   const [copyDialog, setCopyDialog] = useState<PendingCopyDialog<TFieldSlug> | null>(null);
 
-  // Decision 45/48: an absent `?view=` resolves to the default ("All")
+  // An absent `?view=` resolves to the default ("All")
   // view instead of `undefined` — it is a real, diffable view now, so
   // state changed away from it (sort, filter, columns, …) now correctly
   // shows "Modified: …" here too, not just for a named saved view.
@@ -168,14 +166,14 @@ export function ListViewModifiedControls<TFieldSlug extends string = string>(
     pageSize: effectiveViewState.pageSize ?? props.defaultPageSize,
     peekWidth: props.peekWidth,
   };
-  // Decision 41: a local view's full state already lives in the URL —
+  // A local view's full state already lives in the URL —
   // until the REAL `localStorage` data hydrates (replacing the
   // cookie-index placeholder, `useSavedListViews.ts`'s `toIndexEntry`), the
   // placeholder's own where/sort/search/columns are all empty/`undefined`,
   // which would falsely diff against the URL's real (non-empty) values —
   // e.g. "Modified: 1 filter" flashing on every cold SSR/reload of a
   // local view with a saved filter, self-correcting only once hydration
-  // completes (developer-reported). Fix: while still a placeholder, treat
+  // completes. Fix: while still a placeholder, treat
   // the URL's OWN current state as the saved baseline too (diffing
   // `currentState` against itself is always empty) — the real diff
   // resumes the instant `activeView` resolves to the real local view.
@@ -190,7 +188,7 @@ export function ListViewModifiedControls<TFieldSlug extends string = string>(
   const canSaveInPlace =
     activeView?.source === VEX_VIEW_SOURCES.local ||
     (activeView?.source === VEX_VIEW_SOURCES.shared && canUpdateViews);
-  // Developer decision (binding, "peek-resize-save-rule"): Save only starts persisting a
+  // Save only starts persisting a
   // `peekWidth` into a view that never had one of its own when the user explicitly resized
   // the peek WHILE viewing THIS view (`props.peekWidthTouched`) — saving some OTHER change
   // (search/sort/filter/…) must not silently bake in whatever unrelated width this browser
@@ -206,16 +204,16 @@ export function ListViewModifiedControls<TFieldSlug extends string = string>(
     props.urlState.setSort(activeView.sort);
     props.urlState.setFilter(activeView.where);
     props.urlState.setSize(activeView.pageSize);
-    // `activeView.columns` (Decision 48) is ALREADY fully resolved by
+    // `activeView.columns` is ALREADY fully resolved by
     // `useSavedListViews()` via `completeListViewColumnOrder` — every field, visible or
     // not, with its own width/pin/hidden overrides intact. No fallback to
-    // `defaultView.columns` needed anymore (that was Step 20's own
+    // `defaultView.columns` needed anymore (that was the earlier
     // "a view with no explicit columns means inherit the default" special
-    // case for its now-superseded separate visible-subset `columns` field
+    // case for a now-superseded separate visible-subset `columns` field
     // — `completeListViewColumnOrder` already handles an empty/undeclared view's
     // columns identically to the default).
     props.onColumnsChange(activeView.columns);
-    // Developer decision (binding): Reset on a view with NO saved width has
+    // Reset on a view with NO saved width has
     // nothing to restore — `peekWidth` was never part of this view's
     // "Modified" diff in the first place (see `diffViewState`'s own
     // skip-when-undefined check), so Reset leaves it exactly as it is,
@@ -259,7 +257,7 @@ export function ListViewModifiedControls<TFieldSlug extends string = string>(
       return;
     }
     // No permission to overwrite a shared view in place, or the active
-    // view is a read-only config view (Decision 13) — fall back to
+    // view is a read-only config view — fall back to
     // creating a new local view from the current state instead.
     setCopyDialog({
       viewId: generateViewId(),
@@ -295,12 +293,12 @@ export function ListViewModifiedControls<TFieldSlug extends string = string>(
         saveLocalSavedListView({ basePath: config.basePath, project, collection: props.collection, view });
       }
       // ONE atomic URL write, diffed against the JUST-SAVED view's own
-      // baseline — developer-reported: the old per-field `setX` sequence
+      // baseline — the old per-field `setX` sequence
       // (plus a separate `onColumnsChange` → `setCols` call) diffed every
       // field against the STALE pre-switch view (the one being saved AS
       // A COPY FROM), so a field that merely differed from THAT old
       // baseline got written explicitly instead of omitted against the
-      // new copy's own. `copyDialog.state.columns` (Decision 48) is
+      // new copy's own. `copyDialog.state.columns` is
       // already fully resolved (carried straight through from
       // `currentState` at dialog-open time).
       props.urlState.applyView({

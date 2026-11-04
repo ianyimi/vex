@@ -61,19 +61,19 @@ export const VERSION_STATUSES = {
 /**
  * Publish-state values a versioned document (or global) can carry —
  * `vex_status`'s two literal values. Shared by `StatusBadge`
- * (`@vexcms/react`), `FieldComponentProps.documentStatus` (`fields/types.ts`,
- * Step 12), and anywhere else a caller needs to name this union — defined
+ * (`@vexcms/react`), `FieldComponentProps.documentStatus` (`fields/types.ts`),
+ * and anywhere else a caller needs to name this union — defined
  * once here rather than redeclared per-package, since `@vexcms/react`
  * depends on `@vexcms/core` and never the reverse.
  */
 export type VexVersionStatus = (typeof VERSION_STATUSES)[keyof typeof VERSION_STATUSES]["key"];
 
 /**
- * Default debounce window, in milliseconds, before `useAutosave` (Step 14)
+ * Default debounce window, in milliseconds, before `useAutosave`
  * writes a changed draft row. Applied whenever a collection or global
  * declares `versions.autosave: true`.
  *
- * No companion max-versions-per-document default — decision 3 of this spec
- * ships unbounded version history; there is no automatic pruning to default.
+ * No companion max-versions-per-document default — version history ships
+ * unbounded; there is no automatic pruning to default.
  */
 export const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 1000 as const;

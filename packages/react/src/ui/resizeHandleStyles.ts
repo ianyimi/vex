@@ -2,7 +2,7 @@ import { cn } from "../utils/cn";
 
 /**
  * A small, ALWAYS-VISIBLE grip mark at a resizable edge's own handle
- * (developer-reported, `DataTable`'s own column resize: the handle
+ * (`DataTable`'s own column resize: the handle
  * itself — the `w-1.5` `role="separator"` hit target — is invisible
  * until hovered/focused/dragged, giving a user no indication an edge is
  * resizable at all without first stumbling onto it) — a short (14px),
@@ -15,10 +15,9 @@ import { cn } from "../utils/cn";
  * edge (`right: -1px` centers a 2px element exactly on a 0px line).
  *
  * Extracted from `DataTable.tsx`'s own `resolveResizeGripClass` (column
- * resize) so the peek panel's own resize handle (Decision, developer-
- * approved: "same look and behavior as the DataTable column-resize
- * handles") reuses the EXACT same classes rather than a copy that could
- * drift.
+ * resize) so the peek panel's own resize handle ("same look and behavior
+ * as the DataTable column-resize handles") reuses the EXACT same classes
+ * rather than a copy that could drift.
  *
  * @param handleAnchorSide - Which edge the PARENT handle itself anchors to.
  */

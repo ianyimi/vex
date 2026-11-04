@@ -7,16 +7,15 @@ import { useListViewContext } from "../ListViewContext";
 import { resolveFilterFieldLabel } from "../filters/ListViewFilterChips";
 
 /**
- * Dismissible toolbar notice for a stale saved view (polish fix, Decision
- * 7) — shown when the active view's own saved `sort.field`/`searchField`
+ * Dismissible toolbar notice for a stale saved view — shown when the active view's own saved `sort.field`/`searchField`
  * no longer exists on the live collection (removed, its index dropped, or
  * dropped from `admin.view.state.searchFields`) and `resolveListViewQueryState`
  * (server)/`resolveEffectiveViewState` (client) fell back to the
- * collection's own default for that part — or (access-system-fields.md
- * Decision 11) a user-added filter condition named a field the caller can
+ * collection's own default for that part — or
+ * a user-added filter condition named a field the caller can
  * no longer read and `resolveListViewQueryState` dropped it before the query
  * ever ran, rather than sending a condition the server would reject
- * (Decision 26) while leaving the chip that could remove it hidden
+ * while leaving the chip that could remove it hidden
  * client-side (`ListViewFilterChips`' own gate) — a dead end without this.
  * The view itself is never rewritten by either fallback — only an explicit
  * Save on the active view (`ListViewModifiedControls`) writes a corrected

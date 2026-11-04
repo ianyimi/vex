@@ -79,12 +79,12 @@ export interface AdminLayoutProps {
    */
   components?: FrameworkComponents;
   /**
-   * The caller's `{ user, organization }` (Decision 44), in flight — resolved
+   * The caller's `{ user, organization }`, in flight — resolved
    * independently of `children`, inside its OWN `<Suspense>` boundary around
    * JUST the sidebar's own nav gating, so a slow auth fetch never blocks
    * `children`'s own streaming (a perf fix: previously the whole admin shell
    * waited on this before rendering ANYTHING). Omit it when `config.access`
-   * is absent/disabled (Decision 44's optional-`auth` case) — the sidebar
+   * is absent/disabled (the optional-`auth` case) — the sidebar
    * then renders immediately with an anonymous `{ user: null }`, nothing to
    * suspend on.
    */
@@ -99,8 +99,7 @@ export interface AdminLayoutProps {
  * the collapsible sidebar), renders `AppSidebar` on the left, and places view content in a
  * `SidebarInset` main area on the right. Owns ONLY the sidebar and the main column frame —
  * the top bar (breadcrumbs, `SidebarTrigger`, "View site") is rendered by `NextAdminPage`
- * itself, inside `{children}` (top-bar move, shell-streaming follow-up, developer-approved;
- * see `AdminTopNav.tsx`'s own doc comment for why).
+ * itself, inside `{children}` (see `AdminTopNav.tsx`'s own doc comment for why).
  *
  * Exported from `@vexcms/react` and used by `NextAdminLayout` in `@vexcms/next`.
  * The consuming framework adapter (e.g. `NextAdminLayout`) is responsible for
@@ -129,7 +128,7 @@ export function AdminLayout(props: AdminLayoutProps) {
   const config = useVexConfig();
   const side = config.admin.sidebar.side;
 
-  // Decision 51 cutover: one-time best-effort clear of every PRE-consolidation
+  // One-time best-effort clear of every PRE-consolidation
   // cookie name still lingering from a returning browser — `vex-list-density`,
   // `vex-list-chips:<slug>`, `vex-list-views:<slug>`, `vex-list-rows:<slug>`,
   // `vex-live-preview-panel:<slug>`, `vex-live-preview-layout:<slug>` (all
@@ -174,7 +173,7 @@ export function AdminLayout(props: AdminLayoutProps) {
       />
     </Suspense>
   ) : (
-    // Decision 44: no `authPromise` at all means `config.access` is absent or
+    // No `authPromise` at all means `config.access` is absent or
     // disabled for this project (the optional-`auth` case) — render the real
     // sidebar immediately with an anonymous `{ user: null }`; there is
     // nothing to suspend on.
@@ -189,7 +188,7 @@ export function AdminLayout(props: AdminLayoutProps) {
           `SidebarProvider`'s wrapper), so toggling a view's height can no longer
           add or remove a window scrollbar and shift the layout sideways.
 
-          No padding here (top-bar move, shell-streaming follow-up, developer-approved):
+          No padding here:
           `AdminLayout` now renders ONLY the sidebar and this main column frame — the top
           bar (`AdminTopNav`) and the padded content wrapper both live INSIDE `{children}`
           now, rendered by `NextAdminPage` itself, so the bar can be a true descendant of
@@ -199,7 +198,7 @@ export function AdminLayout(props: AdminLayoutProps) {
           the nearest scrolling ancestor, which is THIS `<main>` (its `overflow-y-auto`),
           regardless of how deep inside `{children}` the bar itself sits.
 
-          `flex flex-col` (developer-reported double-scroll fix): the bar and the content
+          `flex flex-col` (double-scroll fix):
           wrapper (`NextAdminPage.tsx`'s `renderAdminShell`) are now BOTH children of this
           `<main>`, not siblings of it — without a flex chain here, the content wrapper's own
           `flex-1 min-h-0` has nothing to divide space WITH (it needs to share `<main>`'s own
@@ -245,7 +244,7 @@ export function AdminLayout(props: AdminLayoutProps) {
  * `AdminLayout`'s `{children}` is a SIBLING of this component (not nested
  * inside it), so `children`'s own streaming is never gated on this promise;
  * `NextAdminPage` provides its OWN auth context for the content area
- * (Decision 44), independent of this one. Wrapped in `<Suspense>` by
+   * (independent of this one). Wrapped in `<Suspense>` by
  * `AdminLayout` so a slow `getUserOrg()` round trip only delays the sidebar's
  * nav, never the rest of the shell.
  *
@@ -274,7 +273,7 @@ function AuthedSidebar(props: {
  * Generic sidebar skeleton shown while `authPromise` is in flight (streamed
  * first paint, Decision NN) — no nav labels, no collection names or counts,
  * so a denied/unauthenticated caller never sees anything project-specific in
- * the shell (developer-binding: even the UNFILTERED collection COUNT is
+ * the shell (even the UNFILTERED collection COUNT is
  * config-derived information the generic shell must not leak). A FIXED
  * placeholder row count, not read from `useVexConfig()` — the sidebar is its
  * own scrollable column (`SidebarContent`'s own `overflow-auto` inside a

@@ -368,7 +368,8 @@ export const { dbCreate, dbFindOne, dbFindMany, dbCount, dbUpdate, dbUpdateMany,
 A self-hosted Next.js admin panel, mounted directly in your app:
 
 ```tsx
-// app/admin/[[...slug]]/page.tsx
+// app/(vexcms)/admin/[[...path]]/page.tsx — minimal sketch; the create-vexcms template also
+// fails closed on session-verification errors and keeps the full deep link in `redirectTo`.
 import { canAccessAdminPanel } from "@vexcms/core";
 import { NextAdminPage } from "@vexcms/next/server";
 import { redirect } from "next/navigation";

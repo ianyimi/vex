@@ -4,7 +4,7 @@ import { Input } from "../../ui";
 /**
  * Colour field filter row value control — a small swatch (background from
  * the current value) beside the existing hex text `Input`, registered as
- * `reactAdapter.fields.color.filterInput` (Decision 50). NOT the full
+ * `reactAdapter.fields.color.filterInput`. NOT the full
  * swatch-picker popover the edit-view `ColorField` uses — a filter
  * compares one exact stored hex string, not a chosen-from-swatches UX.
  * The swatch mirrors `Cell.tsx`'s own `size-4 shrink-0 rounded border

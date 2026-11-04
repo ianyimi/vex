@@ -38,7 +38,7 @@ export interface ListViewLayoutProps<TDoc extends TDocument = TDocument> {
   onLoadMore?: () => void;
   /**
    * Replaces the inline `<DataTable>` call entirely when given — the per-component-Suspense
-   * split (developer-binding): `ListViewLayout` itself never depends on row data, so the title/
+   * split: `ListViewLayout` itself never depends on row data, so the title/
    * tabs/toolbar/table-frame-adjacent slots it owns can stream immediately regardless of how
    * long the actual rows take; the caller wraps ITS OWN `<DataTable>` (or a `<Suspense>`
    * around one) and passes it here. `rows`/`isDone`/`isPending`/`totalCount`/`onLoadMore`/
@@ -47,11 +47,11 @@ export interface ListViewLayoutProps<TDoc extends TDocument = TDocument> {
    * except `rows`, still read by `ListViewToolbar`'s bulk-selection bar above this slot.
    */
   tableSlot?: ReactNode;
-  /** Extra header-row content rendered left of `list.header.actions`' own output (e.g. `RevalidateButton`, Decision 23 — owned and rendered by `CollectionListView` itself, never a slot contribution, but placed in this same row so the header never splits onto two lines). */
+  /** Extra header-row content rendered left of `list.header.actions`' own output (e.g. `RevalidateButton`, owned and rendered by `CollectionListView` itself, never a slot contribution, but placed in this same row so the header never splits onto two lines). */
   headerExtra?: ReactNode;
-  /** Layout-affecting list preferences resolved server-side (Decision 39/42, `parseListViewConfigCookies`) — forwarded from `CollectionListView`'s own `initialPreferences` prop. `ListViewToolbar`'s own `ListViewFilterChips`/`ListViewFilterVisibilityToggle` are the only consumers of its `chipsVisible` field; `density` is read elsewhere (via `useListViewContext()`). */
+  /** Layout-affecting list preferences resolved server-side (`parseListViewConfigCookies`) — forwarded from `CollectionListView`'s own `initialPreferences` prop. `ListViewToolbar`'s own `ListViewFilterChips`/`ListViewFilterVisibilityToggle` are the only consumers of its `chipsVisible` field; `density` is read elsewhere (via `useListViewContext()`). */
   initialPreferences: ListViewConfigCookieValues;
-  /** Whether `totalCount` hit `collection.admin.view.state.countLimit` (Decision 35) — forwarded to `DataTable`'s footer. */
+  /** Whether `totalCount` hit `collection.admin.view.state.countLimit` — forwarded to `DataTable`'s footer. */
   totalDocsCapped?: boolean;
   /** Whether the caller may create a new document — gates the empty state's own Create button (`ListViewCreateAction` self-gates separately for the header). */
   canCreate: boolean;
@@ -61,17 +61,17 @@ export interface ListViewLayoutProps<TDoc extends TDocument = TDocument> {
   emptyState?: ReactNode;
   /** Rendered in place of the whole scroll area when the underlying query failed (`ListViewQueryError`) — takes priority over `emptyState`. */
   queryError?: ReactNode;
-  /** Server-prefetched shared views (Decision 39) — forwarded to `SavedListViewTabs`. */
+  /** Server-prefetched shared views — forwarded to `SavedListViewTabs`. */
   initialViews?: VexStoredView[];
-  /** Server-read local-view cookie index (Decision 41) — forwarded to `SavedListViewTabs`. */
+  /** Server-read local-view cookie index — forwarded to `SavedListViewTabs`. */
   initialLocalIndex?: LocalSavedListViewsIndexEntry[];
-  /** Row hover-prefetch start (Design Decision 27), forwarded to `DataTable`'s `getRowProps`. Omit to disable prefetching. */
+  /** Row hover-prefetch start, forwarded to `DataTable`'s `getRowProps`. Omit to disable prefetching. */
   onRowHoverStart?: (id: string) => void;
   /** Row hover-prefetch cancel, forwarded to `DataTable`'s `getRowProps`. */
   onRowHoverEnd?: () => void;
   /** Row focus-prefetch, forwarded to `DataTable`'s `getRowProps`. */
   onRowFocus?: (id: string) => void;
-  /** Forwarded straight to `DataTable`'s own `isRefetching` (Decision 46, Step 19) — composition-only. */
+  /** Forwarded straight to `DataTable`'s own `isRefetching` — composition-only. */
   isRefetching?: boolean;
 }
 
@@ -81,7 +81,7 @@ export interface ListViewLayoutProps<TDoc extends TDocument = TDocument> {
  * with an inline bulk-selection group ahead of it while rows are selected, the table flanked by
  * `list.beforeTable`/`list.afterTable`, and a per-row ⋯ menu (`list.row.actions`).
  *
- * The root element is a named size container, `@container/list` (Decision 22/43) — every
+ * The root element is a named size container, `@container/list` — every
  * narrower-container variant downstream (`ListViewToolbar`'s CSS collapse, later steps' view-tab
  * overflow and peek layout) targets this one container, the same convention
  * `CollectionEditView.tsx` established with `@3xl/form`.
@@ -112,16 +112,15 @@ export function ListViewLayout<TDoc extends TDocument = TDocument>(
     viewPrefetch,
   } = useListViewContext();
   // Lifted so `ListViewToolbar`'s own `ListViewFilterChips`/`ListViewFilterVisibilityToggle`
-  // (both rendered directly by it, always inline in its row — Decision 10
-  // revised 2026-10-27, further revised) share one source of truth for
+  // (both rendered directly by it, always inline in its row) share one source of truth for
   // the chip row's visibility.
   const [chipsVisible, setChipsVisible] = useState(props.initialPreferences.chipsVisible);
 
   const columnsWithActions = useColumnsWithActions(props.columns ?? [], collection);
 
-  // Decision 11: Copy link serializes the full URL state (instead of
+  // Copy link serializes the full URL state (instead of
   // `view=local:<id>`) only while a LOCAL view is active — determined
-  // straight from the `view=<source>:<id>` URL grammar (Decision 9), with
+  // straight from the `view=<source>:<id>` URL grammar, with
   // no extra `useSavedListViews()` call needed (`SavedListViewTabs` already owns
   // that for the tab strip itself).
   const isLocalViewActive = urlState.view?.startsWith(`${VEX_VIEW_SOURCES.local}:`) ?? false;
@@ -131,7 +130,7 @@ export function ListViewLayout<TDoc extends TDocument = TDocument>(
           params: {
             q: urlState.q,
             qf: urlState.qf,
-            // Decision 7: parked while searching — never sent alongside `q`.
+            // Parked while searching — never sent alongside `q`.
             sort: urlState.q ? undefined : urlState.sort,
             filter: urlState.filter,
             size: urlState.size,
@@ -149,14 +148,12 @@ export function ListViewLayout<TDoc extends TDocument = TDocument>(
     <div className="@container/list flex h-full min-h-0 flex-col gap-2">
       {/*
        * Title row: the collection's plural label plus the header actions,
-       * ALWAYS on one line together (developer-binding: opening a view
+       * ALWAYS on one line together (opening a view
        * never changes this row's content or height, so the actions stay
        * vertically aligned with the title at every width, with or
        * without an active view) — mirrors the edit view's own single-row
-       * header and Step 10's original design. The heading is ALWAYS just
-       * `collection.labels.plural` (developer revision 2026-10-29, FINAL
-       * — supersedes every earlier attempt at an inline/reserved-slot
-       * view identity: no view name, separator, badge, or description
+       * header and the original list view design. The heading is ALWAYS just
+       * `collection.labels.plural` (no view name, separator, badge, or description
        * anywhere in this row, regardless of which view is active). The
        * active `TabsTrigger` in `SavedListViewTabs` below is the only
        * indicator of which view is open; a view's own description, when
@@ -205,7 +202,7 @@ export function ListViewLayout<TDoc extends TDocument = TDocument>(
         viewPrefetch={viewPrefetch}
         // `CollectionListView`'s own `pagination.isPending` for the currently
         // active view's real query (NOT the hover/focus prefetch above) —
-        // developer-reported regression fix: the tab spinner used to be driven
+        // the tab spinner used to be driven
         // by `viewPrefetch.pendingViewId` alone, which a silent hover-only
         // prefetch also sets, leaving the icon spinning after the pointer
         // moved away without a click. Driving it off the real query's own
@@ -312,12 +309,12 @@ export function useColumnsWithActions<TDoc extends TDocument = TDocument>(
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          // `DataTable`'s sticky `right-0`, zero-padding `ACTIONS_CELL_*_CLASS` cell (Decision
-          // 22's sticky selection column, mirrored on the opposite edge) centers its content
+          // `DataTable`'s sticky `right-0`, zero-padding `ACTIONS_CELL_*_CLASS` cell (the
+          // sticky selection column, mirrored on the opposite edge) centers its content
           // via a wrapping flex `<div>`, not cell padding — matching the checkbox column's own
           // `SELECTION_CHECKBOX_WRAPPER_CLASS` convention, since `display: flex` on the `<td>`
           // itself would pull it out of the table's row-height layout. The trigger stays
-          // centered in its cell at all times, scrollbar or not (developer decision, 2026-11-02).
+          // centered in its cell at all times, scrollbar or not.
           <div className="flex items-center justify-center" data-slot="row-actions">
             <ActionsMenu label={`${collection.labels.singular} actions`}>
               <SlotOutlet

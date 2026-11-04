@@ -852,7 +852,7 @@ describe("publish (server) — global target", () => {
   });
 });
 
-describe("publish (server) — commitTs on-policy (spec Step 7)", () => {
+describe("publish (server) — commitTs on-policy", () => {
   test.each(["save", "publish", "all"] as const)(
     "an on: '%s' field is stamped with a CommitTsPlaceholder on publish",
     async (on) => {

@@ -327,7 +327,7 @@ describe("stripDeniedFields", () => {
     expect(doc).toEqual({ _id: "1", title: "a", price: 10 });
   });
 
-  it("always retains _id/_slug, but strips _creationTime like any other field once denied (developer decision, binding, \"access-system-fields\")", () => {
+  it("always retains _id/_slug, but strips _creationTime like any other field once denied", () => {
     const doc = { _id: "1", _creationTime: 0, _slug: "siteSettings", name: "x" };
     expect(stripDeniedFields(doc, { wildcard: false, fields: {} })).toEqual({
       _id: "1",
@@ -352,13 +352,13 @@ describe("stripDeniedFields", () => {
   });
 });
 
-// Developer-reported crash: an admin with full access (`"*"` or `"*": true`)
-// stopped receiving `_creationTime` — the peek's `new Date(document._creationTime)`
-// threw "RangeError: Invalid time value". Traced to confirm the underlying
+// An admin with full access (`"*"` or `"*": true`)
+// must not stop receiving `_creationTime` — the peek's `new Date(document._creationTime)`
+// would throw "RangeError: Invalid time value" otherwise. This confirms the underlying
 // `resolveFieldPermissions`/`stripDeniedFields` pipeline (both shapes of "full
-// access") was never actually affected by the system-fields change — this
-// locks that in as an explicit regression test, per the developer's own ask.
-describe("wildcard/full access grants system fields (developer-reported crash guard)", () => {
+// access") is unaffected by system fields being gateable now — this
+// locks that in as an explicit regression test.
+describe("wildcard/full access grants system fields", () => {
   const doc = { _id: "1", _creationTime: 100, updatedAt: 200, vex_status: "published", title: "a" };
 
   it("a role-level wildcard (\"*\": true, a flat boolean) never strips anything, including every system field", () => {

@@ -21,8 +21,7 @@ import type { CollectionSlug } from "../types";
  *
  * Declared here rather than in `@vexcms/react` because it is part of the wire
  * contract that `@vexcms/react` (the client) and `@vexcms/next` (the route)
- * must agree on, and `@vexcms/core` is the lowest package both depend on
- * (P-010).
+ * must agree on, and `@vexcms/core` is the lowest package both depend on.
  */
 export type VexMutationOperation =
   | "create"
@@ -56,7 +55,7 @@ export interface ResolveTargetsResult {
  * request. The wire-level counterpart to one `resolveTargets` call —
  * `@vexcms/next`'s route request types and `@vexcms/react`'s
  * `useVexMutation`/`useVexRevalidate` all consume this same shape, so it is
- * declared once here rather than once per consumer (P-010): `@vexcms/react`
+ * declared once here rather than once per consumer: `@vexcms/react`
  * cannot depend on `@vexcms/next`, and both depend on `@vexcms/core`.
  */
 export interface VexRevalidateChange {
@@ -111,7 +110,7 @@ export interface VexRevalidateCollectionRequest {
  * consume it: the route that parses it (`createVexRevalidateRoute`,
  * `@vexcms/next`) and the two hooks that build it (`useVexMutation`,
  * `useVexRevalidate`, `@vexcms/react`). Neither of those packages depends on
- * the other, so the contract lives in the one below both (P-010).
+ * the other, so the contract lives in the one below both.
  */
 export type VexRevalidateRequest = VexRevalidateCollectionRequest | VexRevalidateDocumentsRequest;
 

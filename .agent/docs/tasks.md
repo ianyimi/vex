@@ -7,6 +7,7 @@
 - 6. D — Richtext field: wire the existing 3,219 lines in `richtext-plate`, add `richtext()` + the 2 missing core types, drop 4 `@ts-nocheck`
 - 7. G — Field input consistency pass: relationship field, loading states, media MIME filter, conditional fields
 - Build-time telemetry (spec 2026-10-26-build-time-telemetry)
+- www live-demo admin content (spec 2026-11-02-www-live-demo-admin-content)
 
 ## Inbox
 ### v0.1.0 launch track — work in this order (`.agent/docs/product/v0.1.0-launch-plan.md`)

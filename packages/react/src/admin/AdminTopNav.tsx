@@ -16,6 +16,7 @@ import { useFrameworkComponents } from "../config/useFrameworkComponents";
 import { useVexAuth } from "../auth/VexAuthContext";
 import { convexQuery } from "@convex-dev/react-query";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQueryState } from "nuqs";
 import { cn } from "../utils/cn";
 
 /**
@@ -37,9 +38,8 @@ export function Divider(props: { left: boolean } & LucideProps & RefAttributes<S
 
 /**
  * Link back out to the site this admin panel manages, rendered in `AdminTopNav`'s bar so it
- * stays visible even when the sidebar is collapsed. Moved here from `AdminLayout.tsx` (top-bar
- * move, shell-streaming follow-up, developer-approved) — the bar itself moved out of
- * `AdminLayout` entirely.
+ * stays visible even when the sidebar is collapsed. Moved here from `AdminLayout.tsx` — the
+ * bar itself moved out of `AdminLayout` entirely.
  *
  * `href` is hardcoded to `"/"` rather than a configured site URL: the panel is mounted under
  * `config.basePath` inside the host app, so the site it manages is always at the root.
@@ -75,12 +75,13 @@ function ViewSiteButton({ className }: { className?: string }) {
  * `window.location` (would need a client-only effect to avoid an SSR/hydration mismatch,
  * and this component's auth state is already resolved server-side with no flash — adding
  * a client-only redirect target would reintroduce exactly the flash this avoids
- * elsewhere). Query params (e.g. a list view's search/sort/filter state) are not
- * preserved — an acceptable tradeoff; `SessionButton.tsx`'s own "Sign in" link on the
- * public site carries no redirect at all.
+ * elsewhere). On a collection list, the active saved view (`?view=`) is kept so signing
+ * in returns to the same tab — if the new identity can't see that view, the list falls
+ * back to its default the same way an unknown view id always does. Other query params
+ * (search/sort/filter) are not preserved.
  *
  * @param props - The same `basePath`/active-route pieces `AdminTopNav`'s body computes.
- * @returns The current admin URL (no query string), via `adminHref`.
+ * @returns The current admin URL (plus `?view=` on a collection list), via `adminHref`.
  */
 function buildCurrentAdminHref(props: {
   basePath: string;
@@ -88,6 +89,7 @@ function buildCurrentAdminHref(props: {
   activeCollection: CollectionConfig | MediaCollectionConfig | undefined;
   isCollections: boolean;
   isGlobals: boolean;
+  view: string | null;
 }): string {
   if (props.activeCollection) {
     return props.activeDocID
@@ -95,7 +97,9 @@ function buildCurrentAdminHref(props: {
           { type: "document", slug: props.activeCollection.slug, id: props.activeDocID },
           props.basePath,
         )
-      : adminHref({ type: "collection", slug: props.activeCollection.slug }, props.basePath);
+      : `${adminHref({ type: "collection", slug: props.activeCollection.slug }, props.basePath)}${
+          props.view ? `?view=${encodeURIComponent(props.view)}` : ""
+        }`;
   }
   if (props.isCollections) {
     return adminHref({ type: "collections" }, props.basePath);
@@ -110,10 +114,10 @@ function buildCurrentAdminHref(props: {
 
 /**
  * Sign-in/out control, rendered at the header's opposite edge from the sidebar-trigger /
- * crumbs / `ViewSiteButton` cluster (developer-requested: a sign-in/out control in the
- * admin top bar, now meaningful since anonymous admin access is possible via `anonRole`).
- * Shows its label ("Sign in"/"Sign out") with the icon to its RIGHT (developer correction —
- * not icon-only like `ViewSiteButton`/`SidebarTrigger`, since there is no icon universally
+ * crumbs / `ViewSiteButton` cluster — a sign-in/out control in the
+ * admin top bar, meaningful since anonymous admin access is possible via `anonRole`.
+ * Shows its label ("Sign in"/"Sign out") with the icon to its RIGHT (not icon-only
+ * like `ViewSiteButton`/`SidebarTrigger`, since there is no icon universally
  * recognizable for "sign in"/"sign out" the way there is for "view site"/"toggle sidebar").
  *
  * Renders nothing when `FrameworkComponents.auth` is not configured (default today) — the
@@ -255,11 +259,10 @@ function CrumbLink(props: { crumb: Crumb; isLast: boolean }): ReactNode {
 }
 
 /**
- * The `<Suspense>`-wrapped document-title crumb (top-bar move, shell-streaming follow-up,
- * developer-approved) — `useSuspenseQuery` on the EXACT SAME `vexConvexApi.get` key the active
- * edit view's own data component prefetches (`CollectionEditViewData`/
- * `MediaCollectionEditViewData`), via the shared `buildGetArgs` helper (polish fixes,
- * Decision 3) both call — before `buildGetArgs` existed, this built its own `{id, collection,
+ * The `<Suspense>`-wrapped document-title crumb — `useSuspenseQuery` on the EXACT SAME
+ * `vexConvexApi.get` key the active edit view's own data component prefetches
+ * (`CollectionEditViewData`/`MediaCollectionEditViewData`), via the shared `buildGetArgs`
+ * helper both call — before `buildGetArgs` existed, this built its own `{id, collection,
  * drafts}` object with `drafts: props.collection.versions.drafts`, a CONCRETE `false` for a
  * non-versioned collection, while a sibling caller OMITTED `drafts` entirely for the same
  * case; TanStack Query's key hashing treats `{drafts: false}` and `{}` as different keys, so
@@ -269,13 +272,12 @@ function CrumbLink(props: { crumb: Crumb; isLast: boolean }): ReactNode {
  * Correct on first paint because `NextAdminPage` now renders `AdminTopNav` as a TRUE
  * DESCENDANT of its own `HydrationBoundary`, alongside the edit view itself — not a sibling
  * of it inside `AdminLayout`, which is what made every earlier attempt at this hang or
- * mismatch (see the extensive doc-comment history this replaces, and Decision 49's own
- * note). Two components suspending on the identical TanStack Query key share the SAME
+ * mismatch. Two components suspending on the identical TanStack Query key share the SAME
  * underlying promise (dedup), so both resolve together within the same SSR streaming pass.
  *
  * Returns ONLY the link (no divider) — {@link AdminTopNav} positions the divider itself as a
- * separate, statically-rendered item in its own flat nav array (developer-reported fix: a
- * divider rendered INSIDE this Suspense boundary ended up on the wrong side of the crumb once
+ * separate, statically-rendered item in its own flat nav array (a divider rendered INSIDE this
+ * Suspense boundary ended up on the wrong side of the crumb once
  * the whole array was reversed for a right-side sidebar — an array of INDIVIDUAL items has to
  * stay flat for `.reverse()` to produce the same order the original single-array
  * implementation did; a divider nested inside a 2-item fragment does not reverse the same way).
@@ -306,8 +308,8 @@ function AdminTopNavDocCrumb(props: {
 /**
  * Admin top bar: breadcrumb trail, sidebar trigger, and "View site" link.
  *
- * Rendered by `NextAdminPage` itself (top-bar move, shell-streaming follow-up, developer-
- * approved) — NOT by `AdminLayout` (which keeps only the sidebar and the main column frame) —
+ * Rendered by `NextAdminPage` itself — NOT by `AdminLayout` (which keeps only the sidebar
+ * and the main column frame) —
  * specifically so the document-title crumb lives inside the SAME `HydrationBoundary`
  * `NextAdminPage` wraps its own view content in, as a true descendant, not a layout-level
  * sibling. `NextAdminPage` renders this on EVERY branch (dashboard, list, edit, globals,
@@ -317,7 +319,7 @@ function AdminTopNavDocCrumb(props: {
  * genuine `drafts`-key mismatch bug found and fixed in the same investigation).
  *
  * Horizontal padding is `px-6` (NOT `px-4`), matching `NextAdminPage`'s own content wrapper
- * (`className="min-h-0 flex-1 p-6 pt-0"`) exactly — developer-reported: the bar's edges
+ * (`className="min-h-0 flex-1 p-6 pt-0"`) exactly — the bar's edges
  * must line up with the page content column's edges (e.g. a list/dashboard page's own
  * title) on BOTH sides, not just visually approximate it. A mismatched padding here is a
  * recurring trap: `px-4` (16px) looked "close enough" at a glance but was a real,
@@ -352,17 +354,21 @@ export default function AdminTopNav(props: { activeSlug?: string; activeDocID?: 
     isGlobals,
     activeGlobal,
   });
+  // nuqs (the list view's own URL-state source, adapter mounted by the admin layout) reads
+  // `?view=` identically on the server and the client — no hydration mismatch.
+  const [view] = useQueryState("view");
   const currentHref = buildCurrentAdminHref({
     basePath: config.basePath,
     activeDocID: props.activeDocID,
     activeCollection,
     isCollections,
     isGlobals,
+    view,
   });
 
   // Built FLAT, in logical order (Home → Collection → [Document]), exactly like the
   // pre-move implementation's own `crumbs.flatMap(...)` — then `.reverse()`d as ONE array
-  // for a right-side sidebar (developer-reported fix: this must stay a single flat list of
+  // for a right-side sidebar (this must stay a single flat list of
   // individual link/divider items for `.reverse()` to put them in the same order the
   // original did; grouping the document crumb with its own divider into one nested unit
   // reverses differently). The last base crumb ("Collection") is only styled `isLast`

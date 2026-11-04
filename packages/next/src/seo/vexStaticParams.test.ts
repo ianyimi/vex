@@ -41,7 +41,7 @@ describe("vexStaticParams", () => {
   });
 
   test("returns [] when Convex is unreachable", async () => {
-    // P-020: CI builds with placeholder env, so this path runs on every CI
+    // CI builds with placeholder env, so this path runs on every CI
     // build. Throwing here would fail the build instead of skipping prerender.
     const client = fakeClient(vi.fn().mockRejectedValue(new Error("fetch failed")));
 

@@ -15,7 +15,7 @@ import type { ListViewUrlSetOptions } from "../useListViewUrlState";
  *   `collection.admin.view.state.searchFields`.
  */
 export interface ListViewSearchProps<TFieldSlug extends string = string> {
-  /** The collection whose `admin.view.state.searchFields` drives the field picker; the control renders nothing when the READABLE subset of that list is empty (Decision 2 + Decision 26). */
+  /** The collection whose `admin.view.state.searchFields` drives the field picker; the control renders nothing when the READABLE subset of that list is empty. */
   collection: CollectionConfig;
   /** The current search text — mirrors `useListViewUrlState`'s `q`. */
   q: string;
@@ -31,12 +31,12 @@ export interface ListViewSearchProps<TFieldSlug extends string = string> {
 
 /**
  * Debounced search input paired with a field picker, for a collection
- * list's toolbar. Never collapses (Decision 22) — `ListViewToolbar` always
- * renders it inline.
+ * list's toolbar. Never collapses — `ListViewToolbar` always renders it
+ * inline.
  *
  * Renders `null` when no entry in `collection.admin.view.state.searchFields` is
- * readable by the current caller (Decision 2 + Decision 26's "the client
- * hides unreadable fields from … the search field picker"). While search is
+ * readable by the current caller — the client hides unreadable fields from
+ * the search field picker. While search is
  * active, sort headers elsewhere in the list disable themselves
  * (`DataTableSortHeader`'s `disabled` prop) — this component only owns the
  * input and field choice, not that coordination.
@@ -130,14 +130,9 @@ export function ListViewSearch<TFieldSlug extends string = string>(
         placeholder={readableFields.length === 1 ? readableFields[0] : "Search…"}
         iconLeft={{ name: "Search" }}
         isPending={props.isFetching}
-        // Developer-reported (binding): below `@3xl/list` (the toolbar's
-        // own container-query boundary where room gets tight) — 140px,
-        // the developer's own final value after iterating from an
-        // earlier, stricter wrap-free ceiling (see the list-view-overhaul
-        // spec digest for the full iteration history and measured wrap
-        // tables at each width tried). `max-w-none` at/above `@3xl/list`
-        // restores today's exact width — zero shift above that
-        // container size.
+        // Below `@3xl/list` (where toolbar room gets tight) the input caps at
+        // 140px so the toolbar row doesn't wrap; `max-w-none` at/above
+        // `@3xl/list` keeps the full width there with no shift.
         className="max-w-[140px] @3xl/list:max-w-none"
       />
       {readableFields.length > 1 && (

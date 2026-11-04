@@ -10,11 +10,11 @@ import { Badge } from "../../../ui";
 import { StatusBadge } from "../../../versions";
 
 /**
- * The `vex_status` column's own default pixel width (Decision 48's
+ * The `vex_status` column's own default pixel width (the
  * per-field default tier, `size: width ?? <default>` in `buildStatusColumn`
  * below) — NOT `FIELD_TYPE_DEFAULT_WIDTH.select` (150px), which is what
  * this column used before this fix and is what caused the bug this
- * constant exists to fix (developer-reported, screenshot-confirmed): at
+ * constant exists to fix (screenshot-confirmed): at
  * 150px, a row with BOTH badges ("Published" + "Unpublished changes")
  * clipped the second badge mid-word ("Unpublis") at the column's own
  * right edge — not a clean ellipsis, a raw pixel-level clip, since
@@ -28,7 +28,7 @@ import { StatusBadge } from "../../../versions";
  * rounds that up to 260px for a comfortable margin (font-rendering/zoom
  * variance across environments), so the DEFAULT (unresized) column needs
  * no truncation at all for the common case. The user can still resize
- * this column narrower than that (Decision 48 — fully resizable, see
+ * this column narrower than that (fully resizable, see
  * `completeListViewColumnOrder`'s own doc comment on this column's full
  * participation) — `truncate`'s own clean ellipsis on the SECOND badge
  * (see `buildStatusColumn`'s own cell renderer) is the structural safety
@@ -62,8 +62,8 @@ const STATUS_COLUMN_DEFAULT_WIDTH = 260;
  * `hasUnpublishedChanges` incorrectly showed a "Draft" badge for a pair
  * too (a real bug, found live — a pair should read "Published").
  *
- * Full `ColumnEntry`/Decision 48 participant (developer-reported
- * follow-up: resizing/pinning/hiding/reordering it used to silently
+ * Full `ColumnEntry` participant (a prior
+ * bug: resizing/pinning/hiding/reordering it used to silently
  * no-op, since `id`/no `accessorKey` kept it OUTSIDE this entry-driven
  * model entirely — a resize commit had no entry to write to) — `id`/
  * `accessorKey` are `VERSION_SYSTEM_FIELDS.status.slug` (`"vex_status"`,

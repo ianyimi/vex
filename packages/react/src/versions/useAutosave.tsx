@@ -21,7 +21,7 @@ export interface UseAutosaveResult {
    * flight (`status === "saving"`), or the last save attempt failed
    * (`status === "error"`). `false` once a save succeeds AND the caller's
    * `onSave` has reset its form to match, dropping `props.values` back to
-   * an empty diff (spec decision 5) — use this, not `status` alone, to decide
+   * an empty diff — use this, not `status` alone, to decide
    * whether navigating away would lose work.
    */
   hasUnsavedChanges: boolean;

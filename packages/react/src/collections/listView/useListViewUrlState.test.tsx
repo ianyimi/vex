@@ -35,7 +35,7 @@ describe("useListViewUrlState", () => {
     expect(result.current.cols).toBeUndefined();
   });
 
-  it("an explicit empty q=/filter= (present but empty) parse as \"\"/null, distinct from absent (developer-reported clear sentinel)", () => {
+  it("an explicit empty q=/filter= (present but empty) parse as \"\"/null, distinct from absent (clear sentinel)", () => {
     const { result } = renderUrlState("?q=&filter=");
     expect(result.current.q).toBe("");
     expect(result.current.filter).toBeNull();
@@ -55,7 +55,7 @@ describe("useListViewUrlState", () => {
     expect(result.current.qf).toBeUndefined();
   });
 
-  it("setQ(undefined) does NOT clear qf — distinct from setQ(\"\") (developer-reported: applyView/Reset set qf separately right after)", () => {
+  it("setQ(undefined) does NOT clear qf — distinct from setQ(\"\") (applyView/Reset set qf separately right after)", () => {
     const { result } = renderUrlState("?q=hello&qf=title");
     act(() => result.current.setQ(undefined));
     expect(result.current.q).toBeUndefined();
@@ -76,7 +76,7 @@ describe("useListViewUrlState", () => {
     expect(result.current.filter).toBeUndefined();
   });
 
-  it("setFilter(null) writes the explicit clear sentinel, distinct from setFilter(undefined) (developer-reported)", () => {
+  it("setFilter(null) writes the explicit clear sentinel, distinct from setFilter(undefined)", () => {
     const { result } = renderUrlState();
     act(() => result.current.setFilter(null));
     expect(result.current.filter).toBeNull();
@@ -113,14 +113,14 @@ describe("useListViewUrlState", () => {
     expect(result.current.size).toBe(25);
   });
 
-  it("setSort to the collection's own default sort is omitted from the URL (developer-reported bug)", () => {
+  it("setSort to the collection's own default sort is omitted from the URL", () => {
     const { result } = renderUrlState("?sort=rating.asc");
     act(() => result.current.setSort({ field: "_creationTime", order: "desc" }));
     expect(result.current.sort).toBeUndefined();
   });
 });
 
-describe("useListViewUrlState — diffs setSort/setQf/setSize/setCols against the active view's own baseline (Decision 9/45/48)", () => {
+describe("useListViewUrlState — diffs setSort/setQf/setSize/setCols against the active view's own baseline", () => {
   const sharedView: SavedListViewEntry = {
     viewId: "shr1",
     name: "Shared",
@@ -175,7 +175,7 @@ describe("useListViewUrlState — diffs setSort/setQf/setSize/setCols against th
     expect(result.current.size).toBeUndefined();
   });
 
-  it("a LOCAL view's own matching sort is STILL written (Decision 41 — no server-side row to fall back to)", () => {
+  it("a LOCAL view's own matching sort is STILL written (no server-side row to fall back to)", () => {
     const { result } = renderUrlStateWithViews("?view=local:loc1");
     act(() => result.current.setSort({ field: "rating", order: "desc" }));
     expect(result.current.sort).toEqual({ field: "rating", order: "desc" });
@@ -188,7 +188,7 @@ describe("useListViewUrlState — diffs setSort/setQf/setSize/setCols against th
   });
 });
 
-describe("useListViewUrlState — applyView preserves the developer's own `size=` across a view switch (developer-reported: rows-per-load reset to 10 on every view switch)", () => {
+describe("useListViewUrlState — applyView preserves an explicit `size=` across a view switch (rows-per-load reset to 10 on every view switch)", () => {
   const viewA: SavedListViewEntry = {
     viewId: "viewA",
     name: "View A",
@@ -239,7 +239,7 @@ describe("useListViewUrlState — applyView preserves the developer's own `size=
   });
 });
 
-describe("useListViewUrlState — applyView/Reset on the default view leave a bare URL (Main's reported scenario)", () => {
+describe("useListViewUrlState — applyView/Reset on the default view leave a bare URL", () => {
   it("switching to the default (\"All\") view — SavedListViewTabs.applyView's exact setter sequence — leaves a bare URL", () => {
     // Starts on a non-default, modified URL (as if the user had been on
     // another view with its own changes) and runs the SAME setter
@@ -277,8 +277,8 @@ describe("useListViewUrlState — applyView/Reset on the default view leave a ba
   });
 });
 
-describe("useListViewUrlState — applyView: switching views never leaks the OLD view's baseline into the NEW view's URL (developer-reported)", () => {
-  // `defineCollection` auto-injects an `updatedAt` field (Decision —
+describe("useListViewUrlState — applyView: switching views never leaks the OLD view's baseline into the NEW view's URL", () => {
+  // `defineCollection` auto-injects an `updatedAt` field (always,
   // unless `timestamps: false`/an explicit `updatedAt` field/`meta.protected`)
   // — the fixture's own resolved default column order is
   // `["title", "rating", "updatedAt"]`, not just the two declared fields.
@@ -318,15 +318,15 @@ describe("useListViewUrlState — applyView: switching views never leaks the OLD
     hasHiddenFilter: false,
     hiddenFilterCount: 0,
   };
-  // Main-reported follow-up to the shared-view chip-visibility fix: does
+  // Does
   // an active LOCAL view's own saved filter reach the URL (so chips/the
   // Filter count/the eye toggle, and the actual query, all see it) the
   // same way a shared view's needed a dedicated fallback for? Checked
   // live first — clicking a local view's tab (the only real path to
   // `view=local:<id>` in the URL at all) already writes `filter=`
   // unconditionally (`applyView` below, `targetViewState: undefined` for
-  // `source: "local"` — Decision 41's "every field is written explicitly,
-  // no diff baseline" — NOT the diff-against-baseline path shared/config
+  // `source: "local"` — every field is written explicitly, there's
+  // no diff baseline — NOT the diff-against-baseline path shared/config
   // targets take). Confirmed live: tab click → full URL (`filter=`
   // present) → chips/count/eye/query all correct. A BARE `view=local:<id>`
   // URL with no `filter=` is unreachable through the real UI — only
@@ -387,7 +387,7 @@ describe("useListViewUrlState — applyView: switching views never leaks the OLD
     expect(result.current.cols).toBeUndefined();
   });
 
-  it("All→local: applyView writes the local view's own saved filter into the URL unconditionally — not diffed/omitted the way shared/config targets' OWN baseline fields are (Main-reported follow-up to the shared-view chip-visibility fix)", () => {
+  it("All→local: applyView writes the local view's own saved filter into the URL unconditionally — not diffed/omitted the way shared/config targets' OWN baseline fields are (follow-up to the shared-view chip-visibility fix)", () => {
     const { result } = renderUrlStateWithViews();
     act(() => result.current.applyView(localViewWithFilter));
     expect(result.current.view).toBe("local:loc1");
@@ -401,7 +401,7 @@ describe("useListViewUrlState — applyView: switching views never leaks the OLD
  * empirically (a throwaway diagnostic test, removed) that jsdom/`act()` settles the WHOLE
  * transition before `result.current` can ever observe `isPending: true` — there's no
  * reliable window to assert against at the hook level. The classification function is
- * the actual new logic this bug fix introduces (developer-reported, 2026-11-02: a peek
+ * the actual new logic this bug fix introduces (a peek
  * Previous/Next click or a column reorder/resize/pin dimmed the table even though neither
  * touches its query) — unit-testing it directly covers that logic exhaustively; the real
  * end-to-end behavior (does the table actually dim or not) is verified live instead
@@ -450,7 +450,7 @@ describe("isQueryAffectingPatch", () => {
 
 /**
  * `isQueryAffectingViewSwitch` directly — the dimming refinement this bug fix adds on top
- * of `isQueryAffectingPatch` (developer-reported: `applyView` ALWAYS writes
+ * of `isQueryAffectingPatch` (`applyView` ALWAYS writes
  * `q`/`qf`/`sort`/`filter`/`size` together, so classifying it by key presence alone — like
  * every other setter's single-key patch — dimmed the table on every view switch, even one
  * whose target view had the exact SAME search/sort/filter/size as what was already active,

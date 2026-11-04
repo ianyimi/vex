@@ -38,7 +38,7 @@ function getFieldErrorMessage(field: AnyFieldApi): string | undefined {
 
 /**
  * Relationship admin field's own render body — empty / filled / read-only
- * state switch, mirroring `UploadFieldAdmin` (Decision 9).
+ * state switch, mirroring `UploadFieldAdmin`.
  *
  * The picker dialog is driven by `MODALS.relationshipPicker`'s URL param
  * (`?relationship=<field name>`), the same `activeField === name` pattern

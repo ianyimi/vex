@@ -1,12 +1,29 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
+import { useAuthTransition, useVexAuth } from "../auth";
 import type { FindClientPaginatedArgs } from "../client";
 import { whereArg } from "../collections/api/whereArg";
 import { vexConvexApi } from "@vexcms/core";
 import type { CollectionSlug, PaginationResult, VexDocument } from "@vexcms/core";
+
+/**
+ * Whether `error` is Convex's own `InvalidCursor` — a `cursor` rejected because the
+ * query it was captured under no longer matches (most commonly: a sign-in/sign-out
+ * changed the identity-dependent RBAC filter `find`/`search` bake into the query,
+ * which Convex ties the cursor to server-side). Matched by substring, not a
+ * structured `VexError`/`ConvexError` `.data` payload — this is thrown by Convex's
+ * OWN pagination internals, not app code, so it never carries one.
+ *
+ * @param error - The query error to classify.
+ * @returns `true` when the message names `InvalidCursor`.
+ */
+function isInvalidCursorError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("InvalidCursor");
+}
 
 /**
  * Props for the `usePaginatedQuery` hook.
@@ -76,7 +93,7 @@ export interface UsePaginatedQueryReturn<TDocument extends VexDocument = VexDocu
 
   /**
    * Whether `totalDocs` is a floor, not an exact count — `find` counted
-   * with `take(countLimit + 1)` and hit the cap (Design Decision 35).
+   * with `take(countLimit + 1)` and hit the cap.
    * `false` once `totalDocs` is `null`/`undefined` (count not loaded, or
    * the collection is below the old 32k scan limit this hook never hits
    * anymore since `find` itself caps the scan).
@@ -127,7 +144,7 @@ export interface UsePaginatedQueryReturn<TDocument extends VexDocument = VexDocu
   isSettling: boolean;
 
   /**
-   * TanStack's own flag (Decision 46): `true` while `results` is showing
+   * TanStack's own flag: `true` while `results` is showing
    * the PREVIOUS query's rows because `placeholderData: keepPreviousData`
    * is keeping them on screen during a query-identity change (e.g. a view
    * switch), not the CURRENT query's own data yet. Distinct from
@@ -143,7 +160,7 @@ export interface UsePaginatedQueryReturn<TDocument extends VexDocument = VexDocu
    * The query's error, when the underlying fetch rejected — `undefined`
    * while loading or once it has succeeded. Surfaces a `VexError` thrown
    * server-side (e.g. `UNINDEXED_SORT`) so a caller like `ListViewQueryError`
-   * (Step 10) can render a specific message instead of the empty-results
+   * can render a specific message instead of the empty-results
    * state a rejected query would otherwise look like.
    */
   error?: unknown;
@@ -232,13 +249,37 @@ export function usePaginatedQuery<
 
   const [clientPageIndex, setClientPageIndex] = useState(0);
 
+  const { user } = useVexAuth();
+  const { expectedIdentity, isTransitionPending, confirmTransition } = useAuthTransition();
+  const identity = (user?._id as string | undefined) ?? null;
   const resolvedWhere = whereArg(query.where);
+  // `identity` (the signed-in caller's doc id, `null` when signed out) is part of the
+  // reset key, not just `collection`/`where`/`sort`/`drafts`/`numItems`: a sign-in or
+  // sign-out changes the identity-dependent RBAC filter Convex bakes into THIS query's
+  // underlying index/filter chain (`find`'s `accessFilter`), so a `cursor` captured under
+  // the OLD identity is no longer valid for the SAME args under the NEW one — Convex's own
+  // pagination rejects it server-side with `InvalidCursor: ...cursor is from a different
+  // query` (developer-reported: reproduces reliably once "Load More" has been clicked at
+  // least once, then the user signs in or out — `cursor` was never null, so the reset
+  // block below never ran). Without this, `retry`/`refetch()` (the same args, same stale
+  // cursor) throws the identical error forever — only a full reload, which remounts this
+  // hook with a fresh `cursor: null`, recovers.
+  //
+  // `useVexAuth()` (server-seeded, refreshed via `router.refresh()` on every real sign-in/
+  // out — see `AuthUIProvider.onSessionChange`/`VexAdminAuthAdapterProvider.signOut` in the
+  // app's own auth client), not `useConvexAuth()` (`convex/react`): the latter requires a
+  // `ConvexProviderWithAuth` ancestor this hook's existing test harness (`createFakeConvexClient`
+  // + a bare `ConvexQueryClient`, no `ConvexProvider`) doesn't mount, and `useVexAuth()` is
+  // already this exact codebase's established identity signal for the SAME class of problem
+  // (`useFieldPermissions()` reactively drops a now-unreadable `sort`/`search`/filter field
+  // the identical way).
   const resetKey = JSON.stringify({
     collection: query.collection,
     where: resolvedWhere,
     sort: query.sort,
     drafts: query.drafts,
     numItems: query.paginationOpts.numItems,
+    identity,
   });
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
   // Developer-reported regression fix: Convex's own React Query integration pushes a
@@ -268,7 +309,7 @@ export function usePaginatedQuery<
     setClientPageIndex(0);
     setRetainedTotalDocs(undefined);
     setRetainedTotalDocsCapped(false);
-    // Deliberately does NOT clear `allResults`/`isDone` here (Decision 46):
+    // Deliberately does NOT clear `allResults`/`isDone` here:
     // the whole point of `placeholderData: keepPreviousData` below is that
     // `result.page` keeps showing the PREVIOUS query's rows — stale, not
     // blank — until the new query actually resolves, at which point the
@@ -319,15 +360,25 @@ export function usePaginatedQuery<
     placeholderData: keepPreviousData,
     ...(cursor === null && initialData && !hasReset ? { initialData } : {}),
   });
-  // Tracks the `data` object reference the sync effect below has already processed —
-  // `placeholderData: keepPreviousData` keeps `data` as the SAME object reference across a
-  // `resetKey` change until the new query's own real answer arrives (live-pushed or
-  // tracked-refetched alike), so "`data` is a reference we haven't seen before" is a
-  // reliable "this is genuinely new" signal that works under both `isLoading` (the fake
-  // test backend's tracked refetch) and a live websocket push (the real Convex client,
-  // where `isLoading` never flips for a resetKey change — see `settledResetKey`'s own doc
-  // comment above).
-  const lastProcessedDataRef = useRef<typeof data>(undefined);
+
+  // Recovers from a transient `InvalidCursor` in the SAME render, before anything
+  // paints — not an effect. `identity` above already normally resets `cursor` back
+  // to `null` via `resetKey` on a sign-in/out, but Convex's OWN live auth update
+  // (the SAME subscription re-evaluated under the new identity) can land before
+  // `useVexAuth()` catches up through `router.refresh()`'s round trip, hitting the
+  // stale `cursor` in that gap — developer-reported: a visible "Couldn't load…"
+  // flash on sign-in, and a PERSISTENT one on sign-out (no OTHER re-render was
+  // ever forced to retry with the by-then-corrected, still-non-null `cursor`).
+  // Setting state here (not in a `useEffect`) means React re-runs this render
+  // with `cursor: null` before committing anything to the screen — an effect-based
+  // recovery would still paint `ListViewQueryError` for one frame first. Guarded by
+  // `cursor !== null`, which this itself clears: cannot loop even if the same
+  // error recurs for an unrelated reason, since the retried render sends `cursor:
+  // null` and a repeat `InvalidCursor` is specifically a NON-null-cursor condition.
+  if (cursor !== null && isError && isInvalidCursorError(error)) {
+    setCursor(null);
+    setClientPageIndex(0);
+  }
 
   const result = useMemo<PaginationResult<TDocument>>(() => {
     // Empty placeholder for "no data yet". `continueCursor: ""` is a falsy
@@ -396,26 +447,62 @@ export function usePaginatedQuery<
     // first, placeholder render, then append the REAL new page again once
     // it resolves — duplicating rows. Waiting for `isPlaceholderData` to
     // clear means this effect only ever syncs genuinely fresh data.
-    if (result.page && !isPlaceholderData) {
-      if (cursor === null) {
-        setAllResults(result.page);
-        // `result.page` is ALWAYS a truthy array — even the `useMemo` above's own empty
-        // fallback (`isLoading`/`isError`/`!data`) is `[]`, not `undefined` — so this
-        // effect fires on the very first render too, well before any real fetch
-        // completes. `data !== lastProcessedDataRef.current` is the genuine "this is a
-        // NEW answer, not the empty placeholder nor the previous key's data kept via
-        // `keepPreviousData`" check `result.page`'s own truthiness can't provide.
-        if (data !== undefined && data !== lastProcessedDataRef.current) {
-          lastProcessedDataRef.current = data;
-          setSettledResetKey(resetKey);
-        }
-      } else {
-        setAllResults((prev) => [...prev, ...result.page]);
+    if (!result.page || isPlaceholderData) return;
+    if (cursor === null) {
+      // `isError` MUST be checked before treating `result.page` as real data: the
+      // `useMemo` above returns the SAME safe `{ page: [] }` fallback for "still
+      // loading" AND "the query errored" — TanStack keeps the query's last-known
+      // `data` around even in `status: "error"` (`ConvexQueryClient.onUpdateQueryKeyHash`'s
+      // error push only sets `status`/`fetchStatus`/`error`, never touches `data`),
+      // so this effect used to run on every error too and commit that empty `[]` as
+      // if it were a real (zero-row) answer — wiping out whatever rows were already
+      // showing. Developer-reported: rows dim, then DISAPPEAR. Returning here instead
+      // leaves `allResults` exactly as it was; whether the error ITSELF is shown is
+      // decided entirely by the returned `error` field below.
+      if (isError) return;
+      // A sign-in/out has no args-level signal here (page 1: `cursor`/`where`/`sort`
+      // never change), so this stays on the SAME TanStack query entry while Convex
+      // re-evaluates the still-open subscription under the changing identity
+      // (`onUpdateQueryKeyHash`, `@convex-dev/react-query`) — a push during that
+      // window can carry a DIFFERENT identity than the one the client now expects.
+      // `find`/`search` stamp every page with `viewerId` (the identity it was
+      // produced under) for exactly this comparison: while a transition is pending
+      // (`beginTransition` was called — the `signOut` wrapper, or a reactive watch on
+      // the session — and no matching page has confirmed it yet), a page whose
+      // `viewerId` doesn't match `expectedIdentity` is NOT a genuine answer for the
+      // identity the user is now looking at — ignore it, keep the CURRENT (dimmed)
+      // rows, and wait for the one that matches. `viewerId === undefined` (a test
+      // fixture predating this field, or no `AuthTransitionProvider` mounted) always
+      // passes — this never gates anything unless the host app opted in.
+      const pushViewerId = (data as { viewerId?: string | null } | undefined)?.viewerId;
+      if (isTransitionPending && pushViewerId !== undefined && pushViewerId !== expectedIdentity) {
+        return;
       }
-
+      setAllResults(result.page);
+      // `result.page` is ALWAYS a truthy array once `isError`/placeholder are ruled
+      // out — `data !== undefined` alone is enough to tell "a genuine answer" apart
+      // from the very first render (before any fetch has completed at all).
+      if (data !== undefined) {
+        setSettledResetKey(resetKey);
+      }
+      setIsDone(result.isDone);
+      if (isTransitionPending) confirmTransition();
+    } else {
+      setAllResults((prev) => [...prev, ...result.page]);
       setIsDone(result.isDone);
     }
-  }, [result.page, result.isDone, cursor, isPlaceholderData, resetKey, data]);
+  }, [
+    result.page,
+    result.isDone,
+    cursor,
+    isPlaceholderData,
+    isError,
+    resetKey,
+    data,
+    isTransitionPending,
+    expectedIdentity,
+    confirmTransition,
+  ]);
 
   // `true` from the render where `resetKey` changes until the sync effect above records
   // that key as settled — unlike `isFetching`/`isPlaceholderData` (unreliable here, see
@@ -440,7 +527,25 @@ export function usePaginatedQuery<
     isFetching,
     isSettling,
     isPlaceholderData,
-    error: isError ? error : undefined,
+    // `settledResetKey !== null` means SOME resetKey (not necessarily the current one —
+    // see `isSettling` above) has already rendered real data at least once in this
+    // component's lifetime; `isTransitionPending` means the auth-transition marker
+    // (above) is still waiting for a page tagged with `expectedIdentity`. A query
+    // error is never shown while EITHER holds: `ConvexQueryClient.onUpdateQueryKeyHash`
+    // pushes an error straight into the SAME TanStack cache entry this `useQuery` is
+    // STILL watching whenever `cursor`/the rest of `resetKey` didn't change (page 1 —
+    // a sign-in/out changes the identity-dependent RBAC filter `find` evaluates
+    // under, with no args-level signal to react to, so the query key never rotates),
+    // bypassing the normal fetch lifecycle entirely. An error has no `viewerId` to
+    // compare (it's a thrown exception, not a tagged page) — treating "a transition
+    // is pending" as sufficient reason to distrust it is the same "ignore anything
+    // that isn't confirmed" rule the sync effect above applies to successful pages.
+    // `isSettling` (above) still reports `true` for the stretch, so the caller's
+    // existing "dim while settling" treatment covers it with the LAST GOOD rows still
+    // visible, never a blank or error screen. A component's very FIRST load failing
+    // has no prior good render to fall back to (`settledResetKey === null`) and no
+    // transition pending either, and still surfaces normally.
+    error: isError && !isTransitionPending && settledResetKey === null ? error : undefined,
     retry: () => {
       void refetch();
     },

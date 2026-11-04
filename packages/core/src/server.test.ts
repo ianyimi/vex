@@ -12,8 +12,7 @@ import { vexServerApi } from "./server";
 import type { VexApiAuth } from "./db/types";
 
 /**
- * Contracts of the `vexServerApi` access options (spec
- * 2026-08-29-server-api-access-options, Step 3):
+ * Contracts of the `vexServerApi` access options:
  *
  * 1. `access.bypass` never invokes `getAuth` — a public read costs no session lookup.
  * 2. Without bypass, `getAuth` resolves auth exactly once per call.

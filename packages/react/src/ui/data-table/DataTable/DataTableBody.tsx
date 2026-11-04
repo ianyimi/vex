@@ -35,6 +35,15 @@ export interface DataTableBodyProps<TData extends { _id: string }> {
   /** `table.getHeaderGroups()[0]` — built from the caller's real `columns`, used to size/shape the skeleton body's own cells identically to the settled body's. */
   headerRow: HeaderGroup<TData> | undefined;
   pageSize?: number;
+  /**
+   * The best count the caller already knows for THIS view before a single
+   * row has rendered — `totalCount` (a prior page's `totalDocs`, or a
+   * row-count cookie) — so the skeleton isn't blindly `pageSize` rows tall
+   * when the real answer is going to be smaller (a 3-row collection
+   * skeletonizing 25 rows, then collapsing, is its own layout shift).
+   * `null`/`undefined`/unknown falls back to `pageSize`.
+   */
+  knownRowCount?: number | null;
   rowClass: string;
   pinnedLeftIds: string[];
   pinnedRightIds: string[];
@@ -62,6 +71,7 @@ export function DataTableBody<TData extends { _id: string }>({
   table,
   headerRow,
   pageSize,
+  knownRowCount,
   rowClass,
   pinnedLeftIds,
   pinnedRightIds,
@@ -86,9 +96,20 @@ export function DataTableBody<TData extends { _id: string }>({
     // yet" more clearly than an empty cell. Every other column's bar is `w-full`
     // (fills the cell's own content width, matching each column's real resolved
     // width) rather than a fixed guess.
+    const pageSizeOrFallback = pageSize ?? SKELETON_ROW_COUNT_FALLBACK;
+    // `knownRowCount` (`totalCount`, if the caller already has one — a prior page's
+    // `totalDocs`, or a row-count cookie) caps the skeleton at the REAL expected row
+    // count instead of always rendering a full page's worth: a 3-row collection
+    // skeletonizing `pageSize` (25, or the 8-row fallback) rows then collapsing to 3
+    // is its own layout shift, exactly what this skeleton exists to avoid. Unknown
+    // (`null`/`undefined`) falls back to `pageSizeOrFallback` unchanged. `Math.max(1,
+    // …)` — a genuinely empty collection still renders ONE skeleton row rather than
+    // none, so the loading state isn't indistinguishable from the empty state.
+    const skeletonRowCount =
+      knownRowCount == null ? pageSizeOrFallback : Math.max(1, Math.min(knownRowCount, pageSizeOrFallback));
     return (
       <TableBody>
-        {Array.from({ length: pageSize ?? SKELETON_ROW_COUNT_FALLBACK }).map((_, rowIndex) => {
+        {Array.from({ length: skeletonRowCount }).map((_, rowIndex) => {
           const headers = headerRow?.headers ?? [];
           const spacerIndex = findRightPinnedInsertIndex(headers, (h) => h.column.getIsPinned());
           const spacerGripHeader = resolveSpacerGripHeader(headers, spacerIndex);

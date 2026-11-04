@@ -23,7 +23,7 @@ export interface SavedListViewPromoteDialogProps {
 
 /**
  * The "promote to shared" confirmation dialog — open/mutation state and the actual promote
- * call (save-shared then remove-local, Decision 14) are owned by `SavedListViewTabs`
+ * call (save-shared then remove-local) are owned by `SavedListViewTabs`
  * (index.tsx); this component only renders the confirm UI.
  * @param props - See {@link SavedListViewPromoteDialogProps}.
  * @returns The confirmation dialog.

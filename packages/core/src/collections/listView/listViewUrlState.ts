@@ -4,10 +4,10 @@ import { columnEntryField, type ColumnEntry, type CollectionConfig, type VexView
 import { VERSION_SYSTEM_FIELDS } from "../../versions";
 import type { VexWhereNode } from "../../db/queryArgs";
 
-/** A saved view's source, matching the `view=<source>:<id>` URL prefix (Decision 9/11). */
+/** A saved view's source, matching the `view=<source>:<id>` URL prefix. */
 export type ListViewSource = "config" | "shared" | "local";
 
-/** The portable `{ field, order }` sort shape (Decision 4), restricted to the collection's own field slugs plus `_creationTime`. */
+/** The portable `{ field, order }` sort shape, restricted to the collection's own field slugs plus `_creationTime`. */
 export interface ListViewSort<TFieldSlug extends string = string> {
   field: TFieldSlug | "_creationTime";
   order: "asc" | "desc";
@@ -15,16 +15,16 @@ export interface ListViewSort<TFieldSlug extends string = string> {
 
 /**
  * The collection list's full URL state, decoded from the compact
- * query-param grammar (Decision 9/48): `q`, `qf` (omitted when it's the
+ * query-param grammar: `q`, `qf` (omitted when it's the
  * default field), `sort=<field>.<asc|desc>`, `filter=(<field>.<op>.<value>,…)|(…)`,
  * `size` (omitted at the default), `view=<config|shared|local>:<id>`, `peek=<id>`,
  * `cols=<field>[:w<width>][:pl|:pr][:h],<field>…` (the full column list —
  * order, width, pin side, and hidden state, one entry per field — omitted
- * when it matches the active view's own resolved array — Decision 48).
+ * when it matches the active view's own resolved array).
  *
- * Lives in `@vexcms/core` (Decision 40), pure and dependency-free of react
- * or any UI library — `NextAdminPage` (Step 14) and `useListViewUrlState`
- * (this step's own react wrapper) both call `parseListViewUrlState`/
+ * Lives in `@vexcms/core`, pure and dependency-free of react
+ * or any UI library — `NextAdminPage` and `useListViewUrlState`
+ * (the react wrapper) both call `parseListViewUrlState`/
  * `serializeListViewUrlState` directly, so the server's prefetch args and the
  * client's query args are built from one implementation, never two that
  * could drift.
@@ -34,44 +34,43 @@ export interface ListViewSort<TFieldSlug extends string = string> {
 export interface ListViewUrlState<TFieldSlug extends string = string> {
   /**
    * Raw search text (`?q=`). `undefined` means absent from the URL —
-   * inherit the active view's own saved search (Decision 9/45/48).
+   * inherit the active view's own saved search.
    * `""` means the user explicitly cleared it (distinct from absent —
-   * developer-reported: clearing search on a view with its own saved
+   * Clearing search on a view with its own saved
    * search must NOT silently re-inherit that saved text). A non-empty
    * string is an explicit search term.
    */
   q: string | undefined;
-  /** The active search field (`?qf=`), or `undefined` to fall back to the active view's own `searchField`, then `collection.admin.view.state.searchField` (Decision 9/45/48). */
+  /** The active search field (`?qf=`), or `undefined` to fall back to the active view's own `searchField`, then `collection.admin.view.state.searchField`. */
   qf: TFieldSlug | undefined;
-  /** Portable sort (`?sort=`), or `undefined` to fall back to `collection.admin.view.state.sort`. Decision 7: while `q !== ""`, callers must ignore this rather than send it to the server — this hook still parses and returns it (the park is a rendering/query-building concern, not a URL-state one). */
+  /** Portable sort (`?sort=`), or `undefined` to fall back to `collection.admin.view.state.sort`. While `q !== ""`, callers must ignore this rather than send it to the server — this hook still parses and returns it (the park is a rendering/query-building concern, not a URL-state one). */
   sort: ListViewSort<TFieldSlug> | undefined;
   /**
    * The filter (`?filter=`), decoded into a plain `VexWhereNode`.
    * `undefined` means absent from the URL — inherit the active view's
-   * own saved `where` (Decision 9/45/48). `null` means the user
-   * explicitly cleared it (distinct from absent — developer-reported:
+   * own saved `where`. `null` means the user
+   * explicitly cleared it (distinct from absent —
    * "Clear all" on a view with its own saved filter must NOT silently
    * re-inherit that saved filter). An object is an explicit filter.
    */
   filter: VexWhereNode<TFieldSlug> | undefined | null;
   /** Page size (`?size=`), or `undefined` to fall back to `collection.admin.view.state.pageSize`. */
   size: number | undefined;
-  /** The active saved view, as the raw `<source>:<id>` string (`?view=`), or `undefined` for none. Step 12 splits this into `source`/`id`; this module keeps it opaque. */
+  /** The active saved view, as the raw `<source>:<id>` string (`?view=`), or `undefined` for none. This module splits it into `source`/`id` elsewhere; this field keeps it opaque. */
   view: string | undefined;
   /** The Inspect peek's open document id (`?peek=`), or `undefined` when the peek is closed. */
   peek: string | undefined;
   /**
-   * Full column list (`?cols=<field>[:w<width>][:pl|:pr][:h],…`, Decision
-   * 48) — every entry's field URI-component-encoded, suffixes (when
+   * Full column list (`?cols=<field>[:w<width>][:pl|:pr][:h],…`) — every entry's field URI-component-encoded, suffixes (when
    * present) always in that fixed order: `w<width>` (pixels), then `pl`/
    * `pr` (pinned left/right — mutually exclusive, at most one), then `h`
    * (hidden). `undefined` falls back to the active view's own `columns`,
    * then `collection.admin.view.state.columns` (`resolveListViewQueryState`'s/
    * `completeListViewColumnOrder`'s job, not this module's — a parsed `cols` here
    * may be a PARTIAL list, same as an old stored view's `columns`;
-   * completion happens downstream). Replaces Step 20's plain
+   * completion happens downstream). Replaces the earlier plain
    * bare-field-list grammar entirely — a breaking format change, no
-   * back-compat shim (Decision 48, matching Decision 45's precedent); a
+   * back-compat shim; a
    * pre-Part-B `cols=<field>,<field>` URL still parses (every token with
    * no `:` suffix is just a bare field), it simply carries no width/pin/
    * hidden overrides, same as any other bare-slug entry.
@@ -81,16 +80,16 @@ export interface ListViewUrlState<TFieldSlug extends string = string> {
 
 /**
  * The filter row's `<op>` token set this URL grammar accepts — the six
- * comparisons plus Decision 10's two list-only, no-value operators. Not
- * `ListViewFilterOp` from Step 11's `listViewFilterGroups.ts`: that file doesn't exist yet
- * at this step, and this module only needs the literal token set, not the
+ * comparisons plus two list-only, no-value operators. Not
+ * `ListViewFilterOp` from a dedicated `listViewFilterGroups.ts`: that module doesn't exist
+ * in this codebase, and this module only needs the literal token set, not the
  * editor's richer type (`isEmpty`/`isNotEmpty` compile straight down to
- * `eq`/`neq` with `value: undefined` here, same as Decision 10's rule).
+ * `eq`/`neq` with `value: undefined` here, same rule).
  */
 const URL_FILTER_OPS = ["eq", "neq", "gt", "gte", "lt", "lte", "isEmpty", "isNotEmpty"] as const;
 type UrlFilterOp = (typeof URL_FILTER_OPS)[number];
 
-/** How a field's filter value is encoded in the `<value>` URL segment (Decision 9). */
+/** How a field's filter value is encoded in the `<value>` URL segment. */
 type FilterValueKind = "number" | "boolean" | "date" | "string";
 
 /**
@@ -102,7 +101,7 @@ type FilterValueKind = "number" | "boolean" | "date" | "string";
  *
  * @param props - Input props.
  * @param props.collection - Resolves `field`'s type, except the built-in
- *   `"vex_status"` filter field (Decision 10), which isn't a real data
+ *   `"vex_status"` filter field, which isn't a real data
  *   field and is hardcoded to `"string"`.
  * @param props.field - The filter row's field key.
  * @returns The value kind, or `undefined` when `field` is neither
@@ -185,7 +184,7 @@ function decodeFilterValue(props: { kind: FilterValueKind; raw: string }): unkno
  * @returns The leaf, or `undefined` for anything malformed — an unknown
  *   field, an unrecognized op, a missing value for a value-bearing op, a
  *   stray value for `isEmpty`/`isNotEmpty`, or a value that fails
- *   {@link decodeFilterValue} — dropped silently, never thrown (Decision 9).
+ *   {@link decodeFilterValue} — dropped silently, never thrown.
  */
 function parseFilterRow<S extends string>(props: {
   row: string;
@@ -227,8 +226,8 @@ function parseFilterRow<S extends string>(props: {
  *
  * @param props - Input props.
  * @param props.leaf - The leaf, matched structurally against `{ field; op;
- *   value }` (Step 11's `ListViewFilterLeaf` shape — not imported, this file
- *   predates `listViewFilterGroups.ts`).
+ *   value }` shape of a filter editor leaf — not imported, this file
+ *   predates a dedicated `listViewFilterGroups.ts` module.
  * @param props.collection - Resolves the field's {@link FilterValueKind}.
  * @returns The row string, or `undefined` when the field isn't resolvable
  *   (defensive — the filter builder never produces such a leaf).
@@ -249,9 +248,9 @@ function serializeFilterRow(props: {
 
 /**
  * Parses the whole `?filter=` value into a plain `VexWhereNode`, collapsing
- * groups the same way Step 11's `listViewFilterGroups.ts#fromListViewFilterGroups` will — duplicated
- * here rather than imported, since `listViewFilterGroups.ts` doesn't exist until Step
- * 11; both codecs independently converge on the same plain-node shape.
+ * groups the same way a future `listViewFilterGroups.ts#fromListViewFilterGroups` will — duplicated
+ * here rather than imported, since `listViewFilterGroups.ts` doesn't exist
+ * yet; both codecs independently converge on the same plain-node shape.
  *
  * @param props - Input props.
  * @param props.raw - The raw `?filter=` value. `URLSearchParams` has
@@ -292,7 +291,7 @@ function parseFilterParam<S extends string>(props: {
 /**
  * Serializes a plain `VexWhereNode` into the `?filter=` grammar — the
  * inverse of {@link parseFilterParam}, restricted to the three shapes the
- * filter builder (Step 11) ever produces: a bare leaf, a flat `{ and:
+ * filter builder ever produces: a bare leaf, a flat `{ and:
  * leaves }`, or `{ or: (leaf | { and: leaves })[] }`.
  *
  * @param props - Input props.
@@ -345,7 +344,7 @@ function serializeFilterParam(props: {
 
 /**
  * Parses one `<field>[:w<width>][:pl|:pr][:h]` `cols=` token into a
- * {@link ColumnEntry} (Decision 48) — the field is URI-component-decoded
+ * {@link ColumnEntry} — the field is URI-component-decoded
  * and checked against `dataFieldKeys` first (an unknown/undecodable field
  * drops the WHOLE token, never half-applies its suffixes to a bogus
  * field); a token with no suffixes at all decodes to the bare-slug shape.
@@ -396,7 +395,7 @@ function parseColumnEntryToken<TFieldSlug extends string>(props: {
  * the ONE canonical order the grammar documents: `w<width>`, then `pl`/
  * `pr`, then `h`. A bare-slug entry (or an object entry with every
  * override unset) serializes to just the encoded field, identical to
- * Step 20's own plain grammar for that case.
+ * the earlier plain grammar's bare-slug output for that case.
  *
  * @param entry - A bare field slug, or an object entry carrying overrides.
  * @returns The `cols=` token: the URI-component-encoded field, followed by
@@ -413,7 +412,7 @@ function serializeColumnEntryToken(entry: ColumnEntry<string>): string {
 }
 
 /**
- * Parses the collection list's full compact-grammar URL state (Decision 9).
+ * Parses the collection list's full compact-grammar URL state.
  *
  * @param props - Input props.
  * @param props.searchParams - The raw `q`/`qf`/`sort`/`filter`/`size`/
@@ -468,7 +467,7 @@ export function parseListViewUrlState<TFieldSlug extends string = string>(props:
   const peek = props.searchParams.get("peek") ?? undefined;
 
   // `vex_status` is a valid `cols=` field on a versioned collection ONLY
-  // (Decision 48 follow-up, developer-reported: resizing/pinning/hiding it
+  // (resizing/pinning/hiding it
   // via a `cols=` token used to silently drop the whole token here, the
   // same validation gate that keeps an unknown/foreign field out) —
   // `dataFieldKeys` alone (declared data fields only) stays the universe
@@ -501,7 +500,7 @@ export function parseListViewUrlState<TFieldSlug extends string = string>(props:
  * Serializes a (possibly partial) collection list state back into the
  * compact-grammar URL params — the inverse of {@link
  * parseListViewUrlState}, and also how `ListViewCopyLinkButton`
- * (Step 10) builds a fully self-contained link for a local view (Step 12).
+ * builds a fully self-contained link for a local view.
  *
  * @param props - Input props.
  * @param props.params - The full state to serialize.
@@ -509,19 +508,19 @@ export function parseListViewUrlState<TFieldSlug extends string = string>(props:
  *   defaults (`admin.view.state`) and each filter leaf's field type.
  * @param props.viewState - The active declared (`default`/`config`) or
  *   `shared` view's own saved state — omit for a `local`-source view
- *   (Decision 41: its full state always stays in the URL, even where it
+ *   (its full state always stays in the URL, even where it
  *   happens to coincide with the collection's default — there's no
  *   server-side row to fall back to for it) or when no view has resolved
  *   yet. Every field below is omitted once it equals `viewState?.<field>
  *   ?? collection.admin.view.state.<field>` — the EXACT inverse of
  *   `resolveListViewQueryState`'s own `params.<field> ?? viewState?.<field> ??
  *   collection.admin.view.state.<field>`
- *   merge (Decision 9/45/48), so a written URL always round-trips to the
+ *   merge, so a written URL always round-trips to the
  *   identical resolved state instead of re-asserting a param that was
  *   already implied by the active view.
  * @returns A `URLSearchParams` with only the non-baseline keys set —
- *   every falsy/`undefined` field is simply absent (Decision 9: "omitted
- *   when it's the default").
+ *   every falsy/`undefined` field is simply absent, omitted
+ *   when it's the default.
  */
 export function serializeListViewUrlState(props: {
   params: Partial<ListViewUrlState<string>>;
@@ -545,7 +544,7 @@ export function serializeListViewUrlState(props: {
   }
 
   if (props.params.filter === null) {
-    // Explicit clear sentinel (developer-reported): the user removed the
+    // Explicit clear sentinel: the user removed the
     // view's own filter, distinct from never having touched it at all —
     // `filter=` present-but-empty, not absent. `resolveListViewQueryState`'s
     // own `params.filter !== undefined ? ... : viewState?.where` reads
@@ -566,14 +565,14 @@ export function serializeListViewUrlState(props: {
   if (props.params.view) out.set("view", props.params.view);
   if (props.params.peek) out.set("peek", props.params.peek);
 
-  // Decision 48: omitted when it matches the active view's own FULL,
+  // Omitted when it matches the active view's own FULL,
   // completed column array — order, width, pin, hidden, every field.
   // `params.cols` now ALWAYS carries the full array (never a visible-only
-  // subset the way Step 20's own grammar did — `CollectionListView`'s
+  // subset the way the earlier grammar did — `CollectionListView`'s
   // `columns` state is always `completeListViewColumnOrder`'d before it ever
   // reaches `setCols`), so completing BOTH sides before comparing is what
   // makes this diff ever match a real, unmodified write — the OPPOSITE of
-  // Step 20's own "never complete the baseline" rule (its own comment,
+  // the earlier "never complete the baseline" rule (its own comment,
   // superseded): that rule existed specifically because ITS `cols=` was a
   // subset, so completing only the baseline would almost never match.
   const colsBaseline = completeListViewColumnOrder({

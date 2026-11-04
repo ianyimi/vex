@@ -35,7 +35,7 @@ vi.mock("@convex-dev/react-query", async (importOriginal) => {
     ...actual,
     convexQuery: (fn: unknown, args: unknown) => ({
       queryKey: [fn, args],
-      // `CollectionListViewData`'s own single `useSuspenseQuery` seed call (Step 14's perf
+      // `CollectionListViewData`'s own single `useSuspenseQuery` seed call (perf
       // split) needs a resolvable, non-`undefined` `PaginationResult` — a `{ numItems }` key
       // (present on every `buildListViewFindQueryArgs`/`buildListViewSearchQueryArgs` call, absent
       // from `listViews`' own bare `{ collection }` args) distinguishes the two without
@@ -117,8 +117,8 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// Developer-reported bug: a `local` view's cookie-index placeholder
-// (`initialLocalIndex`, Decision 41) has no `columns` — `CollectionListView`
+// A `local` view's cookie-index placeholder
+// (`initialLocalIndex`) has no `columns` — `CollectionListView`
 // used to seed `visibleColumns` from it anyway during a render-phase
 // `setState`, lock in `syncedViewIdRef` on that same render, and never
 // re-sync once the REAL local view (with its genuinely narrower `columns`)
@@ -126,7 +126,7 @@ afterEach(() => {
 // WRONG (full default) columns rendered, Reset included (same stuck value).
 // Fixed: the sync now lives in a `useEffect`, gated on the view not being a
 // still-unresolved local placeholder.
-describe("CollectionListView — local-view placeholder columns sync (developer-reported)", () => {
+describe("CollectionListView — local-view placeholder columns sync", () => {
   it("never shows a false Modified: columns once the real local view data arrives after the placeholder", async () => {
     render(
       createElement(CollectionListView, {

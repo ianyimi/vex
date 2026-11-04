@@ -18,7 +18,7 @@ export interface InlineQueryErrorProps {
 }
 
 /**
- * Small, generic "Couldn't load X" + Retry block (polish fixes, Decision 1/2) — the
+ * Small, generic "Couldn't load X" + Retry block — the
  * collection/global/media edit views' own inline error state for a failed primary-document
  * fetch (permission denial, network failure — `useVexDocQuery`'s own `error` field; plain
  * `useQuery` never throws during render, so no error boundary is needed for this case, just

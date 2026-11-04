@@ -16,8 +16,8 @@ import { Icon } from "../ui";
 import { useVexRevalidate } from "./useVexRevalidate";
 
 /**
- * Built-in `vex.revalidate` contribution for `edit.actionsMenu` (decision: Step 4
- * post-implementation note moved the former standalone `RevalidateButton` usage here).
+ * Built-in `vex.revalidate` contribution for `edit.actionsMenu` (moved here from the
+ * former standalone `RevalidateButton` usage).
  * Collection documents only — gated by `access: (ctx) => ctx.resource?.kind === "collection"`
  * on the builtin contribution entry (`CollectionEditView.tsx`), so a global never lists this
  * item at all rather than mounting it and rendering `null` (a `null`-rendering item still counts

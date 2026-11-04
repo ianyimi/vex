@@ -3,7 +3,7 @@ import { Input } from "../../ui";
 
 /**
  * Email field filter row value control — a plain text `Input`, registered
- * as `reactAdapter.fields.email.filterInput` (Decision 50). Same body as
+ * as `reactAdapter.fields.email.filterInput`. Same body as
  * the `text` field's own filter input — this package's established
  * one-component-per-type convention, mirroring `Cell.tsx`'s own
  * identical-body split for `text`/`email`/`url`/`textarea`.

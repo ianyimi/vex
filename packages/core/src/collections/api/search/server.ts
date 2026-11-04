@@ -34,6 +34,7 @@ import type { ConvexQueryFilterFn } from "../../../access/convexTypes";
 import {
   andConvexQueryFilters,
   convertCommitTsWhereToNs,
+  normalizeArrayStoredWhere,
   whereFieldNames,
   whereToConvexQueryFilter,
   type VexWhere,
@@ -74,11 +75,10 @@ export interface SearchServerArgs<
    * The field the search index is built on. Must match `searchField` in the
    * index declaration. When `config` is supplied, validated against the
    * collection's `admin.view.state.searchFields` allow-list — a field outside it
-   * throws a `VexError` naming the field and the declared list (Design
-   * Decision 2) — and against the caller's field-read access, which throws
-   * a `VexAccessError` (Design Decision 26): search hits on a field the
-   * caller cannot read would leak its values just as much as a sortable
-   * column would.
+   * throws a `VexError` naming the field and the declared list — and
+   * against the caller's field-read access, which throws a
+   * `VexAccessError`: search hits on a field the caller cannot read
+   * would leak its values just as much as a sortable column would.
    */
   searchField: string;
 
@@ -86,10 +86,10 @@ export interface SearchServerArgs<
    * Always absent on `search` — typed `never` so a caller building args
    * from shared `{ sort, search, searchField }` state gets a compile error
    * if it forwards `sort` here. `search` also throws a `VexError` at
-   * runtime if one arrives anyway (Design Decision 7: search results are
-   * relevance-ordered, so sort and search are mutually exclusive). Clear
-   * `sort` before searching, or clear the search query to sort — `find`'s
-   * `sort` is the only route to a sorted read.
+   * runtime if one arrives anyway (search results are relevance-ordered,
+   * so sort and search are mutually exclusive). Clear `sort` before
+   * searching, or clear the search query to sort — `find`'s `sort` is the
+   * only route to a sorted read.
    */
   sort?: never;
   /**
@@ -152,7 +152,7 @@ export async function search<
  * Pass `paginationOpts: { ..., totalDocs: true }` to also count matching
  * search results on the first page (`cursor: null`) only — same
  * `take(countLimit + 1)` cap and `totalDocs`/`totalDocsCapped` contract as
- * `find` (Design Decision 35); see its own JSDoc for the full explanation.
+ * `find`; see its own JSDoc for the full explanation.
  *
  * @param args - Search arguments including query, filters, pagination, and count options
  * @returns Array of documents, or a `PaginationResult` (`{ page,
@@ -192,22 +192,25 @@ export async function search<
     });
   }
   const collectionConfig = args.config?.collections.find((c) => c.slug === args.collection);
-  const where = convertCommitTsWhereToNs({
-    where: args.where as VexWhereNode<string> | undefined,
+  const where = normalizeArrayStoredWhere({
+    where: convertCommitTsWhereToNs({
+      where: args.where as VexWhereNode<string> | undefined,
+      fields: collectionConfig?.fields ?? {},
+    }),
     fields: collectionConfig?.fields ?? {},
   });
   // `admin.view.state.searchFields` is ALWAYS an array on a REAL
-  // `defineCollection()`-resolved config (Decision 45 FINAL — `[]` when
-  // the project declares none, not `undefined` the way the deleted
-  // `admin.table.searchField` was) — `?.` on `view`/`state` too since a
-  // hand-rolled test fixture (`as unknown as VexConfig`) may not resolve
-  // them at all, in which case the check is skipped entirely (permissive,
-  // matching every other `?.`-guarded test-fixture fallback in this
-  // file). A REAL, resolved empty array is different: Decision 9 treats
-  // `admin.view.searchFields: []` as "no search fields declared" — the
-  // search bar itself is hidden client-side, and the server rejects every
-  // `searchField` here too (an empty array never `.includes()` anything),
-  // not just the fields the UI happens to not render for.
+  // `defineCollection()`-resolved config (`[]` when the project declares
+  // none, not `undefined` the way the deleted `admin.table.searchField`
+  // was) — `?.` on `view`/`state` too since a hand-rolled test fixture
+  // (`as unknown as VexConfig`) may not resolve them at all, in which
+  // case the check is skipped entirely (permissive, matching every other
+  // `?.`-guarded test-fixture fallback in this file). A REAL, resolved
+  // empty array is different: `admin.view.searchFields: []` means "no
+  // search fields declared" — the search bar itself is hidden
+  // client-side, and the server rejects every `searchField` here too (an
+  // empty array never `.includes()` anything), not just the fields the
+  // UI happens to not render for.
   const searchFieldAllowList = collectionConfig?.admin.view?.state?.searchFields;
   if (searchFieldAllowList !== undefined && !searchFieldAllowList.includes(args.searchField)) {
     throw new VexError({
@@ -228,10 +231,10 @@ export async function search<
     resource: args.collection,
   });
   // A caller who may read SOME documents of this collection but not THIS
-  // field gets a hard reject (Design Decision 26). A caller denied the
-  // whole `read` action (a flat `false`/predicate, `scope: "any"` false)
-  // is unaffected here — that denial is enforced as always, downstream,
-  // by `resolveQueryConstraint` / `readableDocuments`, which filter to an
+  // field gets a hard reject. A caller denied the whole `read` action (a
+  // flat `false`/predicate, `scope: "any"` false) is unaffected here —
+  // that denial is enforced as always, downstream, by
+  // `resolveQueryConstraint` / `readableDocuments`, which filter to an
   // empty result rather than throw; throwing here too would turn every
   // deny-all search into an error instead of the established empty read.
   if (
@@ -302,10 +305,9 @@ export async function search<
     ],
   });
   // A request `where` part that deep-equals a config view's own `where` is
-  // trusted server config, exempt from the field-read check below (Design
-  // Decision 26's one exception), with a lazy fall back to a readable
-  // shared view's own declared filter (Decision 26's "Shared views"
-  // bullet) — see `resolveWhereFields` for the pipeline, shared with
+  // trusted server config, exempt from the field-read check below, with
+  // a lazy fall back to a readable shared view's own declared filter —
+  // see `resolveWhereFields` for the pipeline, shared with
   // `find/server.ts`.
   const whereFields = await resolveWhereFields({
     ctx: args.ctx,
@@ -373,6 +375,8 @@ export async function search<
         )) as DocReturnItem<TCollectionSlug, TPopulate, D>[]);
 
   if (args.paginationOpts) {
+    // See `find/server.ts`'s identical `viewerId` doc comment.
+    const viewerId = (args.auth?.user?._id as string | undefined) ?? null;
     if (args.paginationOpts.totalDocs && !args.paginationOpts.cursor && convexPaginationResult) {
       if (convexPaginationResult.isDone) {
         return {
@@ -380,9 +384,10 @@ export async function search<
           page: finalDocs,
           totalDocs: finalDocs.length,
           totalDocsCapped: false,
+          viewerId,
         };
       }
-      // Counts at most `countLimit + 1` rows (Design Decision 35) instead
+      // Counts at most `countLimit + 1` rows instead
       // of `.collect()`-ing the whole matching set — see `resolveTotalDocsCap`
       // (shared with `find/server.ts`) for why `totalDocsCapped` is
       // decided on the RAW window length, not the readable-filtered
@@ -397,6 +402,7 @@ export async function search<
         page: finalDocs,
         totalDocs,
         totalDocsCapped,
+        viewerId,
       };
     }
 
@@ -405,6 +411,7 @@ export async function search<
       return {
         ...convexPaginationResult,
         page: finalDocs as DocReturnItem<TCollectionSlug, TPopulate, D>[],
+        viewerId,
       };
     }
   }

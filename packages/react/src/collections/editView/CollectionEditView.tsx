@@ -119,7 +119,7 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
 
   // The row the editor is currently looking at. Seeded from the prop, so a
   // non-versioned collection's behavior is unchanged — it just never gets
-  // re-pointed. `saveDraft` (Step 7) can return a different row id than the
+  // re-pointed. `saveDraft` can return a different row id than the
   // one loaded (first draft save on a published document bootstraps a new
   // row); without tracking it locally, the editor would keep looking at the
   // published row and the badge would never flip to Draft after an
@@ -154,9 +154,8 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
  * resolved yet, and React requires the same hooks in the same order on each render of one
  * component).
  *
- * Plain `useVexDocQuery` (developer-reported regression fix, reverting the shell-streaming
- * follow-up's `<Suspense>`+`useSuspenseVexDocQuery` split here specifically) — the edit
- * view's own primary document is essential and cheap to fetch, so `NextAdminPage.tsx` now
+ * Plain `useVexDocQuery` — the edit
+ * view's own primary document is essential and cheap to fetch, so `NextAdminPage.tsx`
  * AWAITS it server-side and passes the resolved value as `initialData`: `useVexDocQuery`
  * seeds its query with that `initialData` immediately, so `currentDocument` is NEVER
  * `undefined` on the very first render here — the whole form renders at once, matching the
@@ -185,7 +184,7 @@ function CollectionEditViewData(
     initialData: props.initialData,
   });
 
-  // Checked BEFORE `!currentDocument` (polish fixes, Decision 1/2) — an unreadable document
+  // Checked BEFORE `!currentDocument` — an unreadable document
   // also leaves `currentDocument` `undefined`, which would otherwise show the misleading
   // "Document not found" message for what's actually a permission/network failure.
   if (error) {

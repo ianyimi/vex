@@ -17,7 +17,7 @@ export interface ListViewEmptyStateProps {
   /** `"empty"` only — gates the "Create {singular}" button. */
   canCreate?: boolean;
   onCreate?: () => void;
-  /** `"empty"` only — the guide link ("Read the docs"); omitted renders no button (wired by Step 17 once the real guide path exists). */
+  /** `"empty"` only — the guide link ("Read the docs"); omitted renders no button (wired once the real guide path exists). */
   docsHref?: string;
   /** `"noSearchResults"` only — the active query text, shown verbatim in the heading. */
   searchQuery?: string;

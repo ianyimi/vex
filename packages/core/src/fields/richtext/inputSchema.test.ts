@@ -78,7 +78,7 @@ describe("richTextFieldToInputSchema", () => {
     expect(parsed.data).toEqual([]);
   });
 
-  it("honors a draft-lenient required override the same way Step 3's dispatcher ignoreRequired will", () => {
+  it("honors a draft-lenient required override the same way the dispatcher's ignoreRequired will", () => {
     const schema = richTextFieldToInputSchema({
       field: richtext({ required: false }),
     });

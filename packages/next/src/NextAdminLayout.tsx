@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
  * Next.js admin layout shell for VexCMS.
  *
  * A **server component** that reads the consolidated `vex-admin` cookie's
- * `sidebarOpen` field server-side (Decision 51; previously a dedicated
+ * `sidebarOpen` field server-side (previously a dedicated
  * `sidebar_state` cookie) so the sidebar's open/closed state is correct on
  * first paint, with no client flash, and passes it, plus `authPromise`/
  * `children`, to the
@@ -17,7 +17,7 @@ import { cookies } from "next/headers";
  * (`components/providers/client.tsx`), not from a prop threaded through this
  * layout.
  *
- * Does **not** await `authPromise` itself (perf fix, Decision 44/streaming) — only
+ * Does **not** await `authPromise` itself — only
  * `cookies()` (fast, no network). The sidebar resolves `authPromise` inside its
  * OWN `<Suspense>` boundary (`AdminLayout`, `@vexcms/react`), so a slow
  * `getUserOrg()` round trip only delays the sidebar nav, never `children` or
@@ -30,7 +30,7 @@ import { cookies } from "next/headers";
  *
  * @param props - Layout props.
  * @param props.children - The page content from `[[...slug]]/page.tsx`.
- * @param props.authPromise - The in-flight `{ user, organization }` fetch (Decision 44),
+ * @param props.authPromise - The in-flight `{ user, organization }` fetch,
  *   optional — omit it entirely when `config.access` is absent/disabled.
  * @returns The rendered admin shell, wrapping `children` in the client boundary
  *   ({@link NextAdminLayoutClient}) with the server-read sidebar cookie state.

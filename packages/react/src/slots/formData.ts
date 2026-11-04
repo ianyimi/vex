@@ -7,11 +7,11 @@ import { useVexForm } from "../forms/useVexForm";
 /**
  * Resolves the value at `name`'s PARENT path — `layout[2].title` resolves siblings from
  * `layout[2]`, `seo.title` from `seo`, and a top-level name (no `.`) from the whole `data` object.
- * Matches `FieldConditionProps`'s `siblingData` convention (Step 6).
+ * Matches `FieldConditionProps`'s `siblingData` convention.
  *
  * A `name` ending in `]` (one block/array item's own path, e.g. `content[2]`, with no trailing
  * `.field` segment) is not a field leaf with a parent to strip to — it already names the
- * container whose own fields `blocks.item.actions`/`array.item.actions` gate against (Step 8's
+ * container whose own fields `blocks.item.actions`/`array.item.actions` gate against (see
  * `useSlotConditionData` JSDoc), so it resolves directly instead of one level up.
  *
  * @returns The sibling data object at `name`'s resolved parent path.

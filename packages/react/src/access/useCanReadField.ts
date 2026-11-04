@@ -14,7 +14,7 @@ import { useFieldPermissions } from "./useFieldPermissions";
  * versioned collection) and UI fields (a `ui()`-type field, e.g. a computed
  * `wordCount`) identically to a regular data field — `isFieldAllowed`'s own
  * merge logic is already fully generic by field NAME, with no special-casing
- * by kind (developer decision, binding, "access-system-fields": both are now
+ * by kind (both are now
  * real, gateable `FieldPermissionMap` keys, and the wildcard (`"*"`) covers
  * them the same way it covers every other field). `_id` (and `_slug`, the
  * global-only discriminator) are always readable — never real field-

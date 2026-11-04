@@ -28,7 +28,7 @@ beforeEach(() => {
   convexQueryCalls.length = 0;
 });
 
-// `NextAdminPage` (Design Decision 39) and this hook must send IDENTICAL Convex args for
+// `NextAdminPage` and this hook must send IDENTICAL Convex args for
 // the same list state, or the server's prefetched `initialData` hydrates under the wrong
 // query key and the list repaints right after hydration (layout-stability.md). Both now
 // go through `buildListViewFindQueryArgs`/`buildListViewSearchQueryArgs` — these tests prove this

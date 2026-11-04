@@ -20,8 +20,8 @@ import type { PermissionCheck, SubjectEntry, VexAccessConfig } from "./types";
  * - `unrestricted` — the role allows the action outright, statically or by its
  *   callback returning `true`. Narrowing would hide rows it permits, so nothing
  *   may be applied.
- * - `opaque` — the role allows conditionally through a bare callback (or, until
- *   Step 14, a field-mode object). Which rows it permits is unknowable before
+ * - `opaque` — the role allows conditionally through a bare callback (or a
+ *   field-mode object). Which rows it permits is unknowable before
  *   reading them, so again nothing may be applied.
  * - `conditional` — the role's `withIndex` / `where` ran and recorded something.
  *   The recording says which compile targets are available; it does NOT by
@@ -37,7 +37,7 @@ type RoleContribution =
 
 /**
  * True when a resolved check is the narrowing object form rather than a boolean,
- * a bare callback, or (until Step 14) a field-mode object.
+ * a bare callback, or a field-mode object.
  *
  * Distinguished by the presence of `withIndex` or `where`. Note this is the ONLY
  * thing a type predicate can settle here: whether the rule turns out to be
@@ -243,7 +243,7 @@ function selectSingleCondition(props: {
  *   the same reason `HasPermissionProps` is: a concrete `SubjectMap<…>`
  *   instantiation is not assignable to the erased
  *   `VexAccessConfig<Record<string, SubjectEntry>>` default, because callback
- *   contravariance makes instantiations mutually unassignable (P-002). Pinning the
+ *   contravariance makes instantiations mutually unassignable. Pinning the
  *   default would reject every real `defineAccess()` result.
  *
  * @example

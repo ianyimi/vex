@@ -489,7 +489,7 @@ describe("defineCollection — admin.view field-slug typing", () => {
     expect(posts.admin.views).toEqual([]);
   });
 
-  it("defaults admin.view.state.countLimit to 10000 (Decision 35)", () => {
+  it("defaults admin.view.state.countLimit to 10000", () => {
     const posts = defineCollection({
       slug: "posts",
       fields: { title: text({ required: true }) },
@@ -506,7 +506,7 @@ describe("defineCollection — admin.view field-slug typing", () => {
     expect(posts.admin.view.state.countLimit).toBe(5000);
   });
 
-  it("admin.views[n]'s own collection-wide settings fall back to admin.view's resolved value, then the global default (Decision 45 two-tier fallback)", () => {
+  it("admin.views[n]'s own collection-wide settings fall back to admin.view's resolved value, then the global default", () => {
     const posts = defineCollection({
       slug: "posts",
       fields: { title: text({ required: true }) },

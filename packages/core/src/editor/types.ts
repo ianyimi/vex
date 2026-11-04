@@ -9,7 +9,7 @@ import type { VexMediaDocument } from "../media";
  *
  * `mediaCollectionSlug` and the `media*`/`onMedia*`/`generateUploadUrl`/
  * `createMediaDocument` props are present only when the field declares
- * `mediaCollectionSlug` (Design Decision 6); an adapter that doesn't support
+ * `mediaCollectionSlug`; an adapter that doesn't support
  * inline images may ignore all of them.
  */
 export interface VexEditorComponentProps {

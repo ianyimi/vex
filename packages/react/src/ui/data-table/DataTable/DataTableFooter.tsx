@@ -34,7 +34,7 @@ export function DataTableFooter({
 }: DataTableFooterProps): ReactNode {
   if (!(dataLength > 0 || (isInitialLoading && pageSize !== 0))) return null;
   return (
-    // `min-h-[49px]` (developer-reported, Decision 49 follow-up #2): without
+    // `min-h-[49px]`: without
     // it, the footer's own height varies by variant — 49px when a Load More
     // `Button` (`size="default"`, 32px) is present, 37px when it's text-only
     // ("That's everything" / the done-skeleton pair) — and since this div and
@@ -57,7 +57,7 @@ export function DataTableFooter({
                 size. The footer `<div>` has no fixed height of its own (content-driven,
                 unlike a row's `rowClass`), so a 16px bar standing in for a 20px-tall `<p
                 className="text-sm">` shrinks the WHOLE footer by 4px, confirmed live via
-                a held-open rect comparison (developer-reported, Decision 49 follow-up). */}
+                a held-open rect comparison. */}
             <Skeleton className="h-5 w-24 rounded" />
             <Skeleton className="h-5 w-32 rounded" />
           </>

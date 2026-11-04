@@ -9,7 +9,7 @@ type ArrayItem<T> = T extends (infer Item)[] ? Item : never;
  * Creates a Next.js `sitemap.ts` default export from a Convex published-slugs
  * query (`packages/core/src/api/publishedSlugs/server.ts`).
  *
- * Tolerates an unreachable Convex deployment (P-020): a read failure returns
+ * Tolerates an unreachable Convex deployment (CI builds supply placeholder env rather than skipping validation, so a build-time read can fail): a read failure returns
  * `[]` — an empty sitemap — rather than failing the build.
  *
  * @param props - Sitemap configuration.

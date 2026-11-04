@@ -35,7 +35,7 @@ export interface RichTextElement {
 /**
  * A complete rich text value — an ordered list of top-level
  * {@link RichTextElement} nodes. Locale-agnostic: a richtext field stores
- * exactly one `RichTextDocument`, never a per-locale map (Design Decision 1).
+ * exactly one `RichTextDocument`, never a per-locale map.
  * This is the `interfaceType` generated for every `richtext()` field and the
  * value type both `VexEditorComponentProps.value` and
  * `VexRenderComponentProps.content` carry.

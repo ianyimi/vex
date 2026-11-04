@@ -8,8 +8,8 @@ import { createAuthClient } from "better-auth/react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
+import { useAuthTransition } from "@vexcms/react"
 import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth"
-
 import { env } from "~/env.mjs"
 
 /**
@@ -44,6 +44,10 @@ authClient.$store.listen("$sessionSignal", () => {})
  */
 export default function BetterAuthClientProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
+  // Needs an `AuthTransitionProvider` ancestor — `ConvexClientProvider`
+  // (`~/components/providers/convex.tsx`) mounts it one level up from this
+  // component, same as `~/components/providers/client.tsx`'s nesting order.
+  const { beginTransition } = useAuthTransition()
   return (
     <AuthUIProvider
       authClient={authClient}
@@ -57,12 +61,27 @@ export default function BetterAuthClientProvider({ children }: { children: React
     >
       <VexAdminAuthAdapterProvider
         value={{
+          // `modal=1` is the signal `app/@auth/(.)auth/[pathname]/view.tsx`
+          // uses to tell this deliberate "Sign in" click apart from a server
+          // GUARD redirect (middleware, or `/admin`'s own `redirect(...)`)
+          // that also carries `redirectTo` — both would otherwise collapse
+          // onto the same `isGuardRedirect` branch and render the full-screen
+          // card instead of the dialog `AdminTopNav`'s control expects.
           signInHref: (redirectTo) =>
-            `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}`,
-          signOut: () =>
-            signOut()
+            `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}&modal=1`,
+          signOut: () => {
+            // Set BEFORE the network call starts, not after it resolves — the
+            // one case the identity is known with zero ambiguity ahead of
+            // time (always `null`), so list hooks start ignoring stale pages
+            // as early as possible (`@vexcms/react`'s `useAuthTransition`).
+            // `useBeginAuthTransitionOnSessionChange` (`~/components/providers/convex.tsx`)
+            // also reactively catches this once `authClient.useSession()`
+            // updates, so this call is a latency optimization, not the only path.
+            beginTransition(null)
+            return signOut()
               .then(() => router.refresh())
-              .catch(() => router.refresh()),
+              .catch(() => router.refresh())
+          },
         }}
       >
         {children}

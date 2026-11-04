@@ -27,7 +27,7 @@ export type AdminHrefTarget =
  * re-export, `@vexcms/next`) computes a path. Replaces 30 hand-built
  * `` `${basePath}/...` `` / hardcoded `"/admin/..."` call sites across the
  * nav, breadcrumb, dashboard, list views, and all 16 field types' `Cell.tsx`
- * title links (Step 17 audit finding 7) — grep for `adminHref(` to confirm
+ * title links — grep for `adminHref(` to confirm
  * no hand-built admin URL remains outside this file.
  *
  * `"collections"` is the collections-only index page at `/{basePath}/collections`
@@ -35,7 +35,7 @@ export type AdminHrefTarget =
  * parallel to the pre-existing `"globals"` index at `/{basePath}/globals`
  * (`GlobalsListView`). Collection targets resolve under `/collections/` —
  * `/{basePath}/collections/{slug}`, `/{basePath}/collections/{slug}/{id}` —
- * and `/{basePath}/{slug}` 404s (launch spec H, no redirect). Global targets
+ * and `/{basePath}/{slug}` 404s (no redirect). Global targets
  * are unchanged: `/{basePath}/globals/{slug}`. The route parser
  * `NextAdminPage.tsx` reads these same two first-segment shapes
  * (`collections[/<slug>[/<id>]]`, `globals[/<slug>]`) and `notFound()`s on

@@ -29,7 +29,7 @@ import type { VexResourceSlug } from "../../types/generated";
  *
  * When `props.data` is given AND any block's own `fields` (recursively)
  * declares an `admin.condition` (`hasFieldConditions`), each block item
- * needs its own `siblingData` the same way an array item does (Step 9) —
+ * needs its own `siblingData` the same way an array item does —
  * items are positional, so there is no single schema-build-time
  * `data[key]`. `blockSchemaFor` (the per-block-type `z.object()` builder) is
  * shared between the base pass and the per-item re-parse so block schemas

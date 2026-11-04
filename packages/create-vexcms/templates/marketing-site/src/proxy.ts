@@ -1,6 +1,5 @@
 import { api } from "@convex/_generated/api";
 import {
-  canAccessAdminPanel,
   LIVE_PREVIEW_COOKIE,
   LIVE_PREVIEW_COOKIE_MAX_AGE_SECONDS,
   LIVE_PREVIEW_QUERY_PARAM,
@@ -10,112 +9,48 @@ import { fetchQuery } from "convex/nextjs";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { AUTH_COOKIE_PREFIX } from "~/db/constants";
-import vexConfig from "~/vex.config";
 
 /**
- * Both names Better Auth may give this app's session cookie: `__Secure-` over
- * https, bare over http. Derived from `AUTH_COOKIE_PREFIX` so a different
- * Better Auth app's cookie on the same host (e.g. another `localhost` port) is
- * never read — or deleted — as ours.
- */
-const SESSION_COOKIES = {
-  https: `__Secure-${AUTH_COOKIE_PREFIX}.session_token`,
-  http: `${AUTH_COOKIE_PREFIX}.session_token`,
-} as const;
-
-/**
- * Paths the proxy must never guard, because they are where it sends people.
+ * Paths the proxy must never gate, because they are where it sends people.
  * Guarding them turns a Convex outage into an infinite redirect loop.
  */
 const ALWAYS_ALLOWED: Record<string, true> = { "/": true, "/unauthorized": true };
 
 /**
- * Session gate for the private surfaces named in `config.matcher`.
+ * Public-route pass for this app — the only gate left in `proxy.ts`:
+ * the admin panel's session gate used to
+ * live here too (`guardAdminRequest`), but it imported `~/vex.config` — a
+ * module that drags client components and `@vexcms/react` along with it —
+ * into the edge bundle for every request, including ones this proxy never
+ * even reached. `/admin/*` is excluded from `config.matcher` below, so this
+ * function never runs for it at all; the gate now lives entirely in
+ * `src/app/(vexcms)/admin/[[...path]]/page.tsx`, which fails closed the same
+ * way this one used to (see that file's doc comment).
  *
  * **This is the marketing-site variant.** The base template guards every route
  * except a small allowlist, which is right for a private app and wrong here:
  * a marketing site's pages are public content served from the CMS, so a
- * fail-closed gate over `/(.*)` sends anonymous visitors from `/features` and
- * `/roadmap` straight to sign-in. The matcher below inverts that — only the
- * admin panel is gated, and the public site is public.
- *
- * The admin panel is not defended by this gate alone: every collection query
- * runs the RBAC rules from `vex.config.ts`, and unauthenticated callers
- * resolve through `anonRole`. The proxy is defence in depth and a redirect
- * convenience, not the access control — `guardAdminRequest` (below) now acts on
- * that directly: when `anonRole` itself grants `adminPanel.access`, this gate
- * skips its own session check entirely for `/admin/*` (Polish — anonymous admin
- * access).
- *
- * Fails **closed**: if the session cannot be verified — no cookie, no matching
- * session, or the Convex lookup throwing — the request is redirected rather than
- * served. A verification error is not evidence of a valid session, and serving
- * the page anyway would drop authentication for every guarded route the moment
- * Convex became unreachable.
- *
- * Two distinct outcomes, deliberately:
- * - **No/invalid session** → `/auth/sign-in`, clearing the stale cookie so the
- *   presence check cannot lie on the next request.
- * - **Verification failed** (Convex unreachable, timeout) → `/unauthorized`,
- *   leaving cookies intact: the session may well be fine, so signing the user
- *   out and discarding it would be wrong.
- *
- * @param request - The incoming request.
- * @returns `NextResponse.next()` when the session is verified, otherwise a
- *   redirect to sign-in or to the unauthorized page.
- */
-export async function proxy(request: NextRequest) {
-  if (ALWAYS_ALLOWED[request.nextUrl.pathname]) {
-    return NextResponse.next();
-  }
-
-  if (request.nextUrl.pathname.startsWith("/admin")) {
-    return guardAdminRequest(request);
-  }
-
-  return grantPreviewIfRequested(request);
-}
-
-/**
- * Session gate for the admin panel — fails closed, per the docstring above.
- *
- * Checks `canAccessAdminPanel({ access: vexConfig.access, user: null })` FIRST
- * (Polish — anonymous admin access, developer-approved): a pure, synchronous,
- * no-I/O check — it never throws (the `adminPanel.access` subject carries no
- * document, evaluated with `scope: "any"`). When `access.ts` grants
- * `adminPanel.access` to its `anonRole`, this is `true` regardless of session
- * state, and the request proceeds WITHOUT the session-verification Convex
- * round trip below. An app that has not configured that (the default) gets
- * `false` here — byte-identical fall-through to the pre-existing session gate.
- */
-async function guardAdminRequest(request: NextRequest) {
-  if (canAccessAdminPanel({ access: vexConfig.access, user: null })) {
-    return NextResponse.next();
-  }
-
-  const sessionStatus = await resolveSessionStatus(request);
-
-  if (sessionStatus === "verification-failed") {
-    return redirectToUnauthorized(request);
-  }
-  if (sessionStatus === "unauthenticated") {
-    return redirectToSignIn(request);
-  }
-  return NextResponse.next();
-}
-
-/**
- * Grants live-preview mode to a public-route request carrying `?vexLivePreview=1`
- * and a verified admin session, by setting the `vex-live-preview` marker
- * cookie that `LivePreviewProvider` gates on client-side. Fails **open** — an
+ * fail-closed gate over `/(.*)` would send anonymous visitors from
+ * `/features` and `/roadmap` straight to sign-in. There is no session gate
+ * here at all anymore — the only thing this proxy does is grant live-preview
+ * mode to a request carrying `?vexLivePreview=1` and a verified admin
+ * session, by setting the `vex-live-preview` marker cookie that
+ * `LivePreviewProvider` gates on client-side. Fails **open** — an
  * unauthenticated or unverifiable session here renders the page normally
  * rather than redirecting.
  *
  * A cookie rather than a forwarded request header: a header would have to be
  * read with `next/headers` in the site layout, which opts every public route
  * out of static prerendering.
+ *
+ * @param request - The incoming request.
+ * @returns `NextResponse.next()`, optionally carrying the live-preview cookie.
  */
-async function grantPreviewIfRequested(request: NextRequest) {
+export async function proxy(request: NextRequest) {
+  if (ALWAYS_ALLOWED[request.nextUrl.pathname]) {
+    return NextResponse.next();
+  }
+
   if (request.nextUrl.searchParams.get(LIVE_PREVIEW_QUERY_PARAM) !== "1") {
     return NextResponse.next();
   }
@@ -137,7 +72,7 @@ async function grantPreviewIfRequested(request: NextRequest) {
   return response;
 }
 
-/** Reads and verifies the Better Auth session cookie — shared by both branches above. */
+/** Reads and verifies the Better Auth session cookie — used by `proxy`. */
 async function resolveSessionStatus(request: NextRequest): Promise<
   "authenticated" | "unauthenticated" | "verification-failed"
 > {
@@ -151,8 +86,7 @@ async function resolveSessionStatus(request: NextRequest): Promise<
     });
     return session?.user ? "authenticated" : "unauthenticated";
   } catch {
-    // Fail closed for the admin branch; grantPreviewIfRequested treats this as
-    // "no preview" rather than an error.
+    // `proxy` treats this as "no preview" rather than an error.
     return "verification-failed";
   }
 }
@@ -162,47 +96,11 @@ function extractToken(cookieValue: string) {
   return cookieValue.includes(".") ? cookieValue.split(".")[0] : cookieValue;
 }
 
-/**
- * Redirect for a caller with no usable session. Clears the session cookies so
- * the presence check cannot lie on the next request.
- *
- * @param request - The request being rejected.
- * @returns A redirect to sign-in preserving the intended destination.
- */
-function redirectToSignIn(request: NextRequest) {
-  const signInUrl = new URL("/auth/sign-in", request.url);
-  // Preserve where the user was headed (path + query)
-  signInUrl.searchParams.set("redirectTo", request.nextUrl.pathname + request.nextUrl.search);
-
-  const response = NextResponse.redirect(signInUrl);
-  // Clear the stale cookie so the presence-check never lies again. The
-  // `__Secure-` name must be expired with `secure: true` — browsers reject any
-  // `Set-Cookie` for a `__Secure-` name that lacks it, so a bare delete is a
-  // silent no-op.
-  response.cookies.delete({ name: SESSION_COOKIES.https, path: "/", secure: true });
-  response.cookies.delete({ name: SESSION_COOKIES.http, path: "/" });
-  return response;
-}
-
-/**
- * Redirect for a caller whose session could not be *verified* — as opposed to
- * one who has none.
- *
- * Cookies are deliberately left intact: the session is probably valid and the
- * verification path (Convex) is simply unavailable, so discarding it would sign
- * out every user during an outage. `/unauthorized` is exempt from this proxy, so
- * this cannot loop.
- *
- * @param request - The request that could not be verified.
- * @returns A redirect to the unauthorized page.
- */
-function redirectToUnauthorized(request: NextRequest) {
-  return NextResponse.redirect(new URL("/unauthorized", request.url));
-}
-
 export const config = {
   // Allowlist, not denylist. The base template denies everything except a few
   // paths; here the public site IS the product, so the gate names the private
   // surfaces explicitly. Anything added under `(vexcms)` must be added here.
-  matcher: ["/admin/:path*", "/((?!_next/static|_next/image|favicon.ico).*)"],
+  // `admin` is excluded on purpose — its gate lives in the admin page itself,
+  // not here (see the doc comment on `proxy` above).
+  matcher: ["/((?!admin|_next/static|_next/image|favicon.ico).*)"],
 };

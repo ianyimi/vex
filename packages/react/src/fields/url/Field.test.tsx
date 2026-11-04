@@ -207,7 +207,7 @@ runFieldInputContractSuite({
         expect(screen.queryByText("Invalid URL")).not.toBeInTheDocument();
       });
 
-      // CORE-2 (fixed in Step 1): `urlFieldToInputSchema`'s required branch
+      // CORE-2: `urlFieldToInputSchema`'s required branch
       // is now `z.string({ error: requiredError }).min(1, requiredError).pipe(z.url())`
       // — `.min(1)` runs on the plain string and short-circuits the pipe, so
       // an empty required field correctly reports "This field is required."

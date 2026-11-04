@@ -38,7 +38,7 @@ export const getBySlug = query({
  * live-preview session (`?vexLivePreview=1` plus the session-verified
  * `vex-live-preview` cookie `proxy.ts` sets); a normal page load never reaches this.
  *
- * Passes `drafts: true` so Step 13's published-only filter does not apply, and
+ * Passes `drafts: true` so the default published-only filter does not apply, and
  * `access: { action: DRAFT_ACTIONS.readDrafts }` so a row only reaches the caller
  * when their RESOLVED session (never a client-supplied claim — `find` resolves `ctx`
  * through the bound `vexServerApi`'s `getAuth`) is granted `readDrafts` on `pages`.
@@ -81,7 +81,7 @@ export const getBySlugPreview = query({
 /**
  * Returns `{ slug, createdAt, updatedAt? }` for every page document.
  *
- * Consumed by `app/sitemap.ts` and, once Step 7 lands, `[slug]/page.tsx`'s
+ * Consumed by `app/sitemap.ts` and `[slug]/page.tsx`'s
  * `generateStaticParams`. Access is bypassed for the same reason `getBySlug`
  * bypasses it: both are read at build time and by anonymous crawlers, neither
  * of which carries a session.

@@ -6,7 +6,7 @@ import { useCanReadField } from "./useCanReadField";
 import { VexConfigProvider } from "../config/VexConfigContext";
 import { VexAuthProvider } from "../auth/VexAuthContext";
 
-// Developer decision (binding, "access-system-fields"): `_creationTime`/
+// `_creationTime`/
 // `updatedAt`/`vex_status` (on a versioned collection) and a `ui()`-type
 // field (e.g. `wordCount`) are all real, gateable field-permission keys now
 // — `useCanReadField` must answer identically for all of them, through the

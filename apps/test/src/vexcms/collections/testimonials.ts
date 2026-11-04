@@ -5,13 +5,13 @@ import { TestimonialFeatureRowAction } from "~/components/TestimonialFeatureRowA
 import { TABLE_SLUG_IMAGES, TABLE_SLUG_TESTIMONIALS, TABLE_SLUG_USERS, TESTIMONIAL_SOURCES } from "~/db/constants"
 
 /**
- * Step 24 (list-view-overhaul) acceptance collection: 200 seeded rows,
- * exercising every list-view behavior landed by Steps 1-23 in one place.
+ * List-view acceptance collection: 200 seeded rows,
+ * exercising every list-view behavior in one place.
  *
  * - `admin.view.sort` — `updatedAt` desc, the auto-injected `commitTs()` field
  *   (`2026-10-28-committs-field`), proving the default view sorts by it.
  * - `admin.view.columns` — `customerName` pinned left (`ColumnEntry.pinned`)
- *   plus explicit widths (Step 21 resizable-column defaults).
+ *   plus explicit widths (resizable-column defaults).
  * - `admin.view.searchFields` — `customerName` + `company`, both declaring
  *   their own `searchIndex` (required by `validateSavedListViewConfig`).
  * - `source` — indexed (`by_source`) + `enableSorting: true`, the
@@ -20,7 +20,7 @@ import { TABLE_SLUG_IMAGES, TABLE_SLUG_TESTIMONIALS, TABLE_SLUG_USERS, TESTIMONI
  *   1. `featured` — a declared filter + its OWN pinned column entry
  *      (`rating` pinned right, different from the default view's pin).
  *   2. `with-contributor` — filters on the `contributorId` relationship
- *      field (Step 22 FilterInput target), proving a relationship-filtered
+ *      field (a FilterInput target), proving a relationship-filtered
  *      preset view.
  *   3. `needs-review` — a server-resolved hidden `where` on `internalScore`,
  *      a field the `contributor`/`user` roles cannot read at all
@@ -133,7 +133,7 @@ export const testimonials = defineCollection({
         { label: "Survey", value: TESTIMONIAL_SOURCES.survey },
         { label: "Referral", value: TESTIMONIAL_SOURCES.referral },
       ],
-      description: "Where this testimonial was collected from — indexed for sorted/filtered list queries.",
+      description: "Where this testimonial was collected from.",
     }),
     featured: checkbox({
       label: "Featured",

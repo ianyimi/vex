@@ -76,7 +76,7 @@ interface StagedFilesEditorProps {
 }
 
 /**
- * Step 2 of the upload flow: one accordion panel per staged file.
+ * The second phase of the upload flow: one accordion panel per staged file.
  *
  * A real component rather than an inline branch of `form.Field`'s render prop
  * because it owns `useState`. A render prop is called by its parent during
@@ -225,8 +225,8 @@ function StagedFilesEditor({
  * Uses TanStack Form array field API (field.pushValue, field.removeValue).
  * Pattern follows FormArray and FormBlocks.
  *
- * Step 1 (empty state): Dropzone + file picker for staging files.
- * Step 2 (files staged): Accordion forms for editing metadata before upload.
+ * Empty state: Dropzone + file picker for staging files.
+ * Once files are staged: Accordion forms for editing metadata before upload.
  *
  * Uploads all files in parallel with Promise.all, shows progress as fraction
  * (e.g. "2/5"), and auto-closes modal on success.

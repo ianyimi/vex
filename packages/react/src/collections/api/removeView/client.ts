@@ -30,12 +30,11 @@ export interface RemoveViewClientArgs<TCollectionSlug extends CollectionSlug = C
  * otherwise.
  *
  * Wraps `useConvexMutation(vexConvexApi.removeView)`. A React hook (the
- * `use` prefix is REQUIRED, not just convention — developer-reported crash:
- * named `removeView()` without it, `apps/test`'s `reactCompiler: true`
- * treated the call as a pure, memoizable function rather than a hook, so a
- * later render could skip re-invoking it and silently drop its internal
- * `useConvexMutation` call — a hook-order mismatch crash ("change in the
- * order of Hooks"), confirmed live). Call at the top level of a React
+ * `use` prefix is REQUIRED, not just convention — a non-`use`-prefixed
+ * wrapper can be treated as a pure, memoizable function by the React
+ * Compiler, so a later render could skip re-invoking it and silently
+ * drop its internal `useConvexMutation` call — a hook-order mismatch
+ * crash ("change in the order of Hooks")). Call at the top level of a React
  * component, as its own statement, BEFORE `useMutation` (not inlined as
  * `useMutation`'s own `mutationFn` argument) — pass the returned function
  * on as `mutationFn`.

@@ -164,7 +164,7 @@ describe("localSavedListViewsStore", () => {
   it("prunes a stale cookie entry whose localStorage view is gone, on hydration", () => {
     // Isolated to its own collection slug: `pruneStaleListViewsCookie`'s
     // `prunedForKey` dedup is keyed per collection for the lifetime of this
-    // module (Decision 41: "once this hydration pass"), so reusing the
+    // module (once this hydration pass has run), so reusing the
     // file-level `collection` constant here would already be marked pruned
     // by the earlier tests' own `useLocalSavedListViews({ project, collection })`
     // mounts above, and this test's own prune pass would silently no-op.
@@ -259,7 +259,7 @@ describe("localSavedListViewsStore", () => {
     expect(parseLocalSavedListViewsIndexCookie({ cookieValue: after })).toEqual([{ viewId: "v1", name: "Stable View" }]);
   });
 
-  it("saveLocalSavedListView throws for the reserved \"default\" viewId (Decision 45/48)", () => {
+  it("saveLocalSavedListView throws for the reserved \"default\" viewId", () => {
     expect(() =>
       saveLocalSavedListView({ basePath: "/", project, collection, view: { viewId: "default", name: "Hijacked", state: {} } }),
     ).toThrow(/reserved default-view id/);

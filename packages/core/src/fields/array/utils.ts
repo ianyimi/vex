@@ -37,7 +37,7 @@ export function arrayPluralLabel(field: { label: string }): string {
  * The one predicate every "does this array item need a stored `id`"
  * decision shares — the Convex validator (`validator.ts`), the admin form
  * schema (`inputSchema.ts`), type generation (`config.ts`), the write-path
- * backfill below, and `FormArray`'s client-side id assignment (Step 15) —
+ * backfill below, and `FormArray`'s client-side id assignment —
  * so a second object-shaped field type later is a one-line change here,
  * not five.
  *
@@ -52,7 +52,7 @@ export function isObjectShapedArrayItem(itemField: AdminField): boolean {
  * Assigns a fresh `id` to one object-shaped array item that doesn't already
  * carry a (string) one. Shared by the server write path
  * ({@link assignArrayItemIds}, below) and `FormArray`'s own `handleAdd`/
- * `handleDuplicate` (Step 15), so both sides generate ids identically —
+ * `handleDuplicate`, so both sides generate ids identically —
  * mirroring how `cloneBlockWithFreshIds` is the one place block ids get
  * (re)assigned.
  *

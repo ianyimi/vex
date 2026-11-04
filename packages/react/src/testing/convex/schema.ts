@@ -12,7 +12,7 @@ import type { TestConvex } from "convex-test";
  * Minimal, self-contained Convex schema for `@vexcms/react`'s `./testing`
  * subpath — one `documents` table, just enough to seed relationship targets
  * for the convex-test bridge (`bridge.ts`) and the relationship field
- * fixture built on top of it (spec step 11).
+ * fixture built on top of it.
  *
  * Deliberately NOT `packages/core/src/api/test/convex/schema.ts`: that
  * fixture lives under core's `src/api/test/**`, which `tsconfig.build.json`
@@ -122,7 +122,7 @@ export const testModules: Record<string, () => Promise<unknown>> = {
 /**
  * Seeds `count` documents titled `"Doc 0"`, `"Doc 1"`, … into `t`'s
  * `documents` table, returning their real generated ids in insertion order.
- * Used by `usePaginatedQuery.test.tsx` (Step 3) to page through a
+ * Used by `usePaginatedQuery.test.tsx` to page through a
  * predictable, ordered document set — convex-test's default index preserves
  * this insertion order, so tests can assert exact page contents by title.
  *

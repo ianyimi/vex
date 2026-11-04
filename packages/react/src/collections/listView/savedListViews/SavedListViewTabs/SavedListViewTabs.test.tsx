@@ -15,7 +15,7 @@ import { encodeViewUrlValue, type SavedListViewEntry } from "../useSavedListView
 import { SavedListViewTabs } from "./index";
 
 // Same pattern `ListViewPeek.test.tsx` already establishes — mocked so the shared-views error
-// toast (polish fixes, Decision 1) can be asserted directly, not just "the tab row doesn't
+// toast can be asserted directly, not just "the tab row doesn't
 // crash."
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -146,8 +146,8 @@ describe("SavedListViewTabs (prerender)", () => {
     expect(html).toContain("Server Tab");
   });
 
-  // Developer-reported: `localIndex` (what the server reads back out of
-  // the `vex-admin:<collection>` cookie, Decision 41) truncates a local
+  // `localIndex` (what the server reads back out of
+  // the `vex-admin:<collection>` cookie) truncates a local
   // view's name to `ADMIN_COOKIE_LOCAL_VIEW_NAME_MAX_CHARS` code points
   // (`serializeAdminCollectionCookie`), but `localStorage`'s own
   // `VexViewConfig.name` is never touched — rendering the full name
@@ -250,7 +250,7 @@ describe("SavedListViewTabs (prerender)", () => {
   });
 });
 
-// Developer-reported bug: the default ("All") view's Rename/Delete were
+// Bug: the default ("All") view's Rename/Delete were
 // gated the SAME loose way a local/shared view's are (`source === local ||
 // canX`), which doesn't exclude `default`/`config` at all — a caller with
 // `updateView`/`deleteView` saw them fully ENABLED for the default view
@@ -341,7 +341,7 @@ describe("SavedListViewTabs — Rename/Delete disabled for default/config views"
   });
 });
 
-// Developer-reported fix: switching views must write the URL atomically
+// Switching views must write the URL atomically
 // (`urlState.applyView`, ONE call covering q/qf/sort/filter/size/view/cols,
 // diffed against the TARGET view's own baseline — superseding the OLD
 // per-field `setQ`/`setQf`/.../`setView` sequence, which diffed against
@@ -354,7 +354,7 @@ describe("SavedListViewTabs — Rename/Delete disabled for default/config views"
 // default source is already covered structurally — `applyView()`'s own
 // code path for it is identical, just with `isDefault` driving
 // `urlState.applyView`'s own `view` field, not `onColumnsStateChange`'s.
-describe("SavedListViewTabs — applyView atomic switch (developer-reported)", () => {
+describe("SavedListViewTabs — applyView atomic switch", () => {
   const columnsCollection = defineCollection({
     slug: "posts",
     fields: { title: text(), slug: text(), body: text() },
@@ -394,7 +394,7 @@ describe("SavedListViewTabs — applyView atomic switch (developer-reported)", (
    * the view's own explicitly-named columns are visible, every OTHER field
    * on the collection is present but hidden, and nothing is lost or
    * duplicated — without coupling to `completeListViewColumnOrder`'s own specific
-   * ordering/shape choices (polish fix: the previous version of these tests
+   * ordering/shape choices (the previous version of these tests
    * asserted the exact returned array, which breaks on any unrelated
    * `completeListViewColumnOrder` change rather than on a real regression in THIS
    * component's own behavior).
@@ -443,7 +443,7 @@ describe("SavedListViewTabs — applyView atomic switch (developer-reported)", (
       visible: ["slug"],
       hidden: ["title", "body", "updatedAt"],
     });
-    // Developer decision (binding, "peek-resize-save-rule"): `cfg-narrow` has no saved
+    // `cfg-narrow` has no saved
     // width of its own — switching to it must leave `peekWidth` exactly as it is, never
     // resetting this browser's own remembered preference to the hardcoded default.
     expect(onPeekWidthChange).not.toHaveBeenCalled();
@@ -547,15 +547,15 @@ describe("SavedListViewTabs — applyView atomic switch (developer-reported)", (
   });
 });
 
-// Developer-reported: deleting a view (local or shared) left its tab on
+// Deleting a view (local or shared) left its tab on
 // screen until a full page refresh — `mergeListViews`'s cookie-index
 // placeholder loop trusted `initialLocalIndex` unconditionally for any
 // `viewId` missing from the live `local`/`shared` source, even once that
 // source had genuinely resolved (fixed via `localHydrated` gating in
 // `useSavedListViews.ts`; shared views never had this issue — they're driven
-// entirely by the live query, no static index involved — but Main asked
-// for coverage of both sources, active and non-active, to lock it in).
-describe("SavedListViewTabs — delete removes the tab immediately, no stale ghost entry (developer-reported)", () => {
+// entirely by the live query, no static index involved; these tests cover
+// both sources, active and non-active, to lock it in).
+describe("SavedListViewTabs — delete removes the tab immediately, no stale ghost entry", () => {
   function urlStateFor(view: string | undefined, setView: (value: string | undefined) => void) {
     return {
       q: undefined,
@@ -730,7 +730,7 @@ describe("SavedListViewTabs — delete removes the tab immediately, no stale gho
   });
 });
 
-// Developer-reported: clicking "All views" opened TWO menus at once — one
+// Clicking "All views" used to open TWO menus at once — one
 // correctly positioned under the button, one at the viewport's top-left
 // corner. Root cause: up to 4 `TAB_OVERFLOW_STAGES` Popovers were
 // simultaneously MOUNTED (whichever satisfied `totalTabs > stage.count` for
@@ -743,11 +743,11 @@ describe("SavedListViewTabs — delete removes the tab immediately, no stale gho
 // there is no second, CSS-hidden-but-mounted instance left to ever share
 // state with. These tests seed 7 total views (well past the OLD code's
 // highest `TAB_OVERFLOW_STAGES` threshold of 8 … actually past its count-6
-// stage, the one the developer's own repro screenshot's view count
+// stage, the one a real repro screenshot's view count
 // triggered) — `getByRole`/`getByPlaceholderText` below THROW on more than
 // one match, so a regression back to multiple mounted triggers/popovers
 // fails these tests outright, not just a missed positive assertion.
-describe("SavedListViewTabs — single views trigger, no duplicate popover (developer-reported)", () => {
+describe("SavedListViewTabs — single views trigger, no duplicate popover", () => {
   function blankUrlState(view: string | undefined, applyView: (...args: unknown[]) => void = () => {}) {
     return {
       q: undefined,
@@ -779,7 +779,7 @@ describe("SavedListViewTabs — single views trigger, no duplicate popover (deve
 
   // The trigger now renders TWO labels unconditionally — a static "All views" (visible
   // `@md/list` and up) and the active view's own name (visible below `@md/list`) — pure
-  // CSS toggles which is shown (developer-approved), so BOTH are present in jsdom (which
+  // CSS toggles which is shown, so BOTH are present in jsdom (which
   // applies no real CSS), making the button's own computed accessible NAME an
   // unpredictable concatenation of both. Locate it by its distinguishing icon instead.
   function getViewsTrigger(container: HTMLElement): HTMLElement {
@@ -846,7 +846,7 @@ describe("SavedListViewTabs — single views trigger, no duplicate popover (deve
     sharedViewRows = [];
   });
 
-  it("the trigger renders BOTH labels unconditionally — a static 'All views' and the active view's own name — pure CSS decides which shows (developer-approved: static on md/lg where the tab row itself is visible, active name on small screens where only the trigger remains, so the caller can still tell which view is active even if its own tab has wrapped off the visible line)", () => {
+  it("the trigger renders BOTH labels unconditionally — a static 'All views' and the active view's own name — pure CSS decides which shows (static on md/lg where the tab row itself is visible, active name on small screens where only the trigger remains, so the caller can still tell which view is active even if its own tab has wrapped off the visible line)", () => {
     seedManyViews();
     const { container } = render(
       <SavedListViewTabs
@@ -888,7 +888,7 @@ describe("SavedListViewTabs — single views trigger, no duplicate popover (deve
       />,
       { wrapper },
     );
-    // The wrapping div is the clipping viewport (Decision 43 revised):
+    // The wrapping div is the clipping viewport:
     // fixed one-line height + `overflow-hidden`, `TabsList` itself set to
     // `flex-wrap` so tabs that don't fit the first line wrap onto an
     // invisible second-plus line rather than a per-tab computed reveal
@@ -905,10 +905,11 @@ describe("SavedListViewTabs — single views trigger, no duplicate popover (deve
   });
 });
 
-// Developer-reported regression check: removing the `<QueryErrorBoundary>` (the Suspense
+// Removing the `<QueryErrorBoundary>` (the Suspense
 // split's own error-catching mechanism — see `ListViewTabStrip`'s own doc comment for why
-// it was removed) must not have dropped polish fixes' Decision 1 — a shared-views query
-// failure still needs the SAME "Couldn't load shared views · Retry" notice, with the
+// it was removed) must not have dropped the "Couldn't load shared
+// views · Retry" notice — a shared-views query
+// failure still needs the SAME notice, with the
 // default/config/local tabs intact (not a crash, not a blank tab row), in the SAME frame
 // (the tab row's own DOM shape never changes between a loading/error/resolved shared-views
 // state — `views` already falls back to default/config/local-only in all three). A
@@ -918,7 +919,7 @@ describe("SavedListViewTabs — single views trigger, no duplicate popover (deve
 // reading an already-"error" dehydrated cache entry would on first paint — there is no
 // separate "pending, then later errors" case to simulate, since `useSavedListViews` is a plain
 // `useQuery`, not Suspense-gated.
-describe("SavedListViewTabs — shared-views query error (developer-reported regression check)", () => {
+describe("SavedListViewTabs — shared-views query error (regression check)", () => {
   function blankUrlState(view: string | undefined) {
     return {
       q: undefined,

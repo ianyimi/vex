@@ -4,11 +4,16 @@ import { FirstAdminBootstrap } from "~/components/FirstAdminBootstrap"
 import { ThemeStyle } from "~/components/ThemeStyle"
 
 /**
- * Frontend shell: first-paint theme CSS, the first-admin bootstrap, and the
- * `@auth` parallel slot. The marketing chrome (header/footer) lives in the
- * nested `(site)` group so auth routes (`/auth/sign-in`, sign-up, …) render
- * standalone — themed, but without the site navigation wrapped around the
- * form.
+ * Frontend shell: first-paint theme CSS and the first-admin bootstrap. The
+ * marketing chrome (header/footer) lives in the nested `(site)` group so
+ * auth routes (`/auth/sign-in`, sign-up, …) render standalone — themed, but
+ * without the site navigation wrapped around the form.
+ *
+ * The `@auth` parallel slot used to live under this group (`(frontend)/@auth`)
+ * but has moved to `app/@auth` — a sibling of the root layout — so the same
+ * intercepting `/auth/[pathname]` modal also covers `(vexcms)` (the admin
+ * top-bar "Sign in" button), not just this group. The root layout renders it
+ * now; this layout no longer takes an `auth` prop.
  *
  * `<ThemeStyle />` belongs at THIS level, not in `(site)`. It is the highest
  * layout allowed to read Convex (the root stays free of Convex reads) and the
@@ -20,10 +25,8 @@ import { ThemeStyle } from "~/components/ThemeStyle"
  * `fetchQuery`), so `/` and `/[slug]` still build static.
  */
 export default function FrontendLayout({
-  auth,
   children,
 }: Readonly<{
-  auth: ReactNode
   children: ReactNode
 }>) {
   return (
@@ -31,7 +34,6 @@ export default function FrontendLayout({
       <ThemeStyle />
       <FirstAdminBootstrap />
       {children}
-      {auth}
     </>
   )
 }

@@ -15,7 +15,7 @@ import { JsonEditor } from "../../ui/JsonEditor";
  * Fields tab and, recursively, for a `json` field nested inside a
  * `group`/`array`/`blocks` value.
  *
- * **No construction-order gate** (developer decision, after a round of
+ * **No construction-order gate** (after a round of
  * investigation that could not pin a reproducible application-level
  * cause): a prior `ui/heavyEditorGate.ts` mutex serialized every heavy
  * editor's first construction, based on a live hang (CPU-profiled,

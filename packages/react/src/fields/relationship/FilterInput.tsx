@@ -11,7 +11,7 @@ import { RelationshipPicker } from "./RelationshipPicker";
 /**
  * Relationship field filter row value control — a trigger `Button` that
  * opens the existing `RelationshipPicker` directly, registered as
- * `reactAdapter.fields.relationship.filterInput` (Decision 50). A filter
+ * `reactAdapter.fields.relationship.filterInput`. A filter
  * row always compares ONE value regardless of the field's own `hasMany`,
  * so `selectedIds`/`onSelect` collapse the picker's own multi-id contract
  * to a single id (`value ? [value] : []` / `onChange(ids[0])`).
@@ -26,8 +26,7 @@ import { RelationshipPicker } from "./RelationshipPicker";
  * (this trigger on a later render, `ListViewFilterChips.tsx`'s chip) picks it
  * up for free with no second query. The trigger's `aria-label` includes
  * the same visible text (`Filter value: ${label}`) — a static label would
- * hide the selected document's title from screen readers entirely
- * (developer-reported).
+ * hide the selected document's title from screen readers entirely.
  *
  * @param props - Component props.
  * @returns The trigger `Button`, and the picker dialog while open.

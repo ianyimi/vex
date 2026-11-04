@@ -39,7 +39,7 @@ export function arrayFieldToValidator<
   // Object-shaped items (group()) get a stored id — injected into the already-
   // generated `v.object({ ... })` string rather than threading a second parameter
   // through groupFieldToValidator, since a group used OUTSIDE an array must not
-  // carry one. array()'s own Step 9 edit forces `items.required: true`, so a group
+  // carry one. `array()` forces `items.required: true`, so a group
   // item's validator string is always the bare `v.object({...})`, never wrapped in
   // `v.optional(...)` — the anchor is exact.
   const resolvedItemValidator =

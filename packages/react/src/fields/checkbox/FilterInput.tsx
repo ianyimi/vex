@@ -1,7 +1,7 @@
 import type { CheckboxField, FilterInputProps } from "@vexcms/core";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui";
 
-/** `Select` options for a `checkbox` field's filter value — Decision 10 ships no boolean-specific widget, so this reuses the field-type-dispatch `Select` with fixed labels. Moved from `ListViewFilterBuilder.tsx`'s own `FILTER_BUILDER_BOOLEAN_OPTIONS`. */
+/** `Select` options for a `checkbox` field's filter value — ships no boolean-specific widget, so this reuses the field-type-dispatch `Select` with fixed labels. Moved from `ListViewFilterBuilder.tsx`'s own `FILTER_BUILDER_BOOLEAN_OPTIONS`. */
 export const CHECKBOX_FILTER_BOOLEAN_OPTIONS = [
   { label: "True", value: "true" },
   { label: "False", value: "false" },
@@ -9,14 +9,14 @@ export const CHECKBOX_FILTER_BOOLEAN_OPTIONS = [
 
 /**
  * Checkbox field filter row value control — a true/false `Select`,
- * registered as `reactAdapter.fields.checkbox.filterInput` (Decision 50).
+ * registered as `reactAdapter.fields.checkbox.filterInput`.
  * Moved verbatim from `ListViewFilterBuilder.tsx`'s own hand-coded
  * `renderFilterValueInput` `checkbox` branch, now this package's single
  * source of truth for it. `SelectValue`'s children render function shows
  * the option's own label (`"True"`/`"False"`), not the raw stored value
  * (`"true"`/`"false"`) — the same convention `ListViewFilterBuilder.tsx`'s
  * own operator `Select` and `DataTablePageSizeSelect.tsx` already use
- * (developer-reported: the raw value was visibly wrong, not just an
+ * (the raw value was visibly wrong, not just an
  * accessibility gap). `aria-label` reuses the SAME resolved label, so the
  * spoken name and the screen always agree.
  *

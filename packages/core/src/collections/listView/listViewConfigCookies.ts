@@ -1,8 +1,8 @@
 import { ADMIN_COOKIE_NAME, adminCollectionCookieName, parseAdminCollectionCookie, parseAdminCookie } from "../../adminCookie";
 
 /**
- * Per-browser list-view preferences that affect LAYOUT (Decision 42) — read
- * from cookies on the server (`NextAdminPage`, Step 14, via
+ * Per-browser list-view preferences that affect LAYOUT — read
+ * from cookies on the server (`NextAdminPage`, via
  * {@link parseListViewConfigCookies}) and written only by the client
  * (`listView/writeListViewConfigCookies.ts`'s `writeListViewDensityCookie`/
  * `writeListViewChipsVisibleCookie`), the same split `livePreview/panelCookie.ts`
@@ -10,7 +10,7 @@ import { ADMIN_COOKIE_NAME, adminCollectionCookieName, parseAdminCollectionCooki
  * happening in a `"use client"` hook.
  *
  * `density`/`chipsVisible` now live inside the consolidated `vex-admin`/
- * `vex-admin:<collection>` cookies (Decision 51) rather than their own
+ * `vex-admin:<collection>` cookies rather than their own
  * dedicated `vex-list-density`/`vex-list-chips:<collection>` cookies —
  * {@link parseListViewConfigCookies} is the only thing that changed; every
  * export below keeps its exact name/signature (some, like
@@ -26,26 +26,26 @@ export type ListDensity = "comfortable" | "compact";
  * exists yet.
  */
 export const PEEK_PANEL_DEFAULT_WIDTH_PX = 384;
-/** The peek panel's resize floor (Decision, developer-approved "peek-resize") — narrow enough for a field's label/value, wide enough to stay usable. */
+/** The peek panel's resize floor — narrow enough for a field's label/value, wide enough to stay usable. */
 export const PEEK_PANEL_MIN_WIDTH_PX = 320;
-/** The peek panel's resize ceiling, as a fraction of the viewport width (Decision, developer-approved "peek-resize") — never lets the panel crowd out the entire list. */
+/** The peek panel's resize ceiling, as a fraction of the viewport width — never lets the panel crowd out the entire list. */
 export const PEEK_PANEL_MAX_WIDTH_VIEWPORT_FRACTION = 0.6;
 
 /** The parsed shape {@link parseListViewConfigCookies} returns. */
 export interface ListViewConfigCookieValues {
-  /** Row density (Decision 29), or the default `"comfortable"` with no cookie yet. */
+  /** Row density, or the default `"comfortable"` with no cookie yet. */
   density: ListDensity;
-  /** Whether the filter-chip row is visible (Decision 42), or the default `true` with no cookie yet. */
+  /** Whether the filter-chip row is visible, or the default `true` with no cookie yet. */
   chipsVisible: boolean;
-  /** The Inspect peek panel's width in px (Decision, developer-approved "peek-resize"), or {@link PEEK_PANEL_DEFAULT_WIDTH_PX} with no cookie yet. */
+  /** The Inspect peek panel's width in px, or {@link PEEK_PANEL_DEFAULT_WIDTH_PX} with no cookie yet. */
   peekWidth: number;
-  /** The Inspect peek panel's remembered tab (Decision, developer-approved "peek-tab-memory"), or the default `"fields"` with no cookie yet — admin-wide, not per-collection/per-view. */
+  /** The Inspect peek panel's remembered tab, or the default `"fields"` with no cookie yet — admin-wide, not per-collection/per-view. */
   peekTab: "fields" | "json";
 }
 
 /**
  * Cookie names backing {@link ListViewConfigCookieValues}. Density is a single,
- * collection-agnostic cookie ("stored per browser", Decision 29) — unlike
+ * collection-agnostic cookie ("stored per browser") — unlike
  * `livePreviewPanelCookieName`, it needs no slug-scoped name-builder
  * function. `chipsVisible` IS collection-scoped (see
  * {@link listChipsVisibleCookieName}) — this entry holds only its prefix.
@@ -62,7 +62,7 @@ export interface ListViewConfigCookieReader {
 
 /**
  * Cookie name holding one collection's filter-chip-row visibility choice
- * (Decision 42) — scoped per collection, unlike `density`, because
+ * — scoped per collection, unlike `density`, because
  * visibility is a per-browser call about THIS collection's filters, not a
  * global list preference. Mirrors `livePreviewPanelCookieName`.
  *
@@ -80,7 +80,7 @@ export function listChipsVisibleCookieName(props: { collectionSlug: string }): s
  * interpretation of the stored values.
  *
  * Reads `density` off the consolidated `vex-admin` cookie and
- * `chipsVisible` off `vex-admin:<collectionSlug>` (Decision 51) —
+ * `chipsVisible` off `vex-admin:<collectionSlug>` —
  * unchanged signature/behavior from the caller's point of view.
  *
  * @param props.cookies - The request's cookie jar.
@@ -89,7 +89,7 @@ export function listChipsVisibleCookieName(props: { collectionSlug: string }): s
  * @returns `{ density, chipsVisible }` — `density` falls back to
  *   `"comfortable"` when the cookie is absent or holds anything other than
  *   `"comfortable"`/`"compact"`; `chipsVisible` falls back to `true`
- *   (Decision 10's "chips show by default") unless the cookie holds exactly
+ *   (chips show by default) unless the cookie holds exactly
  *   `false`.
  */
 export function parseListViewConfigCookies(props: {

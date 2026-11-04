@@ -42,9 +42,9 @@ import { ListViewPeekJsonTab } from "./ListViewPeekJsonTab";
 
 /**
  * Shown for both a `peek` id that matches no document and one the caller
- * cannot read — the panel never reveals which (Design Decision 27).
+ * cannot read — the panel never reveals which.
  *
- * Pinned by Design Decision 34, exact names/copy — not left to a later
+ * Exact names/copy are pinned here, not left to a later
  * design pass.
  */
 export const LIST_VIEW_PEEK_UNAVAILABLE_TITLE = "Can't show this document";
@@ -54,16 +54,16 @@ export const LIST_VIEW_PEEK_UNAVAILABLE_DESCRIPTION =
 
 /**
  * Classes for the ONE `div` {@link ListPeekPanel} renders — ONE element at
- * every width (Decision, developer-approved "one peek panel, never two
- * layouts at once", superseding Decision 43's always-mounted-Sheet-plus-
+ * every width (one peek panel, never two
+ * layouts at once, superseding an earlier always-mounted-Sheet-plus-
  * fixed-panel split): a full-width bottom sheet below `md` (768px), a
  * viewport-docked `fixed` right panel at `md` and wider. Pure CSS decides
  * which shape applies — no React state, no `@container/list` query (the
- * 768px split is a device property, Decision 22 point 3) — so a
+ * 768px split is a device property) — so a
  * `peek=<id>` deep link renders the right shape on the very first paint
  * at any width, no shift, no hydration flash.
  *
- * **Collapse rationale (developer-reported hard freeze, root-caused
+ * **Collapse rationale (a tab-switch hard freeze, root-caused
  * live, THEN root-caused further):** the previous design mounted BOTH
  * shapes unconditionally (a Base UI `Sheet` plus a separate plain `div`),
  * each with its OWN `<Tabs defaultValue="fields">` — so a `json`/
@@ -80,7 +80,7 @@ export const LIST_VIEW_PEEK_UNAVAILABLE_DESCRIPTION =
  * no other caller existed).
  *
  * **What used to come from Base UI's `Sheet`/`Dialog`, rebuilt here
- * instead (Main's own audit, 2026-11-xx):**
+ * instead:**
  * - `modal={false}` (no focus trap, no scroll lock) — N/A now; a plain
  *   `div` never had either to begin with.
  * - `disablePointerDismissal` (worked around Base UI's own "outside
@@ -128,11 +128,11 @@ const LIST_PEEK_PANEL_CLASSNAME = cn(
   "md:starting:translate-y-0 md:starting:opacity-100",
 );
 
-/** The mobile-only dim backdrop behind the bottom-sheet shape (`md:hidden`) — `pointer-events-none` so the list underneath stays interactive (Decision 27), exactly as the previous Base UI `Sheet`'s own backdrop behaved despite being a separate dialog primitive. */
+/** The mobile-only dim backdrop behind the bottom-sheet shape (`md:hidden`) — `pointer-events-none` so the list underneath stays interactive, exactly as the previous Base UI `Sheet`'s own backdrop behaved despite being a separate dialog primitive. */
 const LIST_PEEK_BACKDROP_CLASSNAME =
   "fixed inset-0 z-30 bg-black/10 pointer-events-none transition-opacity duration-150 supports-backdrop-filter:backdrop-blur-xs md:hidden";
 
-/** Pixels a single `ArrowLeft`/`ArrowRight` keypress on the peek's resize handle adjusts width by — matches `DataTable.tsx`'s own `RESIZE_STEP_PX` column-resize granularity (Decision, developer-approved "peek-resize": "same look and behavior as the DataTable column-resize handles"). */
+/** Pixels a single `ArrowLeft`/`ArrowRight` keypress on the peek's resize handle adjusts width by — matches `DataTable.tsx`'s own `RESIZE_STEP_PX` column-resize granularity (same look and behavior as the DataTable column-resize handles). */
 const RESIZE_PEEK_STEP_PX = 12;
 
 /**
@@ -179,18 +179,18 @@ export interface ListViewPeekProps<TDocument extends VexDocument = VexDocument> 
   rows: TDocument[];
   /**
    * Called with the next `peek` id: `undefined` to close (including Esc —
-   * handled by Step 15's `useListShortcuts`, not this component — a
+   * handled by `useListShortcuts`, not this component — a
    * backdrop click on the mobile `Sheet`, or its own close affordance), or
    * a neighbouring row's id from the header's Previous/Next buttons. Pass
    * `useListViewUrlState().setPeek` directly — the signatures match.
    */
   onPeekChange: (id: string | undefined) => void;
   /**
-   * The desktop panel's current width in px (Decision, developer-approved
-   * "peek-resize") — `ListViewConfigCookieValues.peekWidth`/the active view's own
+   * The desktop panel's current width in px —
+   * `ListViewConfigCookieValues.peekWidth`/the active view's own
    * saved `peekWidth`, SSR-resolved so a deep link renders at the right
    * width on first paint with no shift. Ignored by the mobile `Sheet`
-   * layout (Main: "mobile unchanged").
+   * layout (mobile unchanged).
    */
   width: number;
   /**
@@ -200,8 +200,8 @@ export interface ListViewPeekProps<TDocument extends VexDocument = VexDocument> 
    */
   onWidthChange: (width: number | undefined) => void;
   /**
-   * The remembered Fields/JSON tab (Decision, developer-approved
-   * "peek-tab-memory") — admin-wide (`ListViewConfigCookieValues.peekTab`), SSR-
+   * The remembered Fields/JSON tab — admin-wide
+   * (`ListViewConfigCookieValues.peekTab`), SSR-
    * resolved so a `?peek=` deep link opens on the remembered tab at
    * first paint, no flash.
    */
@@ -211,17 +211,17 @@ export interface ListViewPeekProps<TDocument extends VexDocument = VexDocument> 
 }
 
 /**
- * Non-modal panel for inspecting one row's raw field values (Design
- * Decision 27), responsive across two breakpoints:
+ * Non-modal panel for inspecting one row's raw field values,
+ * responsive across two breakpoints:
  * - A plain `div` beside the table at `@5xl/list` and wider, or
  *   viewport-docked to the right below it — chosen entirely by CSS
- *   (`@5xl/list:` variants on {@link LIST_PEEK_PANEL_CLASSNAME}, Decision
- *   43), with no measurement and no React state for the switch.
+ *   (`@5xl/list:` variants on {@link LIST_PEEK_PANEL_CLASSNAME}), with
+ *   no measurement and no React state for the switch.
  * - A bottom `Sheet`, mirroring `livePreview/LivePreviewMobileOverlay.tsx`,
  *   below the 768px viewport breakpoint — a CSS `md:hidden` class on the
  *   `Sheet`'s content, not `useIsMobile()`: a `peek=<id>` deep link can be
  *   open on first paint, so the choice between this and the container-query
- *   panel below can never be a JS branch (Decision 43). Both layouts are
+ *   panel below can never be a JS branch. Both layouts are
  *   always mounted; the browser's cascade picks exactly one.
  *
  * The list behind the panel is ALWAYS interactive — there's no overlay or
@@ -232,15 +232,15 @@ export interface ListViewPeekProps<TDocument extends VexDocument = VexDocument> 
  * Opens instantly by seeding `useVexDocQuery` from the already-loaded row
  * (`props.rows`) or, failing that, a live fetch via `ListPeekSuspended` below (a deep-linked
  * `peek=` id outside the loaded page, streamed in by `NextAdminPage`'s own un-awaited
- * `prefetchQuery`+`dehydrate` for the identical query key, Decision 39/41), then stays live
+ * `prefetchQuery`+`dehydrate` for the identical query key), then stays live
  * via that hook's Convex subscription for as long as the panel is open. An unreadable or
  * genuinely not-found document (live OR the server's own dehydrated prefetch) renders the
- * pinned "Can't show this document" state (polish fixes, Decision 1) via
- * `QueryErrorBoundary` below — not-found and no-access read identically, by design (Decision
- * 34): distinguishing them would leak which ids exist.
+ * pinned "Can't show this document" state via
+ * `QueryErrorBoundary` below — not-found and no-access read identically, by design:
+ * distinguishing them would leak which ids exist.
  *
  * Field-level read access gates both tabs: a field the caller can't read is
- * omitted from the Fields tab and the JSON tab alike (Design Decision 26),
+ * omitted from the Fields tab and the JSON tab alike,
  * never shown muted — a muted-but-visible field name would itself leak that
  * the field exists.
  *
@@ -265,8 +265,8 @@ export interface ListViewPeekProps<TDocument extends VexDocument = VexDocument> 
  * @example
  * ```tsx
  * const urlState = useListViewUrlState({ collection });
- * // `@container/list` is established by CollectionListView's own root
- * // (Decision 22) — ListViewPeek needs no container ref of its own.
+ * // `@container/list` is established by CollectionListView's own root —
+ * // ListViewPeek needs no container ref of its own.
  * <div className="flex min-h-0 flex-1 gap-0">
  *   <ListViewLayout {...} />
  *   <ListViewPeek
@@ -299,8 +299,8 @@ export function ListViewPeek<TDocument extends VexDocument = VexDocument>(
   };
 
   // `seedRow` (already-loaded, from `props.rows`) resolves synchronously — no suspension
-  // needed, same as before this split. Only a peek id OUTSIDE the loaded page (a deep link,
-  // Decision 39/41) genuinely needs to fetch the document, via `ListPeekSuspended` below.
+  // needed, same as before this split. Only a peek id OUTSIDE the loaded page (a deep link)
+  // genuinely needs to fetch the document, via `ListPeekSuspended` below.
   if (seedRow !== undefined) {
     return <ListPeekPanel {...panelProps} document={seedRow} />;
   }
@@ -308,10 +308,10 @@ export function ListViewPeek<TDocument extends VexDocument = VexDocument>(
   return (
     <QueryErrorBoundary
       fallbackRender={() => (
-        // Reuses `ListPeekPanel`'s OWN `document === null` branch (the pinned Decision 34
+        // Reuses `ListPeekPanel`'s OWN `document === null` branch (the pinned
         // "Can't show this document" copy) rather than new UI — not-found and unreadable
         // already read identically there, which is exactly what an error boundary catching
-        // a failed/unreadable fetch needs too (polish fixes, Decision 1).
+        // a failed/unreadable fetch needs too.
         <ListPeekPanel {...panelProps} document={null} />
       )}
     >
@@ -323,14 +323,14 @@ export function ListViewPeek<TDocument extends VexDocument = VexDocument>(
 }
 
 /**
- * The `<Suspense>`-wrapped half of `ListViewPeek` (shell-streaming follow-up, developer-assigned)
- * — only mounted when `peekId` isn't among the already-loaded `rows` (a deep-linked peek,
- * Decision 39/41). `useSuspenseVexDocQuery` integrates with React's SSR streaming/Suspense
+ * The `<Suspense>`-wrapped half of `ListViewPeek`
+ * — only mounted when `peekId` isn't among the already-loaded `rows` (a deep-linked peek).
+ * `useSuspenseVexDocQuery` integrates with React's SSR streaming/Suspense
  * resumption — unlike the plain `useQuery` this replaced, which commits "pending" to the SSR'd
  * HTML permanently if the server's own `get(peek)` prefetch hasn't settled by render time
  * (confirmed live via a hydration-mismatch investigation on `SavedListViewTabs`'s equivalent gap).
  * `NextAdminPage`'s un-awaited `prefetchQuery`+`dehydrate` for this exact `id`/`collection`/
- * `drafts` combination (built via the shared `buildGetArgs` helper, polish fixes Decision 3 —
+ * `drafts` combination (built via the shared `buildGetArgs` helper,
  * the SAME helper `NextAdminPage.tsx`'s own peek prefetch uses, so the two keys always match)
  * streams in as a later chunk of the SAME response, picked up automatically by the matching
  * `convexQuery` key.
@@ -382,7 +382,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
 ): ReactNode {
   const document = props.document;
 
-  // --- Raw (depth-0) document, for the JSON tab ONLY (Main-reported:
+  // --- Raw (depth-0) document, for the JSON tab ONLY:
   // `props.document` — seeded from the already-loaded list row on the
   // common fast path — comes from `find`'s own `depth: 1` population
   // (`usePaginatedQuery`'s fixed depth), so a relationship/upload field
@@ -397,7 +397,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
   // round trip; only the common seeded-from-`props.rows` fast path pays
   // for a genuinely new subscription (a brief JSON-tab-only loading
   // state, below — the rest of the panel, including the Fields tab,
-  // keeps opening instantly from `props.document` exactly as before).
+  // keeps opening instantly from `props.document` exactly as before.
   // This ALSO means `hasUnpublishedChanges` (`mergeDraftCounterparts`'s
   // own computed flag, checked for being the only one of its kind — it
   // is) can never reach the JSON tab at all: `get`'s server function
@@ -411,7 +411,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
 
   const config = useVexConfig();
 
-  // --- Sidebar-aware positioning (developer-reported: the peek must
+  // --- Sidebar-aware positioning (the peek must
   // never overlap the admin sidebar, at any side/open/collapsed/offcanvas
   // state) -----------------------------------------------------------
   // `useSidebarOptional` (not `useSidebar`, which throws outside a
@@ -442,7 +442,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
       : sidebarCollapsedOffsetCss;
 
   // Animates `--peek-sidebar-offset`'s own CSS-var-driven `right` shift
-  // (developer-reported: the sidebar itself animates open/closed, but the
+  // (the sidebar itself animates open/closed, but the
   // panel's offset jumped instantly, so the two visibly fell out of sync
   // mid-toggle) in lockstep with the sidebar's OWN transition — reuses
   // {@link SIDEBAR_TRANSITION_CLASS} (`ui/sidebar.tsx`'s own token, not
@@ -466,7 +466,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
     [props.collection.fields],
   );
 
-  // --- Resize (Decision, developer-approved "peek-resize") ---------------
+  // --- Resize ---------------
   // Mirrors `DataTable.tsx`'s own `startResize`/`handleResizeKeyDown`
   // column-resize mechanics exactly (raw pointer events on `document`,
   // `RESIZE_STEP_PX` keyboard granularity, a `liveDrag`-during-drag /
@@ -564,8 +564,8 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
   const sidebarSyncTransitionClass =
     hasMounted && liveDragWidth === null ? "md:transition-[right] md:duration-200 md:ease-linear" : "";
 
-  // --- Escape closes the panel (Decision, developer-approved "one peek
-  // panel, no Base UI Dialog") -------------------------------------------
+  // --- Escape closes the panel (no Base UI Dialog to lean on)
+  // -------------------------------------------------------------------
   // Replaces Base UI's `Dialog` own built-in Escape handling, dropped
   // along with the rest of `Sheet`/`Dialog` below — a GLOBAL `document`
   // listener (not a scoped `onKeyDown` prop) so Escape still closes the
@@ -621,7 +621,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
   }, [dataFields, document]);
 
   // The SAME hook `CollectionEditView` uses to decide which fields an edit
-  // form renders (Decision 26's "field read access gates every list
+  // form renders ("field read access gates every list
   // control," reused rather than reimplemented) — so the peek never
   // disagrees with the edit view about what the caller may read.
   const visibleFieldEntries = useVisibleFields({
@@ -630,8 +630,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
     data: document ?? undefined,
   });
 
-  // `canReadField` (access-system-fields plan, developer-approved,
-  // binding) answers the SAME "may the caller read this field" question
+  // `canReadField` answers the SAME "may the caller read this field" question
   // `useVisibleFields` already resolves for data fields, but for the
   // TWO gateable system keys (`_creationTime`/`vex_status`) and UI
   // fields (`getUIFieldKeys`) — neither kind is a `dataFields`
@@ -653,8 +652,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
     hiddenSystemFieldCount +
     hiddenUIFieldCount;
 
-  // Wraps within the loaded rows (developer-approved, access-system-fields
-  // plan part 5): Previous on the FIRST row goes to the LAST, Next on the
+  // Wraps within the loaded rows: Previous on the FIRST row goes to the LAST, Next on the
   // LAST goes to the FIRST — never a dead end. Disabled only when there's
   // genuinely nowhere to go: a single loaded row, or `rowIndex === -1`
   // (a deep-linked peek outside the loaded page — no row LIST to wrap
@@ -669,7 +667,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
       : undefined;
 
   // Shared across all three states (not-found, loading, loaded) — "shown
-  // in every layout" (Decision 27) only means ANYTHING otherwise; a panel
+  // in every layout" only means ANYTHING otherwise; a panel
   // stuck on a not-found/loading document with no close affordance would
   // be undismissable at the wide/right-sheet breakpoints, which have none
   // of their own (unlike the mobile `Sheet`'s Esc/backdrop).
@@ -798,13 +796,13 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
       {/* Mobile-only dim backdrop ({@link LIST_PEEK_BACKDROP_CLASSNAME}'s own doc comment). */}
       <div aria-hidden="true" className={LIST_PEEK_BACKDROP_CLASSNAME} />
       {/*
-       * ONE panel at every width (Decision, developer-approved "one peek
-       * panel, never two layouts at once" — supersedes the previous
+       * ONE panel at every width (one peek
+       * panel, never two layouts at once — supersedes the previous
        * always-mounted Base UI `Sheet` plus separate plain `div`; see
        * {@link LIST_PEEK_PANEL_CLASSNAME}'s own doc comment for the full
        * collapse rationale and the Base UI feature-by-feature audit).
        * `aria-label` is unconditional now (same accessible name at every
-       * width, Main's own requirement) — previously the Sheet's title
+       * width) — previously the Sheet's title
        * was static while the desktop div's label went `undefined` during
        * loading/not-found; picking ONE behavior for both.
        */}
@@ -827,7 +825,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
          * Resize handle — desktop only (`hidden md:contents`: invisible AND
          * non-interactive below `md`, transparent to layout at `md`+ so its
          * 3 children participate exactly as if unwrapped). Rendered AFTER
-         * `{header}{content}` (developer-reported: the handle only worked
+         * `{header}{content}` — the handle only worked
          * near the panel's top — `header`/`content`'s own flow boxes,
          * painted LATER in DOM order with no z-index on either side,
          * covered the lower portion of the absolutely-positioned handle

@@ -18,13 +18,12 @@ export interface ListViewFilterChipsProps {
   collection: CollectionConfig;
   /** The list's current filter, in plain `VexWhereNode` form. Same prop as `ListViewFilterBuilder.where`. */
   where: VexWhereNode<string> | undefined;
-  /** Replaces `where` wholesale — same contract as `ListViewFilterBuilder.onWhereChange`. `null` means the user explicitly cleared every condition (distinct from `undefined`, developer-reported — see `ListViewFilterBuilder.onWhereChange`'s own doc). */
+  /** Replaces `where` wholesale — same contract as `ListViewFilterBuilder.onWhereChange`. `null` means the user explicitly cleared every condition (distinct from `undefined` — see `ListViewFilterBuilder.onWhereChange`'s own doc). */
   onWhereChange: (where: VexWhereNode<string> | undefined | null) => void;
   /**
-   * Whether the chip row is showing — owned by `ListViewLayout` (Decision 10
-   * revised 2026-10-27), flipped by {@link ListViewFilterVisibilityToggle}
-   * below (further developer revision, same day as the fixed-grid row
-   * layout: the eye toggle moved HERE from `ListViewFilterBuilder`, and chips
+   * Whether the chip row is showing — owned by `ListViewLayout`,
+   * flipped by {@link ListViewFilterVisibilityToggle}
+   * below (the eye toggle lives HERE, not `ListViewFilterBuilder`, and chips
    * now ALWAYS render inline in `ListViewToolbar`'s own row, flex-wrapping
    * onto additional lines as needed — never their own separate row below
    * the toolbar, never a horizontally-scrolling max-width strip).
@@ -32,7 +31,7 @@ export interface ListViewFilterChipsProps {
   visible: boolean;
   /**
    * Resolved titles for every `relationship`/`upload` id a chip might need
-   * to display (Decision 50, `ListViewContext.filterValueTitles`) —
+   * to display (`ListViewContext.filterValueTitles`) —
    * falls back to the raw id for any id missing from this map.
    */
   filterValueTitles: Record<string, string | null>;
@@ -41,12 +40,12 @@ export interface ListViewFilterChipsProps {
 /**
  * Formats one leaf's value for its chip — a `relationship`/`upload`
  * field's id resolved to `filterValueTitles[value]` (falling back to the
- * raw id, Decision 50), a `date` field via `formatDateFieldValue` (the
+ * raw id), a `date` field via `formatDateFieldValue` (the
  * same formatter the data-table cell and the date field's own display
- * use, Decision 10 revised 2026-10-27's "always displayed formatted as
- * date/time"), a `select`/`checkbox` field (including the synthetic
+ * use — always displayed formatted as
+ * date/time), a `select`/`checkbox` field (including the synthetic
  * `vex_status`) resolved to the matching option's own label — the SAME
- * label the field's own `FilterInput` now shows (developer-reported: the
+ * label the field's own `FilterInput` now shows (the
  * chip must match the input exactly, SSR and client) — everything else
  * `String(value)`. `vex_status` is checked FIRST and separately from the
  * generic `select` branch below, since the synthetic field never
@@ -54,13 +53,13 @@ export interface ListViewFilterChipsProps {
  * own values are `VERSION_STATUSES` keys (`"draft"`/`"published"`), not
  * a declared `select` field's options. Never called for
  * `isEmpty`/`isNotEmpty` rows (the caller omits the value segment for
- * those). Exported so Step 12's saved-view "Modified: …" summary can
+ * those). Exported so a saved-view "Modified: …" summary can
  * reuse the same formatting — `filterValueTitles` defaults to `{}`
  * (id-only) for a caller with no title map available.
  *
  * @param row - The DNF leaf whose `value` is being formatted for display.
  * @param dataFields - The collection's fields, keyed by field key, used to resolve `row.field`'s type.
- * @param filterValueTitles - Resolved relationship/upload titles keyed by id (Decision 50); defaults to `{}`.
+ * @param filterValueTitles - Resolved relationship/upload titles keyed by id; defaults to `{}`.
  * @returns The chip-ready string for `row.value`.
  */
 export function formatFilterChipValue(
@@ -110,12 +109,12 @@ export function resolveFilterFieldLabel(field: string, dataFields: Record<string
 }
 
 /**
- * The chip row under the toolbar showing Decision 10's active filter rows —
+ * The chip row under the toolbar showing the active filter rows —
  * clear one, clear all. Renders nothing when `where` is `undefined`, not in
  * DNF form (`toListViewFilterGroups` returns `null` — a non-DNF config `where` has no
  * per-row chips to show; it still reaches the user via `ListViewFilterBuilder`'s
- * read-only panel and, for a config VIEW's hidden filter specifically, Step
- * 12's `SavedListViewHiddenFilterBadge`, which this component does not render), or
+ * read-only panel and, for a config VIEW's hidden filter specifically,
+ * `SavedListViewHiddenFilterBadge`, which this component does not render), or
  * `!props.visible` (the grouped eye toggle beside `ListViewFilterBuilder`'s own
  * "Filter" trigger controls this).
  *
@@ -128,12 +127,12 @@ export function ListViewFilterChips(props: ListViewFilterChipsProps): ReactNode 
     () => getDataFields({ fields: props.collection.fields }),
     [props.collection.fields],
   );
-  // access-system-fields.md Decision 2b: a chip for a field the viewer
+  // A chip for a field the viewer
   // can no longer read (including the synthetic `vex_status`) is hidden
   // entirely, not just unlabeled — the same "hidden unless listed"
   // default `ListViewFilterBuilder`'s own field picker already applies.
-  // User-added filters on unreadable fields are rejected server-side
-  // (Decision 11), so there is no result the chip could honestly
+  // User-added filters on unreadable fields are rejected server-side,
+  // so there is no result the chip could honestly
   // describe; a declared view's hidden filter never reaches this
   // component at all (see this function's own doc comment above) and
   // keeps showing only as `SavedListViewHiddenFilterBadge`.
@@ -152,7 +151,7 @@ export function ListViewFilterChips(props: ListViewFilterChipsProps): ReactNode 
     // (rendered only while `groups.length > 0`) — so a `fromListViewFilterGroups` result of
     // `undefined` here always means "the user just removed the LAST
     // condition," the same explicit-clear intent as "Clear all" below, not
-    // a no-op echo of an already-empty filter (developer-reported).
+    // a no-op echo of an already-empty filter.
     props.onWhereChange(fromListViewFilterGroups({ groups: nextGroups }) ?? null);
   }
 
@@ -161,7 +160,7 @@ export function ListViewFilterChips(props: ListViewFilterChipsProps): ReactNode 
     // (the prior shape) wrapped chips WITHIN this div's own narrow box,
     // whose left edge sits wherever `ListViewToolbar` happens to render this
     // component (after `[Filter][eye]`), not the toolbar's own left edge
-    // — the developer-reported "chips wrap into a column under Filter,
+    // — avoids the "chips wrap into a column under Filter,
     // not flush with Search" bug. `display: contents` removes this div
     // from layout entirely, so every chip `Badge` and the `Clear all`
     // `Button` become DIRECT items of `ListViewToolbar`'s own top-level
@@ -204,7 +203,7 @@ export function ListViewFilterChips(props: ListViewFilterChipsProps): ReactNode 
 
 /** Props for {@link ListViewFilterVisibilityToggle}. */
 export interface ListViewFilterVisibilityToggleProps {
-  /** The collection the list view renders — needed for the consolidated `vex-admin:<slug>` cookie key (Decision 51). */
+  /** The collection the list view renders — needed for the consolidated `vex-admin:<slug>` cookie key. */
   collection: CollectionConfig;
   /** The list's current filter — determines whether there's anything to toggle at all. Same prop as `ListViewFilterChips.where`. */
   where: VexWhereNode<string> | undefined;
@@ -216,13 +215,12 @@ export interface ListViewFilterVisibilityToggleProps {
 
 /**
  * The eye/crossed-eye chip-visibility toggle — moved HERE from
- * `ListViewFilterBuilder` (further developer revision, same day as the
- * fixed-grid row layout). `ListViewToolbar` renders `[Filter] [eye] [chips…]`
- * in that order (developer-binding, corrected again: Filter is its own
- * always-inline flex item now, never wrapping away from search; `eye`
+ * `ListViewFilterBuilder`. `ListViewToolbar` renders `[Filter] [eye] [chips…]`
+ * in that order: Filter is its own
+ * always-inline flex item, never wrapping away from search; `eye`
  * leads the SEPARATE flattened group chips also belong to, so the two
  * wrap together onto a new line rather than `eye` ever being stranded
- * alone on the search row while chips wrap away without it) — only
+ * alone on the search row while chips wrap away without it — only
  * `ListViewToolbar` itself (which already renders the chips directly) can
  * place the eye immediately before them; a filter builder rendering its
  * own eye button could never produce that order.

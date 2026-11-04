@@ -173,7 +173,7 @@ export {
 } from "./config";
 export type { NavigationBlockerAdapter, FrameworkAuthAdapter } from "./config";
 export { useVexNavigate } from "./config";
-export { useVexAuth, VexAuthProvider } from "./auth";
+export { useVexAuth, VexAuthProvider, useAuthTransition, AuthTransitionProvider, type AuthTransitionState } from "./auth";
 
 export {
   useListViewContext,

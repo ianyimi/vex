@@ -10,26 +10,24 @@ import { VexConfigProvider } from "../../../../config/VexConfigContext";
 import { assertHydratesWithoutMismatch } from "../../../../testing/ssrHydration";
 import { SavedListViewTabs, type SavedListViewTabsProps } from "./index";
 
-// Developer-reported regression (Decision 46 Step 19's streaming follow-up,
-// now retired — see below): `NextAdminPage` used to un-await its `listViews`
+// A regression that `NextAdminPage` used to trigger: un-awaiting its `listViews`
 // prefetch so the admin shell could stream, which made `SavedListViewTabs`' plain
 // `useSavedListViews()` (`useQuery`) commit "pending" into the SSR'd HTML, then
 // hydrate with fresher client data and render a DIFFERENT tab set — a
-// confirmed, reproducible "Hydration failed" error (4/4 repro, per
-// Step14Prerender). The fix at the time was a `useSuspenseQuery`-inside-
+// confirmed, reproducible "Hydration failed" error (4/4 repro). The fix at the time was a `useSuspenseQuery`-inside-
 // `<Suspense>` split (`ListViewTabStripSuspended`/`ListViewTabStripFallback`)
 // so the tab strip could stream shared views in without ever committing a
 // mismatched SSR snapshot.
 //
 // `NextAdminPage`'s `listViews` prefetch is now unconditionally AWAITED
-// (a later developer-reported fix, unrelated regression) — by the time
+// (a later, unrelated regression fix) — by the time
 // anything renders, the dehydrated cache always already has `status:
 // "success"` data, so the precondition for the ORIGINAL bug (an un-awaited
 // prefetch) no longer exists, and the Suspense split was removed (a nested
 // `<Suspense>` boundary turned out to have its own cost even with
 // already-resolved data: React's streaming SSR ships a nested boundary's
 // fallback in the first flush regardless of whether the query had to wait
-// at all — confirmed live via a JS-disabled load, developer-reported). This
+// at all — confirmed live via a JS-disabled load). This
 // test's OWN scenario — the shared-views cache resolving to real data
 // AFTER the component has already mounted (the same shape a live Convex
 // subscription update takes, post-hydration) — is still a real case the
@@ -101,7 +99,7 @@ function baseProps(): Omit<SavedListViewTabsProps, "initialViews"> {
   };
 }
 
-describe("SavedListViewTabs — SSR-then-hydrate with a pending-then-resolving listViews query (developer-reported streaming regression)", () => {
+describe("SavedListViewTabs — SSR-then-hydrate with a pending-then-resolving listViews query (streaming regression)", () => {
   it("hydrates with 0 errors from a resolved-but-empty listViews cache, then updating it to the real shared views also triggers 0 errors", async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     // `@convex-dev/react-query`'s real `convexQuery(vexConvexApi.listViews, { collection })`

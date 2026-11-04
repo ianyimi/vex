@@ -27,7 +27,7 @@ import { isFieldConditionMet } from "../utils";
  * Used by the admin panel while form rendering to build the form input for individual fields, collections, blocks, and globals.
  *
  * When `data` is given, first checks `field`'s own `admin.condition` against
- * `(data, siblingData)` (Step 6's `isFieldConditionMet` — no condition, or a
+ * `(data, siblingData)` (`isFieldConditionMet` — no condition, or a
  * throwing one, counts as met). A condition-false field short-circuits to
  * `z.unknown().optional()`: present in the schema (so its submitted value,
  * which the client keeps per the contract, still round-trips) but

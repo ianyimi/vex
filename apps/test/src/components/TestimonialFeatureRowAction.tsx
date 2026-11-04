@@ -13,8 +13,8 @@ interface TestimonialRowActionProps {
 }
 
 /**
- * `test.testimonials.feature` — a project `list.row.actions` contribution
- * (Step 24, list-view-overhaul). Toggles `featured` on a single testimonial
+ * `test.testimonials.feature` — a project `list.row.actions` contribution.
+ * Toggles `featured` on a single testimonial
  * via the generic `update` mutation, respecting `access`: gated client-side
  * on the `testimonials` `update` permission (the server re-checks on every
  * call regardless — this is UX, not the security boundary).

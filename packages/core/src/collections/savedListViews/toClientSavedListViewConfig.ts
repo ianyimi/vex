@@ -20,16 +20,16 @@ function countWhereLeaves(node: VexWhereNodeOf<unknown>): number {
 /**
  * Converts a full {@link VexViewConfig} (a default or config view resolved
  * from `admin.view`/`admin.views`, `where` intact) into the {@link
- * VexClientViewConfig} shape UI code is allowed to read (Decision 25).
+ * VexClientViewConfig} shape UI code is allowed to read.
  *
- * Called CLIENT-SIDE only — by `useSavedListViews` (Step 12), once per
+ * Called CLIENT-SIDE only — by `useSavedListViews`, once per
  * `default`/`config`-source view read straight off the bundled
  * `VexClientConfig`. `state.where` already shipped to the browser as
- * plain JS before this ever runs (Decision 25: hidden from the UI, not
- * secret, like an access rule) — this function doesn't keep `where` out
- * of the bundle, it keeps UI CODE from reading it, so the filter builder,
+ * plain JS before this ever runs (hidden from the UI, not secret, like
+ * an access rule) — this function doesn't keep `where` out of the
+ * bundle, it keeps UI CODE from reading it, so the filter builder,
  * chips, and every other control only ever see
- * `hasHiddenFilter`/`hiddenFilterCount`. Step 7's `listViews` query never
+ * `hasHiddenFilter`/`hiddenFilterCount`. The `listViews` query never
  * calls this — it returns `shared` views only. To actually QUERY a
  * default/config view, the list calls `composeSavedListViewWhere` on the RAW
  * `VexViewConfig`, not on this function's output.

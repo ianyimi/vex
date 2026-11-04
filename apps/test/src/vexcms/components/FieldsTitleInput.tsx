@@ -8,7 +8,7 @@ import type { ComponentType } from "react";
  * {@link FieldControlProps} field reaches the override (`id`, `value`, `onChange`,
  * `onBlur`, `readOnly`, `invalid`, `describedBy`) and that `renderDefault` still
  * renders the built-in control underneath, layout (label/description/error) kept
- * by `FormFieldLayout` (decision 12).
+ * by `FormFieldLayout`.
  */
 export function FieldsTitleInputOverride(
   props: FieldControlProps<string> & { renderDefault: ComponentType<FieldControlProps<string>> },

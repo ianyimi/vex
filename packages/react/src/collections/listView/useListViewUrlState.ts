@@ -20,7 +20,7 @@ import {
   type ListViewStateSnapshot,
 } from "./savedListViews/useSavedListViews";
 
-/** Per-setter history override — every setter has a Decision-9-driven default; pass `{ push: true }` to force a history entry (e.g. Enter in search) or `{ push: false }` to force a silent replace. */
+/** Per-setter history override — every setter has its own default history-push behavior; pass `{ push: true }` to force a history entry (e.g. Enter in search) or `{ push: false }` to force a silent replace. */
 export interface ListViewUrlSetOptions {
   push?: boolean;
 }
@@ -32,8 +32,8 @@ export interface UseListViewUrlStateReturn<TFieldSlug extends string = string>
    * `true` while ANY `startTransition`-wrapped URL-state write (any setter below) is in
    * flight — includes display-only writes (`setPeek`, `setCols`) that never touch the
    * table's own query. Most consumers want {@link isQueryPending} instead; this stays
-   * available for anything that genuinely needs "is ANY URL write still settling"
-   * (developer-reported bug fix, 2026-11-02: `CollectionListView` used to OR this
+   * (available for anything that genuinely needs "is ANY URL write still settling" —
+   * `CollectionListView` used to OR this
    * blanket flag into its `isRefetching` dimming, so a peek Previous/Next click or a
    * column reorder/resize/pin — neither of which the table's query depends on — dimmed
    * the table for the transition's duration even though its rows were never going to
@@ -55,7 +55,7 @@ export interface UseListViewUrlStateReturn<TFieldSlug extends string = string>
    * one exception: it ALWAYS writes `q`/`qf`/`sort`/`filter`/`size`/`view`/`cols` together
    * (see its own doc comment), so classifying it by key presence alone would dim the table
    * on every view switch even when the target view's own search/sort/filter/size are
-   * IDENTICAL to what's already active (developer-reported: switching tabs between views
+   * IDENTICAL to what's already active (switching tabs between views
    * built off the same base state dimmed the table for no visible change) — `applyView`
    * instead classifies itself by comparing its computed values against the CURRENT params
    * (see `isQueryAffectingViewSwitch`), only marking the transition query-affecting when
@@ -68,14 +68,14 @@ export interface UseListViewUrlStateReturn<TFieldSlug extends string = string>
    * (never reads `false` while a query-affecting write is still genuinely in flight).
    */
   isQueryPending: boolean;
-  /** `undefined` omits `q=` (inherit the active view's own search — `applyView`/Reset); `""` is an EXPLICIT clear, distinct from that (developer-reported). Live typing only ever passes a concrete string, never `undefined`. */
+  /** `undefined` omits `q=` (inherit the active view's own search — `applyView`/Reset); `""` is an EXPLICIT clear, distinct from that. Live typing only ever passes a concrete string, never `undefined`. */
   setQ: (q: string | undefined, options?: ListViewUrlSetOptions) => void;
   setQf: (qf: TFieldSlug | undefined, options?: ListViewUrlSetOptions) => void;
   setSort: (
     sort: ListViewSort<TFieldSlug> | undefined,
     options?: ListViewUrlSetOptions,
   ) => void;
-  /** `undefined` omits `filter=` (inherit the active view's own filter — `applyView`/Reset); `null` is the explicit "user cleared it" sentinel, distinct from that (developer-reported — "Clear all" on a view with its own saved filter). */
+  /** `undefined` omits `filter=` (inherit the active view's own filter — `applyView`/Reset); `null` is the explicit "user cleared it" sentinel, distinct from that ("Clear all" on a view with its own saved filter). */
   setFilter: (
     filter: VexWhereNode<TFieldSlug> | undefined | null,
     options?: ListViewUrlSetOptions,
@@ -83,12 +83,12 @@ export interface UseListViewUrlStateReturn<TFieldSlug extends string = string>
   setSize: (size: number | undefined, options?: ListViewUrlSetOptions) => void;
   setView: (view: string | undefined, options?: ListViewUrlSetOptions) => void;
   setPeek: (peek: string | undefined, options?: ListViewUrlSetOptions) => void;
-  /** Replaces the full column list (Decision 48) — every field, in display order, each possibly carrying width/pinned/hidden overrides. Discrete — pushes a history entry by default, like a drag-drop reorder/resize/pin always should. */
+  /** Replaces the full column list — every field, in display order, each possibly carrying width/pinned/hidden overrides. Discrete — pushes a history entry by default, like a drag-drop reorder/resize/pin always should. */
   setCols: (columns: ColumnEntry<TFieldSlug>[], options?: ListViewUrlSetOptions) => void;
   /**
    * Switches to `view`, writing `q`/`qf`/`sort`/`filter`/`size`/`view`/`cols`
-   * in ONE atomic URL write, diffed against `view`'s OWN baseline —
-   * developer-reported: the per-field `setQ`/`setQf`/.../`setCols` calls
+   * in ONE atomic URL write, diffed against `view`'s OWN baseline — the per-field
+   * `setQ`/`setQf`/.../`setCols` calls
    * `SavedListViewTabs.tsx`'s `applyView` used to make were all diffed against
    * the STALE pre-switch `viewState` (it only updates on a re-render,
    * never mid-function-body), so switching FROM a shared/config view
@@ -182,7 +182,7 @@ function queryValueChanged(value: unknown, other: unknown): boolean {
  * `applyView` ALWAYS writes `q`/`qf`/`sort`/`filter`/`size` together (every field, every
  * switch — see `applyView`'s own doc comment), so classifying it by key presence alone
  * would dim the table on EVERY view switch, even one that only changes `view`/`cols`
- * (developer-reported: switching between two views built off the same search/sort/filter/
+ * (switching between two views built off the same search/sort/filter/
  * size — most commonly a "duplicate as copy" right after saving it — dimmed the table for
  * a change nothing on screen was ever going to reflect). `view` and `cols` are
  * deliberately excluded from the comparison, same as {@link isQueryAffectingPatch} — a
@@ -192,7 +192,7 @@ function queryValueChanged(value: unknown, other: unknown): boolean {
  * @param patch - `applyView`'s own computed patch (same shape passed to `writeParams`).
  * @returns `true` if `q`/`qf`/`sort`/`filter`/`size` differ between `current` and `patch`;
  *   `false` when the target view's own values exactly match what's already active (even
- *   though `view` — and, per Decision 48, `cols` — still get written either way).
+ *   though `view` — and `cols` — still get written either way).
  */
 export function isQueryAffectingViewSwitch<TFieldSlug extends string>(
   current: Partial<ListViewUrlState<TFieldSlug>>,
@@ -210,8 +210,8 @@ export function isQueryAffectingViewSwitch<TFieldSlug extends string>(
 /**
  * Drives the collection list view's shareable URL state via `nuqs`, using
  * `@vexcms/core`'s {@link parseListViewUrlState}/{@link serializeListViewUrlState}
- * for the compact grammar (Decision 9). The codec itself lives in core
- * (Decision 40) so `NextAdminPage` (Step 14) parses the exact same params
+ * for the compact grammar. The codec itself lives in core
+ * so `NextAdminPage` parses the exact same params
  * server-side, with no react/nuqs dependency to drag along — this hook is
  * nothing more than a `nuqs` binding over it.
  *
@@ -221,13 +221,13 @@ export function isQueryAffectingViewSwitch<TFieldSlug extends string>(
  * @param props.views - `useSavedListViews().views` (the merged, display-ready
  *   list) — resolves the ACTIVE view's own saved `sort`/`searchField`/
  *   `pageSize`/`columns` as the baseline every setter below diffs
- *   against before writing to the URL (Decision 9/45/48: a param that
+ *   against before writing to the URL (a param that
  *   already equals the active view's own value, or — absent that — the
  *   collection's resolved default, is never written; a stale `?sort=…`
  *   that already matches is DROPPED, not just withheld going forward).
  *   `undefined` (the default) falls back to diffing against only the
  *   collection's default view, matching every `local`-source view's own
- *   self-contained-URL design (Decision 41) automatically, since a
+ *   self-contained-URL design automatically, since a
  *   `local` entry is excluded from this lookup below regardless.
  * @returns The parsed state plus setters.
  *
@@ -238,7 +238,7 @@ export function isQueryAffectingViewSwitch<TFieldSlug extends string>(
  * useVexListQuery({
  *   collection: collection.slug,
  *   where: url.filter,
- *   sort: url.q ? undefined : url.sort, // Decision 7: parked while searching
+ *   sort: url.q ? undefined : url.sort, // parked while searching
  *   search: url.q,
  *   searchField: url.qf,
  *   pageSize: url.size,
@@ -257,7 +257,7 @@ export function useListViewUrlState<TFieldSlug extends string = string>(props: {
   // `useSuspenseQuery` doesn't support). `isPending` (exposed below) is the blanket "ANY
   // write is in flight" signal; `isQueryPending` (below) narrows it to writes that can
   // actually change the query — see both fields' own doc comments
-  // (`UseListViewUrlStateReturn`) for the developer-reported bug this split fixes.
+  // (`UseListViewUrlStateReturn`) for the bug this split fixes.
   const [isPending, startTransition] = useTransition();
   const [raw, setRaw] = useQueryStates(RAW_PARSERS, { startTransition });
   // Accumulates "was ANY patch written during the CURRENT pending transition
@@ -288,7 +288,7 @@ export function useListViewUrlState<TFieldSlug extends string = string>(props: {
   );
 
   // The active DECLARED (`default`/`config`) or `shared` view's own saved
-  // state — `undefined` for a `local`-source view (Decision 41 — its full
+  // state — `undefined` for a `local`-source view (its full
   // state always stays in the URL, there's no server-side row to fall
   // back to) or when `props.views` wasn't supplied/hasn't resolved it
   // yet. Mirrors `resolveListViewQueryState`'s own `declaredView?.state ??
@@ -426,7 +426,7 @@ export function useListViewUrlState<TFieldSlug extends string = string>(props: {
       // The TARGET view's own baseline — NOT `viewState` above (that's
       // still the OLD, pre-switch view until a re-render; see this
       // method's own doc comment). A `local` target never gets a
-      // baseline (Decision 41 — every field below is written explicitly).
+      // baseline (every field below is written explicitly).
       const targetViewState: VexViewState<TFieldSlug> | undefined =
         view.source === VEX_VIEW_SOURCES.local
           ? undefined
@@ -437,7 +437,7 @@ export function useListViewUrlState<TFieldSlug extends string = string>(props: {
         sort: view.sort,
         filter: view.where as VexWhereNode<TFieldSlug> | undefined,
         // The CURRENT `size=` wins over the target view's own saved `pageSize`
-        // (developer-reported bug: "rows per load" reset to the view's default
+        // ("rows per load" reset to the view's default
         // on every switch) — `params.size` is `undefined` only when the user
         // never overrode it (inheriting whatever view was active before), in
         // which case the target view's own `pageSize` still applies, same as
@@ -446,10 +446,9 @@ export function useListViewUrlState<TFieldSlug extends string = string>(props: {
         // survives every later view switch, not a per-view saved value.
         size: params.size ?? view.pageSize,
         view: isDefault ? undefined : encodeViewUrlValue(view),
-        // `view.columns` (Decision 48) is ALREADY the full, complete
+        // `view.columns` is ALREADY the full, complete
         // column list — no `effectiveColumns` filter needed anymore
-        // (Step 20's own visible-subset intersection is gone along with
-        // the separate visible/order split it existed to reconcile).
+        // (the separate visible/order split a now-removed subset filter existed to reconcile is gone along with it).
         cols: view.columns,
       };
       writeParams(
@@ -486,14 +485,14 @@ export interface ListViewUrlStateSlice<TFieldSlug extends string = string> {
   filter: ListViewStateSnapshot<TFieldSlug>["where"] | null;
   size: number | undefined;
   view: string | undefined;
-  /** `undefined` means "omit `q=`, inherit the active view's own search" (used by `applyView`/Reset); `""` is an EXPLICIT clear, distinct from that (developer-reported — matches `ListViewUrlState.q`/`useListViewUrlState`'s real `setQ` contract). Live typing (`ListViewSearch.tsx`) only ever passes a concrete string, never `undefined`. */
+  /** `undefined` means "omit `q=`, inherit the active view's own search" (used by `applyView`/Reset); `""` is an EXPLICIT clear, distinct from that (matches `ListViewUrlState.q`/`useListViewUrlState`'s real `setQ` contract). Live typing (`ListViewSearch.tsx`) only ever passes a concrete string, never `undefined`. */
   setQ: (value: string | undefined) => void;
   setQf: (value: TFieldSlug | undefined) => void;
   setSort: (value: ListViewStateSnapshot<TFieldSlug>["sort"]) => void;
-  /** `undefined` omits `filter=` (inherit); `null` is the explicit "user cleared it" sentinel, distinct from that (developer-reported — matches `ListViewUrlState.filter`). */
+  /** `undefined` omits `filter=` (inherit); `null` is the explicit "user cleared it" sentinel, distinct from that (matches `ListViewUrlState.filter`). */
   setFilter: (value: ListViewStateSnapshot<TFieldSlug>["where"] | null) => void;
   setSize: (value: number | undefined) => void;
   setView: (value: string | undefined) => void;
-  /** Switches to `view`, writing every field (`q`/`qf`/`sort`/`filter`/`size`/`view`/`cols`) in ONE atomic URL write, diffed against `view`'s OWN baseline — see `useListViewUrlState`'s own doc comment (developer-reported: the old per-field `setX` sequence diffed against the STALE pre-switch view). */
+  /** Switches to `view`, writing every field (`q`/`qf`/`sort`/`filter`/`size`/`view`/`cols`) in ONE atomic URL write, diffed against `view`'s OWN baseline — see `useListViewUrlState`'s own doc comment (the old per-field `setX` sequence diffed against the STALE pre-switch view). */
   applyView: (view: SavedListViewEntry<TFieldSlug>) => void;
 }

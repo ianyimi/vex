@@ -115,7 +115,7 @@ describe("useSavedListViews", () => {
 
   it("renders a tab for a cookie-indexed local view during the SSR/hydration-matching render", () => {
     // No saveLocalSavedListView call — this view exists only via the cookie index,
-    // simulating the first server-rendered paint (Decision 41). Uses
+    // simulating the first server-rendered paint. Uses
     // `renderToString` (not `renderHook`) specifically because this is the
     // ONE render pass that genuinely exercises `useSyncExternalStore`'s
     // `getServerSnapshot` branch (both `useLocalSavedListViews`'s own local-views
@@ -139,7 +139,7 @@ describe("useSavedListViews", () => {
     expect(html).toContain("local-cookie");
   });
 
-  it("drops a cookie-indexed entry once local views have hydrated and it has no matching real view (developer-reported: deleted view's tab stuck until refresh)", () => {
+  it("drops a cookie-indexed entry once local views have hydrated and it has no matching real view (a deleted view's tab must not stay stuck until refresh)", () => {
     // Nothing saved to localStorage for "local-stale" — a plain `renderHook`
     // mount (no SSR pass) goes straight to the resolved, hydrated state, so
     // this represents "the cookie index still lists a view that's gone
@@ -193,11 +193,10 @@ describe("rawConfigViews / sharedViews — raw, unmerged exposure for resolveLis
         name: "Featured",
         state: {
           where: viewWhere,
-          // Decision 45 (developer answer): config.ts resolves every
+          // `config.ts` resolves every
           // admin.views[n]'s own collection-wide keys against admin.view's
           // resolved value, then the global default, same as admin.view
           // itself — this entry declared none of its own, so it inherits
-          // every one of admin.view's own (unset here too) defaults.
           searchFields: [],
           pageSizeOptions: [10, 25, 50, 100],
           countLimit: 10000,
@@ -206,7 +205,7 @@ describe("rawConfigViews / sharedViews — raw, unmerged exposure for resolveLis
         },
       },
     ]);
-    // The merged display list strips `where` (Decision 25) — `rawConfigViews` is the one place it survives.
+    // The merged display list strips `where` — `rawConfigViews` is the one place it survives.
     expect(result.current.views.find((v) => v.viewId === "cfg2")?.where).toBeUndefined();
   });
 
@@ -247,7 +246,7 @@ describe("diffViewState", () => {
     expect(diff.categories).toEqual([]);
   });
 
-  it("never flags peekWidth as modified when the saved view has no explicit width of its own, however far the live width diverges (developer decision, binding, \"peek-resize-save-rule\" — supersedes the earlier compare-against-PEEK_PANEL_DEFAULT_WIDTH_PX fix, same skip-when-undefined shape as pageSize)", () => {
+  it("never flags peekWidth as modified when the saved view has no explicit width of its own, however far the live width diverges (peek width counts toward Modified only for a view with its own saved width, same skip-when-undefined shape as pageSize)", () => {
     const diff = diffViewState({
       current: {
         search: "ma",
@@ -470,7 +469,7 @@ describe("encodeViewUrlValue / decodeViewUrlValue", () => {
   });
 });
 
-describe("resolveEffectiveViewState — stale sort/searchField fallback (Decision 7)", () => {
+describe("resolveEffectiveViewState — stale sort/searchField fallback", () => {
   const staleFixtureCollection = defineCollection({
     slug: "posts",
     fields: { title: text({ index: "by_title", searchIndex: { name: "search_title", filterFields: [] } }) },
@@ -572,7 +571,7 @@ describe("resolveEffectiveViewState — stale sort/searchField fallback (Decisio
   });
 });
 
-describe("useSavedListViews — a shared view's own saved where gains hasHiddenFilter when it names a field the caller can't read (access-system-fields.md Decision 11)", () => {
+describe("useSavedListViews — a shared view's own saved where gains hasHiddenFilter when it names a field the caller can't read", () => {
   const sharedFilterWhere = { field: "title", op: "eq" as const, value: "secret" };
   const postsForAccess = defineCollection({
     slug: "posts",
@@ -645,7 +644,7 @@ describe("useSavedListViews — a shared view's own saved where gains hasHiddenF
   });
 });
 
-describe("resolveEffectiveFilterWhere — what ListViewFilterBuilder/ListViewFilterChips should display (developer-reported follow-up, access-system-fields.md Decision 11)", () => {
+describe("resolveEffectiveFilterWhere — what ListViewFilterBuilder/ListViewFilterChips should display", () => {
   function makeEntry(overrides: Partial<SavedListViewEntry> = {}): SavedListViewEntry {
     return {
       viewId: "v1",
@@ -677,7 +676,7 @@ describe("resolveEffectiveFilterWhere — what ListViewFilterBuilder/ListViewFil
     expect(resolveEffectiveFilterWhere({ urlFilter: undefined, activeView })).toEqual(sharedWhere);
   });
 
-  it("an UNREADABLE shared view's own where stays undefined — badge-only, Decision 11, never a chip", () => {
+  it("an UNREADABLE shared view's own where stays undefined — badge-only, never a chip", () => {
     const activeView = makeEntry({ source: "shared", where: sharedWhere, hasHiddenFilter: true });
     expect(resolveEffectiveFilterWhere({ urlFilter: undefined, activeView })).toBeUndefined();
   });
@@ -687,7 +686,7 @@ describe("resolveEffectiveFilterWhere — what ListViewFilterBuilder/ListViewFil
     expect(resolveEffectiveFilterWhere({ urlFilter: undefined, activeView })).toBeUndefined();
   });
 
-  it("never falls back for a LOCAL view — its own filter is the user's own, always URL-embedded already (Decision 41), never surfaced through the active-view fallback", () => {
+  it("never falls back for a LOCAL view — its own filter is the user's own, always URL-embedded already, never surfaced through the active-view fallback", () => {
     const activeView = makeEntry({ source: "local", where: sharedWhere, hasHiddenFilter: false });
     expect(resolveEffectiveFilterWhere({ urlFilter: undefined, activeView })).toBeUndefined();
   });

@@ -3,8 +3,8 @@
 // barrel, which does — see its own comment for why). Everything exported
 // here must stay genuinely server-renderable: no hooks, no browser-only
 // APIs, no client state, and — the harder constraint `AdminNotFound`'s own
-// round trip through here proved (Polish Decision 10, production-build-
-// reported) — no import, even transitively, of anything that depends on a
+// round trip through here proved (confirmed by a production build) —
+// no import, even transitively, of anything that depends on a
 // `createContext`-backed hook: tsup bundles this entry's entire reachable
 // graph into ONE output file, so a client component's own `"use client"`
 // directive gets flattened away the moment its code is co-bundled here,

@@ -18,9 +18,9 @@ import { ListViewCreateDocumentForm } from "../listView/create/ListViewCreateDoc
 import { useDuplicateCollectionDocument } from "./useDuplicateCollectionDocument";
 
 /**
- * Built-in `vex.duplicate` contribution for `edit.actionsMenu` (decision: Step 4
- * post-implementation note folded the former `CollectionDuplicateAction` in here). Offered on
- * non-media collections only (decision 12 — `props.slug` is always a non-media `CollectionConfig`
+ * Built-in `vex.duplicate` contribution for `edit.actionsMenu`, folding the former
+ * `CollectionDuplicateAction` in here. Offered on
+ * non-media collections only (`props.slug` is always a non-media `CollectionConfig`
  * here, `config.collections` already excludes media), gated on
  * {@link useDuplicateCollectionDocument}'s create permission.
  *

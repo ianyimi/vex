@@ -5,7 +5,7 @@ import { uploadFile } from "@vexcms/file-storage-convex/client";
 
 import { access } from "~/auth/access";
 import { resolvePagePath } from "~/lib/resolvePagePath";
-import { footers, headers, images, pages, themes, users } from "~/vexcms/collections";
+import { footers, headers, images, leads, pages, products, testimonials, themes, users } from "~/vexcms/collections";
 import { siteSettings } from "~/vexcms/globals";
 
 import { TABLE_SLUG_PAGES } from "./db/constants";
@@ -64,7 +64,7 @@ const vexConfig = defineConfig({
   storage: {
     clientUploads: { convex: uploadFile },
   },
-  collections: [users, pages, headers, footers, themes],
+  collections: [users, pages, headers, footers, themes, testimonials, products, leads],
   mediaCollections: [images],
   globals: [siteSettings],
   routes: {

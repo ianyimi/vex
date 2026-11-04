@@ -167,14 +167,14 @@ function warnFilteredDraftStatusIndex(props: { collection: string; indexName: st
  * `resolveQueryIndex` / `pickConvexQueryIndex` / `resolveQueryConstraint`
  * already resolved for the caller's RBAC rule, honoring Convex's
  * one-`withIndex`-per-query limit AND, when the winning index declares a
- * `draftStatus` (Step 13's per-index config), the one-physical-field-order
+ * `draftStatus` (per-index config), the one-physical-field-order
  * limit a `vex_status`-prefixed index imposes.
  *
  * Never a permission rule. The published-only half runs whenever
  * `requiresPublishedOnly` says so, including when the caller bypassed RBAC
  * entirely (`props.resolvedIndex`/`props.accessFilter` may both be
  * `undefined` in that case) — hiding non-published rows on a versioned
- * collection is data integrity (design-review.md §3.1), not authorization,
+ * collection is data integrity, not authorization,
  * so it has no dependency on `access.bypass` at all. MUST run AFTER
  * `pickConvexQueryIndex` — every branch reads `props.resolvedIndex.name` to look
  * up THAT index's own `draftStatus`, never the collection's in the

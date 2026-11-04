@@ -49,11 +49,11 @@ function regenerateNestedIds(props: { value: unknown; field: AdminField }): unkn
  * values, with every framework field stripped and every array/block item's
  * `id` regenerated so the clone shares no item identity with the original.
  *
- * Decision 8 (spec.md): only framework fields are stripped — `_id`,
+ * Only framework fields are stripped — `_id`,
  * `_creationTime`, `updatedAt`, and (versioned collections only) `vex_status`,
  * `vex_publishedAt`, `vex_publishedId`, `vex_activeVersion`. Every other
  * value, including unique fields like a `slug`, copies as-is; a unique-value
- * conflict is resolved by the fallback create modal (Step 6, decision 7).
+ * conflict is resolved by the fallback create modal.
  *
  * @param props - Input props.
  * @param props.fields - The source collection's resolved `fields` map
@@ -62,7 +62,7 @@ function regenerateNestedIds(props: { value: unknown; field: AdminField }): unkn
  *   from `vexConvexApi.get`/`find` (a `VexDocument`/`VexVersionDocument`).
  * @returns A plain object: `props.document` minus every framework field,
  *   with a fresh `id` on every array/block item at any nesting depth. Ready
- *   to pass as `data` to `create()` (Step 6).
+ *   to pass as `data` to `create()`.
  * @throws {Error} Propagated from `getDataFields` if `props.fields` is
  *   malformed (duplicate field key across tabs) — `props.fields` is assumed
  *   to be an already-validated `collection.fields`.

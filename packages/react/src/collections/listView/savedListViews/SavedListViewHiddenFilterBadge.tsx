@@ -4,21 +4,20 @@ import { Button, Popover, PopoverContent, PopoverDescription, PopoverHeader, Pop
 
 /** Props for {@link SavedListViewHiddenFilterBadge}. */
 export interface SavedListViewHiddenFilterBadgeProps {
-  /** The active view's `hiddenFilterCount` (`VexClientViewConfig`, Decision 25). Always ≥ 1 when this component is rendered. */
+  /** The active view's `hiddenFilterCount` (`VexClientViewConfig`). Always ≥ 1 when this component is rendered. */
   count: number;
-  /** The active view's own `description`, shown in the popover as the only explanation offered for the hidden condition (Decision 25's warning: hidden from the UI, not secret). */
+  /** The active view's own `description`, shown in the popover as the only explanation offered for the hidden condition (hidden from the UI, not secret). */
   description?: string;
 }
 
 /**
  * A lock badge naming how many filter conditions a config view hides from
- * the UI (Decision 25) — never rendered as a filter chip or a
+ * the UI — never rendered as a filter chip or a
  * `ListViewFilterBuilder` row, since the condition isn't user-editable state.
  * Opening the popover shows the view's own `description` as the only
  * explanation offered; there is no way to inspect the hidden condition
- * itself from the client (Decision 25's warning applies to the bundle, not
- * this UI — the condition still ships in the client bundle like an access
- * rule, it just isn't surfaced here).
+ * itself from the client — the condition still ships in the client bundle like an access
+ * rule, it just isn't surfaced here.
  *
  * @param props - See {@link SavedListViewHiddenFilterBadgeProps}.
  * @returns The lock badge button and its popover.

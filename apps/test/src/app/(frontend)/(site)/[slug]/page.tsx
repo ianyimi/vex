@@ -23,7 +23,7 @@ export const revalidate = 3600
  * additionally prerender a duplicate `/home` for the same content.
  *
  * `vexStaticParams` swallows an unreachable Convex deployment into `[]` rather
- * than throwing (P-020: CI builds this app with placeholder env), so a build
+ * than throwing (CI builds this app with placeholder env), so a build
  * with no live deployment still produces a valid route table.
  *
  * @returns One `{ slug }` entry per published page, excluding `home`.

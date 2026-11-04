@@ -3,22 +3,21 @@ import type { ListViewFilterOp } from "./listViewFilterGroups";
 
 /**
  * Operator choices the filter builder offers, keyed by every {@link ListViewFilterOp}
- * — Decision 10 (revised 2026-10-27, developer): each label pairs a symbol with
+ * — each label pairs a symbol with
  * its op CODE ("= eq", "≥ gte", …), shown identically in the operator `Select`'s
  * option list, as its selected value, and in `ListViewFilterChips`' chip text (which
  * imports this same map) — one notation everywhere. `gt`/`lt` keep entries here
  * even though the builder no longer OFFERS them as new choices (see
- * {@link listViewFilterOpsForFieldType}): a `where` built before this revision, or
+ * {@link listViewFilterOpsForFieldType}): a `where` built earlier, or
  * a hand-authored saved view, can still carry one, and it must render with its
  * own code rather than being silently relabelled or dropped.
  *
- * `isEmpty`/`isNotEmpty` (revised again, same day — "shorten the longest labels
- * slightly so the operator column stays the narrowest one" in the row's fixed
- * grid template): drop the "is"/"Not"
+ * `isEmpty`/`isNotEmpty` drop the "is"/"Not"
  * words, keeping only "empty" — the `!` already reads as a negation on its own
  * (same convention the rest of this map already leans on, e.g. `≠`/`!=`), so
  * `!∅ empty` still reads unambiguously as "is not empty" without the extra
- * width `!∅ isNotEmpty` cost.
+ * width `!∅ isNotEmpty` cost. This also keeps the operator column the
+ * narrowest one in the row's fixed grid template.
  */
 export const LIST_VIEW_FILTER_OP_LABELS: Record<ListViewFilterOp, string> = {
   eq: "= eq",
@@ -31,11 +30,11 @@ export const LIST_VIEW_FILTER_OP_LABELS: Record<ListViewFilterOp, string> = {
   isNotEmpty: "!∅ empty",
 };
 
-/** The synthetic field key for the built-in `vex_status` filter — never a real `AdminDataField` key, so it is injected rather than declared on any collection (Decision 10). */
+/** The synthetic field key for the built-in `vex_status` filter — never a real `AdminDataField` key, so it is injected rather than declared on any collection. */
 export const LIST_VIEW_FILTER_STATUS_FIELD_KEY = VERSION_SYSTEM_FIELDS.status.slug;
 
 /**
- * Decision 10 (revised 2026-10-27, developer)'s per-field-type operator
+ * Per-field-type operator
  * matrix — the builder's own minimal, no-derivable-duplicates op set, one
  * entry per `AdminDataField["type"]` the builder dispatches a value control
  * for. `gt`/`lt` are deliberately absent from every entry (their `gte`/`lte`
@@ -52,7 +51,7 @@ export const LIST_VIEW_FILTER_STATUS_FIELD_KEY = VERSION_SYSTEM_FIELDS.status.sl
  * {@link listViewFilterOpsForFieldType}.
  *
  * `json`/`richtext`/`array`/`blocks`/`group` are explicit entries too
- * (Decision 50, bug fix): these five structured-data types used to fall
+ * (bug fix): these five structured-data types used to fall
  * through to {@link LIST_VIEW_FILTER_DEFAULT_OPS}'s `eq`/`neq`, offering a
  * comparison against a structured value that was never meaningful and had
  * no matching value control (`fieldToFilterInputComponent` registers none

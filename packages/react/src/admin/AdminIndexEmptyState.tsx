@@ -10,10 +10,10 @@ export interface AdminIndexEmptyStateProps {
 
 /**
  * Shown by `CollectionsIndexView`/`GlobalsListView` when every section they'd otherwise
- * render is empty — the caller can read nothing here at all (developer-reported: with
- * zero readable collections/globals, e.g. an anonymous `guest` role with no grants on
- * either, the page rendered nothing at all under its own title; a caller with genuinely
- * nothing to see deserves a real state, not a page that just trails off).
+ * render is empty — the caller can read nothing here at all (with zero readable
+ * collections/globals, e.g. an anonymous `guest` role with no grants on either, the
+ * page rendered nothing at all under its own title; a caller with genuinely nothing
+ * to see deserves a real state, not a page that just trails off).
  *
  * Same visual shape as `ListViewEmptyState`'s own `"empty"` variant (`flex flex-col
  * items-center gap-2 py-12 text-center`, a `<h3>` title, a `<p>` detail line) — the

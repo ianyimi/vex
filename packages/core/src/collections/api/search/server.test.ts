@@ -748,7 +748,7 @@ describe("search (server) — boolean short-circuit from a withIndex/where callb
   });
 });
 
-// ── Field-level read shaping (Step 5) ───────────────────────────────────────
+// ── Field-level read shaping ─────────────────────────────────────────────
 const searchFieldMapResource = defineCollection({
   slug: "posts",
   fields: { title: text({ searchIndex: { name: "search_title", filterFields: [] } }), slug: text() },
@@ -826,8 +826,7 @@ describe("search (server) — field-level read shaping", () => {
 
   // `_creationTime` survives HERE because this map's wildcard is `true` and
   // never explicitly names it — NOT because it's unconditionally exempt like
-  // `_id` (developer decision, binding, "access-system-fields": `_creationTime`
-  // IS a real, gateable field-permission key now).
+  // `_id` (`_creationTime` IS a real, gateable field-permission key now).
   test("_id always survives; _creationTime survives here too, because the wildcard covers it (not because it's exempt)", async () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
@@ -885,10 +884,10 @@ describe("search (server) — field-level read shaping", () => {
   });
 });
 
-// Developer decision (binding, "access-system-fields"): proves `search`'s own
+// Proves `search`'s own
 // `readableDocuments` pipeline strips `_creationTime`/`updatedAt`/`vex_status`
 // exactly like any other denied field, through the real `search` call.
-describe("search (server) — system field stripping (developer decision, binding, \"access-system-fields\")", () => {
+describe("search (server) — system field stripping (\"access-system-fields\")", () => {
   const systemFieldPostsResource = defineCollection({
     slug: "posts",
     fields: {
@@ -945,7 +944,7 @@ describe("search (server) — system field stripping (developer decision, bindin
   });
 });
 
-// ── Step 6: sort rejection, searchField validation, declared-filter exemption, count cap ──
+// ── Sort rejection, searchField validation, declared-filter exemption, count cap ──
 describe("search (server) — sort is rejected while searching", () => {
   test("throws a VexError naming the collection when sort is also supplied", async () => {
     const t = convexTest(schema, modules);
@@ -1464,10 +1463,10 @@ describe("search (server) — draft-pair pagination fix (canonical-row merge)", 
   });
 });
 
-// ── Polish fix (Decision 9): admin.view.state.searchFields: [] disables
+// ── `admin.view.state.searchFields: []` disables
 // search entirely — the server rejects every searchField, not just ones
 // outside a non-empty allow-list ───────────────────────────────────────────
-describe("search (server) — admin.view.state.searchFields: [] disables search (Decision 9)", () => {
+describe("search (server) — admin.view.state.searchFields: [] disables search", () => {
   test("rejects with SEARCH_FIELD_NOT_ALLOWED when the collection declares no searchFields at all", async () => {
     const noSearchFieldsResource = defineCollection({
       slug: "posts",
