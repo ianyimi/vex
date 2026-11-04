@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/file-storage-convex",
-  "version": "0.1.0-alpha.28",
+  "version": "0.1.0-alpha.29",
   "description": "Convex file-storage adapter for VexCMS uploads",
   "keywords": [
     "cms",
