@@ -45,7 +45,7 @@ describe("buildGetArgs", () => {
   it("produces byte-identical args for two independent callers given the same id/collection — the parity guarantee this helper exists for", () => {
     // Simulates two call sites (e.g. `AdminTopNavDocCrumb` and `CollectionEditViewData`)
     // independently calling the shared helper for the SAME document — the regression this
-    // helper fixes (polish fixes, Decision 5) was two callers hand-building `{ id,
+    // helper fixes was two callers hand-building `{ id,
     // collection, drafts }` slightly differently for the identical document, producing two
     // different TanStack Query cache keys for what should be one shared entry.
     const callerA = buildGetArgs({ id: "doc1", collection: versionedCollection });

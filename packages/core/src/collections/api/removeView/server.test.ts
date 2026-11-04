@@ -130,7 +130,7 @@ describe("removeView (server)", () => {
   });
 });
 
-describe("removeView (server) — reserved view ids (Decision 45/48)", () => {
+describe("removeView (server) — reserved view ids", () => {
   const postsWithPresetView = defineCollection({
     slug: "posts",
     fields: { title: text() },
@@ -166,7 +166,7 @@ describe("removeView (server) — reserved view ids (Decision 45/48)", () => {
   });
 });
 
-describe("removeView (server) — cross-org (Decision 3)", () => {
+describe("removeView (server) — cross-org", () => {
   const orgConfig = {
     ...fixtureConfig,
     access: defineAccess({

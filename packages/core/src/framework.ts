@@ -51,7 +51,7 @@ export type FieldComponentMap<
      */
     display?: ApplyComponent<F, DisplayComponentProps<Extract<AdminDataField<TFieldMeta>, { type: K }>>>;
     /**
-     * The filter row value control for this field type (Decision 50),
+     * The filter row value control for this field type,
      * beside `field`/`cell` — OPTIONAL, unlike those two: UI-only
      * container types (`tabs`/`collapsible`/`row`/`ui`) and structured
      * data types with no meaningful single-value comparison (`json`/
@@ -87,22 +87,22 @@ export interface CollectionListViewProps<TCollectionSlug extends CollectionSlug 
   collection: TCollectionSlug;
   /**
    * Layout-affecting list preferences resolved server-side from cookies
-   * (`parseListViewConfigCookies`, Decision 42) — density today, extended by
-   * later steps. Seeds `CollectionListView`'s own state so the row height
+   * (`parseListViewConfigCookies`) — density today, extended as
+   * more arrive. Seeds `CollectionListView`'s own state so the row height
    * the server rendered and the client's first paint agree. Omit when
    * rendering client-side only (falls back to `"comfortable"`).
    */
   initialPreferences?: ListViewConfigCookieValues;
   /**
-   * The consolidated `vex-admin:<collection>` cookie's `localViews` field
-   * (Decision 41/51), read server-side by `NextAdminPage` (Step 14) —
+   * The consolidated `vex-admin:<collection>` cookie's `localViews` field,
+   * read server-side by `NextAdminPage` —
    * renders a local view's tab on first paint before `localStorage`
    * hydrates it. Omit when rendering client-side only.
    */
   initialLocalIndex?: LocalSavedListViewsIndexEntry[];
   /**
-   * The consolidated `vex-admin:<collection>` cookie's `rowCounts` field for the active view
-   * (Decision 49 follow-up/51, developer decision), read server-side by `NextAdminPage` — the
+   * The consolidated `vex-admin:<collection>` cookie's `rowCounts` field for the active view,
+   * read server-side by `NextAdminPage` — the
    * `<Suspense>` loading-skeleton fallback (`CollectionListView.tsx`) renders exactly this many
    * skeleton rows instead of a fixed `pageSize` guess, matching the row count this view's
    * result last actually settled with. `undefined` (no cookie entry for this view yet) falls
@@ -111,7 +111,7 @@ export interface CollectionListViewProps<TCollectionSlug extends CollectionSlug 
    */
   initialSkeletonRowCount?: number;
   /**
-   * The SAME cookie entry's `done` flag (zero-footer-shift fix, developer decision) — whether
+   * The SAME cookie entry's `done` flag — whether
    * the active view's last settled result showed "That's everything" (`true`) or a Load More
    * `Button` (`false`). `DataTable`'s own `isPending` skeleton footer renders the MATCHING
    * variant instead of always reserving the taller `Button`'s height. `undefined` (no cookie
@@ -120,10 +120,10 @@ export interface CollectionListViewProps<TCollectionSlug extends CollectionSlug 
   initialSkeletonDone?: boolean;
   /**
    * Server-resolved titles for every `relationship`/`upload` id the ACTIVE
-   * filter names (Decision 50) — `NextAdminPage` walks `resolved.where`
+   * filter names — `NextAdminPage` walks `resolved.where`
    * via `collectListViewFilterRelationshipValues`, fetches each distinct target
    * document, and reduces to `{ [id]: doc[useAsTitle] ?? doc._id }`
-   * (`null` for not-found/denied, degrade-never-crash per Decision 9/32).
+   * (`null` for not-found/denied, degrading rather than crashing).
    * Seeds `ListViewContext`'s own `filterValueTitles` so a
    * relationship/upload filter chip/row shows the target's TITLE, not its
    * raw id, on the very first paint — no flash from id to title once the
@@ -159,14 +159,14 @@ export interface CollectionEditViewProps<
    */
   initialData?: TDocument | null;
   /**
-   * The live-preview panel's initial open state, read server-side (Decision 51) from the
+   * The live-preview panel's initial open state, read server-side from the
    * `vex-admin:<collection>` cookie's `livePreview.panelOpen` field (or the collection's
    * `admin.livePreview.defaultOpen` when no cookie exists) by `NextAdminPage`.
    */
   initialPreviewPanelOpen?: boolean;
   /**
    * The live-preview split's handle position — the form column's percentage of
-   * the pane — read server-side (Decision 51) from the `vex-admin:<collection>`
+   * the pane — read server-side from the `vex-admin:<collection>`
    * cookie's `livePreview.panelSize` field by `NextAdminPage`, so a remembered width
    * renders on the first paint instead of snapping into place after hydration.
    */
@@ -198,14 +198,14 @@ export interface GlobalEditViewProps<
    */
   initialData?: TDocument | null;
   /**
-   * The live-preview panel's initial open state, read server-side (Decision 51) from the
+   * The live-preview panel's initial open state, read server-side from the
    * shared `vex-admin` cookie's `livePreview.panelOpen` field (or the global's
    * `admin.livePreview.defaultOpen` when no cookie exists) by `NextAdminPage`.
    */
   initialPreviewPanelOpen?: boolean;
   /**
    * The live-preview split's handle position — the form column's percentage of
-   * the pane — read server-side (Decision 51) from the shared `vex-admin`
+   * the pane — read server-side from the shared `vex-admin`
    * cookie's `livePreview.panelSize` field by `NextAdminPage`, so a remembered width
    * renders on the first paint instead of snapping into place after hydration.
    */

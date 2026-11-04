@@ -4,7 +4,7 @@ import type { FilterOp, VexWhereNode } from "@vexcms/core";
  * One AND-ed comparison within a {@link ListViewFilterGroup} — the `field`/`op`/
  * `value` leaf of a {@link VexWhereNode}, narrowed out of the union rather
  * than redeclared so a new operator added to core's `FilterOp` reaches the
- * filter builder without a second edit (P-010).
+ * filter builder without a second edit.
  */
 export type ListViewFilterLeaf<S extends string = string> = Extract<VexWhereNode<S>, { field: string }>;
 
@@ -15,7 +15,7 @@ export interface ListViewFilterGroup<S extends string = string> {
 
 /**
  * The filter builder's own shape: zero or more {@link ListViewFilterGroup}s,
- * OR-ed together, each AND-ing its own `rows` — Decision 10's "AND rows
+ * OR-ed together, each AND-ing its own `rows` — "AND rows
  * within groups, OR between groups" DNF, flattened for a tree-free editor.
  * `groups: []` means no filter.
  */
@@ -25,7 +25,7 @@ export interface ListViewFilterGroups<S extends string = string> {
 
 /**
  * The filter builder's **editor-level** operator vocabulary — core's
- * {@link FilterOp} (`eq neq gt gte lt lte`) plus Decision 10's two
+ * {@link FilterOp} (`eq neq gt gte lt lte`) plus two
  * list-only operators. `isEmpty`/`isNotEmpty` have no stored representation
  * of their own: a leaf with `op: "eq"`/`"neq"` and `value: undefined` IS an
  * empty/not-empty check (core `FilterOp` is unchanged, access rules are
@@ -52,7 +52,7 @@ export function listFilterOpOf<S extends string>(props: { leaf: ListViewFilterLe
 }
 
 /**
- * Applies an operator `Select` change to a row, translating Decision 10's
+ * Applies an operator `Select` change to a row, translating the
  * two editor-only operators into their stored `eq`/`neq`-with-no-value
  * form — the inverse half of {@link listFilterOpOf}.
  *
@@ -101,7 +101,7 @@ function flattenLeaves<S extends string>(
 /**
  * Converts a plain {@link VexWhereNode} into its {@link ListViewFilterGroups} editor
  * shape, or `null` when `where` is not already in one level of OR-of-AND
- * normal form — Decision 10: a config-authored `where` outside that shape
+ * normal form — a config-authored `where` outside that shape
  * (a `not`, a nested `or`, an `and` mixing leaves with sub-trees) renders
  * read-only in `ListViewFilterBuilder` rather than being forced into a lossy
  * edit.
@@ -151,7 +151,7 @@ export function toListViewFilterGroups<S extends string = string>(props: {
  * Collapses a {@link ListViewFilterGroups}'s groups into the simplest equivalent plain
  * {@link VexWhereNode} — the inverse of {@link toListViewFilterGroups}, and the form
  * `ListViewFilterBuilder` writes back through `onWhereChange` (and ultimately
- * the URL `filter` param, Decision 9, via `useListViewUrlState`'s `setFilter`).
+ * the URL `filter` param, via `useListViewUrlState`'s `setFilter`).
  *
  * @param props - Input props.
  * @param props.groups - The editor's current groups. A group with zero

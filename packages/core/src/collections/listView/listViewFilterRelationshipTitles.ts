@@ -24,7 +24,7 @@ export interface ListViewFilterRelationshipValue {
  * concrete single id (`eq`/`neq` with a plain string value — never
  * `isEmpty`/`isNotEmpty`, which compiles to `value: undefined` and has no
  * id to resolve, and never an array, since a filter leaf always compares
- * ONE value regardless of the field's own `hasMany`, Decision 50).
+ * ONE value regardless of the field's own `hasMany`).
  *
  * Used by `NextAdminPage` to prefetch each distinct target document's
  * title server-side (`initialFilterValueTitles`), so a relationship/

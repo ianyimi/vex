@@ -11,7 +11,7 @@ interface SaveWithAnalyticsProps extends EditSlotProps {
 /**
  * Wraps `vex.save` in `edit.header.overrides` on `posts` — logs a
  * console event naming the document before delegating to the real Save
- * button via `renderDefault`. Exists to dogfood decision 15's per-built-in
+ * button via `renderDefault`. Exists to dogfood the per-built-in
  * `overrides` map, not as a real analytics integration.
  */
 export function SaveWithAnalytics(props: SaveWithAnalyticsProps) {

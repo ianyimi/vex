@@ -10,7 +10,7 @@ import { useUnsavedChangesGuard } from "./useUnsavedChangesGuard";
 /**
  * A `NavigationBlockerAdapter` double: records the latest `when`/`onBlock`
  * passed to `useBlocker` on every render — no interception mechanics of its
- * own, that's `@vexcms/next`'s job (Step 8) — and exposes `block` so a test
+ * own, that's `@vexcms/next`'s job — and exposes `block` so a test
  * can simulate the framework intercepting a navigation attempt.
  */
 function createFakeNavigationBlocker() {

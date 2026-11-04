@@ -18,12 +18,11 @@ export interface DataTableBulkActionsProps {
 
 /**
  * Inline bulk-action group — count, Delete, Clear — rendered wherever its caller places it
- * (Decision 22: inline in the toolbar area, left of Filter, never a floating overlay).
+ * (inline in the toolbar area, left of Filter, never a floating overlay).
  *
  * Sized by the `@container/list` root, not `md:` — this group can appear inside a narrow
- * split pane at any viewport width (list-view-overhaul Step 16). Below `@lg/list` it fills
- * the full row width (it stands in for the whole Filter row there, Decision 22's last
- * sentence) with larger touch targets, and Delete/Clear drop to icon-only — a single
+ * split pane at any viewport width. Below `@lg/list` it fills
+ * the full row width (it stands in for the whole Filter row there) with larger touch targets, and Delete/Clear drop to icon-only — a single
  * `<Button>` instance per action whose `aria-label` stays fixed ("Delete"/"Clear selection")
  * while only an inner text `<span>` toggles visibility via CSS, so there is exactly one
  * accessible "Delete"/"Clear" control at any width (never a duplicated trigger with the

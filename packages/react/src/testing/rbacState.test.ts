@@ -9,8 +9,8 @@ import { textFieldFixture } from "../fields/text/testFixture";
 
 /**
  * `AppForm` narrowed to the two props this harness passes — same documented
- * AP-006 boundary cast `fieldInputContract.ts` uses, including its Step 2
- * finding: widening `AnyFormApi`'s validator-slot defaults does not unlock
+ * AP-006 boundary cast `fieldInputContract.ts` uses, including its finding that
+ * widening `AnyFormApi`'s validator-slot defaults does not unlock
  * removing this cast, because `createElement(AppForm, props)` erases ALL of
  * `AppForm`'s generics — `TFormData` included — to `unknown` before checking
  * `props`, independent of what `AnyFormApi` declares as a default. See

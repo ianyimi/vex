@@ -10,7 +10,7 @@ type ArrayItem<T> = T extends (infer Item)[] ? Item : never;
  *
  * Returns `[]` when the read fails — including an unreachable Convex
  * deployment, which every CI build hits because it supplies placeholder env
- * rather than skipping validation (P-020). A route with no static params still
+ * rather than skipping validation. A route with no static params still
  * renders correctly on demand; it is simply not prerendered until the next
  * build.
  *

@@ -392,7 +392,7 @@ function isConstrainedCheck(
  * This is the second half of what makes `withIndex` / `where` worth recording as
  * data: the SAME declaration that compiles to a `withIndex` range or a `.filter()`
  * expression on the server also interprets directly in JS here, which is what keeps
- * client-side `usePermission` working with no server round trip (P-004). A closure
+ * client-side `usePermission` working with no server round trip. A closure
  * could only ever do this half.
  *
  * `filter`, when present, is additive — the condition must hold AND the filter must

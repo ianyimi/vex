@@ -13,8 +13,8 @@ import type { ListViewRowSlotProps } from "./ListViewRowOpenAction";
 /**
  * `vex.list.row.delete` — per-row delete, self-gated on `CRUD_ACTIONS.delete` (mirrors
  * `ListViewCreateAction`'s own self-check rather than a slot-level `access` predicate — every
- * built-in self-gates, Decision 37's "mirror the edit view"). Renders last in the ⋯ menu
- * (`LIST_BUILTIN_ORDER.rowDelete`, Decision 28), destructive-styled.
+ * built-in self-gates, mirroring the edit view). Renders last in the ⋯ menu
+ * (`LIST_BUILTIN_ORDER.rowDelete`), destructive-styled.
  *
  * A versioned collection's draft/published pair is already merged to one row
  * server-side (`find`/`search`'s `mergeDraftCounterparts`, core), so

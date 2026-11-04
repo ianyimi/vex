@@ -57,7 +57,7 @@ const stubClientConfig: VexClientConfig = defineConfig({
 /**
  * `AppForm` narrowed to the two props this harness passes — the same
  * documented AP-006 boundary cast as `fieldInputContract.ts`'s own
- * `AppFormBoundary`, including its Step 2 finding: widening `AnyFormApi`'s
+ * `AppFormBoundary`, including its finding that widening `AnyFormApi`'s
  * validator-slot defaults does not unlock removing this cast, because
  * `createElement(AppForm, props)` erases ALL of `AppForm`'s generics —
  * `TFormData` included — to `unknown` before checking `props`, independent

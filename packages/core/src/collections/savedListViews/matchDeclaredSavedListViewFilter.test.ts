@@ -210,7 +210,7 @@ describe("loadSharedSavedListViewWheres (server)", () => {
   });
 });
 
-describe("loadSharedSavedListViewWheres (server) — org scoping (Decision 3)", () => {
+describe("loadSharedSavedListViewWheres (server) — org scoping", () => {
   const orgConfig = {
     ...fixtureConfig,
     access: defineAccess({
@@ -355,7 +355,7 @@ describe("loadSharedSavedListViewWheres (server) — org scoping (Decision 3)", 
   });
 });
 
-describe("loadSharedSavedListViewWheres (server) — bad state rows skipped (Decision 2)", () => {
+describe("loadSharedSavedListViewWheres (server) — bad state rows skipped", () => {
   it("skips a row whose state is null (the exact trigger case: used to throw TypeError on every read) and returns the rest", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {

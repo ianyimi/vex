@@ -15,9 +15,15 @@ import {
   verification,
   vex_versions,
   vex_views,
+  testimonials,
+  products,
+  leads,
 } from "./vex.schema"
 
 export default defineSchema({
+  testimonials,
+  products,
+  leads,
   vex_views,
   vex_versions,
   pages,

@@ -69,7 +69,7 @@ export interface AdminComponentsInput {
   array?: {
     itemActions?: ComponentContributionInput<ComponentHKT, unknown>[];
   };
-  /** `edit.*` slot defaults, project-wide (decision 11) — merged with each collection/global's own config by `resolveEditSlot` at render time. */
+  /** `edit.*` slot defaults, project-wide — merged with each collection/global's own config by `resolveEditSlot` at render time. */
   edit?: EditComponentsConfigInput<ComponentHKT>;
 }
 
@@ -428,7 +428,7 @@ export interface VexClientConfigInput {
    * Omitted entirely for a project with no rich-text fields. A collection
    * that declares a `richtext()` field while this is absent renders a
    * configuration error in the admin Input instead of crashing or falling
-   * back to a plain textarea (Step 3).
+   * back to a plain textarea.
    *
    * @see {@link VexEditorAdapter} for the adapter shape
    * @see {@link RelationshipFieldAdminInput.components.preview} for the same

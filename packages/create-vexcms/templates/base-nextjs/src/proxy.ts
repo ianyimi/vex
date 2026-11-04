@@ -25,6 +25,16 @@ const ALWAYS_ALLOWED: Record<string, true> = { "/": true, "/unauthorized": true 
 /**
  * Session gate for every route except the public ones in `config.matcher`.
  *
+ * `/admin/*` is one of those exclusions: its
+ * own gate used to run through here too, but every route this proxy guards
+ * requires this module to import `~/db/constants` and friends, which is a
+ * cost every request pays even though the admin page below resolves its own
+ * session independently. The admin panel is excluded from `config.matcher`
+ * entirely now; its own page component
+ * (`src/app/(vexcms)/admin/[[...path]]/page.tsx`) is the only gate left for
+ * it, and fails closed the same way this one does (see that file's doc
+ * comment).
+ *
  * Fails **closed**: if the session cannot be verified — no cookie, no matching
  * session, or the Convex lookup throwing — the request is redirected rather than
  * served. A verification error is not evidence of a valid session, and serving
@@ -114,6 +124,6 @@ function redirectToUnauthorized(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|favicons|models/*|staging/*|auth/sign-in|auth/sign-up|$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|favicons|models/*|staging/*|auth/sign-in|auth/sign-up|admin|$).*)",
   ],
 };

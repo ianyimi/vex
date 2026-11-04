@@ -832,8 +832,7 @@ export interface Testimonial extends VexDocument {
    */
   rating: number
   /**
-   * Where this testimonial was collected from — indexed for sorted/filtered list
-   * queries.
+   * Where this testimonial was collected from.
    */
   source: TestimonialSourceOption[]
   /**

@@ -65,7 +65,7 @@ export function fieldName(context: RenderFieldsContext, key: string): string {
 /**
  * The width a field occupies in its parent's flex-wrap row — a `tabs`/
  * `collapsible`/`row`/`ui` field is always `"100%"`; only a data field
- * carries a resolved `admin.width` (Interview Decision 4).
+ * carries a resolved `admin.width`.
  *
  * @param field - The field to resolve a width for.
  * @returns The field's resolved width, as a CSS width value.
@@ -79,7 +79,7 @@ export function fieldWidth(field: AdminField): string {
  * Wraps one field's rendered content at its resolved width. While the
  * enclosing `form` container (the edit view's form column, or `AppForm`) is
  * under 36rem every field is full width; from 36rem it switches to the
- * CSS custom property set here (Interview Decision 4). A `%` width gives up
+ * CSS custom property set here. A `%` width gives up
  * its own share of the `gap-4` gutters, so siblings whose widths sum to 100%
  * fit on one line instead of wrapping.
  *
@@ -351,13 +351,13 @@ export function renderField(props: {
  * `tabs()`/`collapsible()`/`row()`/`ui()` entries render themselves via
  * `renderField`; nothing here calls `getDataFields` (that function is for
  * schema/validation/type-gen/RBAC/index/version/list-column/default-value
- * consumers — Step 6 — never for rendering).
+ * consumers — never for rendering).
  *
  * Siblings lay out in a flex-wrap row at their resolved width
  * (`FieldLayoutItem`), collapsing to full width while the enclosing `form`
- * container is under 36rem (Interview Decision 4). `region`/`isTopLevel` partition a collection or
+ * container is under 36rem. `region`/`isTopLevel` partition a collection or
  * global's OWN top-level fields into the edit view's main/sidebar columns —
- * meaningless, and ignored, for a nested call (Interview Decision 5).
+ * meaningless, and ignored, for a nested call.
  *
  * @param props.fields - The field map this call renders — a resource's full
  *   field set, or one container's own sub-fields for a nested call.

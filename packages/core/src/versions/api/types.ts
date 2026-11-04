@@ -39,7 +39,7 @@ export interface GenericVersionsMutationServerArgs<
   /**
    * Resolved caller identity for permission checks — `{ user, organization? }`,
    * or omitted when access control is off. Never a client argument; the
-   * `versionsApi` factory (Step 9) resolves it from `ctx.auth` per request.
+   * `versionsApi` factory resolves it from `ctx.auth` per request.
    */
   auth?: VexApiAuth;
   /** Discriminator: server args MUST supply a Convex mutation context. */

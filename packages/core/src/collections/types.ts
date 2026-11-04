@@ -75,7 +75,7 @@ export interface RelationshipPreviewProps<TCollectionSlug extends CollectionSlug
  * A portable table sort: a field slug (or `_creationTime`) plus direction.
  * Used by `admin.view.state.sort`, `find`'s `sort` arg, the list URL, and
  * saved views — the same shape everywhere so a stored view stays
- * backend-neutral (B3 Decision 14 / this spec's Decision 4).
+ * backend-neutral.
  *
  * @typeParam TFieldSlug - The collection's own field slugs.
  */
@@ -87,9 +87,8 @@ export interface CollectionTableSort<TFieldSlug extends string = string> {
 }
 
 /**
- * One entry in a view's `columns` array (Decision 45/47/48's unified
- * column-entry model) — either a bare field slug (visible, every other
- * attribute defaulted) or an object carrying this column's own
+ * One entry in a view's `columns` array — either a bare field slug (visible,
+ * every other attribute defaulted) or an object carrying this column's own
  * width/pin/visibility/capability overrides. The array is the view's FULL
  * display order, visible or not; `hidden: true` is what marks a listed
  * entry as hidden (there is no other visibility signal). `resolveListViewColumnConfig`
@@ -133,8 +132,8 @@ export function columnEntryField<TFieldSlug extends string = string>(
 }
 
 /**
- * One saved view's filter/sort/search/column/page-size state, PLUS (Decision
- * 45's FINAL revision) the collection-wide list settings that used to live
+ * One saved view's filter/sort/search/column/page-size state, PLUS the
+ * collection-wide list settings that used to live
  * on the now-deleted `admin.table` — `admin.view`'s own input type and
  * {@link VexViewConfig}'s `state` are the SAME type, a superset, every key
  * optional. An `admin.views[n]` entry may therefore override collection-wide
@@ -166,10 +165,10 @@ export type VexViewState<TFieldSlug extends string = string> = {
   search?: string;
   searchField?: TFieldSlug;
   /**
-   * The view's FULL column display order (Decision 45/47/48), visible or
+   * The view's FULL column display order, visible or
    * not, in display order — see {@link ColumnEntry}. A saved view from
    * before this unification only ever listed its VISIBLE fields as bare
-   * slugs (the original Decision 11 shape); that shape still parses
+   * slugs; that shape still parses
    * correctly here (every entry is a valid bare-slug `ColumnEntry`), and
    * `resolveListViewQueryState`'s completion step appends any field it
    * doesn't name, in field-declaration order, as hidden.
@@ -178,7 +177,7 @@ export type VexViewState<TFieldSlug extends string = string> = {
   pageSize?: number;
   /**
    * The Inspect peek panel's width in px, resized by dragging its left
-   * edge (Decision, developer-approved "peek-resize") — `undefined`
+   * edge — `undefined`
    * means this view never saved an explicit width, so switching TO it
    * leaves whatever width is currently in the `vex-admin:<collection>`
    * cookie untouched (the SAME "no explicit value means inherit" rule
@@ -193,7 +192,7 @@ export type VexViewState<TFieldSlug extends string = string> = {
    * must name a field declaring its own `searchIndex`; checked by
    * `validateSavedListViewConfig`. Omit (on `admin.view`, with no `admin.views[n]`
    * override either) to hide the search bar entirely. Renamed, plural,
-   * from the deleted `admin.table.searchField` (Decision 45 FINAL — stops
+   * from the deleted `admin.table.searchField` — stops
    * colliding with this same type's own per-view singular `searchField`).
    * @default undefined (search bar hidden)
    */
@@ -204,15 +203,15 @@ export type VexViewState<TFieldSlug extends string = string> = {
    */
   pageSizeOptions?: number[];
   /**
-   * Collection-wide: caps the total-count scan on the list's first page
-   * (Decision 35): `find` counts with `take(countLimit + 1)` instead of
+   * Collection-wide: caps the total-count scan on the list's first page:
+   * `find` counts with `take(countLimit + 1)` instead of
    * `.collect()`, and returns `totalDocsCapped: true` once the cap is hit.
    * @default 10000
    */
   countLimit?: number;
   /**
    * Collection-wide: default number of items per page fetched from the
-   * server (Step 8 — always at least `pageSize`, the client page size).
+   * server (always at least `pageSize`, the client page size).
    * @default 100
    */
   serverPageSize?: number;
@@ -230,9 +229,8 @@ export type VexViewState<TFieldSlug extends string = string> = {
  * consumer that already treats a view generically (tabs, `toClientSavedListViewConfig`,
  * `matchDeclaredSavedListViewFilter`, modified-state diffing) needs no special case
  * for it. Every `state` key but `where`/`searchField` is always resolved
- * (never `undefined`) — `defineCollection` fills every gap the project
- * didn't declare (absorbing every former `admin.table.*` default,
- * Decision 45 FINAL), the terminal fallback `resolveListViewQueryState`'s
+ * (never `undefined`) — `defineCollection` fills every gap the
+ * project didn't declare (absorbing every former `admin.table.*` default),
  * three-tier chain (URL → active view → this) bottoms out at.
  *
  * @typeParam TFieldSlug - The collection's own field slugs.
@@ -244,7 +242,7 @@ export interface ResolvedDefaultView<TFieldSlug extends string = string> {
   name: string;
   description?: string;
   state: {
-    /** A hidden filter — same treatment as a preset view's own (Decision 25/26): a lock badge, `composeSavedListViewWhere` composition, `matchDeclaredSavedListViewFilter` trusts it. */
+    /** A hidden filter — same treatment as a preset view's own: a lock badge, `composeSavedListViewWhere` composition, `matchDeclaredSavedListViewFilter` trusts it. */
     where?: VexWhereNodeOf<unknown>;
     /** Always resolved. @default { field: "_creationTime", order: "desc" } */
     sort: CollectionTableSort<TFieldSlug>;
@@ -314,7 +312,7 @@ export interface AdminCollectionConfigInput<
   icon?: IconName;
   /**
    * The default ("All") view — the view active whenever the URL carries no
-   * `view=` param, AND (Decision 45 FINAL) the collection-wide list
+   * `view=` param, AND the collection-wide list
    * settings that used to live on the now-deleted `admin.table`
    * (`searchFields`, `pageSizeOptions`, `countLimit`, `serverPageSize`,
    * `bulkActions`) — see {@link VexViewState}, the same type `admin.views[n]`
@@ -325,10 +323,10 @@ export interface AdminCollectionConfigInput<
   view?: VexViewState<TFieldSlug>;
   /**
    * Additional preset views, rendered as tabs after the default ("All")
-   * tab, in declaration order — read-only in the admin panel (Decision
-   * 11's `config` source). Merged at render time with `shared` (`vex_views`)
-   * and `local` (browser) views by `viewId` (`useSavedListViews`, Step 12).
-   * Replaces the former `admin.table.views` (clean cutover, Decision 45/48).
+   * tab, in declaration order — read-only in the admin panel (the
+   * `config` source). Merged at render time with `shared` (`vex_views`)
+   * and `local` (browser) views by `viewId` (`useSavedListViews`).
+   * Replaces the former `admin.table.views` (clean cutover).
    * Every `viewId` must be unique within this collection (including against
    * the reserved `"default"` id), every `where` must only name this
    * collection's own fields (plus `"_creationTime"`/`"vex_status"`), every
@@ -337,8 +335,8 @@ export interface AdminCollectionConfigInput<
    * `columns` entry must be a known field — all checked by `validateSavedListViewConfig`.
    *
    * **Hidden view filters are hidden from the UI, not secret.** A view's
-   * `state.where` ships in the client bundle like an access rule (P-004,
-   * Decision 25) — don't encode sensitive thresholds or identifiers in it.
+   * `state.where` ships in the client bundle like an access rule —
+   * don't encode sensitive thresholds or identifiers in it.
    * UI code never reads `state.where` directly; it reads the
    * {@link VexClientViewConfig} projection `toClientSavedListViewConfig` builds
    * instead, which replaces `where` with `hasHiddenFilter`/`hiddenFilterCount`.
@@ -356,7 +354,7 @@ export interface AdminCollectionConfigInput<
    */
   livePreview?: AdminLivePreviewConfigInput<Partial<DocumentByCollectionSlug<TCollectionSlug>>>;
   /**
-   * Collection-level `edit.*` slot contributions and built-in overrides (decision 11/14) —
+   * Collection-level `edit.*` slot contributions and built-in overrides —
    * merged with the project-wide config of the same shape by `resolveEditSlot` at render time.
    * Also carries this collection's own additive contributions to its own `list.*` slots
    * (S17/S18) — create, search, filters, columns, views, and row/bulk delete are built-ins
@@ -364,14 +362,13 @@ export interface AdminCollectionConfigInput<
    * project-authored contributions, merged with `vex.list.*` built-ins by `ListViewLayout`, never
    * here.
    *
-   * Deviation from the list-view-overhaul spec's literal text (reported in Step 9's digest):
-   * the spec drafted this as a brand-new standalone `components?: AdminListComponentsInput`
-   * property, not realizing the edit-view overhaul had already landed `components?: { edit?:
-   * EditComponentsConfigInput<TComponent> }` on this same interface — a literal second
-   * `components` property would be a duplicate-identifier error. The seven list-slot arrays
-   * are merged flat into the existing `components` object instead (matching the spec's own
+   * The seven list-slot arrays are merged flat into the existing
+   * `components` object (alongside `components.edit`) rather than a
+   * second standalone `components` property, which would collide with
+   * the edit-view's own `components?: { edit?: EditComponentsConfigInput<TComponent> }`
+   * on this same interface — matching the
    * `collection.admin.components.rowActions` access pattern verbatim, with no extra `.list`
-   * nesting level to introduce).
+   * nesting level to introduce.
    */
   components?: {
     edit?: EditComponentsConfigInput<TComponent>;
@@ -391,7 +388,7 @@ export interface AdminCollectionConfig<
   /** The field used as the document's human-readable title in the admin panel. */
   useAsTitle: ConvexSystemField | NoInfer<TFieldSlug>;
   icon?: IconName;
-  /** The resolved default ("All") view — always present, and (Decision 45 FINAL) every collection-wide list setting that used to live on the now-deleted `admin.table`. See {@link ResolvedDefaultView}. */
+  /** The resolved default ("All") view — always present, and every collection-wide list setting that used to live on the now-deleted `admin.table`. See {@link ResolvedDefaultView}. */
   view: ResolvedDefaultView<TFieldSlug>;
   /** Resolved preset views, `where` intact — see the `views` warning on {@link AdminCollectionConfigInput}. */
   views: VexViewConfig<TFieldSlug>[];
@@ -501,7 +498,7 @@ export interface CollectionConfigInput<
     fields: NoInfer<CollectionDataFieldSlug<TFields, TTimestamps>>[];
     /**
      * Also narrow this index on `vex_status` for draft/publish status
-     * composition (Step 13, `versions/statusQueryConstraint.ts`). Only valid
+     * composition (`versions/statusQueryConstraint.ts`). Only valid
      * when this collection declares `versions.drafts: true` —
      * `defineCollection` throws otherwise for a dynamically-assembled
      * config; a literal `{ drafts: false }` (or omitted) config fails to
@@ -578,7 +575,7 @@ export interface CollectionConfigInput<
     /**
      * When a document is deleted (`remove`), also delete its draft row (if
      * any) and every `vex_versions` history row for it in the same action
-     * (`cascadeVersionedDelete`, Step 11). Set `false` to leave the draft
+     * (`cascadeVersionedDelete`). Set `false` to leave the draft
      * row and history behind — orphaned rows are inert (no query reads a
      * draft/history row without its own explicit `drafts: true` /
      * `listVersions` call, so nothing surfaces them by accident), but they
@@ -662,7 +659,7 @@ export interface CollectionConfig<
 /**
  * One saved view: an identity (`viewId`, `name`, optional `description`)
  * plus its {@link VexViewState}. The shape of `admin.views` entries (config
- * source) and of `savedListViews/localSavedListViewsStore.ts`'s local entries (Step 12);
+ * source) and of `savedListViews/localSavedListViewsStore.ts`'s local entries;
  * {@link VexStoredView} extends it for the `shared` (`vex_views`) source.
  * {@link ResolvedDefaultView} (`admin.view`) is structurally this same
  * shape too (fixed `viewId: "default"`), so a merged view list can treat
@@ -670,14 +667,13 @@ export interface CollectionConfig<
  *
  * This is the full shape — `state.where` intact. It is what
  * `CollectionConfig.admin.views` entries resolve to (above), and it ships
- * to the browser whole, as part of `VexClientConfig` (Decision 25: hidden
+ * to the browser whole, as part of `VexClientConfig` (hidden
  * from the UI, not secret). `find`/`search` take no `view` argument and
  * never see this type — the client reads `state.where` directly in
- * exactly two places: `composeSavedListViewWhere` (`collections/savedListViews/composeSavedListViewWhere.ts`,
- * this step, CLIENT-SIDE, to build the plain `where` it sends) and
- * `toClientSavedListViewConfig` (`collections/savedListViews/toClientSavedListViewConfig.ts`, this step,
- * CLIENT-SIDE, called by `useSavedListViews`, Step 12, to strip `where` for
- * display). Server-side, `matchDeclaredSavedListViewFilter` (Step 6) separately
+ * this file, CLIENT-SIDE, to build the plain `where` it sends) and
+ * `toClientSavedListViewConfig` (`collections/savedListViews/toClientSavedListViewConfig.ts`, this file,
+ * CLIENT-SIDE, called by `useSavedListViews`, to strip `where` for
+ * display). Server-side, `matchDeclaredSavedListViewFilter` separately
  * reads a collection's `admin.view`/`admin.views` `where` to recognize a
  * trusted declared filter inside the request `where` it receives — it
  * never reads THIS type, only the collection's own `admin.view`/`admin.views`
@@ -696,10 +692,10 @@ export type VexViewConfig<TFieldSlug extends string = string> = {
 /**
  * A `vex_views` row shape: a {@link VexViewConfig} plus the fields only a
  * shared, server-stored view carries — which collection it belongs to, the
- * organization it is scoped to when `access.orgCollectionSlug` is set
- * (Decision 12), and who created it. A shared view's `where` is the
+ * organization it is scoped to when `access.orgCollectionSlug` is declared,
+ * and who created it. A shared view's `where` is the
  * caller's own, built through the filter builder UI — unlike a `config`
- * view's, it is never hidden (Decision 25 is a `config`-source-only rule).
+ * view's, it is never hidden (that's a `config`-source-only rule).
  *
  * @typeParam TFieldSlug - Union of this collection's field slugs.
  */
@@ -716,21 +712,21 @@ export type VexClientViewState<TFieldSlug extends string = string> = Omit<
 >;
 
 /**
- * The client-safe projection of a `config`-source {@link VexViewConfig}
- * (Decision 25): every field except `state.where`, plus a hidden-filter
+ * The client-safe projection of a `config`-source {@link VexViewConfig} —
+ * every field except `state.where`, plus a hidden-filter
  * summary the UI renders as a lock badge — `hasHiddenFilter` (whether the
  * view has a `where` at all) and `hiddenFilterCount` (the number of leaf
  * conditions in its DNF tree, counting through `and`/`or`/`not`).
  *
  * Built by `toClientSavedListViewConfig` (`collections/savedListViews/toClientSavedListViewConfig.ts`),
- * called CLIENT-SIDE by `useSavedListViews` (Step 12), straight off
+ * called CLIENT-SIDE by `useSavedListViews`, straight off
  * `collection.admin.views` (and `admin.view`, the resolved default) as
  * read from the bundled `VexClientConfig` — that object IS directly
- * imported into client JS (P-004), so `state.where` already shipped to the
+ * imported into client JS, so `state.where` already shipped to the
  * browser as plain text before this function ever runs. `toClientSavedListViewConfig`
  * doesn't keep `where` out of the bundle; it keeps UI CODE from reading
  * it, so the filter builder, chips, and every other control only ever see
- * `hasHiddenFilter`/`hiddenFilterCount`. Step 7's `listViews` query never
+ * `hasHiddenFilter`/`hiddenFilterCount`. The `listViews` query never
  * touches a `config`-source (or default) view at all — it returns `shared`
  * views only. To actually QUERY a config/default view, the list passes
  * the RAW `VexViewConfig` (not this type) to `composeSavedListViewWhere`.
@@ -751,7 +747,7 @@ export type VexClientViewConfig<TFieldSlug extends string = string> = {
 };
 
 /**
- * Props every `list.toolbar` contribution receives (Decision 17/37) — the
+ * Props every `list.toolbar` contribution receives — the
  * collection the list view is showing. Deliberately minimal, mirroring
  * `EditSlotProps`'s `{ kind, slug }` (`components/types.ts`): the richer
  * list-wide state (`urlState`, `columns`, `columnMenuEntries`,

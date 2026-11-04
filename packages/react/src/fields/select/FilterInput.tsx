@@ -3,14 +3,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 
 /**
  * Select field filter row value control — the field's own declared
- * options in a `Select`, registered as `reactAdapter.fields.select.filterInput`
- * (Decision 50). Moved verbatim from `ListViewFilterBuilder.tsx`'s own
+ * options in a `Select`, registered as `reactAdapter.fields.select.filterInput`.
+ * Moved verbatim from `ListViewFilterBuilder.tsx`'s own
  * hand-coded `renderFilterValueInput` `select` branch, now this package's
  * single source of truth for it — the synthetic `vex_status` filter field
  * is itself `type: "select"` (`VERSION_SYSTEM_FIELDS.status`), so it
  * free-rides this component with no special case. `SelectValue`'s
  * children render function shows the matching option's own label, not
- * the raw stored value (developer-reported: the raw value was visibly
+ * the raw stored value (the raw value was visibly
  * wrong, not just an accessibility gap) — the same convention
  * `ListViewFilterBuilder.tsx`'s own operator `Select` and
  * `DataTablePageSizeSelect.tsx` already use. `aria-label` reuses the

@@ -55,8 +55,8 @@ export interface ViewHarnessOptions {
   /** Initial URL search params (e.g. `"?q=an"`), forwarded to `NuqsTestingAdapter`. Omit for an empty URL. */
   searchParams?: string;
   /**
-   * Seeds the view's own `QueryClient` cache directly, BEFORE first render (polish fixes,
-   * Decision 11 — "Non-Next callers prefetch through the query cache like `NextAdminPage`",
+   * Seeds the view's own `QueryClient` cache directly, BEFORE first render
+   * ("Non-Next callers prefetch through the query cache like `NextAdminPage`",
    * replacing the removed `CollectionListViewProps.initialData`/`initialViews`/
    * `initialPeekDoc` props). Each entry's `queryKey` must match EXACTLY what the real
    * `convexQuery(fn, args)` call under test would build (same `[fn, args]` shape) — a

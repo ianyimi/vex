@@ -61,7 +61,7 @@ describe("ListViewSearch", () => {
     expect(screen.getByRole("combobox")).toBeInTheDocument();
   });
 
-  // Flaky under parallel/CPU-contended load (Main-reported: failed in the
+  // Flaky under parallel/CPU-contended load (failed in the
   // full `pnpm test`/turbo run, passed in isolation) — the production
   // debounce (`useDebouncedValue`'s own internal `setTimeout`) and this
   // test's own `waitFor` both depended on REAL wall-clock time. Under
@@ -195,7 +195,7 @@ describe("ListViewSearch", () => {
     // safe in isolation (the portal mount microtask settles within the
     // SAME tick when nothing else is contending for the event loop);
     // under full-suite CPU contention it's a genuine race — this test's
-    // own share of Main-reported flakiness alongside the debounce one
+    // own share of flakiness alongside the debounce one
     // above, caught the same way: a full-suite run (not isolation)
     // failed here specifically.
     await user.click(await screen.findByRole("option", { name: "body" }));

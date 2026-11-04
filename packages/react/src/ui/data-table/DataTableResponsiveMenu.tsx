@@ -18,7 +18,7 @@ export interface DataTableResponsiveMenuProps {
   children: ReactNode;
   /** Desktop `PopoverContent` alignment. Ignored on mobile. @default "end" */
   align?: "start" | "center" | "end";
-  /** Controlled open state. Omitted (`undefined`) leaves the overlay uncontrolled — the common case for a plain menu. `ListViewFilterBuilder` controls this to seed a draft row on open (Decision 10) before the overlay paints. */
+  /** Controlled open state. Omitted (`undefined`) leaves the overlay uncontrolled — the common case for a plain menu. `ListViewFilterBuilder` controls this to seed a draft row on open before the overlay paints. */
   open?: boolean;
   /** Pairs with `open` for a controlled overlay. */
   onOpenChange?: (open: boolean) => void;
@@ -28,15 +28,14 @@ export interface DataTableResponsiveMenuProps {
 
 /**
  * Renders one trigger + content pair as a `Popover` at `useIsMobile() === false`, and as a
- * bottom `Sheet` at `useIsMobile() === true` (list-view-overhaul Design Decision 22 point 3 /
- * Decision 43: "`useIsMobile` decides overlays only" — menus render as bottom sheets below
+ * bottom `Sheet` at `useIsMobile() === true` ("`useIsMobile` decides overlays only" — menus render as bottom sheets below
  * 768px, independent of the list container's own width). Every list-view menu composes this
  * instead of choosing `Popover` or `Sheet` itself, so they all collapse at the same viewport
  * boundary the same way: `DataTableColumnsMenu`, `ListViewFilterBuilder`, `SavedListViewTabs`'s mobile
  * view switcher, and `ListViewToolbar`'s ⋯ overflow all render through this one component.
  *
  * It never shifts first paint: it only opens on interaction (click/tap), so the server render
- * that prerenders the page (Step 14) is unaffected by which branch this component takes —
+ * that prerenders the page is unaffected by which branch this component takes —
  * `useIsMobile` always returns a coerced boolean (`false` before its viewport-measuring effect
  * runs), so the first client render always takes the desktop (`Popover`) branch, with no
  * Sheet-then-Popover flash.

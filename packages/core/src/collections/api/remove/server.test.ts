@@ -581,7 +581,7 @@ const versionedPostsResource = defineCollection({
   versions: { drafts: true },
 });
 
-// Resolves `versions: { drafts: true }` for real (Step 1),
+// Resolves `versions: { drafts: true }` for real,
 // which is what `remove()`'s `collection.versions.drafts` check reads.
 const versionedFixtureConfig = {
   collections: [versionedPostsResource],

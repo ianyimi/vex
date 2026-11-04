@@ -2,7 +2,7 @@ import { parseAdminCollectionCookie } from "../../adminCookie";
 
 const LIST_VIEWS_COOKIE_PREFIX = "vex-list-views:";
 
-/** One local view's entry in the cookie index (Decision 41) — deliberately NOT the full `VexViewConfig`; only enough to render a tab. */
+/** One local view's entry in the cookie index — deliberately NOT the full `VexViewConfig`; only enough to render a tab. */
 export interface LocalSavedListViewsIndexEntry {
   viewId: string;
   name: string;
@@ -11,10 +11,10 @@ export interface LocalSavedListViewsIndexEntry {
 /**
  * Cookie name holding one collection's local saved-view index.
  *
- * No longer the cookie ACTUALLY written/read on the wire (Decision 51
- * consolidated it into `vex-admin:<collection>`'s own `localViews` field)
- * — retained for `AdminLayout`'s one-time best-effort clear of the
- * now-retired cookie name.
+ * No longer the cookie ACTUALLY written/read on the wire (consolidated
+ * into `vex-admin:<collection>`'s own `localViews` field) — retained for
+ * `AdminLayout`'s one-time best-effort clear of the now-retired cookie
+ * name.
  *
  * @param props.collection - The collection slug the cookie is scoped to.
  * @returns The fully-qualified cookie name.
@@ -25,8 +25,8 @@ export function localSavedListViewsCookieName(props: { collection: string }): st
 
 /**
  * Parses the `localViews` field off a `vex-admin:<collection>` cookie's
- * raw value (Decision 51 — `props.cookieValue` is now that consolidated
- * cookie's own value, not a dedicated `vex-list-views:<collection>` one).
+ * raw value (`props.cookieValue` is now that consolidated cookie's own
+ * value, not a dedicated `vex-list-views:<collection>` one).
  * Tolerant of a missing, malformed, or stale-shaped cookie — a bad index
  * degrades to "no local view tabs on first paint" (the store still
  * hydrates the real list from `localStorage` moments later), never a

@@ -7,7 +7,7 @@ import type { NavigationBlockerAdapter } from "@vexcms/react";
 /**
  * Next.js App Router implementation of `NavigationBlockerAdapter["useBlocker"]`.
  *
- * The App Router has no `routeChangeStart`-equivalent event and (spec decision 3)
+ * The App Router has no `routeChangeStart`-equivalent event and
  * programmatic navigation cannot be intercepted by patching
  * `history.pushState`/`replaceState` — Next's own `HistoryUpdater` calls
  * `pushState` from a `useInsertionEffect` AFTER the route has already

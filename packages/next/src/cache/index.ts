@@ -5,7 +5,7 @@ export { createVexServerClient } from "./createVexServerClient";
 // `VexRevalidateResponse`, and the two request variants) are deliberately
 // absent: they are declared in `@vexcms/core`, the lowest package both this
 // one and `@vexcms/react` depend on, so both ends of the wire read one
-// declaration from one source (P-010). Consumers import them from
+// declaration from one source. Consumers import them from
 // `@vexcms/core`.
 export type {
   VexServerClientOptions,

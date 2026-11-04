@@ -79,7 +79,7 @@ const baseInput = {
 
 // The former `describe("PermissionCheck — indexed object form")` block is gone with
 // the shape it tested: `AccessIndex` and the deprecated `{ filter, withIndex }` pair
-// were deleted early (Step 13's type work, pulled forward) because `resolveAccessRule`
+// were deleted early because `resolveAccessRule`
 // could not be written against two shapes at once. Its replacements live in the
 // `withIndex` / `where` object-form block below.
 

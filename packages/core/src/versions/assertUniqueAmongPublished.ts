@@ -129,8 +129,8 @@ export async function assertUniqueAmongPublished<
   // candidate), OR whose `vex_publishedId` POINTS AT `excludeId` (a
   // first-time publish's own soon-to-be-superseded draft is never a
   // candidate anyway under the widened scope above — this half only ever
-  // matters for a linked draft that somehow matched, which Decision 26's
-  // own two-row invariant says can only be THIS document's own draft, not
+  // matters for a linked draft that somehow matched, which the two-row
+  // invariant says can only be THIS document's own draft, not
   // a different one, since `vex_publishedId` values are themselves unique
   // per the two-row model's "at most one draft per published row").
   const collision = rows.find(

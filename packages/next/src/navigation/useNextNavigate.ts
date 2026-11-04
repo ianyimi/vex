@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 /**
  * Next.js App Router implementation of `FrameworkComponents["useNavigate"]`
- * (`packages/react/src/config/useFrameworkComponents.ts`, Step 7).
+ * (`packages/react/src/config/useFrameworkComponents.ts`).
  *
  * Returns the App Router's own `router.push`, unwrapped — guarding is not
  * this hook's job. `@vexcms/react`'s `useVexNavigate`

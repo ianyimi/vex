@@ -106,7 +106,7 @@ export function resolveCollectionIndexes(props: {
   }
 
   // 2b. A `commitTs` field without its own `index` gets `by_<fieldKey>` too —
-  //     same auto-index contract as relationship fields (Decision 3).
+  //     same auto-index contract as relationship fields.
   for (const [fieldKey, field] of Object.entries(dataFields)) {
     if (field.type !== ADMIN_FIELDS.commitTs.type || field.index !== undefined) continue;
     const explicit = fieldLevel.get(`by_${fieldKey}`);

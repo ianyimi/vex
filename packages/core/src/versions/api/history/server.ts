@@ -126,9 +126,9 @@ export async function resolveHistoryTarget<DataModel extends GenericDataModel>(
  * @returns The resolved `{ access, action, resource }` ({@link resolveAccessCall}'s
  *   own result) — `undefined` when `config.access` is unset (RBAC fully off) —
  *   so {@link getVersionSnapshot} can reuse the SAME resolution for
- *   `resolveFieldPermissions`/`stripDeniedFields` rather than re-deriving it
- *   (developer decision, binding, "access-system-fields": the versions read
- *   path returned an UNSTRIPPED snapshot, contradicting its own doc comment).
+ *   `resolveFieldPermissions`/`stripDeniedFields` rather than re-deriving it —
+ *   the versions read path used to return an UNSTRIPPED snapshot,
+ *   contradicting its own doc comment, so this reuse keeps it consistent.
  * @throws {VexAccessError} When the caller's roles lack `defaultAction` on `resource`.
  */
 export function assertVersionsAccess(props: {

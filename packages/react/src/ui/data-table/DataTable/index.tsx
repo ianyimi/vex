@@ -90,7 +90,7 @@ export interface DataTableProps<TData extends { _id: string }> {
    * - `null` when collection has >32k documents
    * - `undefined` when count not requested
    *
-   * Used in the "Showing N of M" footer status line (Decision 35).
+   * Used in the "Showing N of M" footer status line.
    */
   totalCount?: number | null;
 
@@ -121,7 +121,7 @@ export interface DataTableProps<TData extends { _id: string }> {
    * `DataTable` has no concept of peeking, prefetching, or the Inspect
    * peek; `ListViewLayout`/`CollectionListViewData` forward their own
    * `onRowHoverStart`/`onRowHoverEnd`/`onRowFocus`/row-double-click
-   * handlers through it (Step 13; `onDoubleClick` added for the
+   * handlers through it (`onDoubleClick` added for the
    * double-click-opens-peek follow-up — see {@link isInteractiveRowTarget}
    * for the guard a caller's own handler should apply first).
    */
@@ -136,7 +136,7 @@ export interface DataTableProps<TData extends { _id: string }> {
    * applied via `data-state="highlighted"`. Generic, like `getRowProps`
    * above: `DataTable` has no concept of WHY a row is highlighted — the
    * collection list view's Inspect peek is the first caller, passing its
-   * own `peekId`. Precedence (Decision, developer-approved): a row
+   * own `peekId`. Precedence: a row
    * selected for bulk actions always wins (`data-state="selected"`
    * takes priority over `"highlighted"` at the point this is computed —
    * never both at once), and highlighted always wins over hover (an
@@ -156,7 +156,7 @@ export interface DataTableProps<TData extends { _id: string }> {
   // Sorting
 
   /**
-   * The list's current sort (Decision 4: one `{ field, order }`, never
+   * The list's current sort (one `{ field, order }`, never
    * TanStack's multi-column `SortingState`). `undefined` means no column is
    * actively driving the sort — every sortable header then renders unsorted.
    */
@@ -172,12 +172,12 @@ export interface DataTableProps<TData extends { _id: string }> {
 
   /**
    * `true` while a search is active — every sortable header disables itself
-   * and shows "Sorted by relevance" (Decision 7) instead of calling
+   * and shows "Sorted by relevance" instead of calling
    * `onSortChange`.
    */
   sortDisabled?: boolean;
 
-  // Column order, visibility, pinning, resizing (Decision 48)
+  // Column order, visibility, pinning, resizing
 
   /**
    * The active view's FULL column list — every field, exactly once, in
@@ -185,8 +185,7 @@ export interface DataTableProps<TData extends { _id: string }> {
    * `pinned`/`hidden` overrides). `undefined` keeps TanStack's own natural
    * (declaration) order, every column visible, nothing pinned/resized
    * beyond each columnDef's own static `size` (an unmigrated caller keeps
-   * today's behavior). Replaces Step 20's separate `visibleColumns`/
-   * `columnOrder` props — one array drives order, visibility, pinning
+   * today's behavior). One array drives order, visibility, pinning
    * (sticky left/right groups, offsets from `column.getStart`/`.getAfter`),
    * AND resizing (each column's CSS width) together.
    */
@@ -197,23 +196,23 @@ export interface DataTableProps<TData extends { _id: string }> {
    * or focused `ArrowLeft`/`ArrowRight` — the ONE way this component itself
    * mutates `columnEntries` (reorder/hide/pin all come from the columns
    * menu instead, `ListViewColumnsAction`/`DataTableColumnsMenu`, which calls
-   * the SAME setter the caller passes there — Decision 48: "resizing is NOT
-   * controlled from this menu, only from the header's own drag handle").
+   * the SAME setter the caller passes there — resizing is NOT
+   * controlled from this menu, only from the header's own drag handle.
    * Called with the FULL next array (one entry's `width` replaced), never a
    * partial patch. Omit to make every column's width effectively read-only
    * (the resize handle still drags visually but never commits).
    */
   onColumnEntriesChange?: (columns: ColumnEntry<string>[]) => void;
 
-  /** Row density (Decision 29), cookie-backed by the caller (Decision 42). @default "comfortable" */
+  /** Row density, cookie-backed by the caller. @default "comfortable" */
   density?: ListDensity;
 
   // Pagination footer
 
-  /** The current page size — used ONLY to label the Load More button ("Load 25 more"); the Select itself renders in `ListViewToolbar` (Decision 22), not here. */
+  /** The current page size — used ONLY to label the Load More button ("Load 25 more"); the Select itself renders in `ListViewToolbar`, not here. */
   pageSize?: number;
 
-  /** Whether `totalCount` hit `collection.admin.view.state.countLimit` (Decision 35) — the footer then shows `"{totalCount.toLocaleString()}+"` instead of the bare number. Ignored when `totalCount` is `null`/`undefined`. */
+  /** Whether `totalCount` hit `collection.admin.view.state.countLimit` — the footer then shows `"{totalCount.toLocaleString()}+"` instead of the bare number. Ignored when `totalCount` is `null`/`undefined`. */
   totalDocsCapped?: boolean;
 
   // Empty and error states
@@ -221,12 +220,12 @@ export interface DataTableProps<TData extends { _id: string }> {
   /** Rendered in place of the table body when `data.length === 0 && isDone` — one of `ListViewEmptyState`'s three variants, chosen by the caller (`CollectionListView`), since only it knows whether a search/filter is active. */
   emptyState?: ReactNode;
 
-  /** Rendered in place of the whole scroll area (header included) when the underlying query failed — `ListViewQueryError`, built by the caller from `useVexListQuery`'s error (Step 8). Takes priority over `emptyState`. */
+  /** Rendered in place of the whole scroll area (header included) when the underlying query failed — `ListViewQueryError`, built by the caller from `useVexListQuery`'s error. Takes priority over `emptyState`. */
   queryError?: ReactNode;
 
   /**
    * `true` while the CURRENT page is stale (`usePaginatedQuery`'s own
-   * `isPlaceholderData`, Decision 46) — a view/filter/sort switch keeps
+   * `isPlaceholderData`) — a view/filter/sort switch keeps
    * showing the PREVIOUS query's rows, dimmed (`opacity-60`) and marked
    * `aria-busy="true"` on `<tbody>`, instead of a blank/loading frame,
    * until the new page replaces them. Rows stay fully interactive while
@@ -349,7 +348,7 @@ export function DataTable<TData extends VexDocument>({
     [columns, columnEntries],
   );
 
-  // Resolves `columnEntries` (every data field, Decision 48) against this
+  // Resolves `columnEntries` (every data field) against this
   // table's actual id list: walks the NATURAL order (`select` first,
   // `_status`/data fields/`actions` after, whichever `columns` itself
   // already declares), and at each position whose id IS named in
@@ -374,10 +373,9 @@ export function DataTable<TData extends VexDocument>({
     });
   }, [columns, columnEntries]);
 
-  // The pinned groups (Decision 48) — `select` is ALWAYS first in `left`
+  // The pinned groups — `select` is ALWAYS first in `left`
   // (when row selection is enabled) and `actions` is ALWAYS last in
-  // `right` (when a row-actions column exists), "stays outermost" per the
-  // developer's own framing: a user-pinned data column's own sticky offset
+  // `right` (when a row-actions column exists), "stays outermost": a user-pinned data column's own sticky offset
   // (`column.getStart`/`.getAfter` below) therefore automatically accounts
   // for their 48px without this component needing to special-case it.
   const columnPinning = useMemo<ColumnPinningState>(() => {
@@ -406,7 +404,7 @@ export function DataTable<TData extends VexDocument>({
     data,
     columns,
 
-    // VexCMS sorts by exactly one `{ field, order }` (Decision 4), never
+    // VexCMS sorts by exactly one `{ field, order }`, never
     // TanStack's multi-column `SortingState` — `sort`/`onSortChange` are
     // read directly by `DataTableHeader`, never fed into this table's own
     // sorting state.
@@ -438,7 +436,7 @@ export function DataTable<TData extends VexDocument>({
   // vertical scrollbar track starts BELOW the header (only the body rows scroll; the track
   // never overlaps the header). Written straight to the DOM (no state, no re-render); before
   // this first measurement the track is thumbless anyway. The row-actions trigger is NOT
-  // nudged when the scrollbar appears (developer decision, 2026-11-02): it stays centered in
+  // nudged when the scrollbar appears: it stays centered in
   // its cell at all times. Observers re-attach when the table/empty-state/skeleton branch
   // may have swapped (`[data.length, isPending, isDone, density, queryError]` — the error
   // branch unmounts the ScrollArea, so recovery needs a fresh measurement).
@@ -467,7 +465,7 @@ export function DataTable<TData extends VexDocument>({
       {/*
        * `rounded-md border` lives on THIS outer wrapper (not `ScrollArea`'s own
        * className, as before) and the footer carries NO independent border of
-       * its own beyond its existing `border-t` — developer-reported: the old
+       * its own beyond its existing `border-t` — the old
        * split (`ScrollArea`'s own full 4-side border + an 8px `gap-2` + the
        * footer's own `border-t`) painted as a visible DOUBLE line (the
        * ScrollArea's bottom edge, then a gap, then the footer's top edge).
@@ -505,6 +503,7 @@ export function DataTable<TData extends VexDocument>({
               table={table}
               headerRow={headerRow}
               pageSize={pageSize}
+              knownRowCount={totalCount}
               rowClass={rowClass}
               pinnedLeftIds={pinnedLeftIds}
               pinnedRightIds={pinnedRightIds}

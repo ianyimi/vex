@@ -32,7 +32,7 @@ export function livePreviewPanelCookieName(props: { slug: string }): string {
  * Pure, so the server component reading `cookies()` and any other caller share
  * one interpretation of the stored value.
  *
- * Decision 51: `props.cookieValue` is now the consolidated admin cookie's
+ * `props.cookieValue` is now the consolidated admin cookie's
  * OWN raw value — `vex-admin:<collection>` for a collection's edit/list
  * views, or `vex-admin` itself for a global's edit view (both parse
  * cleanly through {@link parseAdminCollectionCookie}; see its own doc
@@ -56,8 +56,8 @@ export function readLivePreviewPanelCookie(props: {
 /**
  * Cookie name holding one collection or global's split-handle position.
  *
- * No longer the cookie ACTUALLY written/read on the wire (Decision 51
- * consolidated it into the admin cookie's own `livePreview.panelSize`
+ * No longer the cookie ACTUALLY written/read on the wire (consolidated
+ * into the admin cookie's own `livePreview.panelSize`
  * field) — retained for `AdminLayout`'s one-time best-effort clear of the
  * now-retired cookie name.
  *
@@ -76,7 +76,7 @@ export function livePreviewLayoutCookieName(props: { slug: string }): string {
  * back — and a missing/non-numeric value falls back to the default rather
  * than producing `NaN` percentages.
  *
- * Decision 51: `props.cookieValue` is now the consolidated admin cookie's
+ * `props.cookieValue` is now the consolidated admin cookie's
  * own raw value, read via its `livePreview.panelSize` field — see
  * {@link readLivePreviewPanelCookie}'s own doc comment for the global-vs-
  * collection cookie split.

@@ -105,7 +105,7 @@ export const access = defineAccess({
         readViews: true,
       },
       // Testimonials: anonymous visitors see every public field EXCEPT
-      // `internalScore` (Step 24's field-level read restriction demo) —
+      // `internalScore` (a field-level read restriction demo) —
       // the "Needs Review" preset view's hidden `where` filters on exactly
       // that field, so this role sees the hidden-filter badge on that tab
       // and never the filter's own value. `readViews` on so all 3 preset
@@ -126,7 +126,7 @@ export const access = defineAccess({
       comments: true,
       // Full editorial control over testimonials, including the full
       // VIEW_ACTIONS matrix (readViews/createView/updateView/deleteView —
-      // Step 24's "allowed role" demo, contrasted with contributor below).
+      // an "allowed role" demo, contrasted with contributor below).
       testimonials: true,
       // Full draft workflow on posts. May draft the announcement but not
       // publish/unpublish it — exercises the disabled-Publish path.
@@ -184,8 +184,8 @@ export const access = defineAccess({
       // Testimonials: can read (minus `internalScore`, denied field) and
       // update (so the row/bulk actions can be exercised), may read saved
       // views, but `createView`/`updateView`/`deleteView` are all denied —
-      // Step 24's "denied role" VIEW_ACTIONS demo (boolean + a callback
-      // form, per Decision 68's `{ user }`-only callback shape).
+      // a "denied role" VIEW_ACTIONS demo (boolean + a callback
+      // form, with a `{ user }`-only callback shape).
       testimonials: {
         "*": false,
         read: () => ({ "*": true, internalScore: false }),

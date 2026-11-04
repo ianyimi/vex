@@ -12,7 +12,7 @@ import {
 } from "@vexcms/core";
 import { writeAdminCollectionCookie, writeAdminCookie } from "../adminCookie";
 
-/** Whether a live-preview panel's cookie state belongs to a collection's own `vex-admin:<collection>` cookie, or the single shared `vex-admin` cookie (one global edit view is open at a time, Decision 51). */
+/** Whether a live-preview panel's cookie state belongs to a collection's own `vex-admin:<collection>` cookie, or the single shared `vex-admin` cookie (one global edit view is open at a time). */
 export type LivePreviewPanelScope = "collection" | "global";
 
 /** The two split columns' minimum shares, in percent. */
@@ -98,7 +98,7 @@ export function useLivePreviewPanelMinSize(): {
  * @param props.slug - Scopes the cookie per collection/global.
  * @param props.scope - `"collection"` writes into `vex-admin:<slug>`'s own
  *   `livePreview` field; `"global"` writes into the single shared
- *   `vex-admin` cookie's `livePreview` field instead (Decision 51 — only
+ *   `vex-admin` cookie's `livePreview` field instead (only
  *   one global edit view is ever open at a time, so globals share one
  *   live-preview panel state rather than each getting its own cookie).
  * @param props.initialOpen - The server-read cookie-or-default value, threaded
@@ -197,7 +197,7 @@ function readCookieValue(name: string): string | undefined {
 
 /**
  * Reads the CURRENT `livePreview` sub-object off the relevant consolidated
- * admin cookie (Decision 51) — the global `vex-admin` cookie for
+ * admin cookie — the global `vex-admin` cookie for
  * `scope: "global"`, or `vex-admin:<slug>` for `scope: "collection"` —
  * needed before a write so `panelOpen`/`panelSize` can be merged into it
  * individually rather than overwriting each other.

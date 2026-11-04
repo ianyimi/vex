@@ -1,6 +1,6 @@
 import { parseAdminCollectionCookie } from "../../adminCookie";
 
-/** `vex-list-rows:<collection>` cookie name prefix (Decision 49 follow-up, developer decision). */
+/** `vex-list-rows:<collection>` cookie name prefix. */
 export const LIST_VIEW_SKELETON_ROW_COUNT_COOKIE_PREFIX = "vex-list-rows:";
 
 /** Oldest entries beyond this count are dropped on write (LRU, by insertion order) so the cookie stays small. */
@@ -9,10 +9,10 @@ export const LIST_VIEW_SKELETON_ROW_COUNT_COOKIE_MAX_ENTRIES = 10;
 /**
  * One view's last-settled loading-state hint — `n` is the row count (capped at that load's
  * `pageSize`), `done` is whether the footer showed "That's everything" (`true`) or a Load More
- * `Button` (`false`) — both needed so the `<Suspense>` fallback (Decision 49) can reproduce the
+ * `Button` (`false`) — both needed so the `<Suspense>` fallback can reproduce the
  * settled footer's own height exactly (a `Button` is taller than the "That's everything" text),
  * not just the row count. `seq` is {@link applyListViewSkeletonRowCountUpdate}'s own monotonic insertion
- * counter (polish fix) — the LRU cap orders by THIS, never by the map's own JS object key
+ * counter — the LRU cap orders by THIS, never by the map's own JS object key
  * order, which silently reorders an integer-like `viewId` (e.g. `"1"`, a legal config view id)
  * to the front regardless of actual insertion order. `undefined` only for a legacy entry
  * written before this field existed — treated as "oldest" (tied with any other legacy entry,
@@ -24,12 +24,12 @@ export interface ListViewSkeletonRowCountEntry {
   seq?: number;
 }
 
-/** One collection's row-count cookie value — maps a view id (including `"default"`, Decision 45) to its last-settled {@link ListViewSkeletonRowCountEntry}. */
+/** One collection's row-count cookie value — maps a view id (including `"default"`) to its last-settled {@link ListViewSkeletonRowCountEntry}. */
 export type ListViewSkeletonRowCountMap = Record<string, ListViewSkeletonRowCountEntry>;
 
 /**
  * Cookie name holding one collection's per-view last-settled-row-count map — the table's own
- * `<Suspense>` loading skeleton (Decision 49) reads this server-side to render the SAME row
+ * `<Suspense>` loading skeleton reads this server-side to render the SAME row
  * count AND footer variant the settled content is about to show, instead of a fixed `pageSize`
  * guess that nearly always over- or under-shoots for a view with fewer rows than a full page.
  * Scoped per collection, like {@link localSavedListViewsCookieName} — a view id is only unique within its
@@ -45,7 +45,7 @@ export function listViewSkeletonRowCountCookieName(props: { collection: string }
 /**
  * Parses the `rowCounts` field off a {@link listViewSkeletonRowCountCookieName}
  * cookie's value into its view-id → {@link ListViewSkeletonRowCountEntry} map.
- * Decision 51: `props.cookieValue` is now the consolidated
+ * `props.cookieValue` is the consolidated
  * `vex-admin:<collection>` cookie's own value, not a dedicated
  * `vex-list-rows:<collection>` one — tolerant of a missing, malformed, or
  * stale-shaped cookie (including the PRE-footer-tracking shape,
@@ -76,7 +76,7 @@ export function parseListViewSkeletonRowCountCookie(props: { cookieValue: string
  * rebuilding a `Map` from `Object.entries(props.map)` within a single call cannot recover true
  * order once `props.map` already contains such a key (confirmed live: a `Map`-only fix still
  * failed this exact scenario across two sequential calls). `seq` sidesteps the problem
- * entirely by never depending on key order at all (polish fix).
+ * entirely by never depending on key order at all.
  *
  * @param props.map - The current map (from {@link parseListViewSkeletonRowCountCookie}).
  * @param props.viewId - The view whose result just settled.

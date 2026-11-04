@@ -4,10 +4,18 @@ import { getGlobal, upsertGlobal } from "@vexcms/core/server"
 
 import {
   GLOBAL_SLUG_SITE_SETTINGS,
+  LEAD_SOURCES,
+  LEAD_STATUSES,
+  PRODUCT_STATUSES,
   TABLE_SLUG_FOOTERS,
   TABLE_SLUG_HEADERS,
+  TABLE_SLUG_LEADS,
   TABLE_SLUG_PAGES,
+  TABLE_SLUG_PRODUCTS,
+  TABLE_SLUG_TESTIMONIALS,
   TABLE_SLUG_THEMES,
+  TABLE_SLUG_USERS,
+  TESTIMONIAL_SOURCES,
 } from "~/db/constants"
 import config from "~/vex.config.server"
 import {
@@ -1608,6 +1616,166 @@ export const testimonials = defineTable({
   } else {
     await ctx.db.insert(TABLE_SLUG_PAGES, roadmapPageDoc)
     created.push("page:roadmap")
+  }
+
+  // ── Testimonials ──────────────────────────────────────────────────────
+  // 200 deterministic rows, insert-if-missing as a single batch (checked by
+  // total count) — there is no natural per-row identifier to reconcile
+  // against, so re-running never touches this section once seeded. Mirrors
+  // `apps/test`'s testimonials section: `source` rotates through all 4
+  // values, `rating` 1-5, `featured`/`approved` each roughly 1 in 3,
+  // `internalScore` spans 10-99 with every 4th row under 50 (the "Needs
+  // Review" hidden-where preset). `contributorId` is only set when the
+  // `user` table already has rows — www seeds before the first sign-in, so
+  // it can be empty and this must never throw.
+  const existingTestimonials = await ctx.db.query(TABLE_SLUG_TESTIMONIALS).take(1)
+  if (existingTestimonials.length > 0) {
+    skipped.push("testimonials (already seeded)")
+  } else {
+    const contributors = await ctx.db.query(TABLE_SLUG_USERS).take(3)
+    const sources = Object.values(TESTIMONIAL_SOURCES)
+    const companies = [
+      "Northwind",
+      "Acme Robotics",
+      "Globex",
+      "Initech",
+      "Umbrella Labs",
+      "Hooli",
+      "Soylent",
+      "Stark Industries",
+    ]
+    const names = [
+      "Alex Rivera",
+      "Jordan Lee",
+      "Sam Patel",
+      "Morgan Chen",
+      "Taylor Brooks",
+      "Casey Nguyen",
+      "Riley Okafor",
+      "Jamie Fischer",
+      "Drew Tanaka",
+      "Avery Costa",
+    ]
+    for (let i = 0; i < 200; i++) {
+      const name = names[i % names.length]
+      await ctx.db.insert(TABLE_SLUG_TESTIMONIALS, {
+        customerName: `${name} ${i}`,
+        company: companies[i % companies.length],
+        quote: `Testimonial #${i} — switching to VexCMS cut our admin workflow time dramatically.`,
+        rating: (i % 5) + 1,
+        source: [sources[i % sources.length]],
+        featured: i % 3 === 0,
+        approved: i % 3 !== 1,
+        contributorId:
+          contributors.length > 0 ? [contributors[i % contributors.length]._id] : undefined,
+        internalScore: 10 + ((i * 7) % 90),
+      })
+    }
+    created.push("testimonials x200")
+  }
+
+  // ── Products ─────────────────────────────────────────────────────────
+  // 10 deterministic rows, insert-if-missing as a single batch. Exercises
+  // every field type the collection declares (`date`, `color`, `url`,
+  // `email`, `json`, `group`, `array`): `status` rotates through all 3
+  // values, `archived` true for every 5th row (hidden from the Catalog/
+  // Pricing preset views), `highlights`/`specs`/`metadata` populated so the
+  // Fields tab has real nested data to show.
+  const existingProducts = await ctx.db.query(TABLE_SLUG_PRODUCTS).take(1)
+  if (existingProducts.length > 0) {
+    skipped.push("products (already seeded)")
+  } else {
+    const productStatuses = Object.values(PRODUCT_STATUSES)
+    const productNames = [
+      "Launchpad",
+      "Pulse",
+      "Nimbus",
+      "Forge",
+      "Beacon",
+      "Relay",
+      "Atlas",
+      "Cascade",
+      "Vertex",
+      "Horizon",
+    ]
+    const baseLaunchedOn = new Date("2024-01-08T00:00:00Z").getTime()
+    for (let i = 0; i < 10; i++) {
+      const productName = productNames[i]
+      const slug = productName.toLowerCase()
+      await ctx.db.insert(TABLE_SLUG_PRODUCTS, {
+        name: productName,
+        tagline: `${productName} keeps your ${i % 2 === 0 ? "team" : "pipeline"} moving.`,
+        description: `${productName} is a demo catalog entry seeded to exercise every field type the products collection declares — ${slug}.`,
+        status: [productStatuses[i % productStatuses.length]],
+        archived: i % 5 === 0,
+        price: 19 + i * 10,
+        launchedOn: baseLaunchedOn + i * 15 * 24 * 60 * 60 * 1000,
+        website: `https://products.vexcms.dev/${slug}`,
+        supportEmail: `support+${slug}@vexcms.dev`,
+        brandColor: `oklch(${(60 + i * 2) % 100}% 0.18 ${(i * 36) % 360})`,
+        highlights: [
+          { id: `${slug}-h1`, title: "Fast setup", detail: `${productName} ships with sane defaults.` },
+          { id: `${slug}-h2`, title: "Scales with you", detail: `${productName} grows from one team to many.` },
+        ],
+        specs: { sku: `SKU-${1000 + i}`, weightGrams: 100 + i * 50 },
+        metadata: { tier: productStatuses[i % productStatuses.length], seedIndex: i },
+      })
+    }
+    created.push("products x10")
+  }
+
+  // ── Leads ────────────────────────────────────────────────────────────
+  // 60 deterministic rows, insert-if-missing as a single batch. `source`
+  // rotates through all 4 values, `status` through all 5, `score` spans
+  // 0-100 with every 4th row at 80+ (the "Hot Leads" hidden-where preset),
+  // `subscribed` true for roughly 1 in 3 (the "Newsletter" preset).
+  const existingLeads = await ctx.db.query(TABLE_SLUG_LEADS).take(1)
+  if (existingLeads.length > 0) {
+    skipped.push("leads (already seeded)")
+  } else {
+    const leadSources = Object.values(LEAD_SOURCES)
+    const leadStatuses = Object.values(LEAD_STATUSES)
+    const companies = [
+      "Northwind",
+      "Acme Robotics",
+      "Globex",
+      "Initech",
+      "Umbrella Labs",
+      "Hooli",
+      "Soylent",
+      "Stark Industries",
+      "Wayne Enterprises",
+      "Cyberdyne",
+    ]
+    const names = [
+      "Blake Harmon",
+      "Noa Feldman",
+      "Priya Shah",
+      "Lena Ortiz",
+      "Mateo Diaz",
+      "Sora Kim",
+      "Theo Novak",
+      "Yuki Sato",
+      "Imani Clarke",
+      "Rafael Costa",
+    ]
+    const baseFollowUpOn = new Date("2024-02-01T00:00:00Z").getTime()
+    for (let i = 0; i < 60; i++) {
+      const name = names[i % names.length]
+      const company = companies[i % companies.length]
+      await ctx.db.insert(TABLE_SLUG_LEADS, {
+        fullName: `${name} ${i}`,
+        company,
+        email: `${name.toLowerCase().replace(" ", ".")}${i}@${company.toLowerCase().replace(/\s+/g, "")}.example`,
+        source: [leadSources[i % leadSources.length]],
+        status: [leadStatuses[i % leadStatuses.length]],
+        score: i % 4 === 0 ? 80 + (i % 20) : (i * 13) % 80,
+        internalNotes: `Lead #${i} — follow up after the ${leadStatuses[i % leadStatuses.length]} touchpoint.`,
+        followUpOn: baseFollowUpOn + i * 7 * 24 * 60 * 60 * 1000,
+        subscribed: i % 3 === 0,
+      })
+    }
+    created.push("leads x60")
   }
 
   return { created, patched, skipped }

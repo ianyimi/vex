@@ -71,7 +71,7 @@ export interface MediaCollectionListViewProps<TDoc extends VexMediaDocument = Ve
  *
  * Renders the *content area only* — wrap it in `AdminLayout`.
  *
- * Split the same way `CollectionListView` is (Decision 49 follow-up): this outer half
+ * Split the same way `CollectionListView` is: this outer half
  * is sync-only (permission/column setup), rendering the real toolbar/table-frame shell
  * immediately; the data-dependent table body is the inner `MediaCollectionListViewData`,
  * mounted inside its own `<Suspense fallback={<DataTable isPending .../>}>` so a
@@ -154,7 +154,7 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
         fallback={
           // Real loading state, not a separate skeleton file: the SAME `DataTable` the
           // settled content renders, with `isPending` driving its own real skeleton rows/
-          // footer — same columns (Decision 49 follow-up pattern, `CollectionListView.tsx`).
+          // footer — same columns (same pattern as `CollectionListView.tsx`).
           <div className="grid place-items-center rounded-md border">
             <DataTable data={[]} columns={columns} isPending isDone={false} enableRowSelection={canDelete} />
           </div>

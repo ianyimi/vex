@@ -40,9 +40,9 @@ export interface CreateServerArgs<
   /**
    * Overrides `collection.versions.defaultStatus` for this one insert.
    * Ignored for a collection that doesn't declare `versions.drafts`. The
-   * duplicate action (Step 6) passes `"draft"` here so a clone of a
+   * duplicate action passes `"draft"` here so a clone of a
    * `defaultStatus: "published"` collection's document still lands as a
-   * draft (spec.md decision 9).
+   * draft.
    */
   status?: VexVersionStatus;
 }

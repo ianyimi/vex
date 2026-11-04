@@ -34,18 +34,18 @@ export type ApplyComponent<
  * in their own specs; this map only carries G's.
  *
  * Experimental: Slot ids and the contribution model are documented experimental until Track PL
- * ships `definePlugin` (S13) — no `unstable_` prefix; breaking changes are still possible.
+ * ships `definePlugin` — no `unstable_` prefix; breaking changes are still possible.
  */
 export const SLOT_IDS = {
   field: {
     /** Override chain for a field's input component. One per field instance AND one project-wide per field type — see {@link ComponentOverrideInput} composition in `@vexcms/react`. */
     input: "field.input",
-    /** Override chain for a field's WHOLE admin field (decision 5) — see
+    /** Override chain for a field's WHOLE admin field — see
      * `FieldSlotComponentsInput.Field`'s doc comment for composition. */
     field: "field.field",
     /** Override chain for a field's data-table cell component. Same two-level composition as `input`. */
     cell: "field.cell",
-    /** Override chain for a field's label. No built-in contribution yet (step 11's design note) — every Input still renders its own label inline. */
+    /** Override chain for a field's label. No built-in contribution yet — every Input still renders its own label inline. */
     label: "field.label",
     /** Override chain for a field's description. No built-in contribution yet, same reason as `label`. */
     description: "field.description",
@@ -55,17 +55,17 @@ export const SLOT_IDS = {
     afterInput: "field.afterInput",
   },
   blocks: {
-    /** Additive contributions rendered in a block item's actions menu. Built-ins: step 15 (duplicate/insert/move/remove), step 16 (copy/paste). */
+    /** Additive contributions rendered in a block item's actions menu. Built-ins: duplicate/insert/move/remove, copy/paste. */
     itemActions: "blocks.item.actions",
-    /** Additive contributions rendered in a `blocks()` field's header toolbar. Built-ins: step 16 (copy all/paste/replace all). */
+    /** Additive contributions rendered in a `blocks()` field's header toolbar. Built-ins: copy all/paste/replace all. */
     headerActions: "blocks.header.actions",
   },
   array: {
-    /** Additive contributions rendered per array item's action row. Built-ins: step 15 (duplicate/move/remove). */
+    /** Additive contributions rendered per array item's action row. Built-ins: duplicate/move/remove. */
     itemActions: "array.item.actions",
   },
   edit: {
-    /** Additive contributions in an edit view's header action bar. Built-ins: save, publish, unpublish, delete, version history, live preview, cancel (decisions 11/13; `duplicate` moved to `actionsMenu` per the Step 4 post-implementation note). */
+    /** Additive contributions in an edit view's header action bar. Built-ins: save, publish, unpublish, delete, version history, live preview, cancel (`duplicate` moved to `actionsMenu`). */
     headerActions: "edit.header.actions",
     /** Additive contributions rendered before an edit view's header. No built-ins. */
     headerBefore: "edit.header.before",
@@ -85,23 +85,23 @@ export const SLOT_IDS = {
   list: {
     /** Additive contributions rendered beside the built-in "+ New" button. Built-in: `vex.list.create`. */
     headerActions: "list.header.actions",
-    /** Additive contributions rendered in the toolbar row. Built-ins: `vex.list.search` (Step 10), `vex.list.columns` (Step 10), `vex.list.views` (Step 12). */
+    /** Additive contributions rendered in the toolbar row. Built-ins: `vex.list.search`, `vex.list.columns`, `vex.list.views`. */
     toolbar: "list.toolbar",
-    /** Additive contributions rendered in the filter row, below the toolbar. Built-in: `vex.list.filters` (Step 11). */
+    /** Additive contributions rendered in the filter row, below the toolbar. Built-in: `vex.list.filters`. */
     filters: "list.filters",
     /** Additive contributions rendered above the table, below `toolbar`/`filters`. No built-in. */
     beforeTable: "list.beforeTable",
     /** Additive contributions rendered below the table. No built-in. */
     afterTable: "list.afterTable",
     /**
-     * Rendered as `DropdownMenuItem`s in one per-row ⋯ menu (Decision 28), in order:
+     * Rendered as `DropdownMenuItem`s in one per-row ⋯ menu, in order:
      * `vex.list.row.open`, `vex.list.row.inspect`, `vex.list.row.copyId`, then this
      * slot's additive contributions, then `vex.list.row.delete` last.
      */
     rowActions: "list.row.actions",
     /**
-     * Additive contributions rendered inline in the toolbar's bulk-selection group
-     * (Decision 22), alongside `vex.list.bulk.delete` — never a floating bar.
+     * Additive contributions rendered inline in the toolbar's bulk-selection group,
+     * alongside `vex.list.bulk.delete` — never a floating bar.
      */
     bulkActions: "list.bulkActions",
   },
@@ -137,7 +137,7 @@ export interface SlotAccessContext {
   resource?: EditSlotProps;
 }
 
-/** A pure predicate deciding whether a contribution mounts at all (S11). */
+/** A pure predicate deciding whether a contribution mounts at all. */
 export type SlotAccessPredicate = (ctx: SlotAccessContext) => boolean;
 
 /**
@@ -167,9 +167,9 @@ export type ComponentContributionInput<
       after?: string | string[];
       /** Omit this contribution from the resolved list without removing the entry (keeps `order`/`before`/`after` documented in place). */
       hidden?: boolean;
-      /** Gates mounting — reuses RBAC (S11). Checked before `condition`. */
+      /** Gates mounting — reuses RBAC. Checked before `condition`. */
       access?: SlotAccessPredicate;
-      /** Gates mounting — same `(data, siblingData)` signature as `admin.condition` (Step 6, S11). Checked after `access`. */
+      /** Gates mounting — same `(data, siblingData)` signature as `admin.condition`. Checked after `access`. */
       condition?: FieldCondition;
     }
   | {
@@ -233,10 +233,10 @@ export interface EditSlotProps {
 
 /**
  * One `edit.*` slot's raw, unresolved configuration at ONE level (root or collection/global) —
- * the additive contribution list plus the built-in-wrapping override map (decision 15). This is
+ * the additive contribution list plus the built-in-wrapping override map. This is
  * {@link resolveEditSlot}'s `root`/`resource` param shape; `@vexcms/core`'s `defineConfig`,
- * `defineCollection` and `defineGlobal` pass their stored config through UNRESOLVED (decision
- * 14's root→resource merge happens per flat slot id, in `resolveEditSlot`, since built-in
+ * `defineCollection` and `defineGlobal` pass their stored config through UNRESOLVED (the
+ * root→resource merge happens per flat slot id, in `resolveEditSlot`, since built-in
  * contributions are framework- and `kind`-specific and core has neither).
  *
  * @typeParam TComponent - The framework's `ComponentHKT`.
@@ -244,14 +244,14 @@ export interface EditSlotProps {
 export interface EditSlotConfigInput<TComponent extends ComponentHKT = ComponentHKT> {
   /** This level's additive contributions for the slot. */
   contributions?: ComponentContributionInput<TComponent, EditSlotProps>[];
-  /** This level's override chains, keyed by the built-in id each chain wraps (decision 15/16). */
+  /** This level's override chains, keyed by the built-in id each chain wraps. */
   overrides?: Record<string, ComponentOverrideInput<TComponent, EditSlotProps>[]>;
 }
 
 /**
  * The `edit.*` slot config one collection, one global, or the project root declares — grouped
- * by UI region to match {@link SLOT_IDS.edit} (decision 11). `header.overrides` wraps a built-in
- * from `header.actions` by id (decision 15); `beforeFields`/`afterFields`/`sidebar.*` carry no
+ * by UI region to match {@link SLOT_IDS.edit}. `header.overrides` wraps a built-in
+ * from `header.actions` by id; `beforeFields`/`afterFields`/`sidebar.*` carry no
  * built-ins, so they have no override map. `actionsMenu.overrides` wraps a built-in from
  * `actionsMenu.items` (`vex.revalidate`/`vex.duplicate`) the same way. A renderer calls
  * {@link resolveEditSlot} once PER FLAT slot id, passing the matching array (plus
@@ -273,7 +273,7 @@ export interface EditComponentsConfigInput<TComponent extends ComponentHKT = Com
     before?: ComponentContributionInput<TComponent, EditSlotProps>[];
     after?: ComponentContributionInput<TComponent, EditSlotProps>[];
   };
-  /** The edit view's ⋯ actions menu (decision: Step 4 post-implementation note) — built-ins `vex.revalidate`/`vex.duplicate`. */
+  /** The edit view's ⋯ actions menu — built-ins `vex.revalidate`/`vex.duplicate`. */
   actionsMenu?: {
     items?: ComponentContributionInput<TComponent, EditSlotProps>[];
     overrides?: Record<string, ComponentOverrideInput<TComponent, EditSlotProps>[]>;

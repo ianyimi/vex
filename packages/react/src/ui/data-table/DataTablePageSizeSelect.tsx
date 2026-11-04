@@ -10,14 +10,14 @@ export interface DataTablePageSizeSelectProps {
   pageSize: number;
   /** The configured options (`collection.admin.view.state.pageSizeOptions`). */
   pageSizeOptions: number[];
-  /** Called with the newly selected page size. Decision 8: this resets the list to the first page at the new size — the caller (`useVexListQuery`, Step 8), not this component, owns that reset. */
+  /** Called with the newly selected page size. This resets the list to the first page at the new size — the caller (`useVexListQuery`), not this component, owns that reset. */
   onPageSizeChange: (pageSize: number) => void;
   /**
    * Which surface this render is for (mirrors the edit view's
    * `DocumentCancelAction`/`LivePreviewToggleAction` convention) —
    * `"inline"` (default) renders the `Select`, `"menu"` renders a labeled
-   * `RadioGroup` section for `ListViewToolbar`'s ⋯ overflow (list-view-overhaul
-   * Step 16: the overflow is itself a `DataTableResponsiveMenu` — a
+   * `RadioGroup` section for `ListViewToolbar`'s ⋯ overflow (the overflow
+   * is itself a `DataTableResponsiveMenu` — a
    * `Popover`/`Sheet`, never a `DropdownMenu` — so this form can't depend
    * on Base UI's Menu primitives either).
    */
@@ -30,12 +30,12 @@ export interface DataTablePageSizeSelectProps {
  * (`placement` omitted/`"inline"`) or a labeled `RadioGroup` section
  * (`placement="menu"`) nested inside `ListViewToolbar`'s ⋯ overflow.
  *
- * Pagination itself stays cursor Load More (Decision 8) — this control only
+ * Pagination itself stays cursor Load More — this control only
  * changes how many items the NEXT fetch/`loadMore()` call requests; it
  * never jumps to a numbered page. Rendered by `ListViewToolbar`, in its
- * collapsible group alongside Copy link (Decision 22 — not `DataTable`'s
+ * collapsible group alongside Copy link (not `DataTable`'s
  * own footer, which only shows the Load More button and the capped-count
- * status line). It has no `vex.list.*` id (Decision 17 never names one),
+ * status line). It has no `vex.list.*` id,
  * so it bypasses the slot system either way.
  *
  * @param props - Component props. See {@link DataTablePageSizeSelectProps}.

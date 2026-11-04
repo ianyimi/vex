@@ -17,9 +17,9 @@ export interface DataTableSortHeaderProps<TFieldSlug extends string = string> {
   sort: { field: TFieldSlug | "_creationTime"; order: "asc" | "desc" } | undefined;
   /** Called with the next sort state on click — `undefined` clears back to `defaultView.sort`. */
   onSortChange: (sort: { field: TFieldSlug | "_creationTime"; order: "asc" | "desc" } | undefined) => void;
-  /** Whether this field has `admin.enableSorting: true` and an index leading with it (Decision 6). A `false` value renders plain, unclickable text. Because `DataTable`'s caller (`CollectionListView`) already drops unreadable fields from `columns` entirely, a header only ever reaches this component for a readable field — no separate read-access prop is needed here (Decision 26). */
+  /** Whether this field has `admin.enableSorting: true` and an index leading with it. A `false` value renders plain, unclickable text. Because `DataTable`'s caller (`CollectionListView`) already drops unreadable fields from `columns` entirely, a header only ever reaches this component for a readable field — no separate read-access prop is needed here. */
   enableSorting: boolean;
-  /** `true` while a search is active — sort is disabled and shows "Sorted by relevance" (Decision 7). */
+  /** `true` while a search is active — sort is disabled and shows "Sorted by relevance". */
   disabled?: boolean;
   /** Optional field-type hint shown in the header's tooltip body (DESIGN-NOTES.md §1). Skipped entirely when absent. */
   typeHint?: string;
@@ -31,8 +31,8 @@ export interface DataTableSortHeaderProps<TFieldSlug extends string = string> {
  * `defaultView.sort`).
  *
  * Renders as plain, unclickable text when `enableSorting` is `false` (the
- * field has no leading index, Decision 6) or `disabled` is `true` (a search
- * is active, Decision 7 — parked sort, shown with a "Sorted by relevance"
+ * field has no leading index) or `disabled` is `true` (a search
+ * is active — parked sort, shown with a "Sorted by relevance"
  * tooltip).
  *
  * @param props - Component props. See {@link DataTableSortHeaderProps}.

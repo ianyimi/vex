@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
  * pattern, not a wrapper over `@ts-hooks-kit/core`'s `useDebounceValue`/`debounce()`.
  *
  * That library's own `debounce()` has a genuine bug (confirmed directly in its
- * `dist/index.js`, 2026-11-01 developer-reported regression): its internal `lastCallTime`
+ * `dist/index.js`): its internal `lastCallTime`
  * is only updated the FIRST time a call starts a new window, not on every subsequent call
  * within it — so a "250ms debounce" actually fires 250ms after the FIRST call in a burst,
  * not the MOST RECENT one, behaving like a throttle at the original interval rather than a

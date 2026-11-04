@@ -79,7 +79,7 @@ describe("ListViewFilterChips", () => {
     expect(screen.getByText("Title ∅ empty")).toBeInTheDocument();
   });
 
-  it("a select field's chip resolves the stored value to its option label, not the raw value (developer-reported, must match the FilterInput exactly)", () => {
+  it("a select field's chip resolves the stored value to its option label, not the raw value, matching the FilterInput exactly", () => {
     render(
       <ListViewFilterChips
         collection={labeledFieldsCollection}
@@ -108,7 +108,7 @@ describe("ListViewFilterChips", () => {
     expect(onWhereChange).toHaveBeenCalledWith({ field: "title", op: "eq", value: "b" });
   });
 
-  it("Clear all replaces the whole filter with null (explicit clear sentinel, developer-reported)", async () => {
+  it("Clear all replaces the whole filter with null, the explicit clear sentinel", async () => {
     const user = userEvent.setup();
     const onWhereChange = vi.fn();
     render(

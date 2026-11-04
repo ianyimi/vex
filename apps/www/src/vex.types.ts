@@ -187,6 +187,7 @@ export type PageBlock =
 
 export interface PagesDocument extends VexDocument {
   _id: Id<"pages">
+  vex_status?: "draft" | "published"
   title: string
   /**
    * URL-friendly page path
@@ -345,6 +346,151 @@ export interface Theme extends VexDocument {
   updatedAt?: number
 }
 
+type TestimonialSourceOption = "website" | "import" | "survey" | "referral"
+export interface Testimonial extends VexDocument {
+  _id: Id<"testimonials">
+  /**
+   * Who gave the testimonial.
+   */
+  customerName: string
+  /**
+   * Customer's company, when given.
+   */
+  company?: string
+  /**
+   * The testimonial text itself.
+   */
+  quote: string
+  /**
+   * 1-5 star rating.
+   */
+  rating: number
+  /**
+   * Where this testimonial was collected from.
+   */
+  source: TestimonialSourceOption[]
+  /**
+   * Pinned to the homepage testimonials section.
+   */
+  featured?: boolean
+  /**
+   * Reviewed and cleared for public display.
+   */
+  approved?: boolean
+  /**
+   * The internal user who submitted/collected this testimonial, when known.
+   */
+  contributorId?: Id<"user">[]
+  /**
+   * Customer headshot, shown in the peek panel.
+   */
+  avatar?: Id<"images">[]
+  /**
+   * Internal quality score (0-100). Not visible to contributor/user roles.
+   */
+  internalScore?: number
+  updatedAt?: number
+}
+
+type ProductStatusOption = "draft" | "active" | "archived"
+export interface Product extends VexDocument {
+  _id: Id<"products">
+  /**
+   * Product name.
+   */
+  name: string
+  /**
+   * One-line pitch shown in list views.
+   */
+  tagline?: string
+  /**
+   * Long-form product description.
+   */
+  description?: string
+  /**
+   * Catalog lifecycle state.
+   */
+  status: ProductStatusOption[]
+  /**
+   * Hidden from the Catalog and Pricing views.
+   */
+  archived?: boolean
+  /**
+   * Monthly price in USD.
+   */
+  price?: number
+  /**
+   * Public launch date.
+   */
+  launchedOn?: number
+  /**
+   * Public product page.
+   */
+  website?: string
+  /**
+   * Where customers reach this product's team.
+   */
+  supportEmail?: string
+  /**
+   * Accent color used in marketing material.
+   */
+  brandColor?: string
+  heroImage?: Id<"images">[]
+  highlights?: { id?: string; title: string; detail?: string }[]
+  specs?: {
+    sku?: string
+    weightGrams?: number
+  }
+  /**
+   * Arbitrary integration metadata blob.
+   */
+  metadata?: unknown
+  updatedAt?: number
+}
+
+type LeadSourceOption = "website" | "referral" | "event" | "outbound"
+type LeadStatusOption = "new" | "contacted" | "qualified" | "won" | "lost"
+export interface Lead extends VexDocument {
+  _id: Id<"leads">
+  /**
+   * The lead's name.
+   */
+  fullName: string
+  /**
+   * The lead's company, when known.
+   */
+  company?: string
+  /**
+   * Contact email. Not visible to the demo role.
+   */
+  email: string
+  /**
+   * How this lead found us.
+   */
+  source: LeadSourceOption[]
+  /**
+   * Pipeline stage.
+   */
+  status: LeadStatusOption[]
+  /**
+   * Internal lead score (0-100). Not visible to the demo role.
+   */
+  score?: number
+  /**
+   * Private sales notes. Not visible to the demo role.
+   */
+  internalNotes?: string
+  /**
+   * Next scheduled touchpoint.
+   */
+  followUpOn?: number
+  /**
+   * Opted into the newsletter.
+   */
+  subscribed?: boolean
+  updatedAt?: number
+}
+
 export interface SessionDocument extends VexDocument {
   _id: Id<"session">
   expiresAt: number
@@ -475,6 +621,9 @@ export type CollectionSlug =
   | "headers"
   | "footers"
   | "themes"
+  | "testimonials"
+  | "products"
+  | "leads"
   | "session"
   | "account"
   | "verification"
@@ -494,6 +643,9 @@ export type DocumentBySlug = {
   headers: HeadersDocument
   footers: FootersDocument
   themes: Theme
+  testimonials: Testimonial
+  products: Product
+  leads: Lead
   session: SessionDocument
   account: AccountDocument
   verification: VerificationDocument
@@ -514,6 +666,9 @@ declare module "@vexcms/core" {
       | "headers"
       | "footers"
       | "themes"
+      | "testimonials"
+      | "products"
+      | "leads"
       | "session"
       | "account"
       | "verification"
@@ -529,6 +684,9 @@ declare module "@vexcms/core" {
       headers: HeadersDocument
       footers: FootersDocument
       themes: Theme
+      testimonials: Testimonial
+      products: Product
+      leads: Lead
       session: SessionDocument
       account: AccountDocument
       verification: VerificationDocument
@@ -550,22 +708,57 @@ declare module "@vexcms/core" {
         text: "title" | "slug" | "metaTitle" | "metaDescription"
         blocks: "blocks"
         upload: "ogImage"
-        date: "updatedAt"
+        commitTs: "updatedAt"
       }
       headers: {
         text: "name"
         blocks: "content"
-        date: "updatedAt"
+        commitTs: "updatedAt"
       }
       footers: {
         text: "name"
         blocks: "content"
-        date: "updatedAt"
+        commitTs: "updatedAt"
       }
       themes: {
         text: "name" | "fontFamily" | "radius"
         group: "light" | "dark"
-        date: "updatedAt"
+        commitTs: "updatedAt"
+      }
+      testimonials: {
+        text: "customerName" | "company"
+        textarea: "quote"
+        number: "rating" | "internalScore"
+        select: "source"
+        checkbox: "featured" | "approved"
+        relationship: "contributorId" | "avatar"
+        commitTs: "updatedAt"
+      }
+      products: {
+        text: "name" | "tagline"
+        textarea: "description"
+        select: "status"
+        checkbox: "archived"
+        number: "price"
+        date: "launchedOn"
+        url: "website"
+        email: "supportEmail"
+        color: "brandColor"
+        upload: "heroImage"
+        array: "highlights"
+        group: "specs"
+        json: "metadata"
+        commitTs: "updatedAt"
+      }
+      leads: {
+        text: "fullName" | "company"
+        email: "email"
+        select: "source" | "status"
+        number: "score"
+        textarea: "internalNotes"
+        date: "followUpOn"
+        checkbox: "subscribed"
+        commitTs: "updatedAt"
       }
       session: {
         date: "expiresAt" | "createdAt" | "updatedAt"
@@ -615,7 +808,7 @@ declare module "@vexcms/core" {
         text: "filename" | "alt" | "mimeType" | "storageId" | "src"
         number: "size" | "width" | "height"
         checkbox: "deleted"
-        date: "updatedAt"
+        commitTs: "updatedAt"
       }
     }
     GlobalsFieldTypeMap: {
@@ -633,10 +826,18 @@ declare module "@vexcms/core" {
     }
     IndexFieldsBySlug: {
       user: { by_email: readonly ["email"] }
-      pages: { by_slug: readonly ["slug"] }
-      headers: { by_name: readonly ["name"] }
-      footers: { by_name: readonly ["name"] }
-      themes: { by_name: readonly ["name"] }
+      pages: { by_slug: readonly ["slug"]; by_updatedAt: readonly ["updatedAt"] }
+      headers: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
+      footers: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
+      themes: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
+      testimonials: {
+        by_source: readonly ["source"]
+        by_contributorId: readonly ["contributorId"]
+        by_avatar: readonly ["avatar"]
+        by_updatedAt: readonly ["updatedAt"]
+      }
+      products: { by_status: readonly ["status"]; by_updatedAt: readonly ["updatedAt"] }
+      leads: { by_source: readonly ["source"]; by_updatedAt: readonly ["updatedAt"] }
       session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] }
       account: { by_userId: readonly ["userId"] }
       verification: { by_identifier: readonly ["identifier"] }
@@ -646,7 +847,7 @@ declare module "@vexcms/core" {
         by_key: readonly ["key"]
       }
       jwks: {}
-      images: { by_deleted: readonly ["deleted"] }
+      images: { by_deleted: readonly ["deleted"]; by_updatedAt: readonly ["updatedAt"] }
     }
     CustomActionsBySlug: {}
     AuthSlugs: {

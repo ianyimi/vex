@@ -343,12 +343,12 @@ describe("field maps — type level", () => {
   });
 });
 
-// Developer-reported fix (binding): `readViews`/`createView`/`updateView`/
+// `readViews`/`createView`/`updateView`/
 // `deleteView` are collection-level — never per-document or per-field — so a
 // field map (or the `{ where, filter, withIndex }` constrained object form,
 // equally document-query-shaped) is now a compile error on every one of
 // them, unlike `read`/`create`/`update`, which keep accepting both.
-describe("view actions — type level (developer-reported, binding)", () => {
+describe("view actions — type level", () => {
   it("rejects a field map on readViews", () => {
     defineAccess({
       roles: ["editor"] as const,

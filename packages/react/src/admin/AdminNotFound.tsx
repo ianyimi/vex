@@ -2,7 +2,7 @@ import { Button } from "../ui/button";
 import { VexLink } from "../ui/VexLink";
 import { Icon } from "../ui/Icon";
 
-/** Which not-found copy to show (Polish Decision 10). */
+/** Which not-found copy to show. */
 export type AdminNotFoundVariant = "collection" | "global" | "document";
 
 /** Props for {@link AdminNotFound}. */
@@ -28,12 +28,12 @@ const TITLES: Record<AdminNotFoundVariant, string> = {
 };
 
 /**
- * Shared not-found state (Polish Decision 10), in {@link ListViewEmptyState}'s own visual style
+ * Shared not-found state, in {@link ListViewEmptyState}'s own visual style
  * (icon, title, detail line, one action button — `flex flex-col items-center gap-2 py-12
  * text-center`) — replaces every "TODO: add not found view" text block.
  *
- * Exported from `@vexcms/react`'s main entry, NOT `@vexcms/react/server` (developer-binding,
- * production-build-reported — moved back here after a round trip through the server entry):
+ * Exported from `@vexcms/react`'s main entry, NOT `@vexcms/react/server`
+ * (found via a production build — moved back here after a round trip through the server entry):
  * the back button uses `VexLink` for genuine in-app navigation (no full page reload), and
  * `VexLink` depends on `useFrameworkComponents` — a `createContext`-backed hook. `VexLink`
  * itself correctly carries its own `"use client"`, but tsup bundles `@vexcms/react/server`'s

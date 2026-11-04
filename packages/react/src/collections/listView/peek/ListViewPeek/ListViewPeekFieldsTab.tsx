@@ -14,7 +14,7 @@ import { ScrollSection } from "../../../../ui/ScrollSection";
 import { PeekCopyButton, peekFieldCopyText } from "./ListViewPeekCopyButton";
 
 /**
- * One Fields-tab row: label, mono key, value, and a copy button (Design Decision 27).
+ * One Fields-tab row: label, mono key, value, and a copy button.
  *
  * @param props.disabled - Forwarded to the copy button — disabled for an empty value.
  * @returns The field row, with a copy button that toasts `Copied {label}` on success or an error on failure.
@@ -39,12 +39,12 @@ function PeekFieldRow(props: {
 }
 
 /**
- * The `ListViewPeek` Fields tab — one {@link PeekFieldRow} per readable field
- * (Design Decision 27), split out of `ListPeekPanel`'s own body verbatim
+ * The `ListViewPeek` Fields tab — one {@link PeekFieldRow} per readable field,
+ * split out of `ListPeekPanel`'s own body verbatim
  * (Phase 3 component-folder split, no behavior change). Receives the
  * already-loaded, POPULATED `document` (same shape `props.rows` holds) and
  * the same `visibleFieldEntries`/`canReadField` gating `ListPeekPanel`
- * already resolved — this component does no access-system-fields work of
+ * already resolved — this component does no system-field access-gating work of
  * its own, only renders what it's handed.
  *
  * @param props.document - The populated document (`props.rows`'s own depth), never `null`/`undefined` — the caller only mounts this tab once a document has resolved.
@@ -62,11 +62,11 @@ export function ListViewPeekFieldsTab<TDocument extends VexDocument = VexDocumen
   const document = props.document;
 
   // `_creationTime` can be ABSENT once a role's field map stops
-  // listing it (developer crash report: `new Date(undefined)
+  // listing it (`new Date(undefined)
   // .toISOString()` threw "RangeError: Invalid time value" before this
   // guard existed). The "Created" row now shows only when the value is
   // BOTH present AND actually readable (`canReadField("_creationTime")`
-  // — Decision 8, binding "access-system-fields") — the `typeof`
+  // — `_id` is the only permanently ungateable key) — the `typeof`
   // check stays as defense-in-depth regardless of what `canReadField`
   // says, since a genuinely missing value must never reach `new Date`.
   const canReadCreationTime = props.canReadField("_creationTime");

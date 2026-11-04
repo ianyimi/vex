@@ -46,7 +46,7 @@ function getFieldErrorMessage(field: AnyFieldApi): string | undefined {
  * (`@vexcms/richtext-plate`'s `plateEditor()` is the reference adapter); a
  * project with a `richtext()` field but no `editor:` entry in `vex.config.ts`
  * sees a configuration error here, never a crash or a silent plain-text
- * fallback (Design Decision 7).
+ * fallback.
  *
  * Renders inside a `role="group" aria-labelledby` wrapper (LABEL-1), like
  * `array`/`group`/`blocks`/`upload`: the editor adapter's root element is

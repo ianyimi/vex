@@ -14,7 +14,7 @@ import {
 // `truncateLocalViewName` is the ONE function both the cookie write side
 // (`serializeAdminCollectionCookie`, tested indirectly below) and
 // `@vexcms/react`'s local-view TAB LABEL render (`SavedListViewTabs.tsx`,
-// developer-reported zero-shift fix) call — a direct unit test here, on
+// zero-shift fix) call — a direct unit test here, on
 // top of the indirect `serializeAdminCollectionCookie` coverage below,
 // pins its own standalone contract now that a second package depends on
 // it directly.
@@ -162,7 +162,7 @@ describe("parseAdminCollectionCookie", () => {
     expect(result).toEqual({ v: 1, rowCounts: { ok: { n: 5, done: true } } });
   });
 
-  it("parses livePreview — same shape/field reader as parseAdminCookie's own, confirming a GLOBAL cookie's raw value also resolves correctly here (Decision 51's 'same shape, different cookie')", () => {
+  it("parses livePreview — same shape/field reader as parseAdminCookie's own, confirming a GLOBAL cookie's raw value also resolves correctly here (same shape, different cookie)", () => {
     const globalCookieValue = encodeURIComponent(
       JSON.stringify({ v: 1, density: "compact", sidebarOpen: true, livePreview: { panelOpen: true, panelSize: 55 } }),
     );

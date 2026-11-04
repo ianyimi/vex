@@ -19,7 +19,7 @@ export interface ScrollSectionProps extends Omit<ComponentProps<"div">, "title">
   collapsible?: boolean;
   /** Initial collapsed state when `collapsible` and no `persistKey` (or no stored value yet) applies. @default false */
   defaultCollapsed?: boolean;
-  /** `useLocalStorage` key remembering the collapsed state per browser (Decision 31's "Which groups are collapsed is remembered per browser"). Omit for session-only collapse state. */
+  /** `useLocalStorage` key remembering the collapsed state per browser. Omit for session-only collapse state. */
   persistKey?: string;
   /** Fixed height — the section always takes this much space. Mutually exclusive with `maxHeight`. */
   height?: string | number;
@@ -30,7 +30,7 @@ export interface ScrollSectionProps extends Omit<ComponentProps<"div">, "title">
 
 /**
  * A thin, prop-driven wrapper around `ScrollArea` for every fixed/max-height
- * scroll container in the admin panel (Decision 31): the views menu, the
+ * scroll container in the admin panel: the views menu, the
  * columns menu, the filter builder, the Inspect peek, and relationship/
  * media pickers. Composes `ScrollArea` with an optional collapsible header
  * instead of introducing a new primitive.

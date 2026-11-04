@@ -18,7 +18,7 @@ import { Icon } from "../../ui/Icon";
 
 /**
  * Resolved `time` config matching `updatedAt`'s injected definition
- * (`packages/core/src/collections/config.ts`, Decision 3) — the only shape a
+ * (`packages/core/src/collections/config.ts`) — the only shape a
  * target document's `updatedAt` can ever carry.
  */
 const UPDATED_AT_TIME: DateField["time"] = {

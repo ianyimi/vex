@@ -120,7 +120,7 @@ function SidebarProvider({
         _setOpen(openState)
       }
 
-      // Decision 51: merges into the consolidated vex-admin cookie's own
+      // Merges into the consolidated vex-admin cookie's own
       // sidebarOpen field, path-scoped to the project's basePath, instead
       // of writing its own dedicated sidebar_state cookie at path=/.
       writeAdminCookie({ basePath: config.basePath, patch: { sidebarOpen: openState } })
@@ -209,11 +209,11 @@ function Sidebar({
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
   // `useIsMobileAfterOwnMount`, not the raw `isMobile` from context: `Sidebar` can be
   // rendered inside a `<Suspense>` boundary that hydrates on a LATER tick than
-  // `SidebarProvider` above it (`AdminLayout`'s `authPromise`-streamed sidebar, Decision
-  // 44) — if `SidebarProvider`'s own `useIsMobile()` effect has already flipped context to
+  // `SidebarProvider` above it (`AdminLayout`'s `authPromise`-streamed sidebar) — if
+  // `SidebarProvider`'s own `useIsMobile()` effect has already flipped context to
   // `true` by the time THIS component gets its first render, branching on the raw value
   // here would diverge from the server's always-`false` render — a hydration mismatch
-  // (developer-reported, reproduces at 390px on every admin page). See
+  // (reproduces at 390px on every admin page). See
   // `useIsMobileAfterOwnMount`'s own doc comment for the full mechanics.
   const isMobileSafe = useIsMobileAfterOwnMount(isMobile)
 

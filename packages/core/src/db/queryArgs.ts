@@ -159,7 +159,7 @@ export function whereToConvexQueryFilter(props: {
 }): ConvexQueryFilterFn | undefined {
   const { where } = props;
   if (where === undefined) return undefined;
-  // Both forms end as the same recorded tree, built once and eagerly (see Step 1).
+  // Both forms end as the same recorded tree, built once and eagerly.
   const node: QueryFilterConstraint<GenericDocument> =
     typeof where === "function"
       ? (where(createQueryFilterConstraintBuilder<GenericDocument>() as never) as unknown as QueryFilterConstraint<GenericDocument>)
@@ -271,7 +271,7 @@ export function validateWhereNode<S extends string = string>(props: {
     // Convex's own argument serialization (`convexToJson`) drops an explicit
     // `value: undefined` property entirely before the server ever sees it
     // (confirmed against `convex/values`), the same way `JSON.stringify`
-    // drops `undefined` properties. This is exactly Decision 10's
+    // drops `undefined` properties. This is exactly the
     // `isEmpty`/`isNotEmpty` compiled form (`{ op: "eq" | "neq", value:
     // undefined }`), so a 2-key `{ field, op }` leaf is accepted here and
     // treated identically to an explicit `value: undefined` — never a
@@ -308,7 +308,7 @@ export function validateWhereNode<S extends string = string>(props: {
  * through both `collections` and `mediaCollections`. `vex_`-prefixed versioning
  * fields are deliberately excluded — drafts are selected with the `drafts`
  * argument — with ONE exception: `vex_status` on a collection with
- * `versions.drafts: true` is additionally allowed, because Decision 10's
+ * `versions.drafts: true` is additionally allowed, because the
  * filter builder offers it as a built-in `vex_status` filter field (values
  * from `VERSION_STATUSES`) and `find`/`search` must accept a `where`
  * referencing it. A non-versioned collection still rejects it.
@@ -384,7 +384,7 @@ export function andConvexQueryFilters(props: { filters: readonly (ConvexQueryFil
 
 /**
  * Converts every `commitTs`-typed field's leaf `value` inside a `VexWhereNode`
- * from a ms `number` (what the client sends — Decision 5) to a ns `bigint`
+ * from a ms `number` (what the client sends) to a ns `bigint`
  * (what Convex's index-range builder needs to compare against the stored
  * value). Walks `and`/`or`/`not` recursively; non-`commitTs` leaves and
  * `isEmpty`/`isNotEmpty` leaves (no `value`) pass through unchanged.
@@ -427,6 +427,117 @@ export function convertCommitTsWhereToNs<S extends string = string>(props: {
       return { ...node, value: BigInt(node.value) * BigInt(1_000_000) } as VexWhereNode<S>;
     }
     return node;
+  }
+  return walk(props.where);
+}
+
+/**
+ * Whether `field` is one of the three types the Convex schema always stores
+ * as `v.array(...)` regardless of the field's own `hasMany` (`select`,
+ * `relationship`, `upload` — confirmed in each type's `validator.ts`:
+ * `v.array(v.union(...))`, `v.array(v.id(...))`, `v.array(v.id(...))`
+ * respectively, `hasMany` only ever toggling the admin UI's single- vs
+ * multi-picker). A literal `type` comparison, not a `Set.has()` lookup, so
+ * TypeScript narrows `field` to the union of those three resolved shapes —
+ * each of which declares a real `hasMany: boolean` — inside the `if`.
+ *
+ * @param field - The resolved field config to classify.
+ * @returns `true` for `select`, `relationship`, and `upload` fields.
+ */
+function isArrayStoredField(
+  field: AdminField,
+): field is Extract<AdminField, { type: "select" | "relationship" | "upload" }> {
+  return field.type === ADMIN_FIELDS.select.type
+    || field.type === ADMIN_FIELDS.relationship.type
+    || field.type === ADMIN_FIELDS.upload.type;
+}
+
+/**
+ * Normalizes a `where` tree's leaves against array-stored fields — `select`,
+ * `relationship`, and `upload` (see {@link ARRAY_STORED_FIELD_TYPES}). A
+ * filter leaf always compares ONE value regardless of the field's own
+ * `hasMany`, while the stored document value is always an
+ * array — so an unwrapped `eq`/`neq` leaf compares a bare scalar against an
+ * array and NEVER matches (`valuesEqual`, which both the index-range and
+ * `.filter()` compile targets key equality off, requires both sides to be
+ * arrays once either side is one). This is the root cause of `?filter=
+ * (status.eq.won)` returning zero rows against a seeded dataset with 12
+ * `won` leads, and of `{ field: "contributorId", op: "neq", value: null }`
+ * matching every row instead of excluding the empty ones, verified live
+ * 2026-11-03.
+ *
+ * Walks `and`/`or`/`not` recursively and rewrites two leaf shapes on an
+ * array-stored field:
+ *
+ * 1. A single-cardinality field (`hasMany: false`) with a concrete,
+ *    non-null/non-undefined `eq`/`neq` value that is not already an array:
+ *    wraps it in a one-element array (`eq "won"` → `eq ["won"]`) — the
+ *    field can only ever hold that one element, so whole-array equality
+ *    and single-value equality coincide. Still index-pushable: Convex
+ *    compares an index range's `eq` and a `.filter()` expression's `eq`/
+ *    `neq` by CONTENT for an array value exactly like `valuesEqual` does
+ *    (confirmed against the real Convex runtime via `convex-test` —
+ *    `normalizeArrayStoredWhere.test.ts`), so `resolveQueryIndex`'s
+ *    pushdown (which reads the SAME `where` this function returns) still
+ *    pushes the rewritten leaf into a declared index's range unchanged.
+ *    `hasMany: true` fields are left untouched — a membership/"contains"
+ *    test over a multi-value array has no sound `eq`/`neq` rewrite (an
+ *    `eq` would require the WHOLE array to equal the one-element wrapper,
+ *    matching only a single-element array, not "contains"); there is no
+ *    general fix for that gap in this function.
+ * 2. An empty check against ANY array-stored field, regardless of
+ *    `hasMany` — either `isEmpty`/`isNotEmpty`'s wire form (`eq`/`neq`
+ *    with `value: undefined`) or an explicit `value: null`
+ *    leaf (the shape a saved view hand-writes for "no relation", e.g.
+ *    `leads.ts`'s "From Contributors" preset's `{ op: "neq", value: null
+ *    }`) — rewritten to match EITHER the properly-initialised empty array
+ *    (`[]`, what every array-stored field actually stores once touched by
+ *    the admin form) OR a legacy document that predates the field
+ *    entirely (`undefined`, never written — both count as "no value" for
+ *    this check). `eq` → `or(eq [], eq undefined)`; `neq` → `not(or(eq
+ *    [], eq undefined))`. Neither shape is index-pushable (`or`/`not`
+ *    were already excluded from pushdown before this function existed),
+ *    so both stay in `.filter()`, same as before.
+ *
+ * @param props - Input props.
+ * @param props.where - The caller's `where`, or `undefined`.
+ * @param props.fields - The collection's resolved field map.
+ * @returns A new `VexWhereNode` with every array-stored leaf rewritten, or
+ *   `props.where` unchanged if there is nothing to rewrite.
+ */
+export function normalizeArrayStoredWhere<S extends string = string>(props: {
+  where: VexWhereNode<S> | undefined;
+  fields: Record<string, AdminField>;
+}): VexWhereNode<S> | undefined {
+  if (props.where === undefined) return undefined;
+  const arrayFields = new Map<string, { hasMany: boolean }>();
+  for (const [key, field] of Object.entries(props.fields)) {
+    if (isArrayStoredField(field)) {
+      arrayFields.set(key, { hasMany: field.hasMany });
+    }
+  }
+  function walk(node: VexWhereNode<S>): VexWhereNode<S> {
+    if ("and" in node) return { and: node.and.map(walk) };
+    if ("or" in node) return { or: node.or.map(walk) };
+    if ("not" in node) return { not: walk(node.not) };
+    if (node.op !== "eq" && node.op !== "neq") return node;
+    const arrayField = arrayFields.get(node.field as string);
+    if (arrayField === undefined) return node;
+    if (node.value === undefined || node.value === null) {
+      // `ConstraintValue<TDoc, F>` is inferred per-collection from `S`, so TS
+      // cannot know an array-stored field's value type admits `[]`/`undefined`
+      // combinator nodes here — this generic walk only inspects `node.field`'s
+      // runtime type, same cast pattern as `convertCommitTsWhereToNs` above.
+      const isEmptyNode = {
+        or: [
+          { field: node.field, op: "eq", value: [] },
+          { field: node.field, op: "eq", value: undefined },
+        ],
+      } as unknown as VexWhereNode<S>;
+      return node.op === "eq" ? isEmptyNode : ({ not: isEmptyNode } as unknown as VexWhereNode<S>);
+    }
+    if (arrayField.hasMany || Array.isArray(node.value)) return node;
+    return { ...node, value: [node.value] } as VexWhereNode<S>;
   }
   return walk(props.where);
 }

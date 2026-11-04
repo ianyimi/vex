@@ -73,7 +73,7 @@ export function MediaCollectionEditView<
  * The data-resolving half of {@link MediaCollectionEditView} — split out for the same
  * hooks-order reason {@link CollectionEditView}'s own `CollectionEditViewData` is.
  *
- * Plain `useVexDocQuery` (developer-reported regression fix, reverting the shell-streaming
+ * Plain `useVexDocQuery` (reverting the shell-streaming
  * follow-up's `<Suspense>`+`useSuspenseVexDocQuery` split here specifically) — the edit
  * view's own primary document is essential and cheap to fetch, so `NextAdminPage.tsx` now
  * AWAITS it server-side and passes the resolved value as `initialData`, so `currentDocument`
@@ -99,7 +99,7 @@ function MediaCollectionEditViewData<TCollectionSlug extends MediaCollectionSlug
 
   // Checked before `!currentDocument` — an unreadable document also leaves
   // `currentDocument` `undefined`, which would otherwise show the misleading "Document not
-  // found" message for what's actually a permission/network failure (polish fixes, Decision 1/2).
+  // found" message for what's actually a permission/network failure.
   if (error) {
     return <InlineQueryError error={error} subject="this document" onRetry={refetch} />;
   }

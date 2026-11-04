@@ -16,7 +16,7 @@ import { VexError } from "../../../errors";
 /**
  * Runs the RBAC gate shared by `listViews`'s mutation-shaped siblings —
  * `saveView` (`createView`/`updateView`) and `removeView` (`deleteView`),
- * fail-closed per decision 13. A no-op when `config.access` is unset,
+ * fail-closed. A no-op when `config.access` is unset,
  * matching `assertVersionsAccess`'s (`versions/api/history/server.ts`)
  * convention: RBAC only applies when the project has configured `access` at
  * all.
@@ -55,7 +55,7 @@ export function assertViewAction(props: {
  * Rejects a `viewId` that collides with the collection's reserved default
  * view id (`admin.view.viewId`, always `"default"`) or one of its preset
  * `admin.views[].viewId` entries — neither is ever a real `vex_views` row;
- * both are declared in code, bundled to the client (P-004), and already
+ * both are declared in code, bundled to the client, and already
  * enforced unique against each other at config time
  * (`validateSavedListViewConfig`). Without this, a client could `saveView` a
  * shared row under `"default"` (or a preset's own id) that would never
@@ -89,8 +89,8 @@ export function assertViewIdNotReserved(props: {
 }
 
 /**
- * Validates a client-supplied `view` payload's SHAPE before any further processing
- * (polish fix, Decision 2). `saveView`'s `view` argument arrives on the wire as
+ * Validates a client-supplied `view` payload's SHAPE before any further processing.
+ * `saveView`'s `view` argument arrives on the wire as
  * `v.any()` (see the `mutation({ args: { view: v.any() } })` pattern in `saveView`'s
  * own example), so a client can send `{}`, `null`, or `{ viewId: "x" }` — without this
  * check, `saveView` dereferences `args.view.viewId`/`.name` with no guard (an
@@ -122,7 +122,7 @@ export function assertViewPayloadValid(props: { view: unknown }): void {
 
 /**
  * Rejects a view whose `state.where` references a field the saving user
- * cannot read (decision 26, architecture review 2026-10-27). A saved filter
+ * cannot read. A saved filter
  * on an unreadable field would let anyone who opens the view infer a
  * yes/no condition on every row, which is exactly what field-read access
  * is meant to prevent — the same reasoning `find`/`search` apply to a
@@ -198,14 +198,14 @@ export interface SaveViewServerArgs<DataModel extends GenericDataModel> {
   /** The collection slug the view belongs to. */
   collection: CollectionSlug;
   /**
-   * The view to save. `viewId` is client-generated (decision 14) and is
+   * The view to save. `viewId` is client-generated and is
    * the idempotency key: a second call with the same `viewId` patches the
    * existing row in place instead of inserting a duplicate — this is what
    * makes promotion (local → shared) safe against another tab racing the
    * same save. `view.description` is optional free text, stored verbatim
-   * and shown under the view's name (Step 12). `view.state.where` is the
-   * saver's own filter only — never a config view's hidden `where`
-   * (decision 25); "Save as new view" from a config view never carries
+   * and shown under the view's name. `view.state.where` is the
+   * saver's own filter only — never a config view's hidden `where`;
+   * "Save as new view" from a config view never carries
    * the hidden filter into `state`.
    */
   view: VexViewConfig;
@@ -213,33 +213,31 @@ export interface SaveViewServerArgs<DataModel extends GenericDataModel> {
 
 /**
  * Creates or patches one `vex_views` row — an insert requires `createView`,
- * a patch requires `updateView` (decision 13), so the gate runs AFTER the
+ * a patch requires `updateView`, so the gate runs AFTER the
  * idempotency lookup decides which action applies. Idempotent on
- * `view.viewId` (decision 14). Stores `view.description` alongside `name`
+ * `view.viewId`. Stores `view.description` alongside `name`
  * and `state`; an undefined `description` clears any previously saved one
  * on patch.
  *
  * `assertViewPayloadValid` runs FIRST of all — before `assertViewIdNotReserved`,
  * before any DB read — a malformed payload (`view.state` not a plain object,
- * `viewId`/`name` not strings) is a caller bug regardless of everything else
- * (polish fix, Decision 2). `assertViewIdNotReserved` runs next — a `viewId`
+ * `viewId`/`name` not strings) is a caller bug regardless of everything else.
+ * `assertViewIdNotReserved` runs next — a `viewId`
  * colliding with the collection's declared `admin.view`/`admin.views` ids
  * is also a caller bug regardless of permissions, so it's rejected before the
  * idempotency lookup even runs. The idempotency lookup (`by_view_id`) runs
  * next — it only confirms whether a row exists and which collection/organization
  * it belongs to, leaking nothing beyond that, so running it before the access
  * gate is safe. Under org scoping (`config.access.organizations` is
- * `true` — NOT `orgCollectionSlug` alone, developer-approved binding
- * correction), a caller whose own org doesn't resolve is denied outright
- * — the same "not found" shape whether `view.viewId` already exists or
- * not, so existence is never leaked. A resolved caller may only touch an
- * EXISTING row whose own `organizationId` exactly matches theirs; an
- * org-less row (saved before org scoping was enabled) is invisible and
- * inert under scoping too, same as a genuinely cross-org row — it is
- * never adopted, read, or silently claimed (polish fix, Decision 3). A
- * patch never rewrites an existing, different `organizationId`. Access
- * and the field-read check (decision 26) both run before any row is
- * written.
+ * `true` — NOT `orgCollectionSlug` alone), a caller whose own org doesn't
+ * resolve is denied outright — the same "not found" shape whether
+ * `view.viewId` already exists or not, so existence is never leaked. A
+ * resolved caller may only touch an EXISTING row whose own
+ * `organizationId` exactly matches theirs; an org-less row (saved before
+ * org scoping was enabled) is invisible and inert under scoping too, same
+ * as a genuinely cross-org row — it is never adopted, read, or silently
+ * claimed. A patch never rewrites an existing, different `organizationId`.
+ * Access and the field-read check both run before any row is written.
  *
  * Server-side only. Import from `@vexcms/core/server`.
  *
@@ -290,7 +288,7 @@ export async function saveView<DataModel extends GenericDataModel>(
   const orgScoped = isViewOrganizationScopingEnabled(args.config.access);
   const organizationId = resolveViewOrganizationId({ access: args.config.access, organization: args.auth?.organization });
 
-  // Decision 3 (org scoping, extended): a caller whose own org doesn't
+  // Org scoping, extended: a caller whose own org doesn't
   // resolve is denied outright — never reaches the insert/patch below,
   // whether or not `view.viewId` already exists (no existence leak). Once
   // `organizationId` is confirmed defined, an EXISTING row whose own

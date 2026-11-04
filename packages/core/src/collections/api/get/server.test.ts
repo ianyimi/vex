@@ -590,7 +590,7 @@ describe("get (server) — existence is not observable through access state", ()
   });
 });
 
-// ── Field-level read shaping (Step 5) ───────────────────────────────────────
+// ── Field-level read shaping ─────────────────────────────────────────────
 const fieldMapRbacConfig = {
   ...fixtureConfig,
   access: defineAccess({
@@ -635,9 +635,9 @@ describe("get (server) — field-level read shaping", () => {
 
   // `_creationTime` survives HERE because this map's wildcard is `true` and
   // never explicitly names it — NOT because it's unconditionally exempt like
-  // `_id` (developer decision, binding, "access-system-fields": `_creationTime`
-  // IS a real, gateable field-permission key now). The companion test below
-  // proves it actually strips once a map explicitly denies it.
+  // `_id` (`_creationTime` IS a real, gateable field-permission key now).
+  // The companion test below proves it actually strips once a map
+  // explicitly denies it.
   test("_id always survives; _creationTime survives here too, because the wildcard covers it (not because it's exempt)", async () => {
     const t = convexTest(schema, modules);
     const doc = (await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
@@ -654,7 +654,7 @@ describe("get (server) — field-level read shaping", () => {
     expect(doc._creationTime).toBeDefined();
   });
 
-  test("strips _creationTime, updatedAt, and vex_status when a map explicitly denies them, exactly like any other field (developer decision, binding, \"access-system-fields\")", async () => {
+  test("strips _creationTime, updatedAt, and vex_status when a map explicitly denies them, exactly like any other field (\"access-system-fields\")", async () => {
     const systemFieldsDeniedConfig = {
       ...fixtureConfig,
       access: defineAccess({

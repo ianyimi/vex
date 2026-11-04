@@ -18,7 +18,13 @@ export const user = defineTable({
   isAnonymous: v.optional(v.boolean()),
   userId: v.optional(v.string()),
   roles: v.array(v.string()),
-}).index("by_email", ["email"])
+})
+  .index("by_email", ["email"])
+  .searchIndex("search_name", {
+    searchField: "name",
+
+    filterFields: [],
+  })
 
 export const pages = defineTable({
   title: v.string(),
@@ -187,13 +193,14 @@ export const pages = defineTable({
   metaTitle: v.optional(v.string()),
   metaDescription: v.optional(v.string()),
   ogImage: v.optional(v.array(v.id("images"))),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   vex_publishedAt: v.optional(v.number()),
   vex_publishedId: v.optional(v.id("pages")),
   vex_activeVersion: v.optional(v.number()),
 })
   .index("by_slug", ["slug"])
+  .index("by_updatedAt", ["updatedAt"])
   .index("by_status", ["vex_status"])
   .index("by_published", ["vex_publishedId"])
 
@@ -226,8 +233,10 @@ export const headers = defineTable({
       })
     )
   ),
-  updatedAt: v.optional(v.number()),
-}).index("by_name", ["name"])
+  updatedAt: v.optional(v.commitTs()),
+})
+  .index("by_name", ["name"])
+  .index("by_updatedAt", ["updatedAt"])
 
 export const footers = defineTable({
   name: v.string(),
@@ -256,8 +265,10 @@ export const footers = defineTable({
       })
     )
   ),
-  updatedAt: v.optional(v.number()),
-}).index("by_name", ["name"])
+  updatedAt: v.optional(v.commitTs()),
+})
+  .index("by_name", ["name"])
+  .index("by_updatedAt", ["updatedAt"])
 
 export const themes = defineTable({
   name: v.string(),
@@ -335,8 +346,99 @@ export const themes = defineTable({
       sidebarRing: v.optional(v.string()),
     })
   ),
-  updatedAt: v.optional(v.number()),
-}).index("by_name", ["name"])
+  updatedAt: v.optional(v.commitTs()),
+})
+  .index("by_name", ["name"])
+  .index("by_updatedAt", ["updatedAt"])
+
+export const testimonials = defineTable({
+  customerName: v.string(),
+  company: v.optional(v.string()),
+  quote: v.string(),
+  rating: v.number(),
+  source: v.array(
+    v.union(v.literal("website"), v.literal("import"), v.literal("survey"), v.literal("referral"))
+  ),
+  featured: v.optional(v.boolean()),
+  approved: v.optional(v.boolean()),
+  contributorId: v.optional(v.array(v.id("user"))),
+  avatar: v.optional(v.array(v.id("images"))),
+  internalScore: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
+})
+  .index("by_source", ["source"])
+  .index("by_contributorId", ["contributorId"])
+  .index("by_avatar", ["avatar"])
+  .index("by_updatedAt", ["updatedAt"])
+  .searchIndex("search_testimonials_customer_name", {
+    searchField: "customerName",
+    filterFields: [],
+  })
+  .searchIndex("search_testimonials_company", {
+    searchField: "company",
+    filterFields: [],
+  })
+
+export const products = defineTable({
+  name: v.string(),
+  tagline: v.optional(v.string()),
+  description: v.optional(v.string()),
+  status: v.array(v.union(v.literal("draft"), v.literal("active"), v.literal("archived"))),
+  archived: v.optional(v.boolean()),
+  price: v.optional(v.number()),
+  launchedOn: v.optional(v.number()),
+  website: v.optional(v.string()),
+  supportEmail: v.optional(v.string()),
+  brandColor: v.optional(v.string()),
+  heroImage: v.optional(v.array(v.id("images"))),
+  highlights: v.optional(
+    v.array(
+      v.object({ id: v.optional(v.string()), title: v.string(), detail: v.optional(v.string()) })
+    )
+  ),
+  specs: v.optional(v.object({ sku: v.optional(v.string()), weightGrams: v.optional(v.number()) })),
+  metadata: v.optional(v.any()),
+  updatedAt: v.optional(v.commitTs()),
+})
+  .index("by_status", ["status"])
+  .index("by_updatedAt", ["updatedAt"])
+  .searchIndex("search_products_name", {
+    searchField: "name",
+    filterFields: [],
+  })
+
+export const leads = defineTable({
+  fullName: v.string(),
+  company: v.optional(v.string()),
+  email: v.string(),
+  source: v.array(
+    v.union(v.literal("website"), v.literal("referral"), v.literal("event"), v.literal("outbound"))
+  ),
+  status: v.array(
+    v.union(
+      v.literal("new"),
+      v.literal("contacted"),
+      v.literal("qualified"),
+      v.literal("won"),
+      v.literal("lost")
+    )
+  ),
+  score: v.optional(v.number()),
+  internalNotes: v.optional(v.string()),
+  followUpOn: v.optional(v.number()),
+  subscribed: v.optional(v.boolean()),
+  updatedAt: v.optional(v.commitTs()),
+})
+  .index("by_source", ["source"])
+  .index("by_updatedAt", ["updatedAt"])
+  .searchIndex("search_leads_full_name", {
+    searchField: "fullName",
+    filterFields: [],
+  })
+  .searchIndex("search_leads_company", {
+    searchField: "company",
+    filterFields: [],
+  })
 
 export const session = defineTable({
   expiresAt: v.number(),
@@ -418,9 +520,10 @@ export const images = defineTable({
   src: v.string(),
   width: v.optional(v.number()),
   height: v.optional(v.number()),
-  updatedAt: v.optional(v.number()),
+  updatedAt: v.optional(v.commitTs()),
 })
   .index("by_deleted", ["deleted"])
+  .index("by_updatedAt", ["updatedAt"])
   .searchIndex("search_filename", {
     searchField: "filename",
     filterFields: ["alt"],

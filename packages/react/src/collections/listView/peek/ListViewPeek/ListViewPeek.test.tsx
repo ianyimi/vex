@@ -70,12 +70,12 @@ describe("ListViewPeek", () => {
       { convex: t, config: defineConfig({ collections: [peekCollection] }) },
     );
 
-    // ONE panel now (Decision "one peek panel, never two layouts at
-    // once") — "Doc 0" appears exactly once.
+    // ONE panel now ("Doc 0" appears exactly once, regardless of
+    // viewport breakpoint).
     expect(screen.getAllByText("Doc 0").length).toBeGreaterThan(0);
   });
 
-  it("renders without throwing and without the Created row when _creationTime is absent (developer-reported crash: access can now strip it, new Date(undefined) threw RangeError)", async () => {
+  it("renders without throwing and without the Created row when _creationTime is absent (access can now strip it, new Date(undefined) threw RangeError)", async () => {
     const t = convexTest(schema, testModules);
     const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0", status: "published" }));
     // Simulates `_creationTime` stripped by access before `document` ever
@@ -97,7 +97,7 @@ describe("ListViewPeek", () => {
     expect(screen.queryByText("Created")).not.toBeInTheDocument();
   });
 
-  it("labels the header's edit-page link \"Edit\" (developer-reported: \"Open\" was ambiguous — it goes straight to the document's edit page)", async () => {
+  it("labels the header's edit-page link \"Edit\" (\"Open\" was ambiguous — it goes straight to the document's edit page)", async () => {
     const t = convexTest(schema, testModules);
     const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0", status: "published" }));
     const row: VexDocument = { _id: id, _creationTime: Date.now(), title: "Doc 0", status: "published" };
@@ -144,8 +144,8 @@ describe("ListViewPeek", () => {
     });
 
     // `useSuspenseVexDocQuery` genuinely suspends (no `initialData` seed — that mechanism
-    // was `CollectionListViewProps.initialPeekDoc`/`ListViewPeek.initialDoc`, deleted, polish
-    // fixes Decision 11), `ListViewPeek`'s own `<Suspense>` wrapper shows `ListPeekPanel`'s
+    // was `CollectionListViewProps.initialPeekDoc`/`ListViewPeek.initialDoc`, deleted),
+    // `ListViewPeek`'s own `<Suspense>` wrapper shows `ListPeekPanel`'s
     // "document: undefined" skeleton branch first (same loading UI this file always had),
     // THEN swaps to the real content once the `convex-test` backend resolves the query —
     // proves the Suspense boundary itself works, not just the already-loaded-row fast path
@@ -203,7 +203,7 @@ describe("ListViewPeek", () => {
     expect(screen.queryByText("Some fields are hidden by your permissions.")).not.toBeInTheDocument();
   });
 
-  it("hides the Created row when _creationTime is unreadable (Decision 8/9, access-system-fields: hidden unless listed, no wildcard) — the ID row is unaffected", async () => {
+  it("hides the Created row when _creationTime is unreadable (hidden unless listed, no wildcard) — the ID row is unaffected", async () => {
     const t = convexTest(schema, testModules);
     const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0", status: "published" }));
     const row: VexDocument = { _id: id, _creationTime: Date.now(), title: "Doc 0", status: "published" };
@@ -214,7 +214,7 @@ describe("ListViewPeek", () => {
     );
     await waitFor(() => expect(screen.getAllByText("Doc 0").length).toBeGreaterThan(0));
     expect(screen.queryByText("Created")).not.toBeInTheDocument();
-    // The ID row is unaffected — always readable (Decision 8), regardless of role.
+    // The ID row is unaffected — always readable, regardless of role.
     expect(screen.getByText("ID")).toBeInTheDocument();
   });
 
@@ -249,7 +249,7 @@ describe("ListViewPeek", () => {
       userRolesField: "roles",
       permissions: {
         // Every DATA field readable (title) — _creationTime unlisted, no
-        // wildcard, so it's hidden (Decision 9) and is the ONLY source
+        // wildcard, so it's hidden and is the ONLY source
         // of a hidden field here, isolating the system-field count.
         editor: { documents: { read: () => ({ title: true }) } },
       },
@@ -335,7 +335,7 @@ describe("ListViewPeek", () => {
     expect(screen.getAllByText("Some fields are hidden by your permissions.").length).toBeGreaterThan(0);
   });
 
-  it("strips hasUnpublishedChanges from the JSON tab (developer-reported, flagged on post3) — a computed flag mergeDraftCounterparts attaches, never a real stored Convex column", async () => {
+  it("strips hasUnpublishedChanges from the JSON tab — a computed flag mergeDraftCounterparts attaches, never a real stored Convex column", async () => {
     const t = convexTest(schema, testModules);
     const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0", status: "published" }));
     // Simulates what the list query's own merge step actually hands
@@ -399,7 +399,7 @@ describe("ListViewPeek", () => {
     await waitFor(() => expect(screen.getAllByText("Target Doc").length).toBeGreaterThan(0));
   });
 
-  it("shows a raw relationship id in the JSON tab, not the populated document (Main-reported: find's own depth: 1 population leaked into the JSON tab via the seeded list row)", async () => {
+  it("shows a raw relationship id in the JSON tab, not the populated document (find's own depth: 1 population leaked into the JSON tab via the seeded list row)", async () => {
     const relCollection = defineCollection({
       slug: "documents",
       fields: { title: text(), related: relationship({ collection: { slug: "documents" } }) },
@@ -467,10 +467,10 @@ describe("ListViewPeek", () => {
 
     await waitFor(() => expect(screen.getAllByText("Doc 1").length).toBeGreaterThan(0));
     // Scoped to `container`, not `screen`: both layouts render the same
-    // header (Decision 43), and the Sheet's bottom-sheet copy lives in a
+    // header, and the Sheet's bottom-sheet copy lives in a
     // separate portal outside `container` — scoping avoids the duplicate
     // match without relying on `modal`-driven `inert` exclusion (removed,
-    // see Decision 27's "list stays interactive" fix).
+    // since the list stays interactive now too).
     fireEvent.click(within(container).getByRole("button", { name: "Previous row" }));
     expect(onPeekChange).toHaveBeenCalledWith(id0);
 
@@ -478,7 +478,7 @@ describe("ListViewPeek", () => {
     expect(onPeekChange).toHaveBeenCalledWith(id2);
   });
 
-  it("Previous on the first row wraps to the last, Next on the last wraps to the first (developer-approved, access-system-fields plan part 5)", async () => {
+  it("Previous on the first row wraps to the last, Next on the last wraps to the first", async () => {
     const t = convexTest(schema, testModules);
     const id0 = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0" }));
     const id1 = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 1" }));
@@ -542,7 +542,7 @@ describe("ListViewPeek", () => {
     expect(within(container).getByRole("button", { name: "Next row" })).toBeDisabled();
   });
 
-  it("renders ONE panel — fixed, right-docked classes for md+, bottom-sheet classes for mobile, same element either way (Decision, developer-approved \"one peek panel, never two layouts at once\")", async () => {
+  it("renders ONE panel — fixed, right-docked classes for md+, bottom-sheet classes for mobile, same element either way (one peek panel, never two layouts at once)", async () => {
     const t = convexTest(schema, testModules);
     const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0" }));
 
@@ -567,12 +567,10 @@ describe("ListViewPeek", () => {
     expect(panel.className).toContain("md:right-[var(--peek-sidebar-offset)]");
     expect(panel.className).toContain("md:w-[var(--peek-width)]");
     expect(panel.className).toContain("md:rounded-none");
-    // Width is a CSS custom property (Decision, developer-approved
-    // "peek-resize") — only consumed by the `md:w-[var(--peek-width)]`
+    // Width is a CSS custom property — only consumed by the `md:w-[var(--peek-width)]`
     // utility, so the mobile shape stays full-width regardless.
     expect(panel.style.getPropertyValue("--peek-width")).toBe("384px");
-    // Sidebar-aware positioning (Decision, developer-approved "sidebar-
-    // aware peek") — `0px` outside a `SidebarProvider` (the test
+    // Sidebar-aware positioning — `0px` outside a `SidebarProvider` (the test
     // harness's own case) or when the sidebar isn't on the colliding
     // (right) side.
     expect(panel.style.getPropertyValue("--peek-sidebar-offset")).toBe("0px");
@@ -583,7 +581,7 @@ describe("ListViewPeek", () => {
     expect(backdrop!.className).toContain("pointer-events-none");
   });
 
-  it("keeps the peek open when clicking Previous/Next, a tab, or a copy button (developer-reported bug: any click inside used to close it)", async () => {
+  it("keeps the peek open when clicking Previous/Next, a tab, or a copy button (any click inside used to close it)", async () => {
     const t = convexTest(schema, testModules);
     const id0 = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0" }));
     const id1 = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 1" }));
@@ -666,7 +664,7 @@ describe("ListViewPeek", () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
-  describe("resize (Decision, developer-approved \"peek-resize\")", () => {
+  describe("resize", () => {
     async function renderResizable(onWidthChange: (width: number | undefined) => void, width = 400) {
       const t = convexTest(schema, testModules);
       const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0" }));
@@ -767,7 +765,7 @@ describe("ListViewPeek", () => {
     });
   });
 
-  describe("sidebar-sync transition (developer-reported: offset jumped instantly while the sidebar itself animated)", () => {
+  describe("sidebar-sync transition (offset jumped instantly while the sidebar itself animated)", () => {
     async function renderPanel(width = 400) {
       const t = convexTest(schema, testModules);
       const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0" }));
@@ -813,7 +811,7 @@ describe("ListViewPeek", () => {
     });
   });
 
-  describe("tab memory (Decision, developer-approved \"peek-tab-memory\")", () => {
+  describe("tab memory", () => {
     it("opens on the remembered tab from activeTab (SSR-resolved, no flash)", async () => {
       const t = convexTest(schema, testModules);
       const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0" }));
@@ -844,7 +842,7 @@ describe("ListViewPeek", () => {
     });
   });
 
-  describe("sidebar-aware positioning (Decision, developer-approved \"sidebar-aware peek\")", () => {
+  describe("sidebar-aware positioning", () => {
     async function renderWithSidebar(config: ReturnType<typeof defineConfig>, defaultOpen: boolean) {
       const t = convexTest(schema, testModules);
       const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0" }));

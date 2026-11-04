@@ -14,7 +14,7 @@ import { ComponentErrorBoundary } from "./ComponentErrorBoundary";
  * chain → this field instance's own `admin.components.Cell` chain. Identical composition to
  * {@link resolveFieldComponent}, over `fieldToCellComponent`/`CellComponentProps`.
  * `getCollectionColumnDefs` (`packages/react/src/components/fields/index.tsx`, unchanged call
- * site) calls this instead of the bare registry lookup, which is how Step 17's "DataTable cells
+ * site) calls this instead of the bare registry lookup, which is how "DataTable cells
  * resolve `field.cell` through the registry" requirement is met with no `DataTable.tsx` edit.
  *
  * @throws {Error} When `fieldType` has no registered built-in.

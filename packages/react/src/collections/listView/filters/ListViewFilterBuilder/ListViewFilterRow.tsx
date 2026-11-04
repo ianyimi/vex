@@ -47,7 +47,7 @@ export interface DraftFilterRow {
 }
 
 /**
- * A row is complete once it has a field, an operator, and (for every operator except `isEmpty`/`isNotEmpty`) a non-empty value — Decision 10's "a row counts once it is complete, and incomplete rows are muted and ignored". Reads `row.op` directly (never re-derives it — see {@link DraftFilterRow}'s own doc).
+ * A row is complete once it has a field, an operator, and (for every operator except `isEmpty`/`isNotEmpty`) a non-empty value — a row counts once it is complete, and incomplete rows are muted and ignored. Reads `row.op` directly (never re-derives it — see {@link DraftFilterRow}'s own doc).
  * @param row - The draft row to test.
  * @returns `true` if `row.op` is `isEmpty`/`isNotEmpty`, or if `row.value` is not `""`/`undefined`/`null`.
  */
@@ -56,15 +56,15 @@ export function isFilterRowComplete(row: DraftFilterRow): boolean {
   return row.value !== "" && row.value !== undefined && row.value !== null;
 }
 
-/** Field types whose value is free text, for the "Exact match. Use search for partial text." `eq` hint (Decision 10) — not `select`/`relationship`/`color`, where an exact match is the only sensible comparison anyway. */
+/** Field types whose value is free text, for the "Exact match. Use search for partial text." `eq` hint — not `select`/`relationship`/`color`, where an exact match is the only sensible comparison anyway. */
 const TEXT_LIKE_FILTER_TYPES: Record<string, true> = { text: true, email: true, textarea: true, url: true };
 
 /**
  * One row's fixed 4-column grid template — field | operator | value |
  * remove — shared by EVERY row in EVERY group, so a field/op/value/remove
  * sits at the identical x position regardless of field type, operator, or
- * which group/row it's in (developer-binding: "don't size each row by its
- * content"). Field and value are `minmax(0,1fr)` (equal, growing to fill
+ * which group/row it's in, rather than sizing each row by its
+ * content. Field and value are `minmax(0,1fr)` (equal, growing to fill
  * the row, `min-w-0`-truncating rather than forcing the row wider); the
  * operator column is the one FIXED-width track, `6rem` (`96px`) — just
  * wide enough for {@link LIST_VIEW_FILTER_OP_LABELS}' longest entry
@@ -95,7 +95,7 @@ const LIST_VIEW_FILTER_ROW_GRID_COLS_MOBILE_LINE_2 = "grid-cols-[minmax(0,1fr)_a
 
 /**
  * At or above this many readable fields, the field picker gets a search
- * box (developer-binding: auto-focused on open, filters by label AND
+ * box (auto-focused on open, filters by label AND
  * key, fixed-height internal scroll) instead of a plain `Select` list —
  * below it, scanning a short list is faster than typing. Matches
  * `SavedListViewTabs`' own "All views" `Popover`+`Command` convention.
@@ -316,15 +316,15 @@ export function ListViewFilterRow(props: ListViewFilterRowProps): ReactNode {
   return (
     <div className={complete ? "flex flex-col gap-1" : "flex flex-col gap-1 opacity-50"}>
       {props.isMobile ? (
-        // Decision 10 revised 2026-10-27, developer: a row's four
+        // A row's four
         // controls (field/op/value/×) don't all fit one line on a
         // narrow bottom Sheet once the value is a date-plus-time
         // picker — field+op on their own line, value+× below,
         // consistently for every row (not just `date`), so every
         // row looks the same regardless of field type. Same
         // `6rem` operator column and `1fr`/`auto` rule as the
-        // single-line desktop grid below (further developer
-        // revision: "same consistent alignment rule" on mobile).
+        // single-line desktop grid below, for the same consistent
+        // alignment rule on mobile.
         <div className="flex flex-col gap-1.5">
           <div className={cn("grid items-center gap-1.5", LIST_VIEW_FILTER_ROW_GRID_COLS_MOBILE_LINE_1)}>
             {fieldSelect}
@@ -336,7 +336,7 @@ export function ListViewFilterRow(props: ListViewFilterRowProps): ReactNode {
           </div>
         </div>
       ) : (
-        // Developer-binding: every row in every group uses this
+        // Every row in every group uses this
         // SAME fixed 4-column grid ({@link
         // LIST_VIEW_FILTER_ROW_GRID_COLS}) — field/op/value/×
         // sit at identical x positions across every row and

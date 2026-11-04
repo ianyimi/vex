@@ -7,7 +7,7 @@ import { useVexAuth } from "../../../auth/VexAuthContext";
 /**
  * Whether the current caller may use shared (`vex_views`) saved views at
  * all — `true` unless organization scoping (`config.access.organizations`,
- * NOT `orgCollectionSlug` alone — developer-approved binding correction)
+ * NOT `orgCollectionSlug` alone, which serves an unrelated permission-callback purpose)
  * is enabled AND the caller's own resolved organization doesn't exist.
  * Under scoping, an org-less caller can never create, read, update, or
  * delete a shared view server-side (`listViews`/`saveView`/`removeView`/

@@ -7,7 +7,7 @@ import { ListViewSearch } from "./ListViewSearch";
  * The `vex.list.search` built-in — renders {@link ListViewSearch} wired to the
  * active list's `collection` and `urlState` (`q`/`qf`/`setQ`/`setQf`) from
  * `useListViewContext()`, so it never takes props of its own (mirrors every
- * other `list.*` built-in, Decision 37).
+ * other `list.*` built-in).
  *
  * @returns {@link ListViewSearch}, or `null` when no `searchField` entry is
  *   readable (handled inside `ListViewSearch` itself).

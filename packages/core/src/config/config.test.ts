@@ -89,7 +89,7 @@ describe("defineConfig — live preview defaults", () => {
     expect(config.admin.livePreview.allowedOrigins).toEqual(["https://admin.example.com"]);
   });
 
-  it("defaults breakpoints to the J-spec viewport matrix when omitted", () => {
+  it("defaults breakpoints to the standard viewport matrix when omitted", () => {
     const config = defineConfig();
     expect(config.admin.livePreview.breakpoints).toEqual(DEFAULT_LIVE_PREVIEW_BREAKPOINTS);
   });

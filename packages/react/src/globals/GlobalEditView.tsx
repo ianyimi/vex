@@ -126,7 +126,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
  * `CollectionEditView`'s split there is no not-found early return here, only the error one —
  * the form always renders once the fetch itself succeeds.
  *
- * Plain `useQuery` (developer-reported regression fix, reverting the shell-streaming
+ * Plain `useQuery` (a regression fix, reverting the shell-streaming
  * follow-up's `<Suspense>`+`useSuspenseQuery` split here specifically) — the edit view's own
  * primary document is essential and cheap to fetch, so `NextAdminPage.tsx` now AWAITS it
  * server-side and passes the resolved value as `initialData`, so `globalDocOrNull` is NEVER
@@ -158,7 +158,7 @@ function GlobalEditViewData(
 
   // A failed fetch (permission denial, network failure) also leaves `globalDocOrNull`
   // `undefined`, which `GlobalEditForm` would otherwise silently treat as "never saved yet"
-  // and render a blank form instead of surfacing the failure (polish fixes, Decision 1/2).
+  // and render a blank form instead of surfacing the failure.
   if (globalDocError) {
     return (
       <InlineQueryError error={globalDocError} subject="this global" onRetry={refetchGlobalDoc} />

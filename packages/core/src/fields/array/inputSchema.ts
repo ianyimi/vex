@@ -35,8 +35,8 @@ import type { VexResourceSlug } from "../../types/generated";
  * When `props.data` is given AND `field.items` (or anything nested in it)
  * declares a condition, each array ITEM needs its own `siblingData` —
  * unlike a `group`'s sub-fields, items are positional, not keyed, so there
- * is no single `data[key]` to compute up front at schema-build time
- * (Step 9). The base/outer item schema is built loose (`z.unknown()`)
+ * is no single `data[key]` to compute up front at schema-build time.
+ * The base/outer item schema is built loose (`z.unknown()`)
  * instead of the real item schema — enforcing `required` up front there
  * would reject a condition-hidden field before the real, condition-aware
  * per-item re-parse ever runs — and a `superRefine` re-parses every actual

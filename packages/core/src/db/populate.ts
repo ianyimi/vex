@@ -67,7 +67,7 @@ export async function populateDocs<
   populate: TPopulate,
   /**
    * Forwarded from the top-level `find`/`get`/`search`/`getGlobal` call's own
-   * `drafts` arg (Step 13) — a nested `populate` inherits its caller's intent
+   * `drafts` arg — a nested `populate` inherits its caller's intent
    * rather than resolving a second RBAC decision per target collection. When
    * falsy, a resolved target carrying `vex_status !== "published"` is dropped,
    * same as a missing/deleted id — this drops a draft-only row (never
@@ -77,7 +77,7 @@ export async function populateDocs<
    * `VexConfig`: unlike `find`'s structural filter, `populateDocs` fetches
    * arbitrary ids across possibly many target collections it has no static
    * knowledge of (the populate shape names field keys, not collections) —
-   * but `vex_status` is schema-generated (Step 2) ONLY onto a versioned
+   * but `vex_status` is schema-generated ONLY onto a versioned
    * collection's table, so its mere presence on a fetched document already
    * means "this row belongs to a versioned collection," making the
    * field-presence check equivalent to the config lookup in every real case,
@@ -88,7 +88,7 @@ export async function populateDocs<
    * The resolved `VexConfig`, used only to look up a populated relationship
    * TARGET's own collection field map — specifically, which of its fields
    * are `commitTs`-typed, so their resolved `bigint` is converted to a
-   * plain ms `number` before the target doc is attached (Decision 5: a
+   * plain ms `number` before the target doc is attached (a
    * populated target is still a document crossing the same API boundary,
    * just nested — the SAME contract `find`/`get`/`search` already apply to
    * a resource's own fields). Omitted (no conversion attempted) when the

@@ -13,7 +13,7 @@ import {
 
 /**
  * Hover delay (ms) before {@link useListViewPeekPrefetch} prefetches a row's
- * full document (Design Decision 27). Keyboard focus prefetches
+ * full document. Keyboard focus prefetches
  * immediately, with no delay.
  */
 export const LIST_VIEW_PEEK_HOVER_DELAY_MS = 150;
@@ -44,7 +44,7 @@ export interface UseListViewPeekPrefetchReturn {
 
 /**
  * Warms the `useVexDocQuery` cache for a row's full document before
- * `ListViewPeek` (`./ListViewPeek`) opens it (Design Decision 27): on row hover
+ * `ListViewPeek` (`./ListViewPeek`) opens it: on row hover
  * (after {@link LIST_VIEW_PEEK_HOVER_DELAY_MS}) or keyboard focus, and for the
  * neighbouring rows ±1 of `props.peekId` while the peek is open. Eviction
  * is TanStack Query's own `gcTime` — there is no custom LRU.
@@ -68,7 +68,7 @@ export function useListViewPeekPrefetch<TDocument extends VexDocument = VexDocum
 ): UseListViewPeekPrefetchReturn {
   const queryClient = useQueryClient();
 
-  // Same shared `buildGetArgs` helper (polish fixes, Decision 3) `useVexDocQuery`'s own
+  // Same shared `buildGetArgs` helper `useVexDocQuery`'s own
   // callers build their args with, so a prefetch and the peek's own subsequent query share
   // one cache entry — no second round trip when the peek opens.
   const prefetch = useCallback(
@@ -89,7 +89,7 @@ export function useListViewPeekPrefetch<TDocument extends VexDocument = VexDocum
   );
 
   // Cancels only the pending timer — a prefetch already in flight is left
-  // to resolve into the cache (eviction is `gcTime`, Decision 27).
+  // to resolve into the cache (eviction is `gcTime`).
   const onRowPointerLeave = useCallback(() => {
     clearTimeout(hoverTimer.current);
   }, []);

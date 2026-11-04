@@ -20,7 +20,7 @@ describe("react field registries", () => {
     }
   });
 
-  // Decision 12 (polish, `2026-10-28-committs-field`): `commitTs` has no
+  // `commitTs` has no
   // FilterInput of its own — both fields compare a Unix-ms number via
   // `gte`/`lte`, so the registry maps `commitTs` straight onto the `date`
   // field's own `DateTimePicker` control (`commitTs/FilterInput.tsx` was
@@ -46,7 +46,7 @@ describe("getCollectionColumnDefs", () => {
   });
 });
 
-describe("getCollectionColumnDefs — views always win over field.admin (Decision 48)", () => {
+describe("getCollectionColumnDefs — views always win over field.admin", () => {
   const collection = defineCollection({
     slug: "column_config_override_test",
     timestamps: false,

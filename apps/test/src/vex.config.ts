@@ -46,9 +46,9 @@ const vexConfig = defineConfig({
   authCollections: betterAuthCollections(authSchema),
   editor: plateEditor(),
   admin: {
-    // sidebar: {
-    //   side: "right",
-    // },
+    sidebar: {
+      side: "right",
+    },
     components: {
       edit: {
         // Dogfoods a root-level `admin.components.edit.actionsMenu.items` contribution,

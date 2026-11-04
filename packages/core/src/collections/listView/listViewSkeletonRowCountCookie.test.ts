@@ -113,7 +113,7 @@ describe("applyListViewSkeletonRowCountUpdate", () => {
     // would sort to the front (ascending numeric order wins over insertion
     // order for integer-like string keys, a JS spec quirk) and be treated as
     // the OLDEST entry on the very next insert — even though it was just
-    // touched. `applyListViewSkeletonRowCountUpdate`'s own `seq` field (polish fix) must
+    // touched. `applyListViewSkeletonRowCountUpdate`'s own `seq` field must
     // track TRUE insertion order regardless of what the viewId looks like.
     let map: ReturnType<typeof applyListViewSkeletonRowCountUpdate> = {};
     map = applyListViewSkeletonRowCountUpdate({ map, viewId: "alpha", count: 1, done: true });

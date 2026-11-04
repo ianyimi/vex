@@ -4,7 +4,7 @@ import type { Metadata } from "next";
  * Builds a Next.js `Metadata` object with unconditional title/description, a
  * conditional OG image, `metadataBase`, and a canonical link.
  *
- * Generalizes what Step 1 fixed by hand in `apps/www/src/lib/metadata.ts`:
+ * Generalizes a fix originally made by hand in `apps/www/src/lib/metadata.ts`:
  * title and description are set regardless of whether an OG image resolved —
  * only the `openGraph.images` entry is conditional on `props.imageUrl`. The
  * original gated the whole `openGraph` block on the image, so a page without
@@ -33,7 +33,7 @@ export function vexMetadata(props: {
     description: props.description,
     metadataBase: new URL(props.siteUrl),
     // `openGraph` is ALWAYS emitted. Gating the whole block on an image is the
-    // defect Step 1 fixed in `apps/www/src/lib/metadata.ts`: a page with no
+    // defect fixed in `apps/www/src/lib/metadata.ts`: a page with no
     // uploaded image published no `og:title` and no `og:description` at all.
     // Only `images` is conditional.
     openGraph: {

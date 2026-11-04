@@ -3,7 +3,7 @@ import type { ListViewSkeletonRowCountEntry, ListViewSkeletonRowCountMap } from 
 import type { LocalSavedListViewsIndexEntry } from "./collections/savedListViews/localSavedListViewsCookie";
 
 /**
- * Consolidated admin-cookie codec (Decision 51) — replaces up to five
+ * Consolidated admin-cookie codec — replaces up to five
  * separately-named, `path=/` cookies per collection (`vex-list-density`,
  * `vex-list-chips:<collection>`, `vex-list-views:<collection>`,
  * `vex-list-rows:<collection>`, `vex-live-preview-panel:<slug>`,
@@ -38,7 +38,7 @@ import type { LocalSavedListViewsIndexEntry } from "./collections/savedListViews
 export const ADMIN_COOKIE_NAME = "vex-admin";
 
 /**
- * Cookie name holding one collection's own admin preferences (Decision 51)
+ * Cookie name holding one collection's own admin preferences
  * — `vex-admin:<collection>`. Replaces `vex-list-chips:<collection>`,
  * `vex-list-views:<collection>`, `vex-list-rows:<collection>`, and (for a
  * COLLECTION's own edit/list views specifically) `vex-live-preview-panel:<collection>`
@@ -64,12 +64,12 @@ export interface AdminCookieLivePreview {
  * `v: 1` is a schema version tag: a future shape change bumps this and
  * {@link parseAdminCookie} degrades anything with a different (or
  * missing) `v` to all-defaults, the same "never throw, never render a
- * half-migrated value" contract Decision 41's cookie-index parse already
+ * half-migrated value" contract the cookie-index parse already
  * established.
  */
 export interface AdminCookieGlobal {
   v: 1;
-  /** Row density (Decision 29) — collection-agnostic, "stored per browser". */
+  /** Row density — collection-agnostic, "stored per browser". */
   density?: ListDensity;
   /** The admin sidebar's open/collapsed state (shadcn's own `sidebar_state`, now scoped and consolidated). */
   sidebarOpen?: boolean;
@@ -81,7 +81,7 @@ export interface AdminCookieGlobal {
    * browser tab already makes for everything else in this cookie.
    */
   livePreview?: AdminCookieLivePreview;
-  /** The Inspect peek panel's remembered tab (Decision, developer-approved "peek-tab-memory") — admin-wide, NOT per-collection/per-view: the same "last used" tradeoff `density`/`sidebarOpen` already make. */
+  /** The Inspect peek panel's remembered tab — admin-wide, NOT per-collection/per-view: the same "last used" tradeoff `density`/`sidebarOpen` already make. */
   peekTab?: "fields" | "json";
 }
 
@@ -90,15 +90,15 @@ export interface AdminCookieGlobal {
  */
 export interface AdminCookieCollection {
   v: 1;
-  /** Whether the filter-chip row is visible (Decision 42) for this collection. */
+  /** Whether the filter-chip row is visible for this collection. */
   chipsVisible?: boolean;
-  /** This collection's local saved-view cookie index (Decision 41) — tabs render on first paint before `localStorage` hydrates. */
+  /** This collection's local saved-view cookie index — tabs render on first paint before `localStorage` hydrates. */
   localViews?: LocalSavedListViewsIndexEntry[];
-  /** This collection's per-view last-settled row-count map (Decision 49 follow-up) — the `<Suspense>` skeleton's row count/footer variant. */
+  /** This collection's per-view last-settled row-count map — the `<Suspense>` skeleton's row count/footer variant. */
   rowCounts?: ListViewSkeletonRowCountMap;
   /** This collection's own live-preview panel state. */
   livePreview?: AdminCookieLivePreview;
-  /** The Inspect peek panel's current width in px (Decision, developer-approved "peek-resize") — the collection-wide "last set" value; a saved view's own `peekWidth` (if it has one) overrides this on view switch, same split `columns`/URL state vs this cookie already draws. */
+  /** The Inspect peek panel's current width in px — the collection-wide "last set" value; a saved view's own `peekWidth` (if it has one) overrides this on view switch, same split `columns`/URL state vs this cookie already draws. */
   peekWidth?: number;
 }
 
@@ -116,7 +116,7 @@ export interface AdminCookieCollection {
  */
 export const ADMIN_COOKIE_MAX_BYTES = 3800;
 
-/** A local view's cookie-index NAME longer than this is truncated (Decision 41's index is a first-paint hint, not the source of truth — `localStorage`'s own full `VexViewConfig.name` is never touched). */
+/** A local view's cookie-index NAME longer than this is truncated (the index is a first-paint hint, not the source of truth — `localStorage`'s own full `VexViewConfig.name` is never touched). */
 export const ADMIN_COOKIE_LOCAL_VIEW_NAME_MAX_CHARS = 40;
 
 /** One cookie jar entry — matches both `next/headers`'s `cookies()` return value and the shape `NextAdminPage` already destructures elsewhere (`cookieStore.get(name)?.value`). */
@@ -214,7 +214,7 @@ export function parseAdminCookie(props: { cookieValue: string | undefined }): Ad
  * `AdminCookieGlobal`-shaped JSON blob — missing `chipsVisible`/
  * `localViews`/`rowCounts`, which this function simply leaves
  * `undefined` — parses just as cleanly as a real `AdminCookieCollection`
- * one; Decision 51's "same shape, different cookie" for the live-preview
+ * one; same shape, different cookie, for the live-preview
  * sub-object).
  *
  * @param props.cookieValue - The raw cookie value, or `undefined` when unset.
@@ -262,7 +262,7 @@ export function serializeAdminCookie(value: Omit<AdminCookieGlobal, "v">): strin
  * code points (not UTF-16 code units — never splits a surrogate pair), or
  * returns it unchanged when already at or under the cap. The SAME function
  * backs both sides of the zero-shift guarantee a long local-view name needs
- * (developer-reported): {@link serializeAdminCollectionCookie} (what the
+ * — {@link serializeAdminCollectionCookie} (what the
  * server reads back out of the cookie for SSR) and `@vexcms/react`'s own
  * local-view TAB LABEL render (what `localStorage`'s full, untruncated name
  * displays as once hydrated) both call this ONE function, so a name over the

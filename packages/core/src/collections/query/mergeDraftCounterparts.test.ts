@@ -105,7 +105,7 @@ describe("mergeDraftCounterparts — vex_status must not be read off the (possib
    * for every caller who can't read `vex_status` but CAN read drafts (a
    * real combination — a role can grant `readDrafts` without granting a
    * `vex_status` column). The fix looks the published counterpart up
-   * unconditionally by `_id` (always present/readable, Decision 8) via the
+   * unconditionally by `_id` (always present/readable) via the
    * SAME `by_published` index, instead of branching on a field value that
    * might not be there.
    */

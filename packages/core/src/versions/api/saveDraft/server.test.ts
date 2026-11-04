@@ -12,7 +12,7 @@ import { VexAccessError } from "../../../access";
 
 /**
  * `posts` here is declared with `versions: { drafts: true }` — the shared fixture
- * table (`api/test/convex/schema.ts`, extended by Step 4) already carries
+ * table (`api/test/convex/schema.ts`) already carries
  * `vex_status`/`vex_publishedAt`/`vex_publishedId` + `vex_versions`; this config
  * object only needs to opt this test's collection into the draft workflow.
  */
@@ -74,10 +74,10 @@ describe("saveDraft (server)", () => {
   });
 
   /**
-   * Polish fix: the legacy published-row snapshot (`saveDraft.ts`'s
+   * The legacy published-row snapshot (`saveDraft.ts`'s
    * "history doesn't already hold this exact content" bootstrap branch)
    * previously skipped `removeVexFields`, unlike every other snapshot
-   * write post-Decision-10 — a resolved `commitTs` bigint would land in
+   * write — a resolved `commitTs` bigint would land in
    * `vex_versions.snapshot` verbatim. `updatedAt` here is a literal
    * resolved bigint (not the unresolved placeholder), matching what a real
    * Convex backend stores post-commit.
@@ -117,9 +117,9 @@ describe("saveDraft (server)", () => {
   });
 
   /**
-   * Polish fix, part 2: stripping the legacy snapshot ALSO fixes the
+   * Stripping the legacy snapshot ALSO fixes the
    * `alreadySnapshotted` dedup — it compares the legacy snapshot against
-   * `publishedFields` with `valuesEqual`; before the fix, an unstripped
+   * `publishedFields` with `valuesEqual`; an unstripped
    * `publishedFields` (carrying a resolved commitTs bigint) could never
    * equal a prior, already-stripped snapshot once the dedup check ran a
    * second time, so a duplicate "legacy" published-status row was written
@@ -547,7 +547,7 @@ describe("saveDraft (server)", () => {
   });
 });
 
-describe("saveDraft (server) — commitTs on-policy (spec Step 7)", () => {
+describe("saveDraft (server) — commitTs on-policy", () => {
   test.each([
     ["all", true],
     ["save", false],

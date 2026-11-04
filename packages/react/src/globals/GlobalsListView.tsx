@@ -14,7 +14,7 @@ import { AdminIndexEmptyState } from "../admin/AdminIndexEmptyState";
  *
  * Permission-filtered via `hasPermission` (`read`, `scope: "any"`) — the SAME check
  * `DashboardView`'s own Globals section already runs, now ALSO run here directly
- * (developer-reported: this page used to render every configured global unconditionally,
+ * (this page used to render every configured global unconditionally,
  * relying entirely on the sidebar/dashboard never linking to one the caller couldn't
  * read — not a real boundary, since the route itself is reachable directly by URL for
  * any caller, including an anonymous one via `anonRole`). Card markup is shared with

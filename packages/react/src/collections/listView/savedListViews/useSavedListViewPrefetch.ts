@@ -20,7 +20,7 @@ import { useFieldPermissions } from "../../../access";
 import { LIST_VIEW_PEEK_HOVER_DELAY_MS } from "../peek/useListViewPeekPrefetch";
 import { decodeViewUrlValue, encodeViewUrlValue, type SavedListViewEntry } from "./useSavedListViews";
 
-/** TanStack Query's own `gcTime` for a view-tab prefetch (Decision 46) — short-lived: a tour of every tab without clicking any must leave no lingering subscription past this window. */
+/** TanStack Query's own `gcTime` for a view-tab prefetch — short-lived: a tour of every tab without clicking any must leave no lingering subscription past this window. */
 const LIST_VIEW_PREFETCH_GC_TIME_MS = 30_000;
 
 /** Props for {@link useSavedListViewPrefetch}. */
@@ -29,9 +29,9 @@ export interface UseListViewPrefetchProps<TFieldSlug extends string = string> {
   collection: CollectionConfig;
   /** The currently active `?view=` URL value — a hover over the ALREADY-active tab is a no-op (its data is already live, not stale). */
   urlState: { view: string | undefined };
-  /** `useSavedListViews()`'s raw (hidden-filter-intact) config views — `collection.admin.views`, Decision 25. */
+  /** `useSavedListViews()`'s raw (hidden-filter-intact) config views — `collection.admin.views`. */
   rawConfigViews: VexViewConfig<TFieldSlug>[];
-  /** `useSavedListViews()`'s raw shared views, from `listViews` (Decision 39/live query). */
+  /** `useSavedListViews()`'s raw shared views, from `listViews` (live query). */
   sharedViews: VexStoredView<TFieldSlug>[];
 }
 
@@ -48,7 +48,7 @@ export interface UseListViewPrefetchReturn<TFieldSlug extends string = string> {
 }
 
 /**
- * Warms the list query cache for a saved view's tab before it's clicked (Decision 46):
+ * Warms the list query cache for a saved view's tab before it's clicked:
  * on {@link LIST_VIEW_PEEK_HOVER_DELAY_MS} hover or immediate keyboard focus, resolves the
  * hovered tab's OWN saved state (NOT the currently active URL's state) through the same
  * `resolveListViewQueryState` → `buildListViewFindQueryArgs`/`buildListViewSearchQueryArgs` pipeline
@@ -56,8 +56,8 @@ export interface UseListViewPrefetchReturn<TFieldSlug extends string = string> {
  * through — so a subsequent real click finds its query already warm under the EXACT same
  * cache key, no second round trip.
  *
- * A `local`-source tab is never prefetched this way — Decision 41 already requires a
- * local view's full state to live in the URL the instant it's selected (read synchronously
+ * A `local`-source tab is never prefetched this way — a
+ * local view's full state already lives in the URL the instant it's selected (read synchronously
  * from `localStorage`, no network round trip to warm). The currently-ACTIVE tab is also
  * skipped — its query is already live, re-prefetching it would just duplicate work.
  *
@@ -72,10 +72,10 @@ export function useSavedListViewPrefetch<TFieldSlug extends string = string>(
   const [pendingViewId, setPendingViewId] = useState<string | undefined>(undefined);
   // Same instance `CollectionListView.tsx`'s own `resolveListViewQueryState` call
   // feeds — a shared view's own saved `where` naming a field this caller
-  // can't read must drop here too (access-system-fields.md Decision 11),
+  // can't read must drop here too,
   // or hovering warms a DIFFERENT query key (filter intact) than a real
   // click resolves to (filter dropped), missing the warm cache entirely —
-  // the same "two different query keys, a refetch" class Decision 39
+  // the same "two different query keys, a refetch" class the sort/search prefetch
   // already forbids for sort/search. Local views are already skipped above
   // (never prefetched at all), so this only matters for `shared`/`config`.
   const fieldPermissions = useFieldPermissions({
@@ -182,7 +182,7 @@ export function useSavedListViewPrefetch<TFieldSlug extends string = string>(
   );
 
   // Cancels only the pending TIMER — a prefetch already in flight is left to
-  // resolve into the cache (eviction is `gcTime` above, same as Decision 27's peek prefetch).
+  // resolve into the cache (eviction is `gcTime` above, same as the peek prefetch).
   const onTabPointerLeave = useCallback(() => {
     clearTimeout(hoverTimer.current);
   }, []);

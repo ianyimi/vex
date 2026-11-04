@@ -60,8 +60,10 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({
+  auth,
   children,
 }: Readonly<{
+  auth: React.ReactNode;
   children: React.ReactNode;
 }>) {
   return (
@@ -94,6 +96,12 @@ export default function RootLayout({
             <LivePreviewProvider>
               <ThemeLive />
               {children}
+              {/* `@auth` parallel slot (`app/@auth/`), sibling of this layout —
+                  covers both `(frontend)` and `(vexcms)` since both groups share
+                  this root. Rendered after `children` so the intercepted
+                  `/auth/[pathname]` dialog/full-screen card portals/paints over
+                  whichever page (site or admin) triggered it. */}
+              {auth}
             </LivePreviewProvider>
           </ClientProviders>
         </ServerProviders>

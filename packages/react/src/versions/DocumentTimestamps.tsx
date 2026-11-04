@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { formatDateFieldValue } from "../fields/date/utils";
 
-/** `time` precision `DocumentTimestamps` renders its "Created at" value at — matches the injected `updatedAt` field (Interview Decision 3). */
+/** `time` precision `DocumentTimestamps` renders its "Created at" value at — matches the injected `updatedAt` field. */
 const CREATED_AT_TIME = {
   hidden: false,
   use12HourFormat: true,
@@ -13,7 +13,7 @@ const CREATED_AT_TIME = {
 /**
  * Read-only "Created at" shown in an edit view's sidebar for an existing
  * document — the counterpart to the regular, `admin.readOnly` `updatedAt`
- * field injected onto every collection/global (Interview Decision 3), but
+ * field injected onto every collection/global, but
  * sourced from `_creationTime` instead of a stored field.
  *
  * @param props.creationTime - The document's `_creationTime`, or `undefined`

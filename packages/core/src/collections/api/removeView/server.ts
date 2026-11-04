@@ -28,17 +28,16 @@ export interface RemoveViewServerArgs<DataModel extends GenericDataModel> {
 }
 
 /**
- * Permanently deletes one `vex_views` row, gated on `deleteView`
- * (decision 13). Resolves the row via the `by_view_id` index and confirms
+ * Permanently deletes one `vex_views` row, gated on `deleteView`.
+ * Resolves the row via the `by_view_id` index and confirms
  * it belongs to `collection` before deleting — the same check `saveView`
  * runs on write, so a `viewId` cannot be used to touch another
  * collection's row. Also confirms the row belongs to the caller's own
  * organization when `config.access.organizations` is `true` (NOT
- * `orgCollectionSlug` alone, developer-approved binding correction) — a
- * cross-org row, an org-less row (now inert under scoping, same as cross-org,
- * polish fix, Decision 3), or a caller whose own org doesn't resolve all
- * resolve to the exact same "not found" error (no existence leak), same as
- * `saveView`'s equivalent check.
+ * `orgCollectionSlug` alone) — a cross-org row, an org-less row (now
+ * inert under scoping, same as cross-org), or a caller whose own org
+ * doesn't resolve all resolve to the exact same "not found" error (no
+ * existence leak), same as `saveView`'s equivalent check.
  *
  * `assertViewIdNotReserved` runs FIRST, before any DB read or the access
  * gate — the collection's default (`admin.view`) and preset (`admin.views`)
@@ -90,7 +89,7 @@ export async function removeView<DataModel extends GenericDataModel>(
   const orgScoped = isViewOrganizationScopingEnabled(args.config.access);
   const organizationId = resolveViewOrganizationId({ access: args.config.access, organization: args.auth?.organization });
 
-  // Decision 3 (org scoping, extended): a caller whose own org doesn't
+  // Org scoping, extended: a caller whose own org doesn't
   // resolve is denied outright, same as `saveView`. Once `organizationId` is
   // confirmed defined, a row whose own `organizationId` isn't EXACTLY the
   // caller's own is rejected the same way — this single `!==` naturally also

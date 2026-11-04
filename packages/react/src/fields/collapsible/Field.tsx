@@ -23,8 +23,8 @@ import {
 /**
  * Renders a `collapsible()` field as an accordion section — open by default
  * unless `field.admin.defaultCollapsed`. While collapsed, the trigger shows
- * an error-count badge for any field inside, via `useFieldErrorCount`
- * (Interview Decision 6); collapsed content stays mounted only while it holds
+ * an error-count badge for any field inside, via `useFieldErrorCount`;
+ * collapsed content stays mounted only while it holds
  * an error, and a failed submit opens the section.
  *
  * @param props.field - The `collapsible()` field to render.

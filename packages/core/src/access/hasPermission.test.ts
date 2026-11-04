@@ -2261,12 +2261,12 @@ describe("constrained rules with no authenticated user", () => {
   });
 });
 
-// Developer-reported fix (binding): a view action resolving to a field map is
+// A view action resolving to a field map is
 // now a compile error (`ViewPermissionCheck`), but an untyped/JS config or an
 // `as` cast can still reach this at runtime — `console.warn` mocked (never
 // asserted on directly here; the behavior change IS the assertion) just to
 // keep the test output quiet.
-describe("hasPermission — view action resolves to a field map (developer-reported, binding)", () => {
+describe("hasPermission — view action resolves to a field map", () => {
   const viewActionMapAccess = {
     roles: ["editor"],
     userCollectionSlug: "users",

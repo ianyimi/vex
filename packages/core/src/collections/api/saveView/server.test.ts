@@ -226,7 +226,7 @@ describe("saveView (server)", () => {
     });
   });
 
-  test("rejects a where referencing a field the caller can't read (decision 26)", async () => {
+  test("rejects a where referencing a field the caller can't read", async () => {
     const config = {
       ...fixtureConfig,
       access: defineAccess({
@@ -290,7 +290,7 @@ describe("saveView (server)", () => {
   });
 });
 
-describe("saveView (server) — reserved view ids (Decision 45/48)", () => {
+describe("saveView (server) — reserved view ids", () => {
   const postsWithPresetView = defineCollection({
     slug: "posts",
     fields: { title: text(), excerpt: text() },
@@ -339,7 +339,7 @@ describe("saveView (server) — reserved view ids (Decision 45/48)", () => {
   });
 });
 
-describe("saveView (server) — input validation (Decision 2)", () => {
+describe("saveView (server) — input validation", () => {
   test("rejects a view missing viewId/name", async () => {
     await withTransaction(async (ctx) => {
       await expect(
@@ -404,7 +404,7 @@ describe("saveView (server) — input validation (Decision 2)", () => {
   });
 });
 
-describe("saveView (server) — cross-org (Decision 3)", () => {
+describe("saveView (server) — cross-org", () => {
   const orgConfig = {
     ...fixtureConfig,
     access: defineAccess({

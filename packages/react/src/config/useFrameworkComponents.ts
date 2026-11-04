@@ -28,12 +28,12 @@ export interface VexImageProps extends ImgHTMLAttributes<HTMLImageElement> {
 
 /**
  * Framework adapter capability for intercepting navigation away from a
- * dirty edit view (decisions 1–2). `@vexcms/react` never imports a router —
+ * dirty edit view. `@vexcms/react` never imports a router —
  * `useUnsavedChangesGuard` calls `useBlocker` unconditionally and the
  * adapter decides how to intercept in-app link clicks and back/forward for
  * its framework (unload is NOT this adapter's job — `useUnsavedChangesGuard`
  * registers `beforeunload` itself). `@vexcms/next` is the only
- * implementation shipped in 0.1.0 (Step 8); a TanStack Start adapter would
+ * implementation shipped in 0.1.0; a TanStack Start adapter would
  * implement the same contract without touching `@vexcms/react`.
  */
 export interface NavigationBlockerAdapter {
@@ -96,18 +96,18 @@ export interface FrameworkComponents {
   /**
    * Intercepts in-app navigation away from a dirty edit view so
    * `useUnsavedChangesGuard` can show the Stay/Leave dialog. Next.js:
-   * `useNextNavigationBlocker` from `@vexcms/next` (Step 8). Omitted →
+ * `useNextNavigationBlocker` from `@vexcms/next`. Omitted →
    * in-app navigation is never intercepted; the `beforeunload` native
    * prompt still fires on tab close / hard reload.
    */
   navigationBlocker?: NavigationBlockerAdapter;
   /**
-   * Client-side programmatic navigation (spec decision 2) — consumed ONLY by
+ * Client-side programmatic navigation — consumed ONLY by
    * `useVexNavigate`, for a built-in's post-mutation redirect (after
    * delete, after a duplicate's create resolves). Everything clickable
    * keeps using `VexLink`/`Link`, never this. Next.js:
    * `@vexcms/next`'s wrapper around `useRouter().push` from
-   * `next/navigation` (Step 8). Omitted → `useVexNavigate` falls back to
+ * `next/navigation`. Omitted → `useVexNavigate` falls back to
    * `window.location.assign`, a full page navigation.
    *
    * @returns A hook — called unconditionally, like any other hook, at the
@@ -116,8 +116,8 @@ export interface FrameworkComponents {
    */
   useNavigate?: () => (href: string) => void;
   /**
-   * Sign-in/out adapter for `AdminTopNav`'s own control (developer-reported feature,
-   * 2026-11-01: a sign-in/out control in the admin top bar, enabled by anonymous admin
+ * Sign-in/out adapter for `AdminTopNav`'s own control (a sign-in/out control in the
+ * admin top bar, enabled by anonymous admin
    * access via `anonRole`). Omitted → the control renders nothing, same as today.
    *
    * The SIGNED-IN/SIGNED-OUT state itself is NOT part of this adapter — `AdminTopNav`

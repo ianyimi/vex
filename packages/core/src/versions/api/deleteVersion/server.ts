@@ -31,15 +31,15 @@ export type DeleteVersionServerArgs<DataModel extends GenericDataModel> = {
 
 /**
  * Permanently deletes one `vex_versions` row. Prunes history only — never
- * the live draft or published row (that's `remove`'s cascade, Step 15).
- * Manual, one row at a time — decision 3 rules out an automatic pruning
+ * the live draft or published row (that's `remove`'s cascade).
+ * Manual, one row at a time — there is no automatic pruning
  * endpoint.
  *
  * Resolves the target via `resolveHistoryTarget` (same resolver
  * `listVersions`/`getVersionSnapshot` use) and gates on `deleteVersions`
- * (Step 3's dedicated action) — never `update`/`readDrafts` — `master`
- * checked `update` here, which meant any editor allowed to save a draft
- * could also permanently destroy history (design-review.md §7).
+ * (its own dedicated action) — never `update`/`readDrafts`, since checking
+ * `update` here would mean any editor allowed to save a draft
+ * could also permanently destroy history.
  *
  * Server-side only. Import from `@vexcms/core/server`.
  *

@@ -14,7 +14,7 @@ import {
 /**
  * Renders a `row()` field as a flex-wrap sub-row. Children's widths are
  * resolved by `resolveRowWidths` — their own `%` widths when they sum to
- * ~100%, an equal share otherwise (Interview Decision 6).
+ * ~100%, an equal share otherwise.
  *
  * @param props.field - The `row()` field to render.
  * @param props.fieldKey - This field's own key — scopes its own `admin.condition`.

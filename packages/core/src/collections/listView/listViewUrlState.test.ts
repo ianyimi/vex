@@ -35,11 +35,11 @@ describe("parseListViewUrlState", () => {
     });
   });
 
-  it("parses an explicit empty q (present but empty value) as \"\", distinct from absent — the clear sentinel (developer-reported)", () => {
+  it("parses an explicit empty q (present but empty value) as \"\", distinct from absent — the clear sentinel", () => {
     expect(parse("?q=").q).toBe("");
   });
 
-  it("parses an explicit empty filter (present but empty value) as null, distinct from absent — the clear sentinel (developer-reported)", () => {
+  it("parses an explicit empty filter (present but empty value) as null, distinct from absent — the clear sentinel", () => {
     expect(parse("?filter=").filter).toBeNull();
   });
 
@@ -227,7 +227,7 @@ describe("parseListViewUrlState", () => {
     expect(parse(`?cols=${encodeURIComponent("title")},rating`).cols).toEqual(["title", "rating"]);
   });
 
-  it("parses a width suffix (Decision 48)", () => {
+  it("parses a width suffix", () => {
     expect(parse("?cols=title:w260").cols).toEqual([{ field: "title", width: 260 }]);
   });
 
@@ -283,7 +283,7 @@ describe("parseListViewUrlState", () => {
     admin: { view: { pageSize: 10 } },
   });
 
-  it("parses a vex_status cols= token (width/pin/hidden suffixes, same grammar as any real field) on a versioned collection — developer-reported: used to silently drop the whole token", () => {
+  it("parses a vex_status cols= token (width/pin/hidden suffixes, same grammar as any real field) on a versioned collection — used to silently drop the whole token", () => {
     const result = parseListViewUrlState({
       searchParams: new URLSearchParams("?cols=vex_status:w200:pr,title"),
       collection: versionedCollection,
@@ -326,7 +326,7 @@ describe("serializeListViewUrlState", () => {
     expect(out.get("qf")).toBe("rating");
   });
 
-  it("omits qf against admin.view's own resolved searchField, even when it's not searchFields[0] (developer-reported: stale admin.table-era default)", () => {
+  it("omits qf against admin.view's own resolved searchField, even when it's not searchFields[0]", () => {
     const withOverride = defineCollection({
       slug: "url_params_test_qf_override",
       fields: {
@@ -356,7 +356,7 @@ describe("serializeListViewUrlState", () => {
     expect(out.get("sort")).toBe("rating.desc");
   });
 
-  it("omits sort when it equals the collection's own resolved default sort (developer-reported bug)", () => {
+  it("omits sort when it equals the collection's own resolved default sort", () => {
     expect(serialize({ sort: { field: "_creationTime", order: "desc" } })).toBe("");
   });
 
@@ -461,7 +461,7 @@ describe("serializeListViewUrlState", () => {
   });
 });
 
-describe("serializeListViewUrlState — diffs against the active view's own baseline, not just the collection default (Decision 9/45/48)", () => {
+describe("serializeListViewUrlState — diffs against the active view's own baseline, not just the collection default", () => {
   function serializeWithView(
     params: Parameters<typeof serializeListViewUrlState>[0]["params"],
     viewState: Parameters<typeof serializeListViewUrlState>[0]["viewState"],
@@ -494,7 +494,7 @@ describe("serializeListViewUrlState — diffs against the active view's own base
     expect(serializeWithView({ size: 25 }, { pageSize: 25 })).toBe("");
   });
 
-  it("omits cols when it equals the active view's own saved columns, COMPLETED — the full array, not a visible subset (Decision 48, supersedes the Step 20-era visible-subset rule)", () => {
+  it("omits cols when it equals the active view's own saved columns, COMPLETED — the full array, not a visible subset (supersedes an earlier visible-subset rule)", () => {
     expect(
       serializeWithView(
         {
@@ -543,7 +543,7 @@ describe("serializeListViewUrlState — diffs against the active view's own base
     expect(out.get("cols")).toBe("title:w300,rating");
   });
 
-  it("a versioned collection: resizing vex_status serializes into cols= (developer-reported: it used to never reach the URL at all); the unmodified baseline (vex_status still first, visible, unresized) serializes nothing", () => {
+  it("a versioned collection: resizing vex_status serializes into cols= (it used to never reach the URL at all); the unmodified baseline (vex_status still first, visible, unresized) serializes nothing", () => {
     const versionedCollection = defineCollection({
       slug: "url_params_serialize_versioned_test",
       fields: { title: text({ required: false }) },

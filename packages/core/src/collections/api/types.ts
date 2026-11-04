@@ -111,7 +111,7 @@ export interface GenericQueryClientParams<
   /**
    * When `true` on a versioned collection, includes the document's draft
    * row alongside its published row — gated server-side on the `readDrafts`
-   * action (Step 13). Ignored for a non-versioned collection.
+   * action. Ignored for a non-versioned collection.
    */
   drafts?: boolean;
 }

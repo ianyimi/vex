@@ -8,7 +8,7 @@ import { vex } from "~/lib/vex"
  * Generates `/sitemap.xml` from every published `pages` document plus the
  * site root. Degrades to `[]` (no page entries) when Convex is unreachable —
  * the packed-tarball scaffold this template ships into has no live
- * deployment and builds against placeholder env (P-020).
+ * deployment and builds against placeholder env.
  */
 export default createVexSitemap({
   client: vex,

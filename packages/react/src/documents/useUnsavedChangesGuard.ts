@@ -19,7 +19,7 @@ export interface UnsavedChangesGuardContextValue {
   /**
    * Routes a programmatic navigation attempt through the SAME blocking
    * state and the SAME mounted `UnsavedChangesDialog` as an in-app link
-   * click or back/forward (spec decision 2) — `useVexNavigate`'s only way to
+   * click or back/forward — `useVexNavigate`'s only way to
    * consult the guard, since it has no access to the guard's internal
    * `proceedRef`/`open` state otherwise.
    *
@@ -32,8 +32,8 @@ export interface UnsavedChangesGuardContextValue {
 
 /**
  * Carries the active edit view's guard so a built-in that triggers its own
- * post-success navigation — `vex.save`, `vex.delete` (Step 4) and
- * `vex.duplicate` (Step 6), via `useVexNavigate` — can bypass or consult it
+ * post-success navigation — `vex.save`, `vex.delete` and
+ * `vex.duplicate`, via `useVexNavigate` — can bypass or consult it
  * for that one navigation. `undefined` outside an edit view (e.g. a
  * `viewSuite` harness that doesn't mount the guard) — consumers treat that
  * as "never blocking".
@@ -114,7 +114,7 @@ export function useUnsavedChangesGuard(props: {
 
   /**
    * The one function behind both `navigationBlocker`'s interception and
-   * `useVexNavigate`'s guard consultation (spec decision 2).
+   * `useVexNavigate`'s guard consultation.
    *
    * @param proceed - Continues the blocked navigation.
    */

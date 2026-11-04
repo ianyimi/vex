@@ -37,7 +37,7 @@ function isContainerFieldType(fieldType: DataFieldType): fieldType is "array" | 
 /**
  * Field types registered with a real `.field` component in `reactAdapter.fields`, but
  * whose admin field renders NO editable control at all — `commitTs` is read-only by
- * design (Interview Decision 4): it has no `renderBareControl`/`useFieldControlOverride`
+ * design: it has no `renderBareControl`/`useFieldControlOverride`
  * dispatch, so none of `runFieldInputContractSuite`'s control-driven assertions
  * (`getControl`, `setControlValue`, the two readOnly-source checks, …) apply. Its own
  * `fields/commitTs/Field.test.tsx` covers its actual (value-driven, not control-driven)

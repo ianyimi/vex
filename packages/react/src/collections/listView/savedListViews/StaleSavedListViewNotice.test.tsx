@@ -59,7 +59,7 @@ describe("StaleSavedListViewNotice", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/sort on "a" and search field "b" are no longer available/);
   });
 
-  it("shows a separate notice naming a dropped filter field by its LABEL (access-system-fields.md Decision 11, developer-reported: align with the filter chips)", () => {
+  it("shows a separate notice naming a dropped filter field by its LABEL (aligns with the filter chips)", () => {
     renderNotice(baseValue({ staleFilterField: "vex_status" }));
     expect(screen.getByRole("status")).toHaveTextContent(/filter on "Status" isn't available — showing unfiltered results instead/);
   });

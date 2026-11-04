@@ -25,9 +25,8 @@ export interface UseDuplicateCollectionDocumentProps {
   document: Record<string, unknown> | undefined;
   /**
    * Called with the clone when the first create attempt is rejected (most commonly a
-   * unique-field conflict). A callback, not hook-owned state (decision: Step 4
-   * post-implementation note's `CollectionMoreActionsMenu` dialog, moved to
-   * `CollectionDuplicateMenuItem`'s own `useEditActionsMenuDialog().open(...)` call) — the create
+   * unique-field conflict). A callback, not hook-owned state — the fallback dialog lives in
+   * `CollectionDuplicateMenuItem`'s own `useEditActionsMenuDialog().open(...)` call, since the create
    * rejects asynchronously, after `CollectionDuplicateMenuItem` has already unmounted (base-ui
    * tears down `DropdownMenuContent` and every item in it on select), so this hook's own state
    * would vanish with it. The caller owns where the fallback renders.

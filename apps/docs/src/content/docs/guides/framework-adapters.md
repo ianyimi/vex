@@ -603,8 +603,17 @@ export default async function AdminPage({
   params: Promise<{ path?: string[] }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const token = await getToken();
-  const auth = await getUserOrg();
+  const [resolvedParams, resolvedSearchParams] = await Promise.all([params, searchParams]);
+
+  let token, auth;
+  try {
+    token = await getToken();
+    auth = await getUserOrg();
+  } catch {
+    // Session verification itself failed (backend unreachable, lookup timeout) — fail
+    // closed instead of surfacing a 500 or letting the request through.
+    redirect("/unauthorized");
+  }
   if (
     !canAccessAdminPanel({ access: config.access, user: auth.user, organization: auth.organization })
   ) {
@@ -613,7 +622,10 @@ export default async function AdminPage({
     // hard-redirect on a missing token before this check: an app whose `anonRole`
     // grants `adminPanel.access` (see the Access Control guide's "Read-only public
     // admin via anonRole" section) needs this check to run for an anonymous caller too.
-    redirect(token ? "/unauthorized" : "/auth/sign-in?redirectTo=/admin");
+    // `redirectTo` carries the full deep link (path + query) so sign-in returns to it;
+    // the templates build it with a small `buildAdminRequestPath` helper.
+    const requestedPath = buildAdminRequestPath(resolvedParams.path, resolvedSearchParams);
+    redirect(token ? "/unauthorized" : `/auth/sign-in?redirectTo=${encodeURIComponent(requestedPath)}`);
   }
 
   return (

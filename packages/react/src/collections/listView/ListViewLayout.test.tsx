@@ -3,7 +3,7 @@ import { BUILTIN_CONTRIBUTION_IDS, resolveComponentContributions, SLOT_IDS } fro
 import { listRowActionsBuiltins, listBulkActionsBuiltins } from "./listViewBuiltinSlotContributions";
 
 describe("listView built-in ids", () => {
-  it("orders row-action built-ins Edit, Inspect, Copy ID, contributions, Delete last (Decision 28)", () => {
+  it("orders row-action built-ins Edit, Inspect, Copy ID, contributions, Delete last", () => {
     const resolved = resolveComponentContributions({
       slotId: SLOT_IDS.list.rowActions,
       contributions: [...listRowActionsBuiltins(), { id: "acme.flag", component: () => null }],

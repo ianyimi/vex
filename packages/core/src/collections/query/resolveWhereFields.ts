@@ -11,14 +11,14 @@ import { loadSharedSavedListViewWheres, matchDeclaredSavedListViewFilter } from 
 
 /**
  * Resolves which fields of `where` must still pass the caller's field-read
- * check (Design Decision 26) — every referenced field EXCEPT one that
+ * check — every referenced field EXCEPT one that
  * exactly matches a declared config-view filter or (lazily, only when the
  * config-view pass alone still leaves an unreadable field) a readable
  * shared view's declared filter. `find` and `search` both run this exact
  * ~55-line pipeline (`configMatch` → `configWhereFields` →
  * `configFieldPermissions` → `hasUnreadableConfigField` → `sharedWheres` →
  * `declaredFilterRemainder` → `whereFields`) against their own `where`;
- * extracted here (polish fix) so the two copies can't drift.
+ * extracted here so the two copies can't drift.
  *
  * @param props - Input props.
  * @param props.ctx - Convex query context, for `loadSharedSavedListViewWheres`'s
@@ -55,8 +55,8 @@ export async function resolveWhereFields<DataModel extends GenericDataModel, S e
   resource: string;
 }): Promise<string[]> {
   // A request `where` part that deep-equals a config view's own `where` is
-  // trusted server config, exempt from the field-read check below (Design
-  // Decision 26's one exception).
+  // trusted server config, exempt from the field-read check below (the
+  // one declared-filter exception).
   const configMatch = matchDeclaredSavedListViewFilter({ collection: props.collectionConfig, where: props.where });
   // Only enforced reads are guarded; a bypassed read may filter on anything.
   const configWhereFields =
@@ -65,7 +65,7 @@ export async function resolveWhereFields<DataModel extends GenericDataModel, S e
           (field) => !SYSTEM_FIELD_KEYS.has(field),
         )
       : [];
-  // Decision 26's "Shared views" bullet: only when the config-view match
+  // "Shared views" rule: only when the config-view match
   // above still leaves an unreadable field does this pay for a
   // `vex_views` read — an ordinary query never touches the table.
   const configFieldPermissions =

@@ -7,7 +7,7 @@ import Link from "next/link";
 /**
  * Opens the admin panel for anyone, read-only.
  *
- * A plain link (polish — anonymous admin access, developer-approved): `/admin` now
+ * A plain link: `/admin` now
  * checks `canAccessAdminPanel` BEFORE redirecting an unauthenticated caller away, at
  * both the route (`app/(vexcms)/admin/[[...path]]/page.tsx`) and the middleware gate
  * (`src/proxy.ts`'s `guardAdminRequest`) — a link alone no longer bounces an anonymous

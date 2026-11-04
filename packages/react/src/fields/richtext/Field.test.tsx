@@ -27,7 +27,7 @@ const configWithEditor: VexClientConfig = defineConfig({
   editor: stubEditorAdapter,
 });
 
-/** A config with no `editor:` entry — exercises the Design Decision 7 configuration-error branch. */
+/** A config with no `editor:` entry — exercises the configuration-error branch. */
 const configWithoutEditor: VexClientConfig = defineConfig({});
 
 /** Mounts `RichTextFieldInput` behind a real `useForm` + `<AppForm>`, inside the Convex/QueryClient providers its media hooks need and an explicit `VexConfigContext`. */

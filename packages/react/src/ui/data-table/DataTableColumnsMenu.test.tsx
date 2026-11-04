@@ -122,7 +122,7 @@ describe("DataTableColumnsMenu", () => {
     const checkbox = screen.getByRole("checkbox", { name: "Pinned Field" });
     expect(checkbox).toHaveAttribute("data-checked", "");
     expect(checkbox).toHaveAttribute("data-disabled", "");
-    // Still participates in drag (Decision 47: every row, hideable or
+    // Still participates in drag (every row, hideable or
     // not) — `PopoverContent` renders through a portal (a direct child
     // of `<body>`, outside `render()`'s own container), so query from
     // `document` instead, matching the density test's own convention.
@@ -284,7 +284,7 @@ describe("DataTableColumnsMenu", () => {
     expect(screen.getAllByRole("radio")).toHaveLength(2);
   });
 
-  // Developer-reported fix, binding: the Base UI `ScrollArea`'s scrollbar is an
+  // Fix: the Base UI `ScrollArea`'s scrollbar is an
   // OVERLAY (absolutely positioned at the Viewport's own right edge, not
   // reserving space in normal flow) — the row list's pin-right buttons sit
   // flush against that same right edge, so the thumb painted directly over

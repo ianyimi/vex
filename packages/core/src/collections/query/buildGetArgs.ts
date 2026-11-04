@@ -8,7 +8,7 @@ import type { CollectionConfig } from "../types";
  * needs this collection's active document (server prefetch, the collection/media edit
  * views' own data query, `AdminTopNav`'s document-title crumb, `ListViewPeek`'s deep-link
  * fetch/prefetch, and relationship/upload filter-value title resolution) so none of them can
- * drift into a different-shaped key for the SAME document (polish fixes, Decision 5).
+ * drift into a different-shaped key for the SAME document.
  *
  * `drafts` is included ONLY when the collection is actually versioned — NEVER a concrete
  * `drafts: false`. This is the one rule every caller must share: `collection.versions.drafts`
@@ -39,7 +39,7 @@ export function buildGetArgs(props: {
 
 /**
  * The {@link buildGetArgs} equivalent for `vexConvexApi.globals.get` — same "`drafts` only
- * when actually versioned, never a concrete `false`" rule (Decision 5), for the same reason:
+ * when actually versioned, never a concrete `false`" rule, for the same reason:
  * a global's own `versions.drafts` is just as concretely-defaulted as a collection's.
  *
  * @param props.global - The resolved global config.

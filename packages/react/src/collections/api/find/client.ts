@@ -37,8 +37,8 @@ export interface FindClientArgs<
    */
   where?: VexWhere<TCollectionSlug>;
   /**
-   * Portable sort — never an index name (Design Decision 5). Rejected
-   * server-side together with a `search` call (Design Decision 7).
+   * Portable sort — never an index name. Rejected
+   * server-side together with a `search` call.
    */
   sort?: CollectionTableSort<string>;
   paginationOpts?: PaginationOptions;
@@ -65,8 +65,8 @@ export interface FindClientPaginatedArgs<
    */
   where?: VexWhere<TCollectionSlug>;
   /**
-   * Portable sort — never an index name (Design Decision 5). Rejected
-   * server-side together with a `search` call (Design Decision 7).
+   * Portable sort — never an index name. Rejected
+   * server-side together with a `search` call.
    */
   sort?: CollectionTableSort<string>;
   paginationOpts: PaginationOptions;

@@ -1751,12 +1751,12 @@ export const testimonials = defineTable({
     created.push("comments x2")
   }
 
-  // ── Testimonials (Step 24, list-view-overhaul) ──────────────────────────
+  // ── Testimonials ──────────────────────────────────────────────────────
   // 200 deterministic rows, insert-if-missing as a single batch (checked by
   // total count, like `comments` above) — `mode: "patch"` never touches this
   // section, since there is no natural per-row identifier to reconcile
   // against and the acceptance only needs the 200 rows to exist once.
-  // Deliberately varied on every axis Step 24's collection config exercises:
+  // Deliberately varied on every axis the collection config exercises:
   // `source` rotates through all 4 enum values (index pushdown), `rating`
   // 1-5, `featured`/`approved` each true for roughly 1 in 3 rows (the row/
   // bulk actions + "Featured" preset view have something to act on),

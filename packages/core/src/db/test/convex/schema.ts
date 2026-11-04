@@ -27,6 +27,12 @@ const schema = defineSchema({
     author: v.optional(v.array(v.id("authors"))),
     cover: v.optional(v.array(v.id("images"))), // upload field, for depth-populate tests
     parent: v.optional(v.array(v.id("posts"))), // self-ref for depth tests
+    // A `select({ hasMany: false })`-shaped field: Convex always stores a
+    // select as `v.array(...)` regardless of `hasMany` (`fields/select/validator.ts`),
+    // so a plain `v.array(v.string())` here is schema-faithful for
+    // `normalizeArrayStoredWhere`'s array-stored-field tests (`queryArgs.test.ts`,
+    // `find/server.test.ts`) without needing the full literal-union validator.
+    category: v.optional(v.array(v.string())),
     // Versioning columns, matching what `versionFieldsToVexSchema` emits for a
     // collection declaring `versions.drafts: true`. Optional, so every
     // pre-existing suite that inserts plain posts stays valid.
@@ -43,7 +49,13 @@ const schema = defineSchema({
     .index("by_title__draftStatus", ["vex_status", "title"])
     .index("by_body", ["vex_status", "body"])
     .index("by_status", ["vex_status"])
-    .index("by_published", ["vex_publishedId"]),
+    .index("by_published", ["vex_publishedId"])
+    // Array-stored field indexes, for `normalizeArrayStoredWhere`'s
+    // index-pushdown regression tests — a relationship (`author`) and a
+    // select-shaped field (`category`), mirroring real `by_source`/
+    // `by_status` indexes on a `select` field.
+    .index("by_author", ["author"])
+    .index("by_category", ["category"]),
 
   authors: defineTable({
     name: v.string(),
@@ -53,7 +65,7 @@ const schema = defineSchema({
     // tuples must match or the positional builder terminates at the shortest.
     slug: v.optional(v.string()),
     // Mirrors `posts.updatedAt` — every real `defineCollection()`-based
-    // table gets this column now (Step 3 cutover); declared here so a
+    // table gets this column now; declared here so a
     // populated `author` relationship target can carry a resolved
     // `commitTs` value for the ms-conversion tests in `populate.test.ts`.
     updatedAt: v.optional(v.commitTs()),

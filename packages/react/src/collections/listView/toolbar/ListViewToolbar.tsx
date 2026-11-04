@@ -29,10 +29,10 @@ import { ListViewFilterChips, ListViewFilterVisibilityToggle } from "../filters/
  * Props every `list.toolbar` contribution receives — presently none
  * (mirrors `list.header.actions`' own `Record<string, never>`): the
  * richer list-wide state (`urlState`, `visibleColumns`, `hideableColumns`,
- * selection, density, …) comes from `useListViewContext()` (Step 9), which
+ * selection, density, …) comes from `useListViewContext()`, which
  * a built-in or a project's own contribution calls itself, exactly as
  * `edit.*` contributions call `useVexDocument()` rather than receiving
- * document state as a prop (Decision 37).
+ * document state as a prop.
  */
 export type ListViewToolbarSlotProps = Record<string, never>;
 
@@ -40,33 +40,35 @@ export type ListViewToolbarSlotProps = Record<string, never>;
  * Props for {@link ListViewToolbar}.
  *
  * `buildCopyLinkHref` overrides `ListViewCopyLinkButton`'s default
- * `window.location.href` — Step 12 passes a full-state serializer when a
- * local view is active (Decision 11). The rest of `ListViewToolbar`'s inputs —
+ * `window.location.href` — a full-state serializer is passed in when a
+ * local view is active, so copying a link while a local view is active
+ * shares the whole state. The rest of `ListViewToolbar`'s inputs —
  * collection, urlState, visibleColumns, hideableColumns, selection,
  * hasActiveView, density — come from `useListViewContext()`.
  *
- * `rows` is the one piece of list state NOT in `useListViewContext()`
- * (Decision 37's own note: "the current page's rows … stay a
- * `ListViewLayout`/`DataTable` prop, never context") — the bulk group's "Select
+ * `rows` is the one piece of list state NOT in `useListViewContext()` —
+ * the current page's rows stay a `ListViewLayout`/`DataTable` prop, never
+ * context, since it varies independently of the rest of the shared list
+ * state. The bulk group's "Select
  * all N loaded" label and its select-all handler both need the current
  * page, so `ListViewLayout` (which already holds it) passes it straight
  * through, the same way it already forwards `rows` to `DataTable`.
  */
 export interface ListViewToolbarProps {
   buildCopyLinkHref?: () => string;
-  /** The current page's loaded rows — "Select all N loaded" (Decision 28) counts and selects against this, never the full collection. */
+  /** The current page's loaded rows — "Select all N loaded" counts and selects against this, never the full collection. */
   rows: TDocument[];
-  /** Whether the chip row is currently showing — lifted to `ListViewLayout`, threaded through here to `ListViewFilterChips`/`ListViewFilterVisibilityToggle` (both always rendered directly by this component, Decision 10 revised 2026-10-27, further revised: chips always inline in this row, `[Filter][eye] [chips…]`, flex-wrapping onto additional lines as needed). */
+  /** Whether the chip row is currently showing — lifted to `ListViewLayout`, threaded through here to `ListViewFilterChips`/`ListViewFilterVisibilityToggle` (both always rendered directly by this component; chips are always inline in this row, `[Filter][eye] [chips…]`, flex-wrapping onto additional lines as needed). */
   chipsVisible: boolean;
   /** Replaces `chipsVisible`. */
   onChipsVisibleChange: (visible: boolean) => void;
-  /** Server-prefetched shared views (Decision 39) — forwarded to `ListViewModifiedControls`' own `useSavedListViews()` call (developer revision 2026-10-29). */
+  /** Server-prefetched shared views — forwarded to `ListViewModifiedControls`' own `useSavedListViews()` call. */
   initialViews?: VexStoredView[];
-  /** Server-read local-view cookie index (Decision 41) — forwarded to `ListViewModifiedControls`. */
+  /** Server-read local-view cookie index — forwarded to `ListViewModifiedControls`. */
   initialLocalIndex?: LocalSavedListViewsIndexEntry[];
 }
 
-/** Which of the three foldable controls one overflow stage's menu lists, in Decision 22's fixed order. */
+/** Which of the three foldable controls one overflow stage's menu lists, in the toolbar's fixed fold order. */
 type FoldItem = "copyLink" | "columns" | "rowsPerLoad";
 
 /**
@@ -97,12 +99,12 @@ interface FoldStage {
    * breakpoint range".
    */
   visibilityClassName: string;
-  /** The controls folded at this stage, in Decision 22's fixed order (Copy link, then Columns, then Rows per load). */
+  /** The controls folded at this stage, in the toolbar's fixed fold order (Copy link, then Columns, then Rows per load). */
   items: FoldItem[];
 }
 
 /**
- * The three fold stages, widest-range first, matching Decision 22/43's
+ * The three fold stages, widest-range first, matching the toolbar's fixed
  * collapse order (Copy link folds first, then Columns, then Rows per
  * load): `@xl/list`–`@2xl/list` only Copy link has folded;
  * `@lg/list`–`@xl/list` Copy link and Columns have folded; below
@@ -132,8 +134,7 @@ const FOLD_STAGES: FoldStage[] = [
  * size="icon" icon="EllipsisVertical" iconPosition="center"`.
  *
  * The overlay itself is a {@link DataTableResponsiveMenu} (a `Popover` at
- * `useIsMobile() === false`, a bottom `Sheet` below 768px — Decision 22
- * point 3 / Decision 43), not a `DropdownMenu`: the folded controls'
+ * `useIsMobile() === false`, a bottom `Sheet` below 768px), not a `DropdownMenu`:
  * `placement="menu"` forms (`ListViewCopyLinkButton`, `ListViewColumnsAction`,
  * `DataTablePageSizeSelect`) are plain rows/sections with no Base UI
  * `Menu.Root` dependency, so they render identically whether this stage's
@@ -183,12 +184,12 @@ function ListToolbarOverflowStage(props: {
 
 /**
  * Renders the collection list's toolbar row: the inline bulk group (when a
- * selection exists, left of everything else — Decision 22), the
+ * selection exists, left of everything else), the
  * always-visible group (`list.toolbar`'s `vex.list.search` plus any
  * non-collapsible project contribution), and the collapsible group (Copy
  * link, `vex.list.columns`, Rows-per-load).
  *
- * The collapse itself is pure CSS (Decision 43), not `ResizeObserver`
+ * The collapse itself is pure CSS, not `ResizeObserver`
  * measurement — the server render is the final render — and the folded
  * controls reuse the exact same pieces the edit view's own responsive
  * header collapse uses (`useHeaderActionsCollapse`'s
@@ -274,8 +275,7 @@ export function ListViewToolbar(props: ListViewToolbarProps): ReactNode {
   return (
     <div className="flex flex-wrap items-start justify-between gap-2">
       {/*
-       * `items-center`, not `items-start` (developer-reported follow-up to
-       * the chip-wrap fix) — every control THIS row's own spans wrap is
+       * `items-center`, not `items-start` — every control THIS row's own spans wrap is
        * already a uniform `h-8` (Button/Input/Select's shared height), so
        * `items-start` vs `items-center` made no visible difference for
        * them. But the chip `Badge`s and `ListViewFilterChips`'s own `Clear
@@ -288,7 +288,13 @@ export function ListViewToolbar(props: ListViewToolbarProps): ReactNode {
        */}
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         {bulkGroup}
-        <span className="flex shrink-0 items-center gap-2">
+        {/*
+         * `empty:hidden` on every wrapper in this row: an empty wrapper (no search
+         * field, no toolbar contributions, no active filter/modified state) is still a
+         * flex child and still claims a `gap-2`, pushing the first VISIBLE control 8px
+         * off the row's left edge.
+         */}
+        <span className="flex shrink-0 items-center gap-2 empty:hidden">
           <SlotOutlet<ListViewToolbarSlotProps>
             slotId={SLOT_IDS.list.toolbar}
             builtins={listToolbarContributions()}
@@ -300,25 +306,16 @@ export function ListViewToolbar(props: ListViewToolbarProps): ReactNode {
           />
         </span>
         {/*
-         * `empty:hidden`: `ListViewColumnsAction` renders `null` for a
-         * collection with no hideable columns (`DataTableColumnsMenu`'s own
-         * `columns.length === 0` check) — without this, the span itself
-         * still counts as a flex child and still claims a `gap-2`, shifting
-         * every control after it (most visibly "Filter") off the row's
-         * left edge whenever this happens to be the FIRST rendered child
-         * (e.g. a collection with neither a search field nor a hideable
-         * column — developer-reported misalignment).
+         * `ListViewColumnsAction` renders `null` for a collection with no hideable
+         * columns (`DataTableColumnsMenu`'s `columns.length === 0` check).
          */}
         <span className="hidden shrink-0 @xl/list:inline-flex empty:hidden">
           <ListViewColumnsAction />
         </span>
         {/*
-         * Developer-binding (corrected again): Filter must NEVER leave
-         * the search row — it gets its OWN real (non-`contents`)
-         * `shrink-0` span, same `hasSelection`-hiding rule as the
-         * eye+chips group below (it WAS part of that group's own
-         * conditional before this split), but otherwise never
-         * participates in ANY wrap decision.
+         * Filter never leaves the search row: it has its own `shrink-0` span, hidden
+         * at narrow widths while rows are selected (same rule as the eye + chips group
+         * below), and never participates in a wrap decision.
          */}
         <span
           className={
@@ -341,36 +338,23 @@ export function ListViewToolbar(props: ListViewToolbarProps): ReactNode {
           />
         </span>
         {/*
-         * Developer-binding (corrected again): a plain `contents`
-         * flattening of `[eye, chips…]` into the outer row (the first
-         * attempt at this fix) does NOT make them wrap as a unit — `eye`
-         * is narrow (32px) and often independently fits in whatever room
-         * remains after Filter even when the FIRST chip doesn't, leaving
-         * `eye` stranded alone on the search row while every chip wraps
-         * away without it (observed live at 600/768/1100/1440px with an
-         * active filter). This span is now a REAL nested `flex flex-wrap`
-         * box instead — a single atomic flex item of the outer row: if
-         * its own natural (all-children-on-one-line) width doesn't fit
-         * in whatever room remains after Filter, it moves AS A WHOLE
-         * (`min-w-0` lets it shrink below that natural width rather than
-         * overflow) to a new line, where its OWN `flex-wrap` lets `eye`
-         * and every chip flow/wrap among THEMSELVES across as many
-         * internal rows as needed, flush with the toolbar's own left
-         * edge (this span itself starts there, immediately under
-         * Filter's — not Filter's own x, since Filter is a separate,
-         * always-inline item now sitting earlier on line 1).
+         * The eye toggle and the chips wrap AS A UNIT: a plain `contents` flattening
+         * would let the narrow eye (32px) stay on the search row while every chip
+         * wraps away without it. This span is a real nested `flex flex-wrap` box —
+         * one flex item of the outer row — so when its one-line width doesn't fit
+         * after Filter it moves whole to a new line (`min-w-0` lets it shrink rather
+         * than overflow), where the eye and chips wrap among themselves, flush with
+         * the toolbar's left edge.
          *
-         * `hidden @lg/list:flex` (not `cn("flex", …)`, which would apply
-         * two base-level `display` utilities at once) mirrors the OLD
-         * `hidden @lg/list:contents` conditional exactly — the same
-         * `hasSelection` narrow-viewport hiding, just swapping which
-         * display value it toggles to/from.
+         * `hidden @lg/list:flex` (not `cn("flex", …)`, which would apply two base
+         * `display` utilities at once) hides it at narrow widths while rows are
+         * selected.
          */}
         <span
           className={
             hasSelection
-              ? "hidden min-w-0 flex-wrap items-center gap-2 @lg/list:flex"
-              : "flex min-w-0 flex-wrap items-center gap-2"
+              ? "hidden min-w-0 flex-wrap items-center gap-2 @lg/list:flex empty:hidden"
+              : "flex min-w-0 flex-wrap items-center gap-2 empty:hidden"
           }
         >
           <ListViewFilterVisibilityToggle
@@ -390,7 +374,7 @@ export function ListViewToolbar(props: ListViewToolbarProps): ReactNode {
             filterValueTitles={list.filterValueTitles}
           />
         </span>
-        <span className="flex shrink-0 items-center gap-2">
+        <span className="flex shrink-0 items-center gap-2 empty:hidden">
           <ListViewModifiedControls
             collection={list.collection.slug}
             urlState={list.urlState as unknown as ListViewUrlStateSlice}

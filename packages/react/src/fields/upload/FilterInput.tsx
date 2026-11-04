@@ -11,8 +11,8 @@ import { UploadFilterPicker } from "./UploadFilterPicker";
 /**
  * Upload field filter row value control — a trigger `Button` that opens
  * {@link UploadFilterPicker} (the new standalone single-select media
- * dialog), registered as `reactAdapter.fields.upload.filterInput`
- * (Decision 50). Mirrors `relationship/FilterInput.tsx` exactly — same
+ * dialog), registered as `reactAdapter.fields.upload.filterInput`.
+ * Mirrors `relationship/FilterInput.tsx` exactly — same
  * single-id collapse (a filter row always compares ONE value regardless
  * of `hasMany`), same `filterValueTitles`/`setFilterValueTitle` title
  * resolution via `ListViewContext`, falling back to a one-shot

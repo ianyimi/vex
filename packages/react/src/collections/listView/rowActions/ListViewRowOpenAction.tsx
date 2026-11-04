@@ -9,7 +9,7 @@ import { VexLink } from "../../../ui/VexLink";
 import { DropdownMenuItem } from "../../../ui/dropdown-menu";
 import { useListViewContext } from "../ListViewContext";
 
-/** Props every `list.row.actions`/`list.bulkActions` contribution receives — one row for `row.actions`, every selected row for `bulkActions`. The rest of the list's state comes from `useListViewContext()` (Decision 37). */
+/** Props every `list.row.actions`/`list.bulkActions` contribution receives — one row for `row.actions`, every selected row for `bulkActions`. The rest of the list's state comes from `useListViewContext()`. */
 export interface ListViewRowSlotProps {
   docs: TDocument[];
 }

@@ -399,13 +399,13 @@ function describeVexListQuery() {
       expect(result.current.results.map((doc) => doc.title)).toEqual(["Doc 3"]);
     });
 
-    it("isSettling tracks the search-mode query identity reliably, unlike isFetching under a live-push backend (developer-reported regression)", async () => {
+    it("isSettling tracks the search-mode query identity reliably, unlike isFetching under a live-push backend", async () => {
       // `isFetching`/`isPlaceholderData` are reliable against THIS fake backend's genuinely-
       // awaited `t.run()` (the test above asserts against `isFetching` directly) but NOT
       // against the real Convex client, whose websocket subscription pushes a live update
       // straight into the query cache via `queryClient.setQueryData` — never a tracked
       // refetch — so those flags can read `false` throughout a visible query-identity
-      // change there (confirmed live, 2026-11-01 investigation; see `usePaginatedQuery.ts`'s
+      // change there (see `usePaginatedQuery.ts`'s
       // own `isFetching`/`isSettling` doc comments). `isSettling` is derived from `results`
       // itself having been synced for the CURRENT query identity, which works identically
       // either way — this asserts it behaves correctly against the fake backend too, same
@@ -439,7 +439,7 @@ function describeVexListQuery() {
     });
 
     it("keeps find-mode's rows on screen while switching INTO search mode, no empty flash (cross-mode keep-previous-data)", async () => {
-      // The regression this guards (developer-reported, 2026-11-01): `find`-mode and
+      // The regression this guards: `find`-mode and
       // `search`-mode are two SEPARATE `useQuery` instances with two separate state
       // machines — each has its own within-mode `keepPreviousData`, but switching WHICH one
       // is active hands off to a hook that has never run before (no previous data of its
@@ -475,8 +475,8 @@ function describeVexListQuery() {
       expect(result.current.results.map((doc) => doc.title)).toEqual(["Doc 2"]);
     });
 
-    it("search mode: loadMore for a NEW page does not re-append the PREVIOUS page while the new one is still pending (developer-reported: peek highlight landing on the wrong row after a view switch — traced to a duplicate React key from this exact double-append)", async () => {
-      // Parity gap with `usePaginatedQuery.ts`'s identical sync effect (Step 19's own
+    it("search mode: loadMore for a NEW page does not re-append the PREVIOUS page while the new one is still pending (peek highlight landing on the wrong row after a view switch — traced to a duplicate React key from this exact double-append)", async () => {
+      // Parity gap with `usePaginatedQuery.ts`'s identical sync effect (its own
       // find-mode fix): that effect gates on `!isPlaceholderData` so it only ever syncs
       // genuinely fresh data; `useVexListQuerySearch`'s twin (inside `useVexListQuery`,
       // search mode) was missing the same guard. Without it: `loadMore()` advancing from

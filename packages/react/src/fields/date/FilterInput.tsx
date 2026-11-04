@@ -3,7 +3,7 @@ import { DateTimePicker } from "../../ui/datetime/date-picker";
 
 /**
  * Date field filter row value control — the shared `DateTimePicker`,
- * registered as `reactAdapter.fields.date.filterInput` (Decision 50).
+ * registered as `reactAdapter.fields.date.filterInput`.
  * Moved verbatim from `ListViewFilterBuilder.tsx`'s own hand-coded
  * `renderFilterValueInput` `date` branch, now this package's single
  * source of truth for it.

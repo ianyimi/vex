@@ -10,13 +10,13 @@ import { SaveWithAnalytics } from "~/vexcms/components/SaveWithAnalytics";
  *
  * Each field covers one path through the draft workflow:
  * - `title` (required) — a draft may leave it empty (`saveDraft` is lenient);
- *   `publish` must reject naming it (strict validation, decision 4).
+ *   `publish` must reject naming it (strict validation).
  * - `slug` (indexed) — the field the `contributor` role may not change in a
  *   draft (`~/auth/access.ts`), proving `saveDraft` enforces the same
  *   `changes`-based field restriction `update` does.
  * - `relatedPost` — relationship to a VERSIONED target (this collection), so
  *   `publish` rejects while it points at a draft (`assertNoDraftRelationships`)
- *   and the picker's draft visibility (Step 14) is testable.
+ *   and the picker's draft visibility is testable.
  * - `relatedArticle` — relationship to a NON-versioned target, which must never
  *   block a publish.
  */

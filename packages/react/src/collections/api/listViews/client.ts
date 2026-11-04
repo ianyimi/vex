@@ -14,12 +14,12 @@ export type ListViewsClientArgs<TCollectionSlug extends CollectionSlug = Collect
 
 /**
  * Returns tanstack-query options for every `shared` saved view stored in
- * `vex_views` for one collection. Org scoping (decision 12) is resolved
+ * `vex_views` for one collection. Org scoping is resolved
  * server-side from the caller's own session — this call never passes an
  * organization id.
  *
- * Merge with `default`/`config` (`admin.view`/`admin.views`, via `toClientSavedListViewConfig`, Step 5/18)
- * and `local` (localStorage) views client-side — see `useSavedListViews` (Step 12).
+ * Merge with `default`/`config` (`admin.view`/`admin.views`, via `toClientSavedListViewConfig`)
+ * and `local` (localStorage) views client-side — see `useSavedListViews`.
  *
  * Import from `@vexcms/react/client`.
  *

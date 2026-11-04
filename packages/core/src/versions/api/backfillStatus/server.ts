@@ -50,9 +50,9 @@ export interface BackfillStatusResult {
  * Stamps `vex_status: "published"` on documents in `collection` that predate
  * a `versions.drafts` toggle and therefore have no `vex_status` value at all.
  *
- * This is a one-shot, developer-invoked migration action. Nothing in the
- * `vex` CLI or the `versionsApi` factory (Step 7) calls it automatically, and
- * it is not a `DRAFT_ACTIONS` member (Step 3) — it carries no `hasPermission`
+ * This is a one-shot, manually-invoked migration action. Nothing in the
+ * `vex` CLI or the `versionsApi` factory calls it automatically, and
+ * it is not a `DRAFT_ACTIONS` member — it carries no `hasPermission`
  * check, so it must be wired into a Convex `internalMutation` (server-only,
  * never client-callable) in your own project, run once via `npx convex run`
  * or the dashboard until it reports `isDone: true`, and then deleted:
@@ -103,7 +103,7 @@ export async function backfillStatus<
   // table scan. Re-running after `isDone` simply matches nothing.
   // The table is named at runtime, so it can't be checked against `DataModel`.
   // Every `versions.drafts` table shares the shape `VersionedTableDataModel`
-  // describes (Step 2 schema generation), so write through that view of `db`.
+  // describes (schema generation), so write through that view of `db`.
   const db = args.ctx.db as unknown as GenericDatabaseWriter<VersionedTableDataModel>;
   const page = await db
     .query(args.collection)
@@ -126,7 +126,7 @@ export async function backfillStatus<
 
 /**
  * The slice of any `versions.drafts` table this function touches: the
- * optional `vex_status` column and the `by_status` index Step 2 generates on
+ * optional `vex_status` column and the `by_status` index schema generation produces on
  * every versioned collection. Lets the runtime-named table read and patch with
  * real types — including `vex_status` being absent (`undefined`).
  */

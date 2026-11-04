@@ -14,8 +14,8 @@ interface TestimonialBulkActionProps {
 }
 
 /**
- * `test.testimonials.bulkApprove` — a project `list.bulkActions` contribution
- * (Step 24, list-view-overhaul). Sets `approved: true` on every selected,
+ * `test.testimonials.bulkApprove` — a project `list.bulkActions` contribution.
+ * Sets `approved: true` on every selected,
  * not-yet-approved testimonial via the generic `update` mutation, one call
  * per row (no bespoke server endpoint). Respects `access`: gated client-side
  * on the `testimonials` `update` permission, renders nothing with no

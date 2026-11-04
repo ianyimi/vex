@@ -12,8 +12,8 @@ export interface ListViewColumnsActionProps {
    * straight to `DataTableColumnsMenu`. `ListViewToolbar` mounts this component
    * TWICE — once with `placement` omitted (inline), once with
    * `placement="menu"` — each wrapped in a CSS class showing it on
-   * opposite sides of the `@xl/list` breakpoint (Decision 43's toolbar
-   * fold order: Copy link, then Columns, then Rows per load).
+   * opposite sides of the `@xl/list` breakpoint, matching the toolbar's
+   * fixed CSS fold order: Copy link, then Columns, then Rows per load.
    */
   placement?: ActionPlacement;
 }

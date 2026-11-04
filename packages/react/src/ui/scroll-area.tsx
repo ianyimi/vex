@@ -55,7 +55,7 @@ function ScrollBar({
       // Without an explicit z-index here, those sticky cells painted ON TOP of
       // this scrollbar instead of the other way around — the horizontal
       // scrollbar (and the vertical one, at a narrower table width) rendered
-      // visually hidden behind the table rows (developer-reported). `z-30`
+      // visually hidden behind the table rows. `z-30`
       // outranks every sticky cell's own z-index unconditionally.
       className={cn(
         "z-30 flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent",

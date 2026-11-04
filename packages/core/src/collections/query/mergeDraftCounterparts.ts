@@ -24,7 +24,7 @@ import { VERSION_SYSTEM_FIELDS } from "../../versions";
  * linked draft, or whose draft is itself denied, passes through unchanged.
  *
  * The draft lookup is a single indexed `.unique()` read per row in `docs`,
- * keyed by that row's own `_id` (always present/readable, Decision 8 —
+ * keyed by that row's own `_id` (always present/readable —
  * never by reading `vex_status` off `doc`, which may already be stripped
  * for a caller who can't read it) against `by_published`, bounded by the
  * page size, never by collection size. A draft-only row's `_id` was never
@@ -55,7 +55,7 @@ import { VERSION_SYSTEM_FIELDS } from "../../versions";
  * @param props.fields - The collection's resolved field map, forwarded into
  *   the draft counterpart's own `readableDocuments` check so a `commitTs`
  *   field on the merged-in DRAFT row is also converted `bigint` → ms
- *   `number` (Decision 5) — this read bypasses the caller's own
+ *   `number` — this read bypasses the caller's own
  *   `readableDocuments` pass entirely (a fresh `ctx.db.query` read), so it
  *   must carry its own `fields` rather than inherit the caller's.
  * @returns `docs`, each carrying `hasUnpublishedChanges`.
@@ -76,8 +76,8 @@ export async function mergeDraftCounterparts<
   const merged: (TDoc & { hasUnpublishedChanges: boolean })[] = [];
   for (const doc of props.docs) {
     const raw = doc as unknown as Record<string, unknown>;
-    // Looked up unconditionally by `_id` (always present/readable,
-    // Decision 8 — never gated on `vex_status`, which may already be
+    // Looked up unconditionally by `_id` (always present/readable —
+    // never gated on `vex_status`, which may already be
     // stripped off `doc` by the time it reaches here for a caller who
     // can't read that field). A draft-only row's `_id` never has anything
     // pointing at it via `by_published` (it was never published), so this

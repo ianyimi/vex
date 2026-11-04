@@ -49,7 +49,7 @@ export interface DataTableHeaderProps<TData>
  * `DataTable`'s own sticky `<thead>` — one `<TableRow>` per `table.getHeaderGroups()`
  * entry (always exactly one, VexCMS never nests column groups), rendering each
  * header's label (plain or `DataTableSortHeader` for a sortable column), its own
- * resize grip/handle/divider-highlight (Step 21 Part B, Decision 48), and — right
+ * resize grip/handle/divider-highlight, and — right
  * before the pinned-right group begins — a borderless spacer cell that may itself
  * host the LAST unpinned column's relocated grip (`resolveSpacerGripHeader`'s own
  * doc comment). Pulled out of `DataTable/index.tsx` (Phase 3 of the structure
@@ -106,13 +106,13 @@ export function DataTableHeader<TData>({
               // boundary, which the NEXT column (the first pinned-right one)
               // already draws its own grip for — suppressed here so there's
               // no second copy (`isSuppressedByPinnedRightGrip`'s own doc
-              // comment: developer-reported duplicate-grip boundary bug).
+              // comment: duplicate-grip boundary bug).
               const isSuppressedByBoundaryGrip = isSuppressedByPinnedRightGrip(hg.headers, index, pinnedRightIds);
               const isDividerActive = activeDividerFieldId === header.column.id;
               // NOT `header.column.getCanSort()` — TanStack's own `getCanSort()`
               // is gated by the table-level `enableSorting: false` option set
               // above (deliberately, to disable TanStack's OWN internal sort
-              // state machinery, per Decision 4), which makes `getCanSort()`
+              // state machinery), which makes `getCanSort()`
               // return `false` for EVERY column regardless of its own
               // `columnDef.enableSorting`. Reading the columnDef's own
               // `enableSorting` directly is what `getCollectionColumnDefs`'s
@@ -135,7 +135,7 @@ export function DataTableHeader<TData>({
               // the inner sort button) — `undefined` (omitted) for a non-sortable
               // column; `"none"` for a sortable column that ISN'T the active sort
               // field, including every sortable column while search is active
-              // (`sort` itself is `undefined` then, Decision 7's own "parked"
+              // (`sort` itself is `undefined` then — "parked"
               // rule in `ListViewLayout.tsx` — `sort?.field` can never match, so this
               // falls out of the SAME comparison with no extra `sortDisabled`
               // branch needed); `"ascending"`/`"descending"` for the active field.

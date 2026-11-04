@@ -31,13 +31,12 @@ export interface UseListViewServerSeedProps {
  * Seeds `useVexListQuery` (unchanged — still owns pagination/cursor-accumulation/draft-pair
  * typing exactly as before) from a `useSuspenseQuery(convexQuery(...))` call whose query key
  * is built from the EXACT SAME `buildListViewFindQueryArgs`/`buildListViewSearchQueryArgs` helpers
- * `NextAdminPage`'s server-side `prefetchQuery` call uses (Design Decision 39's parity, now
+ * `NextAdminPage`'s server-side `prefetchQuery` call uses (keeping the server and client args in parity, now
  * enforced by sharing the args-building code instead of just documenting the match) — the
  * streamed, dehydrated promise `<HydrationBoundary>` populated the cache with is what this
  * `useSuspenseQuery` call actually suspends on, not a fresh client fetch.
  *
- * Frozen to THIS COMPONENT INSTANCE's first render (developer-reported regression fix,
- * 2026-11-01 — see the frozen-seed/`activeSeedOptions` comments inside the function body for
+ * Frozen to THIS COMPONENT INSTANCE's first render (see the frozen-seed/`activeSeedOptions` comments inside the function body for
  * the full mechanism): re-computing this query's key on every live search/sort/filter change
  * (no `key` prop remounts this component across those) made it re-suspend on each one —
  * `startTransition` (`useListViewUrlState`'s own setters) was relied on to suppress the resulting
@@ -62,10 +61,10 @@ export function useListViewServerSeed<TDoc extends TDocument = TDocument>(
   const numItems = Math.max(props.collection.admin.view.state.serverPageSize, props.pageSize);
 
   // Cast matches `NextAdminPage.tsx`'s own `as Promise<PaginationResult<VexDocument>>` on its
-  // `search` prefetch (Design Decision 39/`useVexListQuerySearch`'s own `Array.isArray(data)`
+  // `search` prefetch (`useVexListQuerySearch`'s own `Array.isArray(data)`
   // normalization) — `vexConvexApi.search`'s broader return type vs `findPaginated`'s narrower
   // one is the same generic-narrowing gap documented elsewhere. No `initialData` option here
-  // (polish fixes, Decision 11 — `CollectionListViewProps.initialData` is gone): every real
+  // (`CollectionListViewProps.initialData` is gone): every real
   // caller either goes through `NextAdminPage`'s streamed `HydrationBoundary` (dehydrated
   // cache) or seeds TanStack's query cache directly (tests, other non-Next callers) — a plain
   // prop seed on this component duplicated that mechanism for no caller that still exists.
@@ -96,7 +95,7 @@ export function useListViewServerSeed<TDoc extends TDocument = TDocument>(
   };
   // Frozen to THIS COMPONENT INSTANCE's first render (`useRef`'s initial-value argument is
   // only ever consumed once, on mount — every later render's freshly-computed `queryOptions`
-  // above is thrown away) — developer-reported regression fix: this is the ONE
+  // above is thrown away) — this is the ONE
   // `useSuspenseQuery` in the tree, existing only to hand `NextAdminPage`'s dehydrated SSR
   // page to `useVexListQuery` below as `initialData` on first mount. Re-computing its own
   // key on every live search/sort/filter change (no `key` prop remounts this component

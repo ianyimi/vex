@@ -116,7 +116,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// Developer-reported bug: a shared view whose own saved `peekWidth` differed from this
+// A shared view whose own saved `peekWidth` differed from this
 // browser's `vex-admin:<collection>` cookie (remembered from browsing OTHER views in the
 // same collection) used to show a false "Modified: preview width" on every direct/fresh
 // load, even though the peek panel was never opened or resized — `peekWidth` used to seed
@@ -125,7 +125,7 @@ afterEach(() => {
 // `CollectionListView` now seeds `peekWidth` from `resolved.peekWidth` (the SAME
 // `resolveListViewQueryState` call server and client both make) before falling back to the
 // cookie.
-describe("CollectionListView — shared-view peekWidth sync (developer-reported)", () => {
+describe("CollectionListView — shared-view peekWidth sync", () => {
   it("never shows a false Modified: preview width for a shared view whose own width differs from the cookie's", () => {
     render(
       createElement(CollectionListView, {
@@ -137,11 +137,11 @@ describe("CollectionListView — shared-view peekWidth sync (developer-reported)
     expect(screen.queryByText(/Modified:/)).not.toBeInTheDocument();
   });
 
-  // Developer decision (binding, "peek-resize-save-rule"): a view with NO saved width of
+  // A view with NO saved width of
   // its own never shows "Modified: preview width", however far the live/cookie width
   // diverges — it's just this browser's own remembered preference, not something the
   // default view has an opinion about (supersedes an EARLIER regression-guard version of
-  // this same test, which asserted the OPPOSITE before this decision reversed it).
+  // this same test, which asserted the opposite).
   it("never shows Modified: preview width for the default view, however far the cookie's remembered width diverges from the hardcoded default", () => {
     render(
       createElement(CollectionListView, {
@@ -154,7 +154,7 @@ describe("CollectionListView — shared-view peekWidth sync (developer-reported)
   });
 
   // Mirrors `CollectionListView.columnsSync.test.tsx`'s own local-view-placeholder test —
-  // a local view's own `peekWidth` lives in `localStorage` (Decision 41), invisible to
+  // a local view's own `peekWidth` lives in `localStorage`, invisible to
   // `resolveListViewQueryState`'s server/client-shared first-render seed, so this needs the
   // SAME view-sync `useEffect` that already re-syncs `columnEntries` once the real local
   // view data arrives a render after the SSR-matching placeholder one.

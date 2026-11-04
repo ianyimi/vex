@@ -39,7 +39,7 @@ import { useVexAdminAuthAdapter } from "./auth/VexAdminAuthAdapterContext";
  *
  * @param props - Layout props.
  * @param props.children - The page content from `[[...slug]]/page.tsx`.
- * @param props.authPromise - The in-flight `{ user, organization }` fetch (Decision 44),
+ * @param props.authPromise - The in-flight `{ user, organization }` fetch,
  *   forwarded to `AdminLayout` so the sidebar resolves it in its OWN `<Suspense>` boundary —
  *   a slow auth round trip streams in the sidebar nav without blocking `children`.
  * @returns The admin shell rendered from `children`, wrapped in `NuqsAdapter`

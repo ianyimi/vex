@@ -4,7 +4,7 @@ import type { ColumnEntry } from "../types";
 /**
  * Pixel width fallback per field type, consulted only when neither the
  * active view's own column entry (`ColumnEntry.width`) nor the field's own
- * `admin.columnWidth` sets one (Decision 48). Narrow for compact value
+ * `admin.columnWidth` sets one. Narrow for compact value
  * types (`checkbox`/`select`/`date`/`color`/`number`), wide for long-form
  * text (`text`/`textarea`/`richtext`), mid-range for everything else.
  */
@@ -45,7 +45,7 @@ export interface ResolvedListViewColumnConfig {
 /**
  * Resolves ONE field's final column config — width, sort/hide capability,
  * pin side, and visibility — from a single three-tier precedence chain,
- * VIEWS ALWAYS WIN (developer answer, Decision 48): the active view's own
+ * VIEWS ALWAYS WIN: the active view's own
  * resolved column entry for this field (`resolvedColumnEntry`, already the
  * ONE entry `resolveListViewQueryState`'s own URL → active view → collection
  * default chain produced — this function does not re-resolve across
@@ -70,7 +70,7 @@ export interface ResolvedListViewColumnConfig {
  *   `.enableSorting`/`.enableHiding` (the middle tier).
  * @param props.resolvedColumnEntry - The ONE `ColumnEntry` already resolved
  *   for this field by the caller's own `cols=`/active-view/default chain —
- *   a bare field-slug entry (Decision 11's back-compat shape) carries no
+ *   a bare field-slug entry (the back-compat shape) carries no
  *   overrides at all, equivalent to `undefined` here.
  * @returns The resolved column config.
  */

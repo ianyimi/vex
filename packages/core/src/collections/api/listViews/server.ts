@@ -21,9 +21,9 @@ export interface ListViewsServerArgs<DataModel extends GenericDataModel> {
   /** Per-call access overrides, forwarded to `resolveAccessCall`. */
   access?: AccessCallOptions<string>;
   /**
-   * Resolved caller identity. Checked against `readViews` (decision 13)
+   * Resolved caller identity. Checked against `readViews`
    * before any row is read, and consulted to read `auth.organization`
-   * when `config.access.orgCollectionSlug` is configured (decision 12) —
+   * when `config.access.orgCollectionSlug` is configured —
    * never a client-supplied organization id, so a caller cannot read
    * another organization's shared views by passing one in.
    */
@@ -35,7 +35,7 @@ export interface ListViewsServerArgs<DataModel extends GenericDataModel> {
 /**
  * Lists every `shared` saved view stored in `vex_views` for one collection.
  *
- * Gated on `readViews` (decision 13), checked with `scope: PERMISSION_SCOPES.any`
+ * Gated on `readViews`, checked with `scope: PERMISSION_SCOPES.any`
  * — the same "may they ever see this list?" question nav/sidebar gating asks
  * (there is no per-row document to evaluate a callback against; per-view
  * access is a later `readViews` rule with a `where` over `vex_views` rows,
@@ -46,22 +46,21 @@ export interface ListViewsServerArgs<DataModel extends GenericDataModel> {
  *
  * Scoped to the caller's own organization via the `by_collection_org` index
  * when `config.access.organizations` is `true` (NOT `orgCollectionSlug`
- * alone, developer-approved binding correction — `isViewOrganizationScopingEnabled`)
+ * alone — `isViewOrganizationScopingEnabled`)
  * — reads the full collection-wide set via `by_collection` otherwise,
  * including when `orgCollectionSlug` is configured but `organizations`
  * isn't. When scoping IS enabled but `auth.organization` doesn't resolve
  * an id (the caller has no org), resolves to `[]` instead of ever falling
- * through to the unscoped read (polish fix, Decision 3) — an org-less
- * stored row is invisible to every caller under scoping, not just
- * cross-org ones; it is never read, never merged, never adopted. The
- * organization id is never taken from the client — only from the
- * server-resolved `auth`.
+ * through to the unscoped read — an org-less stored row is invisible to
+ * every caller under scoping, not just cross-org ones; it is never read,
+ * never merged, never adopted. The organization id is never taken from
+ * the client — only from the server-resolved `auth`.
  *
- * Does not merge in `config` (code-defined, read through `toClientSavedListViewConfig`,
- * Step 5) or `local` (localStorage) views, and never returns a view's hidden
+ * Does not merge in `config` (code-defined, read through `toClientSavedListViewConfig`)
+ * or `local` (localStorage) views, and never returns a view's hidden
  * `where` for a config view — there is none here, `shared` rows carry only
- * the saver's own `where` (Decision 25). The merge across sources happens
- * client-side in `useSavedListViews` (Step 12).
+ * the saver's own `where`. The merge across sources happens client-side
+ * in `useSavedListViews`.
  *
  * Server-side only. Import from `@vexcms/core/server`.
  *
@@ -69,7 +68,7 @@ export interface ListViewsServerArgs<DataModel extends GenericDataModel> {
  * @param args - `{ ctx, config, collection, access?, auth? }`.
  * @returns Every `vex_views` row for `collection` the caller may see, unordered,
  *   or `[]` when the caller lacks `readViews` — a row whose `state` isn't a
- *   plain object is skipped ({@link skipInvalidStateRows}, polish fix, Decision 2).
+ *   plain object is skipped ({@link skipInvalidStateRows}).
  * @example
  * ```ts
  * import { listViews } from "@vexcms/core/server";

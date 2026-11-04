@@ -6,7 +6,7 @@
  *
  * Deliberately NOT exported from the main `@vexcms/react` barrel (`src/index.ts`,
  * which carries its own `"use client"` directive so every module reachable from
- * it joins the client module graph) — a developer-reported bug: rendered from
+ * it joins the client module graph) — rendered from
  * `app/layout.tsx` (a Server Component), `ThemeScript` getting bundled as a
  * client component reference meant it never ran during the server's own render
  * pass, only hydrating in later like any other client component, which React

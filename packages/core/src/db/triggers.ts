@@ -119,7 +119,7 @@ export function createVexMutations<
   // One shared `vex_globals` trigger, dispatching by `newDoc.slug`, registered
   // only when at least one global actually declares `afterChange` — a global
   // has no delete hook, so a `"delete"` change (always `publish` removing a
-  // draft row, Step 9) is always skipped.
+  // draft row) is always skipped.
   const globalsWithAfterChange = (props.config.globals ?? []).filter((g) => g.hooks.afterChange);
   if (globalsWithAfterChange.length > 0) {
     triggers.register("vex_globals" as never, async (ctx, change) => {

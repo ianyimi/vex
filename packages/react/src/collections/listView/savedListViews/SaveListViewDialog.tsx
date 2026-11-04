@@ -45,14 +45,13 @@ export interface SaveListViewDialogProps {
    * Whether the caller may write a shared view (`VIEW_ACTIONS.createView`
    * for a new view, `.updateView` for renaming an existing shared one) —
    * disables the "Everyone with access" scope option when `false`. Users
-   * without it can still save/rename locally (Decision 13).
+   * without it can still save/rename locally.
    */
   canCreateShared: boolean;
   /**
    * Whether shared views are usable AT ALL for the current caller —
    * `false` only when org scoping is configured and the caller's own
-   * organization doesn't resolve (`useCanAccessSharedSavedListViews`, polish fix,
-   * Decision 3 continued). Unlike `canCreateShared` (disables the
+   * organization doesn't resolve (`useCanAccessSharedSavedListViews`). Unlike `canCreateShared` (disables the
    * "Everyone with access" option), this HIDES it entirely — a caller
    * with no org has no path to ever use it, not just a role they could be
    * granted, so there's nothing useful to show as disabled.
@@ -65,15 +64,15 @@ export interface SaveListViewDialogProps {
 }
 
 /**
- * Save-as-new / rename dialog for a saved view (Decision 11), reusing the
+ * Save-as-new / rename dialog for a saved view, reusing the
  * same `Dialog`/`Field` composition `ListViewCreateDocumentForm` and the edit
  * view's own dialogs use elsewhere in this folder. The Save button is
  * disabled while the name is blank.
  *
  * In create mode, the scope radio offers "Only you" (local, always
- * available) and "Everyone with access" (shared, Decision 33's copy —
+ * available) and "Everyone with access" (shared — the copy stays true for every project, scoped or not —
  * disabled when `canCreateShared` is `false`, per-view access being out of
- * scope, Decision 13). In rename mode the scope is fixed to the view's
+ * scope). In rename mode the scope is fixed to the view's
  * current source and no selector renders — renaming never changes where a
  * view lives; promoting a local view to shared is a separate confirm flow
  * (`SavedListViewTabs`' own promote dialog), not this one.

@@ -4,12 +4,12 @@ import type { CollectionConfig } from "../types";
 
 /**
  * Resolves the READABLE subset of `collection.admin.view.state.searchFields`, in
- * config order (Decision 2: "the first entry is the default when the user
- * starts typing"; Decision 26: "the client hides unreadable fields from …
- * the search field picker"). Shared by {@link resolveListViewSearchField} and
+ * config order (the first entry is the default when the user
+ * starts typing, and the client hides unreadable fields from
+ * the search field picker). Shared by {@link resolveListViewSearchField} and
  * `ListViewSearch`'s own field picker, so both agree on which fields exist —
- * `ListViewSearch` renders `null` when this is empty. Lives in `@vexcms/core`
- * (Design Decision 44), not `@vexcms/react`, specifically so `NextAdminPage`
+ * `ListViewSearch` renders `null` when this is empty. Lives in `@vexcms/core`,
+ * not `@vexcms/react`, specifically so `NextAdminPage`
  * (a server component) can call it directly — bundled next to a client
  * component (`CollectionListView`/`ListViewSearch`) would tag the whole chunk
  * `"use client"`, which Next.js refuses to invoke server-side.
@@ -32,14 +32,14 @@ export function readableListViewSearchFields<TFieldSlug extends string = string>
  * Resolves the ACTUAL search field a query should use — the single
  * resolution point `CollectionListView` (feeding `useVexListQuery`),
  * `ListViewSearch` (the field picker's displayed/default value), and
- * `NextAdminPage` (the server prefetch, Design Decision 44) all call, so
+ * `NextAdminPage` (the server prefetch) all call, so
  * they can never disagree about which field `q` searches by default.
  *
- * Decision 9: "`qf` … omitted when it is the default field" — a URL with no
+ * `qf` is omitted when it is the default field — a URL with no
  * `qf` (or an invalid/unreadable one) must still resolve to a real,
  * readable field before reaching the server, never `undefined` while a
  * search is active (an `undefined` `searchField` with a non-empty `search`
- * is a hard error in `useVexListQuery`, Decision 3's config-time
+ * is a hard error in `useVexListQuery` (the config-time
  * guarantee that every `searchField` entry has a declared index only
  * covers the field NAMES, not a caller forgetting to default one).
  *

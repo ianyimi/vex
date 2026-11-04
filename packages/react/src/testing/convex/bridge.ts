@@ -81,7 +81,7 @@ function resolveTable(args: Record<string, unknown>): "documents" | "media" {
  * Per-collection `admin.view.state` overrides the `"vex:find"` fake handler
  * folds into a minimal `VexConfig` it hands `find()`. Production `find`
  * resolves `admin.view.state.countLimit` from a server-held `VexConfig`, never
- * from the wire (Design Decision 35) — this kit otherwise never builds a
+ * from the wire — this kit otherwise never builds a
  * `VexConfig` at all (see `FakeMutationHandler`'s own doc comment above),
  * so a test exercising config-driven server behavior (the count cap) sets
  * an entry here, keyed by table name, instead of mutating a client-side
@@ -121,7 +121,7 @@ const QUERY_HANDLERS: Record<string, FakeQueryHandler> = {
   // caller reading shared views (`useSavedListViews`'s own `listViews({ collection })` query)
   // needs SOME resolution here — without a registered handler this threw
   // "no fake query handler registered for 'vex:listViews'" as an UNCAUGHT error with no
-  // error boundary around that Suspense boundary (prior to polish fixes' `QueryErrorBoundary`
+  // error boundary around that Suspense boundary (prior to adding `QueryErrorBoundary`
   // wiring), which surfaced as either a crashed render or — combined with React's Suspense
   // retry/reconciliation around a rejected-but-never-resolved thrown promise — a hang in
   // `act()`'s flush loop in several test files (`CollectionListView.columnsSync.test.tsx`,

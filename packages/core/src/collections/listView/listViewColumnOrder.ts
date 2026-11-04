@@ -5,10 +5,10 @@ import { columnEntryField, type ColumnEntry, type CollectionConfig } from "../ty
 /**
  * Completes a (possibly partial, possibly back-compat bare-slug) stored
  * column-entry array into a full array covering every one of `collection`'s
- * own data fields, exactly once, in display order (Decision 48), PLUS the
+ * own data fields, exactly once, in display order, PLUS the
  * synthetic version-status column (`VERSION_SYSTEM_FIELDS.status.slug`,
  * `"vex_status"`) on a versioned collection (`collection.versions.drafts`)
- * — developer-reported: resizing/pinning/hiding/reordering it used to
+ * — resizing/pinning/hiding/reordering it used to
  * silently no-op (`CollectionListView`'s `buildStatusColumn()` rendered it
  * OUTSIDE this entry-driven model entirely, hardcoded always-first/always-
  * visible/never-pinnable), since there was no `ColumnEntry` for a resize
@@ -21,9 +21,9 @@ import { columnEntryField, type ColumnEntry, type CollectionConfig } from "../ty
  * same as any field; a REAL field `order` does NOT name is APPENDED, in
  * the collection's own field-declaration order, as an explicitly hidden
  * bare-shape entry (`{ field, hidden: true }`) — this is what lets an OLD,
- * pre-Decision-48 stored view (which only ever listed its VISIBLE fields,
- * Decision 11's original shape, still true of every Step-20-saved
- * `cols=`/view after its own Round-3 fix) resolve correctly under the
+ * previously-stored view (which only ever listed its VISIBLE fields,
+ * still true of every saved
+ * `cols=`/view after a later fix) resolve correctly under the
  * unified model: a field it never named becomes an explicit `hidden: true`
  * entry instead of silently missing from the table's column set/drag-
  * reorder menu/columns menu row list. `vex_status` instead defaults to
@@ -118,7 +118,7 @@ function normalizeEntry<TFieldSlug extends string>(
 
 /**
  * Deep-equal, order-sensitive comparison of two {@link ColumnEntry} arrays
- * — `field`/`width`/`pinned`/`hidden` only (Decision 48's `cols=` URL
+ * — `field`/`width`/`pinned`/`hidden` only (the `cols=` URL
  * grammar never carries `enableSorting`/`enableHiding`, so those two never
  * factor into "does this differ from the saved baseline" for URL-diffing
  * purposes; `useSavedListViews.ts`'s `diffViewState` reuses this same function

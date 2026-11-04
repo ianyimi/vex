@@ -18,7 +18,7 @@ export type ListVersionsClientArgs<TCollectionSlug extends CollectionSlug = Coll
 /**
  * Returns tanstack-query options for a document's (or global's) version
  * history. The query itself throws for a caller lacking `readDrafts` (see
- * `VersionHistoryDropdown`, Step 18, which hides the affordance under the
+ * `VersionHistoryDropdown`, which hides the affordance under the
  * same action so the throw path is rarely hit).
  *
  * Import from `@vexcms/react/client`.

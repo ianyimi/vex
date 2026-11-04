@@ -149,7 +149,7 @@ function buildReactAdapter(): FrameworkAdapterInput<ReactHKT> {
       [ADMIN_FIELDS.commitTs.type]: {
         field: CommitTsFieldAdmin,
         cell: CommitTsFieldCell,
-        // Decision 12 (polish): reuses the shared date `DateTimePicker` filter
+        // Reuses the shared date `DateTimePicker` filter
         // control directly — identical ms-value behavior, no commitTs-specific
         // body to maintain (`commitTs/FilterInput.tsx` deleted). Cast needed:
         // `DateFilterInput` is typed to `FilterInputProps<DateField>` (never

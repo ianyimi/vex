@@ -3,7 +3,7 @@ import type { VexAccessConfig } from "./types";
 /**
  * Whether saved (`vex_views`) shared views are scoped to the caller's own
  * organization at ALL — `access?.organizations === true` is the SOLE
- * trigger (developer-approved, binding correction). `orgCollectionSlug`
+ * trigger. `orgCollectionSlug`
  * alone does NOT turn this on: it only says WHERE organization data lives,
  * so a project's own permission callbacks can read `organization` — a
  * project that declares `orgCollectionSlug` for that reason alone, with no

@@ -219,8 +219,7 @@ export type PaginationOptions = ConvexPaginationOptions & {
    *
    * Only runs on the first page (when cursor is null) to avoid wasteful
    * re-counting. Counts at most `admin.view.state.countLimit + 1` matching
-   * documents (default 10000; `search` clamps to 1023, Convex's search-result ceiling) — see `PaginationResult.totalDocsCapped`
-   * (Design Decision 35).
+   * documents (default 10000; `search` clamps to 1023, Convex's search-result ceiling) — see `PaginationResult.totalDocsCapped`.
    *
    * @default false
    */
@@ -231,14 +230,29 @@ export type PaginationOptions = ConvexPaginationOptions & {
  * `totalDocs` / `totalDocsCapped` are only present on the first page
  * (`cursor: null`) of a call that requested `paginationOpts.totalDocs:
  * true` — `find` / `search` count at most `admin.view.state.countLimit + 1`
- * rows (default 10000) instead of `.collect()`-ing every matching row
- * (Design Decision 35). `totalDocsCapped: true` means the real count is AT
+ * rows (default 10000) instead of `.collect()`-ing every matching row.
+ * `totalDocsCapped: true` means the real count is AT
  * LEAST `totalDocs` — the UI renders "Showing 25 of 10,000+" rather than an
  * exact number past the cap.
+ *
+ * `viewerId` is the caller's resolved identity (`VexApiAuth.user._id`, `null`
+ * for an anonymous/no-session caller) at the moment THIS page was produced —
+ * present on every REAL paginated page `find`/`search` return, not just the
+ * first; optional only because synthetic/empty placeholders elsewhere (a
+ * fresh hook's initial render, test fixtures predating this field) don't
+ * carry one — absent is "no information," never treated as a mismatch. A
+ * live Convex subscription re-evaluates under a NEW identity in place (no
+ * new query key), so a page can arrive tagged with an OLDER or newer
+ * identity than what the client currently expects while a sign-in/out is
+ * still settling; comparing `viewerId` against the client's own
+ * expected-identity marker (see `@vexcms/react`'s `useAuthTransition`) is
+ * what lets the list hooks ignore a page — success OR a thrown error like
+ * Convex's `InvalidCursor` — that doesn't match, instead of flashing it.
  */
 export type PaginationResult<T> = ConvexPaginationResult<T> & {
   totalDocs?: number;
   totalDocsCapped?: boolean;
+  viewerId?: string | null;
 };
 
 /**

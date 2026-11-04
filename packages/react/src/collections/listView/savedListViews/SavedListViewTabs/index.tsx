@@ -52,27 +52,27 @@ import { DataTableResponsiveMenu } from "../../../../ui/data-table/DataTableResp
 export interface SavedListViewTabsProps<TFieldSlug extends string = string> {
   collection: CollectionSlug;
   urlState: ListViewUrlStateSlice<TFieldSlug>;
-  /** `collection.admin.view.state.pageSize` — `urlState.size`'s value when omitted (Decision 9). */
+  /** `collection.admin.view.state.pageSize` — `urlState.size`'s value when omitted. */
   defaultPageSize: number;
-  /** The active view's FULL column list (Decision 48) — owned by `ListViewLayout` (`useListViewContext().columns`). */
+  /** The active view's FULL column list — owned by `ListViewLayout` (`useListViewContext().columns`). */
   columns: ColumnEntry<TFieldSlug>[];
-  /** Replaces the full `columns` array AND writes `cols=`, atomically (Decision 48) — used by Reset. A view SWITCH uses `onColumnsStateChange` + `urlState.applyView` instead (below) — see that method's own doc comment for why. */
+  /** Replaces the full `columns` array AND writes `cols=`, atomically — used by Reset. A view SWITCH uses `onColumnsStateChange` + `urlState.applyView` instead (below) — see that method's own doc comment for why. */
   onColumnsChange: (columns: ColumnEntry<TFieldSlug>[]) => void;
   /** LOCAL STATE ONLY (no URL write) — used by `applyView` below, which writes `cols=` itself as part of `urlState.applyView`'s single atomic write. See `ListViewContext.tsx`'s own doc comment for why a separate `urlState.setCols` call here would reintroduce the stale-baseline bug. */
   onColumnsStateChange: (columns: ColumnEntry<TFieldSlug>[]) => void;
-  /** The peek panel's live width in px (Decision, developer-approved "peek-resize") — the cookie's current value, mirroring `columns` above. */
+  /** The peek panel's live width in px — the cookie's current value, mirroring `columns` above. */
   peekWidth: number;
-  /** Whether the user has explicitly resized the peek since the active view last changed (Decision, binding, "peek-resize-save-rule") — forwarded to `ListViewTabStripContent`'s own `openSaveAsNewDialog`. */
+  /** Whether the user has explicitly resized the peek since the active view last changed — forwarded to `ListViewTabStripContent`'s own `openSaveAsNewDialog`. */
   peekWidthTouched: boolean;
   /** Persists a new width via `writeListViewPeekWidthCookie` (drag/keyboard commit, Reset, or a view switch restoring the TARGET view's own saved width) — `CollectionListView`'s own `onPeekWidthChange`. `source: "view"` (used by this component's own `applyView`) persists without counting as the user having touched the width. */
   onPeekWidthChange: (width: number | undefined, source?: "user" | "view") => void;
-  /** Server-prefetched shared views (Decision 39) — forwarded to `useSavedListViews`. Unused by the Suspense-driven tab strip (Decision 46 Step 19's streaming follow-up), which reads the dehydrated `useSuspenseQuery` cache instead; kept optional for non-`NextAdminPage` callers and tests that don't go through streaming SSR. */
+  /** Server-prefetched shared views — forwarded to `useSavedListViews`. Unused by the Suspense-driven tab strip, which reads the dehydrated `useSuspenseQuery` cache instead; kept optional for non-`NextAdminPage` callers and tests that don't go through streaming SSR. */
   initialViews?: VexStoredView[];
-  /** Server-read local-view cookie index (Decision 41) — forwarded to `useSavedListViews`. */
+  /** Server-read local-view cookie index — forwarded to `useSavedListViews`. */
   initialLocalIndex?: LocalSavedListViewsIndexEntry[];
-  /** Tab hover/focus prefetch handlers (Decision 46, Step 19) — owned by `ListViewLayout` (`useListViewContext().viewPrefetch`), passed down the same explicit-prop way `visibleColumns`/`onVisibleColumnsChange` already are. Hover/focus prefetching itself stays silent (no icon) — only `isQueryPending` below drives the spinner. */
+  /** Tab hover/focus prefetch handlers — owned by `ListViewLayout` (`useListViewContext().viewPrefetch`), passed down the same explicit-prop way `visibleColumns`/`onVisibleColumnsChange` already are. Hover/focus prefetching itself stays silent (no icon) — only `isQueryPending` below drives the spinner. */
   viewPrefetch: UseListViewPrefetchReturn<TFieldSlug>;
-  /** Whether the REAL list query (not a hover prefetch) is pending for the currently active view — `CollectionListView`'s own `pagination.isPending`, forwarded through `ListViewLayout`. Developer-reported regression fix: the spinner used to be driven by `viewPrefetch.pendingViewId`, which stays set for a silent hover-only prefetch too, so hovering a tab (without ever clicking it) left the icon spinning indefinitely. Driving it off the real query's own pending state instead means the icon only appears once a switch is actually in flight, and only on the view being switched TO. */
+  /** Whether the REAL list query (not a hover prefetch) is pending for the currently active view — `CollectionListView`'s own `pagination.isPending`, forwarded through `ListViewLayout`. The spinner is driven off the real query's own pending state (not `viewPrefetch.pendingViewId`, which stays set for a silent hover-only prefetch too) so the icon only appears once a switch is actually in flight, and only on the view being switched TO. */
   isQueryPending?: boolean;
 }
 
@@ -91,7 +91,7 @@ interface ListViewTabStripContentProps<TFieldSlug extends string> {
   views: SavedListViewEntry<TFieldSlug>[];
   /** `true` only once the shared-views source has genuinely resolved — gates the "this view no longer exists" banner, which must never flash for a shared view that just hasn't arrived yet. */
   resolved: boolean;
-  /** The resolved `CollectionConfig`, from the SAME `useSavedListViews` call that resolved `views` — `undefined` only for an unknown collection slug. Needed by `openSaveAsNewDialog` to validate a stale `sort`/`searchField` (polish fix, Decision 7) before writing it into a new view. */
+  /** The resolved `CollectionConfig`, from the SAME `useSavedListViews` call that resolved `views` — `undefined` only for an unknown collection slug. Needed by `openSaveAsNewDialog` to validate a stale `sort`/`searchField` before writing it into a new view. */
   collectionConfig: CollectionConfig | undefined;
   canCreateViews: boolean;
   canUpdateViews: boolean;
@@ -126,11 +126,11 @@ function ListViewTabStripContent<TFieldSlug extends string>(props: ListViewTabSt
   const defaultView = props.views.find((view) => view.viewId === "default");
   const activeViewId = decodeViewUrlValue(props.urlState.view) ?? "default";
   const activeView = props.views.find((view) => view.viewId === activeViewId);
-  // Decision 45/48: "default" and "config" views are declared in code, never
+  // "default" and "config" views are declared in code, never
   // persisted as a `vex_views` row — Rename/Delete are never actionable for
   // either, but STAY VISIBLE (disabled, not hidden) so the menu's shape
-  // doesn't shift depending on which view is active (a developer-reported
-  // bug: the default view's Rename/Delete were previously gated the SAME
+  // doesn't shift depending on which view is active (previously Rename/Delete
+  // for the default view were gated the SAME
   // loose way a `local`/`shared` view's are — `source === local || canX` —
   // which doesn't exclude `default`/`config` at all).
   const canRenameActiveView =
@@ -180,7 +180,7 @@ function ListViewTabStripContent<TFieldSlug extends string>(props: ListViewTabSt
         where: effectiveViewState.where,
         columns: props.columns,
         pageSize: effectiveViewState.pageSize ?? props.defaultPageSize,
-        // Developer decision (binding, "peek-resize-save-rule"): same rule
+        // Save only starts persisting a peekWidth — same rule
         // `ListViewModifiedControls`' own Save applies — only captures the
         // live width when the active view already had its own, or the user
         // explicitly resized the peek while on it.
@@ -208,9 +208,9 @@ function ListViewTabStripContent<TFieldSlug extends string>(props: ListViewTabSt
         columns: view.columns,
         pageSize: view.pageSize ?? props.defaultPageSize,
         // Preserves `view`'s own width exactly as it is — Rename never
-        // introduces a NEW value for a view that never had one (developer
-        // decision, binding, "peek-resize-save-rule"); no `?? props.peekWidth`
-        // fallback (the `view` being renamed may not even be the active one).
+        // introduces a NEW width for a view that never saved one; no
+        // `?? props.peekWidth` fallback (the `view` being renamed may not
+        // even be the active one).
         peekWidth: view.peekWidth,
       },
     });
@@ -235,7 +235,7 @@ function ListViewTabStripContent<TFieldSlug extends string>(props: ListViewTabSt
         </p>
       )}
 
-      {/* ONE ROW, every width (Decision 43 revised — developer-reported: two
+      {/* ONE ROW, every width (a fixed-height, overflow-clipping wrap container, replacing an earlier per-breakpoint tab-reveal design that had two
        * live bugs in the old breakpoint-count design. (1) Clicking "All
        * views" opened TWO menus — up to 4 `TAB_OVERFLOW_STAGES` Popovers were
        * simultaneously mounted (whichever satisfied `totalTabs > stage.count`
@@ -283,7 +283,7 @@ function ListViewTabStripContent<TFieldSlug extends string>(props: ListViewTabSt
                     onPointerLeave={props.viewPrefetch.onTabPointerLeave}
                     onFocus={() => props.viewPrefetch.onTabFocus(view)}
                   >
-                    {/* Developer-reported layout shift: the spinner used to
+                    {/* Layout shift fix: the spinner used to
                      * sit inline after the label, growing the tab's own
                      * min-content size and pushing neighboring tabs sideways
                      * the instant a hover-prefetch started — `TabsList` has
@@ -308,8 +308,8 @@ function ListViewTabStripContent<TFieldSlug extends string>(props: ListViewTabSt
                           : undefined
                       }
                     >
-                      {/* Developer-reported zero-shift fix: a local view's
-                       * cookie-index entry (`localIndex`, Decision 41's SSR/
+                      {/* Zero-shift fix: a local view's
+                       * cookie-index entry (`localIndex`, the SSR/
                        * first-paint source) truncates its NAME to
                        * `ADMIN_COOKIE_LOCAL_VIEW_NAME_MAX_CHARS` code points
                        * (`serializeAdminCollectionCookie`) — but `view.name`
@@ -374,13 +374,13 @@ function ListViewTabStripContent<TFieldSlug extends string>(props: ListViewTabSt
           />
         )}
 
-        {/* The ONE "All views"/view-switcher trigger, every width. Developer-approved
+        {/* The ONE "All views"/view-switcher trigger, every width. This
          * split: on `@md/list` and up (where the tab row itself is visible), the label is
          * the static "All views" string — unrelated to which view is active, since the
          * active tab's own underline/active state already shows that. Below `@md/list`
          * (where the tab row and Save view/⋯ all hide and this trigger is the ONLY thing
          * left), the label becomes the active view's own name (or "All" on the default
-         * view) — the edge-case fix (developer-reported: if the active view's own tab
+         * view) — the edge-case fix (if the active view's own tab
          * wraps off the visible line — only possible ABOVE `@md/list`, where tabs show at
          * all — the caller must still see which view is active; below `@md/list` there are
          * no tabs to look at in the first place, so the trigger itself is the only place
@@ -429,7 +429,7 @@ interface ListViewTabStripProps<TCollectionSlug extends CollectionSlug, TFieldSl
   extends Omit<ListViewTabStripContentProps<TFieldSlug>, "views" | "resolved" | "collectionConfig"> {
   collection: TCollectionSlug;
   initialLocalIndex?: LocalSavedListViewsIndexEntry[];
-  /** Server-prefetched shared views (Decision 39) — forwarded to `useSavedListViews`. */
+  /** Server-prefetched shared views — forwarded to `useSavedListViews`. */
   initialViews?: VexStoredView[];
 }
 
@@ -437,17 +437,17 @@ interface ListViewTabStripProps<TCollectionSlug extends CollectionSlug, TFieldSl
  * The tab strip — reads every view source via the plain {@link useSavedListViews} (`useQuery`,
  * no Suspense boundary). This used to be split into `ListViewTabStripSuspended`
  * (`useSuspenseQuery` inside a nested `<Suspense>`) and `ListViewTabStripFallback`
- * (default/config/local only, reserving the shared tabs' display position) — Decision 46
- * Step 19's streaming follow-up, built because `NextAdminPage`'s `listViews` prefetch used
+ * (default/config/local only, reserving the shared tabs' display position) — the earlier
+ * streaming follow-up, built because `NextAdminPage`'s `listViews` prefetch used
  * to be un-awaited (to stream the admin shell instead of blocking on it), which committed
  * SSR "pending" into the HTML and hydrated with fresher client data — a confirmed,
  * reproducible "Hydration failed" error a plain `useQuery` alone couldn't avoid.
  *
- * `NextAdminPage`'s `listViews` prefetch is now unconditionally awaited (developer-reported
- * pop-in regression fix, a later round) — by the time ANYTHING renders, the dehydrated cache
+ * `NextAdminPage`'s `listViews` prefetch is now unconditionally awaited (a later
+ * pop-in regression fix) — by the time ANYTHING renders, the dehydrated cache
  * already has `status: "success"` data, so the precondition for that hydration bug is gone,
- * and so is the Suspense split's own reason to exist. Removed instead of kept dormant
- * (developer-reported, this round): a nested `<Suspense>` boundary has a cost of its OWN
+ * and so is the Suspense split's own reason to exist. Removed instead of kept dormant —
+ * even a nested `<Suspense>` boundary has a cost of its OWN
  * even with already-resolved data — React's streaming SSR ships the boundary's fallback in
  * the FIRST flush and the resolved content as a later chunk regardless of whether the
  * underlying query had to wait at all (confirmed live: a JS-disabled load of a shared-view
@@ -457,7 +457,7 @@ interface ListViewTabStripProps<TCollectionSlug extends CollectionSlug, TFieldSl
  *
  * Error surfacing moves from a `<QueryErrorBoundary>` catching a Suspense rejection to a
  * plain `useEffect` watching `useSavedListViews`'s own `isError` — same "Couldn't load shared
- * views · Retry" toast (polish fixes, Decision 1), fired once per distinct error, with
+ * views · Retry" toast, fired once per distinct error, with
  * `views` ALREADY falling back to default/config/local only while the shared query is in
  * this state (`mergeListViews`'s own `shared: []` when `sharedQuery.data` is `undefined` on
  * error) — the same tab-row shape a loading/not-yet-resolved state already has, so the
@@ -500,9 +500,9 @@ function ListViewTabStrip<TCollectionSlug extends CollectionSlug, TFieldSlug ext
 
 /**
  * The tab strip (All, then config/shared/local in that order, overflowing
- * into an "All views" search menu — Decision 43, revised: a fixed-height,
+ * into an "All views" search menu — a fixed-height,
  * overflow-clipping wrap container rather than per-breakpoint tab-reveal
- * classes) and the modified-state controls (Decision 11). The view
+ * classes) and the modified-state controls. The view
  * IDENTITY itself (source label, name, description) is NOT rendered
  * here — see `ListViewModifiedControls` for the Modified/Reset/Save UI.
  *
@@ -541,28 +541,28 @@ export function SavedListViewTabs<TFieldSlug extends string = string>(props: Sav
 
   const activeViewId = decodeViewUrlValue(props.urlState.view) ?? "default";
 
-  // Decision 45/48: "default" is never written to the URL — selecting it
+  // "default" is never written to the URL — selecting it
   // clears `view=` the same way the old sentinel "All" selection used to,
   // but every OTHER field is still set directly to its own (now always
   // fully resolved) saved state, exactly like switching to any other view.
   function applyView(view: SavedListViewEntry<TFieldSlug>): void {
     // ONE atomic URL write (`q`/`qf`/`sort`/`filter`/`size`/`view`/`cols`
-    // together), diffed against `view`'s OWN baseline — developer-
-    // reported: the OLD per-field `setQ`/`setQf`/.../`setView` sequence
+    // together), diffed against `view`'s OWN baseline — the
+    // OLD per-field `setQ`/`setQf`/.../`setView` sequence
     // (plus a separate `onColumnsChange` → `setCols` call) diffed every
     // field against the STALE pre-switch `viewState` (it only updates on
     // a re-render, never mid-function-body), so switching FROM a
     // shared/config view (a real baseline) left params that merely
     // differed from that OLD baseline explicitly in the URL instead of
     // omitted against the NEW target's — e.g. shared→All left a
-    // redundant `cols=` behind. `view.columns` (Decision 48) is ALREADY
+    // redundant `cols=` behind. `view.columns` is ALREADY
     // fully resolved by `useSavedListViews()` via `completeListViewColumnOrder` — no
     // further completion or default-fallback needed here.
     // `onColumnsStateChange` below is LOCAL STATE ONLY — the URL's own
     // `cols=` is already written by `urlState.applyView` above.
     props.urlState.applyView(view);
     props.onColumnsStateChange(view.columns);
-    // Developer decision (binding): a target view with no saved width
+    // A target view with no saved width
     // leaves `peekWidth` exactly as it is — switching to it must not
     // silently reset this browser's own remembered preference to the
     // hardcoded default (same reasoning as `CollectionListView`'s own
@@ -669,7 +669,7 @@ export function SavedListViewTabs<TFieldSlug extends string = string>(props: Sav
           },
         },
       });
-      // Decision 14: promotion is a move — the local entry is removed only
+      // Promotion is a move — the local entry is removed only
       // after the shared save succeeds; on failure it stays untouched.
       removeLocalSavedListView({ basePath: config.basePath, project, collection: props.collection, viewId: promoteTarget.viewId });
       if (activeViewId === promoteTarget.viewId) {

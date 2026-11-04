@@ -18,9 +18,10 @@
 //        text, number, select, date, url, checkbox,
 //      } from "@vexcms/next";
 //
-//    `admin.components.preview` slots remain typed as React `ComponentType<P>`
-//    via `ReactHKT` because @vexcms/react bound it before re-exporting. See
-//    spec 22 Decision 15 for the architectural rationale.
+// `admin.components.preview` slots remain typed as React `ComponentType<P>`
+// via `ReactHKT` because @vexcms/react bound it before re-exporting — this
+// keeps the higher-kinded field-component type parameterized correctly
+// across the package boundary.
 
 // Server / client surface
 export * from "./NextAdminPage";

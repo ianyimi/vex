@@ -77,26 +77,26 @@ function columnFieldKey(column: ColumnDef<TDocument, unknown>): string | undefin
  * view tabs, toolbar, table frame) never reads row data and renders immediately from
  * config/URL/cookies — only the table body, footer, and bulk-selection count come from a
  * live query, isolated inside `CollectionListViewData`'s own `<Suspense>` boundary
- * (developer-binding redesign: TanStack Query v5 + Next.js App Router streaming —
+ * (TanStack Query v5 + Next.js App Router streaming —
  * `NextAdminPage` prefetches the identical `convexQuery(...)` key via `prefetchQuery` +
  * `dehydrate`/`HydrationBoundary`, without awaiting it, so the shell streams first and the
  * row data streams in behind it). Search, sort, filter, and page size all round-trip
- * through the URL (Decision 9).
+ * through the URL.
  *
  * This component renders the *content area only* — wrap it in `AdminLayout`.
  *
  * Owns the shared list state (collection, URL state, selection, density,
  * visible columns, `onInspect`) and mounts `ListViewContextProvider` around
- * `ListViewLayout` (Decision 37), which delegates to `ListViewLayout` for the
+ * `ListViewLayout`, which delegates to `ListViewLayout` for the
  * actual composition of the seven `list.*` slots and the toolbar.
  * `RevalidateButton` renders in the SAME header row as the title and
- * `list.header.actions` (Decision 23 — owned by `CollectionListView`
+ * `list.header.actions` (owned by `CollectionListView`
  * itself, never a slot contribution), passed through `ListViewLayout`'s
  * `headerExtra` prop rather than as a sibling block, so the header never
  * splits onto two lines.
  *
- * Density (Decision 29) is seeded from `props.initialPreferences?.density`
- * (resolved server-side from the consolidated `vex-admin` cookie, Decision 51) —
+ * Density is seeded from `props.initialPreferences?.density`
+ * (resolved server-side from the consolidated `vex-admin` cookie) —
  * never from `useLocalStorage`, which would make the client's first paint
  * depend on an effect. `onDensityChange` both updates local state and
  * writes the cookie, so the next server render agrees before any client JS
@@ -117,7 +117,7 @@ function columnFieldKey(column: ColumnDef<TDocument, unknown>): string | undefin
  * @param props.collection - The slug of the collection to list, resolved
  *   from `useVexConfig()` — the single provenance for collection config.
  * @param props.initialPreferences - Layout-affecting preferences resolved
- *   server-side from cookies (Decision 42).
+ *   server-side from cookies.
  * @returns The collection data table, or a not-found message when
  *   `collection` does not resolve against the current config.
  * @throws Never — resolution failure renders a not-found message instead of throwing.
@@ -188,8 +188,8 @@ export function CollectionListView<
 
   // `useSavedListViews` runs FIRST — it doesn't depend on `urlState` at all,
   // and `useListViewUrlState`'s setters now need `savedViews` to diff a
-  // write against the active view's own saved state (Decision 9/45/48,
-  // the redundant-`?sort=`-on-its-own-baseline fix), not just the
+  // write against the active view's own saved state (the
+  // redundant-`?sort=`-on-its-own-baseline fix), not just the
   // collection's bare default.
   const {
     views: savedViews,
@@ -200,7 +200,7 @@ export function CollectionListView<
     initialLocalIndex: props.initialLocalIndex,
   });
   const urlState = useListViewUrlState({ collection, views: savedViews });
-  // Decision 45/48: an absent `?view=` resolves to the default ("All")
+  // An absent `?view=` resolves to the default ("All")
   // view instead of `undefined` — it is a real view now (fixed id
   // "default"), always present in `savedViews`, so its own hidden filter
   // (if any) correctly drives `activeViewHiddenFilter`'s lock badge too.
@@ -210,15 +210,14 @@ export function CollectionListView<
   const activeViewHiddenFilter = activeView?.hasHiddenFilter
     ? { count: activeView.hiddenFilterCount, description: activeView.description }
     : undefined;
-  // Developer-reported follow-up (access-system-fields.md Decision 11): a
-  // SHARED view's own saved filter must show as normal, EDITABLE chips —
+  // A SHARED view's own saved filter must show as normal, EDITABLE chips —
   // same as any URL filter — when every field it references is readable
   // (never for a declared `config`/`default` view, whose filter stays
   // hidden-badge-only regardless of readability, by design). `ListViewToolbar`'s
   // `where` prop used to feed `ListViewFilterBuilder`/`ListViewFilterChips`/the eye
   // toggle from `urlState.filter` alone, which is `undefined` for an
   // unmodified shared-view link (its state isn't URL-embedded the way a
-  // local view's is, Decision 41) — so a readable shared filter was
+  // local view's is) — so a readable shared filter was
   // invisible UI-wise for every caller, not just one who can't read a
   // field in it (confirmed live, zero chips for an unrestricted admin
   // session on a readable shared view). See `resolveEffectiveFilterWhere`'s
@@ -227,22 +226,22 @@ export function CollectionListView<
 
   // The single place `where`/`sort`/`search`/`searchField`/`pageSize`/
   // `columnOrder`/`visibleColumns` resolve from the URL + active view's
-  // own saved state + the collection's `admin.view` defaults (Decision
-  // 39/Step 14, Decision 47) — the EXACT same core function
+  // own saved state + the collection's `admin.view` defaults — the
+  // EXACT same core function
   // `NextAdminPage`'s server prefetch calls, fed the raw
-  // `configView`/`sharedView` (`where` intact, Decision 25's hidden
+  // `configView`/`sharedView` (`where` intact, carrying the hidden
   // filter) rather than `useSavedListViews`' own display-projected `views`
   // list (which has `where` stripped) — so the client's own query args
   // (AND its first-paint columns) can never drift from what the server
   // already prefetched under the same query key (no refetch, no flash).
   // A `local` view never needs `configView`/`sharedView` here either —
-  // Decision 41 already requires its full state in the URL, so
+  // a local view's full state already lives in the URL, so
   // `urlState` alone is already complete for it, exactly mirroring
   // `NextAdminPage.tsx`'s own identical split. Computed HERE, before
   // `visibleColumns`/`columnOrder`'s own `useState` below, specifically
-  // so those can seed directly from it on the FIRST render (developer-
-  // reported fix: a view with hidden columns used to show every column
-  // for one frame, then narrow once a `useEffect` corrected it — the
+  // so those can seed directly from it on the FIRST render (a view with
+  // hidden columns used to show every column for one frame, then narrow
+  // once a `useEffect` corrected it — the
   // server has no equivalent effect to run, so its OWN first (and only)
   // render permanently disagreed with the client's post-effect one).
   const configView =
@@ -271,7 +270,7 @@ export function CollectionListView<
 
   // Resolved BEFORE `resolveListViewQueryState` (not just for `resolveListViewSearchField`/
   // `columns` below any more) so it can also drop a user-added filter condition
-  // on an unreadable field (access-system-fields.md Decision 11) — the SAME
+  // on an unreadable field — the SAME
   // `resolveFieldPermissions` instance `NextAdminPage.tsx`'s own server call
   // feeds it, so server and client agree on whether a condition gets dropped,
   // not just on the sort/search narrowing they already agreed on.
@@ -280,18 +279,18 @@ export function CollectionListView<
   // Seeded from `resolved.peekWidth` (the ACTIVE VIEW's own saved width)
   // first, falling back to the collection-wide `vex-admin:<collection>`
   // cookie's `peekWidth` only when the view never saved one of its own —
-  // developer-reported fix: a shared view whose own width differed from
+  // this avoids a shared view whose own width differed from
   // whatever this browser's cookie happened to hold (from browsing OTHER
-  // views in the same collection) used to show a false "Modified: preview
-  // width" on every direct/fresh load, since this used to seed PURELY from
-  // the cookie, with no awareness of the active view at all — unlike
+  // views in the same collection) showing a false "Modified: preview
+  // width" on every direct/fresh load, since seeding PURELY from
+  // the cookie has no awareness of the active view at all — unlike
   // `columnEntries`/`resolved.columns` below, which already got this right.
   // Flash-free for `config`/`shared` views: `resolved` is the SAME pure
   // function `NextAdminPage`'s own server render calls with the SAME
   // `configView`/`sharedView` inputs, so server and client agree on the
   // very first render. A `local` view's own width isn't visible to
-  // `resolved` at all (Decision 41 — its state lives in `localStorage`, not
-  // `configView`/`sharedView`) — the view-sync effect below (the SAME one
+  // `resolved` at all — its state lives in `localStorage`, not
+  // `configView`/`sharedView` — the view-sync effect below (the SAME one
   // that already re-syncs `columnEntries` once `localStorage` hydrates)
   // re-seeds it from the merged `activeView.peekWidth` once that resolves.
   const [peekWidth, setPeekWidth] = useState<number>(resolved.peekWidth ?? initialPreferences.peekWidth);
@@ -339,9 +338,9 @@ export function CollectionListView<
   // always `undefined` for a `local` source), so it does NOT by itself
   // react to `localStorage` hydrating a local view's REAL (possibly
   // narrower) `columns`/width after the cookie-index placeholder's first
-  // paint (Decision 41's own known gap: the server never sees
-  // `localStorage`). ALSO re-syncs `peekWidth` the same way (developer-
-  // reported fix, "peek-resize-view-sync") — `resolved.peekWidth` above
+  // paint — the server never sees
+  // `localStorage`. ALSO re-syncs `peekWidth` the same way —
+  // `resolved.peekWidth` above
   // already seeds it flash-free for `config`/`shared` views on the FIRST
   // render, but a `local` view's own saved width (like its columns) isn't
   // visible to `resolved` at all, only to this effect's `activeView`.
@@ -385,17 +384,16 @@ export function CollectionListView<
     if (activeView.peekWidth !== undefined) {
       setPeekWidth(activeView.peekWidth);
     }
-    // Self-heals a STALE local-view URL that predates Decision 47/48
-    // (never wrote its own `cols=`, so this exact scenario — the real
+    // Self-heals a STALE local-view URL that never wrote its own `cols=`
+    // (this exact scenario — the real
     // columns resolving only after `localStorage` hydrates — is
     // unavoidable for it specifically; chosen over growing the
     // server-readable cookie to also carry columns, since every NEW
-    // save/apply already writes `cols=` going forward (Decision 41:
+    // save/apply already writes `cols=` going forward (
     // local view state belongs in the URL) — a silent `replace` write,
     // so the NEXT load of this SAME URL already has `cols=` and never
-    // flashes again. Writes the FULL completed array (Decision 48's
-    // own `cols=` semantic — every field, not just the visible subset
-    // Step 20's own grammar carried).
+    // flashes again. Writes the FULL completed array — every field, not
+    // just the visible subset the old grammar carried.
     if (activeViewSource === "local" && urlState.cols === undefined) {
       urlState.setCols(realColumns, { push: false });
     }
@@ -408,19 +406,18 @@ export function CollectionListView<
     collection.admin.view.state.columns,
     urlState.cols,
   ]);
-  // Replaces the full `columns` array AND the URL (Decision 48) — the ONE
+  // Replaces the full `columns` array AND the URL — the ONE
   // setter every in-place column-layout interaction uses (the columns
   // menu's drag-reorder/checkbox/pin control, `DataTable`'s own resize
-  // handle). Collapsed from Step 20's separate `onVisibleColumnsChange`/
-  // `onColumnOrderChange`/`onColumnsChange` trio — there is only one
-  // array now, so the race between two independent setters that trio
-  // existed to avoid (developer-reported) can no longer happen at all.
+  // handle). There is only one
+  // array now, so the race between two independent setters a separate
+  // `onVisibleColumnsChange`/`onColumnOrderChange`/`onColumnsChange` trio
+  // existed to avoid can no longer happen at all.
   const onColumnsChange = (next: ColumnEntry<string>[]) => {
     setColumnEntries(next);
     urlState.setCols(next);
   };
-  // LOCAL STATE ONLY — no `urlState.setCols` write (developer-reported:
-  // switching views now writes `cols=` as ONE field in `urlState.applyView`'s
+  // LOCAL STATE ONLY — no `urlState.setCols` write: switching views now writes `cols=` as ONE field in `urlState.applyView`'s
   // single atomic URL write, diffed against the TARGET view's own
   // baseline; a SEPARATE `urlState.setCols` call here would either
   // double-write or — worse — diff against the STALE pre-switch
@@ -431,7 +428,7 @@ export function CollectionListView<
     setColumnEntries(next);
   };
 
-  // Decision 9/26: a URL with no `qf` (or an invalid/unreadable one) must
+  // A URL with no `qf` (or an invalid/unreadable one) must
   // still resolve to a real, readable field before a search query ever
   // reaches the server — `resolveListViewSearchField` is the ONE place this
   // resolution happens, shared with `ListViewSearch`'s own field picker
@@ -480,17 +477,17 @@ export function CollectionListView<
   }, [collection, columnEntries, canReadField, isVersioned]);
   const columnsWithActions = useColumnsWithActions(columns, collection);
 
-  // Decision 47: widened from "hideable columns only" to EVERY readable,
+  // Widened from "hideable columns only" to EVERY readable,
   // field-backed column — the columns menu now also reorders, not just
   // hides, so a non-hideable field still needs a row (disabled,
   // permanently-checked checkbox, but a working drag handle). Filters to
   // `columnFieldKey(c) !== undefined` rather than falling back to `c.id`
   // the way the old mapper did — `select`/`actions` (synthetic, no
   // `accessorKey`) stay excluded this way; `vex_status` (the synthetic
-  // versioned-only status column) DOES set `accessorKey` now (Decision 48
-  // follow-up, developer-reported: it used to be excluded the same way
+  // versioned-only status column) DOES set `accessorKey` now — it used
+  // to be excluded the same way
   // select/actions are, which meant it could never be resized/pinned/
-  // hidden/reordered at all) and so correctly appears here like any real
+  // hidden/reordered at all — and so correctly appears here like any real
   // field.
   const columnMenuEntries = useMemo(
     () =>
@@ -511,7 +508,7 @@ export function CollectionListView<
   const [liveRows, setLiveRows] = useState<TDoc[]>([]);
   const [isSearchFetching, setIsSearchFetching] = useState(false);
 
-  // Decision 50: relationship/upload filter id -> target document title,
+  // Relationship/upload filter id -> target document title,
   // seeded server-side (`props.initialFilterValueTitles`) so a filter
   // chip/row never flashes from the raw id. `setFilterValueTitle` is a
   // plain closure (not `useCallback` — no setter in this file's own
@@ -561,8 +558,7 @@ export function CollectionListView<
     >
       {/*
        * `ListViewPeek` renders BEFORE `ListViewLayout` deliberately — MUST precede the
-       * table in DOM order (developer-reported, live-investigated freeze,
-       * Step 13's own digest entry has the full write-up): rendering it
+       * table in DOM order (live-investigated freeze): rendering it
        * AFTER `<ListViewLayout>` (hence after the whole table, later in DOM
        * order) caused a hard input freeze in Chrome — confirmed via a raw
        * CDP `Input.dispatchMouseEvent` that never resolved — specifically
@@ -594,16 +590,14 @@ export function CollectionListView<
         onActiveTabChange={onPeekTabChange}
       />
       {/*
-       * `<ListViewLayout>` renders with no wrapper (developer decision
-       * 2026-11-01): a `flex h-full min-h-0 flex-1` row wrapper briefly
+       * `<ListViewLayout>` renders with no wrapper: a `flex h-full min-h-0 flex-1` row wrapper briefly
        * lived here with `<ListViewLayout>` as its ONLY flex-item child —
        * `ListViewLayout`'s own root also sets `container-type: inline-size`
        * (`@container/list`), and a flex item with `container-type:
        * inline-size` and no explicit `flex-1`/`min-w-0`/`w-full` of ITS
        * OWN collapses to 0 width (no intrinsic content size once
        * containment applies) — the whole list/table disappeared.
-       * `ListViewLayout`'s own `h-full` is sufficient on its own, exactly
-       * like every step before Step 13.
+       * `ListViewLayout`'s own `h-full` is sufficient on its own.
        */}
       <ListViewLayout
         collection={collection}
@@ -615,8 +609,8 @@ export function CollectionListView<
         tableSlot={
           <QueryErrorBoundary
             fallbackRender={({ error, resetErrorBoundary }) => (
-              // Same frame as the Suspense fallback/settled table below (zero shift,
-              // polish fixes Decision 1) — the SAME `DataTable` with `queryError` set
+              // Same frame as the Suspense fallback/settled table below (zero shift) —
+              // the SAME `DataTable` with `queryError` set
               // instead of `isPending`, rather than a separate error-only layout.
               // Catches the seed `useSuspenseQuery`'s own throw inside
               // `CollectionListViewData` (a dehydrated/live "error"-status query — a
@@ -653,7 +647,7 @@ export function CollectionListView<
                 // Real loading state, not a separate skeleton file: the SAME `DataTable`
                 // the settled content renders, with `isPending` driving its own real
                 // skeleton rows/footer (this file's sibling change) — same columns, same
-                // density. Row count AND footer variant (Decision 49 follow-up, zero footer
+                // density. Row count AND footer variant (zero footer
                 // shift): the cookie-stored `{n, done}` this SAME view last settled with,
                 // when known, instead of a fixed `pageSize`/Load-More-height guess — `0` rows
                 // renders no skeleton rows and no footer (see `DataTable`'s own `pageSize !==
@@ -711,8 +705,8 @@ export function CollectionListView<
 }
 
 /**
- * The data-dependent inner half of {@link CollectionListView}'s split (developer-binding
- * redesign) — everything that needs the actual rows: the live query, the table body +
+ * The data-dependent inner half of {@link CollectionListView}'s split — everything
+ * that needs the actual rows: the live query, the table body +
  * footer (via `DataTable`), empty/error states, and row-hover peek prefetching. Rendered
  * inside its own `<Suspense>` boundary by `CollectionListView`, so a slow query only ever
  * delays THIS subtree, never the shell around it.
@@ -747,7 +741,7 @@ function CollectionListViewData<TDoc extends TDocument = TDocument>(props: {
   density: ListDensity;
   columnEntries: ColumnEntry<string>[];
   onColumnEntriesChange: (columns: ColumnEntry<string>[]) => void;
-  /** The active view's id (Decision 45's `"default"` included) — scopes the row-count cookie write below (Decision 49 follow-up) per view. */
+  /** The active view's id (`"default"` included) — scopes the row-count cookie write below per view. */
   activeViewId: string;
   onRowsChange: (rows: TDoc[]) => void;
   onSearchFetchingChange: (fetching: boolean) => void;
@@ -792,7 +786,7 @@ function CollectionListViewData<TDoc extends TDocument = TDocument>(props: {
   // The write-guard key also includes `isDone` — a Load More click can flip `isDone` from
   // `false` to `true` on its LAST page while leaving the FIRST page's row ids unchanged in
   // rare cases (e.g. a `pageSize`-exact total), and the footer's own skeleton variant
-  // (Decision 49 follow-up: zero footer shift) depends on `isDone`, not just row identity.
+  // (zero footer shift) depends on `isDone`, not just row identity.
   const settleKey = `${rowIdsKey}|${pagination.isDone}`;
   const lastSettleKeyRef = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -800,7 +794,7 @@ function CollectionListViewData<TDoc extends TDocument = TDocument>(props: {
     const rowIdsChanged = lastSettleKeyRef.current?.split("|")[0] !== rowIdsKey;
     lastSettleKeyRef.current = settleKey;
     if (rowIdsChanged) props.onRowsChange(rows);
-    // Decision 49 follow-up (developer decision): the NEXT server render's loading skeleton
+    // The NEXT server render's loading skeleton
     // reads this to show the SAME row count AND footer variant (Load More vs "That's
     // everything") this view just settled with, instead of a fixed `pageSize`/Load-More-height
     // guess — written only once a result has genuinely settled (never during `isPending`,
@@ -817,7 +811,7 @@ function CollectionListViewData<TDoc extends TDocument = TDocument>(props: {
       });
     }
   }, [settleKey, pagination.isPending]);
-  // `isSettling`, not `isFetching` (developer-reported regression fix, 2026-11-01): the
+  // `isSettling`, not `isFetching`: the
   // real Convex client pushes a live update straight into the query cache via its own
   // websocket subscription rather than through a tracked refetch, so `isFetching` can read
   // `false` for the ENTIRE duration of a visible search/sort/filter-driven row swap — see
@@ -892,7 +886,7 @@ function CollectionListViewData<TDoc extends TDocument = TDocument>(props: {
   // after a successful initial load and a later Retry/interaction failing) — the SEED
   // query's own dehydrated/live error (the common case: a stale `?sort=` link's
   // `UNINDEXED_SORT`, or the server's own prefetch failing) is caught further up by
-  // `QueryErrorBoundary` (polish fixes, Decision 1) wrapping this component's `<Suspense>`
+  // `QueryErrorBoundary` wrapping this component's `<Suspense>`
   // boundary, which never lets this component mount at all on that path — no
   // `initialQueryError` prop/ref-latching mechanism needed here anymore (that mechanism
   // never actually ran in practice: the seed `useSuspenseQuery` above throws synchronously,
@@ -936,7 +930,7 @@ function CollectionListViewData<TDoc extends TDocument = TDocument>(props: {
         onPointerEnter: () => prefetch.onRowPointerEnter(row._id),
         onPointerLeave: () => prefetch.onRowPointerLeave(),
         onFocus: () => prefetch.onRowFocus(row._id),
-        // Developer-requested (2026-11-01): double-click opens the Inspect
+        // Double-click opens the Inspect
         // peek for this row (switches it, if one is already open — `setPeek`
         // always replaces the current target). Guarded against the
         // selection checkbox, a cell's own link, and the row's ⋯

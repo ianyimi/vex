@@ -88,8 +88,8 @@ runFieldInputContractSuite({
         // No option ever appears to `findByRole` on, so wait on the reveal
         // effect's own side effect instead — the popup's initial focus
         // target taking focus, same assertion `ui/multi-select.test.tsx`
-        // uses to pin that effect. `admin.searchable` defaults to `false`
-        // (Step 17), so the focus target is the sr-only
+        // uses to pin that effect. `admin.searchable` defaults to `false`,
+        // so the focus target is the sr-only
         // `[data-multiselect-focus]` button, not the search `command-input`.
         await waitFor(() =>
           expect(document.activeElement?.hasAttribute("data-multiselect-focus")).toBe(

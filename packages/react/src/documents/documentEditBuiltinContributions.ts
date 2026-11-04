@@ -17,8 +17,8 @@ import { LivePreviewToggleAction } from "../livePreview";
  * publish, unpublish, cancel. `vex.delete` is collection-only and appended directly by
  * `CollectionEditView.tsx` to the builtins it passes into its `edit.header.actions` outlet —
  * `documents/` must not import from `collections/`, so this function never references it.
- * `vex.duplicate` (Step 6) and `vex.versionHistory` (developer feedback, Step 4
- * post-implementation note) both moved out of `edit.header.actions` entirely — they live in
+ * `vex.duplicate` and `vex.versionHistory` both moved out of
+ * `edit.header.actions` entirely — they live in
  * `DocumentEditActionsMenu`'s ⋯ menu instead (`vex.versionHistory` as `VersionHistoryMenuItem`,
  * right after Preview).
  *

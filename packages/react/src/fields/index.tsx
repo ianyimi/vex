@@ -57,15 +57,15 @@ export { fieldToFieldComponent, fieldToCellComponent, fieldToDisplayComponent, f
  *
  * @param props - Input props.
  * @param props.collection - The collection whose fields drive the column shape.
- * @param props.columns - The active view's own resolved `columns` array
- *   (Decision 48) — when provided, each field's `enableSorting`/
+ * @param props.columns - The active view's own resolved `columns` array —
+ *   when provided, each field's `enableSorting`/
  *   `enableHiding`/pixel width comes from `resolveListViewColumnConfig`'s
  *   per-field resolution (the view's own column entry `?? field.admin.<attr>
  *   ?? a global default` — `FIELD_TYPE_DEFAULT_WIDTH[type]` for width)
  *   instead of `field.admin.<attr>` directly, so a view's entry can
- *   override any of the three for that field alone (views always win,
- *   Decision 48). Omitted (or a field absent from it) falls back to
- *   `field.admin.<attr>` / the type default exactly like before this step.
+ *   override any of the three for that field alone (views always win).
+ *   Omitted (or a field absent from it) falls back to
+ *   `field.admin.<attr>` / the type default exactly like before.
  * @returns An array of TanStack Table `ColumnDef` objects, one per field.
  *
  * @example
@@ -172,14 +172,14 @@ export function getCollectionColumnDefs<
       }
     }
     // The one place `enableSorting`/`enableHiding`/`size` (pixel width) are
-    // made to agree with the active view's OWN resolved per-field config
-    // (Step 4/21 Part B, Decision 48) — every `*FieldToColumnDef` factory
+    // made to agree with the active view's OWN resolved per-field config —
+    // every `*FieldToColumnDef` factory
     // above still returns its own static `enableSorting`/`enableHiding`
     // (now ignored, overwritten here) and never sets `size` at all, so
     // none of them need editing. `resolveListViewColumnConfig` is the ONE place
     // that resolves the view's own column entry (when `props.columns`
     // carries one for this field) against `fieldDef.admin` — views always
-    // win (Decision 48). `size` feeds TanStack's own `column.getSize()`
+    // win. `size` feeds TanStack's own `column.getSize()`
     // directly (`DataTable.tsx` renders every cell's width from THAT, not
     // a separate `meta.width` — resizing/pinning both need TanStack's own
     // sizing/pinning state to be the single source of truth).

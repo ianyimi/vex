@@ -248,7 +248,7 @@ describe("generateVexTypes — document interfaces", () => {
     expect(result).toContain("links?: { id?: string; \nlabel?: string }[]");
   });
 
-  it("hoists an unnamed tab's fields onto the document interface, nests a named tab as its own sub-object, and emits a ui() field's key as never (developer decision, binding, \"access-system-fields\" — a ui() field has no stored value but IS now a real, gateable field-permission key, so its KEY must exist on the generated interface even though the VALUE type is meaningless)", () => {
+  it("hoists an unnamed tab's fields onto the document interface, nests a named tab as its own sub-object, and emits a ui() field's key as never (a ui() field has no stored value but IS a real, gateable field-permission key, so its KEY must exist on the generated interface even though the VALUE type is meaningless)", () => {
     const config = defineServerConfig({ config: defineConfig({
       collections: [
         defineCollection({

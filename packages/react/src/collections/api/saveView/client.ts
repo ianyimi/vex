@@ -30,10 +30,10 @@ export interface SaveViewClientArgs<TCollectionSlug extends CollectionSlug = Col
   collection: TCollectionSlug;
   /**
    * The view to save. `viewId` is client-generated — reuse the same id on a
-   * second call to patch the view in place (the promotion dedupe, decision 14).
-   * `description` is optional free text shown under the view's name (Step 12).
+   * second call to patch the view in place (the promotion dedupe).
+   * `description` is optional free text shown under the view's name.
    * `state.where`, when present, must reference only fields the caller can
-   * read — the server rejects anything else (decision 26).
+   * read — the server rejects anything else.
    */
   view: VexViewConfig;
 }
@@ -42,16 +42,15 @@ export interface SaveViewClientArgs<TCollectionSlug extends CollectionSlug = Col
  * Returns a `mutationFn` for creating or patching a shared view. Idempotent
  * on `view.viewId`. An insert requires `createView` on `collection`, a patch
  * requires `updateView` — throws `VexAccessError` server-side otherwise, as
- * does a `view.state.where` referencing a field the caller can't read (decision 26).
+ * does a `view.state.where` referencing a field the caller can't read.
  *
  * Wraps `useConvexMutation(vexConvexApi.saveView)`. A React hook (the `use`
- * prefix is REQUIRED, not just convention — developer-reported crash: named
- * `saveView()` without it, `apps/test`'s `reactCompiler: true` treated the
- * call as a pure, memoizable function rather than a hook, so a later render
- * could skip re-invoking it and silently drop its internal `useConvexMutation`
- * call — a hook-order mismatch crash ("change in the order of Hooks"),
- * confirmed live). Call at the top level of a React component, as its own
- * statement, BEFORE `useMutation` (not inlined as `useMutation`'s own
+ * prefix is REQUIRED, not just convention — a non-`use`-prefixed wrapper
+ * can be treated as a pure, memoizable function by the React Compiler, so
+ * a later render could skip re-invoking it and silently drop its internal
+ * `useConvexMutation` call — a hook-order mismatch crash ("change in the
+ * order of Hooks")). Call at the top level of a React component, as its
+ * own statement, BEFORE `useMutation` (not inlined as `useMutation`'s own
  * `mutationFn` argument) — pass the returned function on as `mutationFn`.
  *
  * Import from `@vexcms/react/client`. For the server-side version, import

@@ -49,7 +49,7 @@ export function EditActionsMenuDialogProvider(props: {
 /**
  * A dialog host for an `edit.actionsMenu` contribution (built-in or project) whose action opens
  * a dialog — directly from a menu item's `onSelect`, or from a promise callback that resolves
- * after the menu has already closed (decision: Step 4 post-implementation note's duplicate
+ * after the menu has already closed (the duplicate
  * fallback, reused here). Calling `open` again replaces the current dialog node; `close` clears
  * it. See {@link EditActionsMenuDialogState.open} for why a contribution cannot render its own
  * dialog inline instead.

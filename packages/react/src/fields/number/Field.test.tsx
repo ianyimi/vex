@@ -261,7 +261,7 @@ runFieldInputContractSuite({
         expect(await screen.findByText("Quantity cannot exceed 100.")).toBeInTheDocument();
       });
 
-      // CORE-1 (fixed in Step 1): `numberFieldToInputSchema` no longer
+      // CORE-1: `numberFieldToInputSchema` no longer
       // applies `.default()` when `field.required` — required fields return
       // early on the plain `z.number({ error: requiredError })` chain, so a
       // missing value is now correctly rejected instead of silently

@@ -50,7 +50,7 @@ export function fieldToCellComponent(
 
 /**
  * Returns the BUILT-IN filter row value control registered for a field
- * type via `reactAdapter.fields` (Decision 50). Same single-source-of-
+ * type via `reactAdapter.fields`. Same single-source-of-
  * truth shape as {@link fieldToFieldComponent}/{@link fieldToCellComponent},
  * but OPTIONAL by design — `json`/`richtext`/`array`/`blocks`/`group`
  * (and every UI-only type) register none, so `ListViewFilterBuilder.tsx`'s

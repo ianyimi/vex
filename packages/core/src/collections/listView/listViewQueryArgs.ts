@@ -32,7 +32,7 @@ interface BuildListViewQueryArgsBaseProps<TFieldSlug extends string = string> {
   drafts?: boolean;
   /**
    * Documents to fetch this round-trip — already `Math.max(collection.admin.view.state.serverPageSize,
-   * pageSize)` (Step 8's "the server batch always covers at least one client page" rule).
+   * pageSize)` (the server batch always covers at least one client page).
    * That `Math.max` stays at each CALLER's own site, beside the `pageSize`/`size` value it
    * reads, rather than moving in here — `useVexListQuery` and `NextAdminPage` read
    * `pageSize` from two different places (a hook prop vs. `resolveListViewQueryState`'s
@@ -46,7 +46,7 @@ interface BuildListViewQueryArgsBaseProps<TFieldSlug extends string = string> {
 /** Props for {@link buildListViewFindQueryArgs}. */
 export interface BuildListViewFindQueryArgsProps<TFieldSlug extends string = string>
   extends BuildListViewQueryArgsBaseProps<TFieldSlug> {
-  /** Portable sort (Design Decision 5). Parked while searching (Design Decision 7) — {@link buildListViewSearchQueryArgs} has no `sort` param at all. */
+  /** Portable sort. Parked while searching — {@link buildListViewSearchQueryArgs} has no `sort` param at all. */
   sort?: CollectionTableSort<TFieldSlug>;
   /** Relationship auto-populate depth. */
   depth?: number;
@@ -54,8 +54,8 @@ export interface BuildListViewFindQueryArgsProps<TFieldSlug extends string = str
 
 /**
  * Builds the exact `findPaginated` Convex args for one list page — shared by
- * `useVexListQuery`'s find-mode branch (client, Step 8) and `NextAdminPage`'s prerender
- * (server, Design Decision 39), so the two can't drift.
+ * `useVexListQuery`'s find-mode branch (client) and `NextAdminPage`'s prerender
+ * (server), so the two can't drift.
  *
  * @param props - Input props.
  * @returns The args, ready for `convexQuery(vexConvexApi.findPaginated, …)` or
@@ -79,18 +79,18 @@ export interface BuildListViewSearchQueryArgsProps<TFieldSlug extends string = s
   extends BuildListViewQueryArgsBaseProps<TFieldSlug> {
   /** Raw search text. Never empty — the caller branches to {@link buildListViewFindQueryArgs} instead when it is. */
   search: string;
-  /** Which `admin.view.state.searchFields` entry `search` queries — `validateSavedListViewConfig` (Design Decision 3) guarantees it has a declared `searchIndex`. */
+  /** Which `admin.view.state.searchFields` entry `search` queries — `validateSavedListViewConfig` guarantees it has a declared `searchIndex`. */
   searchField: TFieldSlug;
 }
 
 /**
  * Builds the exact `search` Convex args for one list page — shared by `useVexListQuery`'s
- * search-mode branch (client, Step 8) and `NextAdminPage`'s prerender (server, Design
- * Decision 39). `sort` is never part of this call (Design Decision 7) — search results
+ * search-mode branch (client) and `NextAdminPage`'s prerender (server).
+ * `sort` is never part of this call — search results
  * are relevance-ordered.
  *
  * @throws {Error} When `searchField` names a field with no declared `searchIndex` —
- *   `validateSavedListViewConfig` (Design Decision 3) already prevents this at config time, so
+ *   `validateSavedListViewConfig` already prevents this at config time, so
  *   reaching it here means a caller bug, not a config gap.
  * @param props - Input props.
  * @returns The args, ready for `convexQuery(vexConvexApi.search, …)` or

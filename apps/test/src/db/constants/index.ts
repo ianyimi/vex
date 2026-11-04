@@ -76,7 +76,7 @@ export type TestimonialID = Id<typeof TABLE_SLUG_TESTIMONIALS>;
 /**
  * Where a testimonial was collected from. Indexed (`by_source`, declared on
  * the `source` field itself) so the list view can sort/filter by it with
- * index pushdown instead of a per-document scan — the Step 24 acceptance
+ * index pushdown instead of a per-document scan — the acceptance
  * demo for `resolveQueryIndex`.
  */
 export const TESTIMONIAL_SOURCES = {

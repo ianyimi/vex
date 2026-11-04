@@ -13,7 +13,7 @@ export interface StatusBadgeProps {
  * Small pill indicating whether a versioned document (or global) is
  * currently a draft or published — used in the edit-view draft toolbar
  * (`CollectionEditView`, `GlobalEditView`), `VersionHistoryDropdown`'s
- * per-version rows, and the collapsed list-view row Step 16 introduces.
+ * per-version rows, and the collapsed list-view row.
  *
  * A collection/global with `versions.drafts: false` never has a `vex_status`
  * field at all — every caller only renders this component when

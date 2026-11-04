@@ -3,7 +3,7 @@ import { Input } from "../../ui";
 
 /**
  * Number field filter row value control — a number `Input`, registered as
- * `reactAdapter.fields.number.filterInput` (Decision 50). Moved verbatim
+ * `reactAdapter.fields.number.filterInput`. Moved verbatim
  * from `ListViewFilterBuilder.tsx`'s own hand-coded `renderFilterValueInput`
  * `number` branch, now this package's single source of truth for it.
  *

@@ -18,7 +18,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
       //     container — `TableHeader`'s `sticky top-0` resolved against THIS
       //     never-scrolling div instead of the real vertical scroller one level up,
       //     so the header just scrolled away with the body instead of sticking
-      //     (developer-reported).
+      //     (header stuck to the wrong scroll container).
       // (2) the horizontal scrollING itself then happened on THIS div, with a
       //     native browser scrollbar positioned at ITS OWN bottom edge — i.e. right
       //     after the last row, not pinned to the visible viewport's bottom. Since
@@ -26,7 +26,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
       //     the rest of the table inside `ScrollArea`'s own real vertical scroll,
       //     the horizontal scrollbar was only ever visible once scrolled all the
       //     way to the bottom — effectively hidden behind the rows the rest of the
-      //     time (developer-reported). `ScrollArea`'s own styled horizontal
+      //     time. `ScrollArea`'s own styled horizontal
       //     `ScrollBar`, absolutely positioned against `ScrollArea.Root`, stays
       //     pinned to the viewport's bottom edge regardless of vertical scroll
       //     position instead.

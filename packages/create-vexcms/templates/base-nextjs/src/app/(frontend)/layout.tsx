@@ -3,22 +3,16 @@ import type { ReactNode } from "react"
 /**
  * Public-site layout.
  *
- * Exists so the `@auth` parallel slot is received by the route group that
- * declares it, rather than leaking up to the root layout — which is also shared
- * with `/admin`, where an auth modal slot means nothing. Restores the structure
- * the marketing template and the pre-rebuild app both used.
+ * The `@auth` parallel slot used to live under this group (`(frontend)/@auth`)
+ * but has moved to `app/@auth` — a sibling of the root layout — so the same
+ * intercepting `/auth/[pathname]` modal also covers `(vexcms)` (the admin
+ * top-bar "Sign in" button), not just this group. The root layout renders it
+ * now; this layout no longer takes an `auth` prop.
  */
 export default function FrontendLayout({
-  auth,
   children,
 }: Readonly<{
-  auth: ReactNode
   children: ReactNode
 }>) {
-  return (
-    <>
-      {children}
-      {auth}
-    </>
-  )
+  return children
 }

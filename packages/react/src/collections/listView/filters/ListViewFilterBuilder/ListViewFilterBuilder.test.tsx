@@ -479,7 +479,7 @@ describe("ListViewFilterBuilder", () => {
     });
   });
 
-  describe("field picker search (developer-binding: search box at 7+ readable fields, auto-focused, filters by label and key)", () => {
+  describe("field picker search (search box at 7+ readable fields, auto-focused, filters by label and key)", () => {
     it("shows a plain Select with no search box at 6 readable fields", async () => {
       const user = userEvent.setup();
       render(

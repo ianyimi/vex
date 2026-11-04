@@ -582,9 +582,9 @@ describe("update (server) — updatedAt stamp", () => {
         id,
       });
       const doc = await ctx.db.get(id);
-      // `convex-test` never resolves the `commitTs` placeholder (probe §1) —
+      // `convex-test` never resolves the `commitTs` placeholder —
       // the real resolved value is only observable against a live Convex
-      // backend (Step 8's dev-deployment smoke check).
+      // backend (dev-deployment smoke check).
       expect(doc?.updatedAt).toBeInstanceOf(CommitTsPlaceholder);
     });
   });
@@ -614,7 +614,7 @@ describe("update (server) — updatedAt stamp", () => {
   });
 });
 
-describe("update (server) — commitTs on-policy (spec Step 7)", () => {
+describe("update (server) — commitTs on-policy", () => {
   test("an on: 'publish' field is NOT stamped by update()", async () => {
     const config = {
       collections: [

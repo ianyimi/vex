@@ -51,7 +51,7 @@ const cachedViews = new Map<string, VexViewConfig[]>();
  * string per key so repeated reads between writes return the SAME array
  * reference — required for `useSyncExternalStore`'s snapshot stability.
  *
- * A view is `VexViewConfig`'s shape (Decision 25's nested `state`): `{
+ * A view is `VexViewConfig`'s shape (a nested `state`): `{
  * viewId, name, description?, state: { where?, sort?, search?,
  * searchField?, columns?, pageSize? } }`.
  *
@@ -84,7 +84,7 @@ function readLocalViews(props: { project: string; collection: string }): VexView
 
 /**
  * Mirrors `views` into the consolidated `vex-admin:<collection>` cookie's
- * own `localViews` field (Decision 51) as a `{ viewId, name }[]` index, so
+ * own `localViews` field as a `{ viewId, name }[]` index, so
  * the server can render the local-view tabs on first paint without
  * touching `localStorage`. {@link writeAdminCollectionCookie} already
  * swallows a blocked/unavailable `document.cookie` — losing the
@@ -121,14 +121,14 @@ function writeLocalViews(props: { basePath: string; project: string; collection:
  * Saves (inserts or, on a matching `viewId`, replaces in place) one view
  * into this browser's local store for `props.collection`, and mirrors the
  * updated index into the consolidated `vex-admin:<collection>` cookie's
- * `localViews` field (Decision 51).
+ * `localViews` field.
  *
  * @param props.basePath - The project's `config.basePath` — the cookie's `Path` attribute.
  * @param props.project - The Convex deployment URL (`useSavedListViews()`'s `project`).
  * @param props.collection - The collection slug.
  * @param props.view - The view to save, keyed by its own `viewId`.
  * @throws {Error} When `view.viewId` is `"default"` — the collection's
- *   reserved default-view id is never a real local view (Decision 45/48).
+ *   reserved default-view id is never a real local view.
  *   Defense-in-depth: every UI path that could reach this is already
  *   disabled for the default view; this is the backstop.
  */
@@ -153,7 +153,7 @@ export function saveLocalSavedListView(props: {
 /**
  * Removes one view, by `viewId`, from this browser's local store for
  * `props.collection`, and mirrors the updated index into the cookie
- * (Decision 51). A no-op when no local view has that `viewId`.
+ * (`localViews`). A no-op when no local view has that `viewId`.
  *
  * @param props.basePath - The project's `config.basePath` — the cookie's `Path` attribute.
  * @param props.project - The Convex deployment URL.
@@ -184,7 +184,7 @@ export function removeLocalSavedListView(props: {
 
 /**
  * Generates a client-side `viewId` for a new local view. Stable across
- * promotion (Decision 14): saving the same view shared reuses this id, so
+ * promotion: saving the same view shared reuses this id, so
  * `saveView`'s idempotent upsert patches the same `vex_views` row rather
  * than creating a second one.
  *
@@ -210,7 +210,7 @@ const prunedForKey = new Set<string>();
 
 /**
  * Reconciles the consolidated `vex-admin:<collection>` cookie's
- * `localViews` field (Decision 51) against `props.views` — the REAL,
+ * `localViews` field against `props.views` — the REAL,
  * just-read `localStorage` content — on mount. Writes whenever the two
  * don't mirror each other EXACTLY (same `viewId`s with the same `name`s,
  * order-independent), in EITHER direction: a stale cookie entry with no
@@ -251,7 +251,7 @@ function pruneStaleListViewsCookie(props: { basePath: string; collection: string
  * same key (`storage`). SSR-safe: `getServerSnapshot` returns `[]`.
  *
  * On mount, once `localStorage` is readable, reconciles the consolidated
- * `vex-admin:<collection>` cookie's `localViews` field (Decision 51) against it (Decision 41's
+ * `vex-admin:<collection>` cookie's `localViews` field against it (the
  * accepted tradeoff: a mismatched cookie — stale entries, missing
  * entries, or an empty/wrong cookie from an earlier bug — shows whatever
  * it already said, or nothing, until this hydration pass, then is
