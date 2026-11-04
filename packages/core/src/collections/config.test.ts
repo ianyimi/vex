@@ -434,6 +434,31 @@ describe("defineCollection — admin.view field-slug typing", () => {
     expect(posts.admin.view.state.pageSize).toBe(25);
   });
 
+  it("adds a custom pageSize to the default pageSizeOptions, sorted, for the default view and views that inherit them", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      admin: { view: { pageSize: 20 }, views: [{ viewId: "v", name: "V", state: {} }] },
+    });
+    expect(posts.admin.view.state.pageSizeOptions).toEqual([10, 20, 25, 50, 100]);
+    expect(posts.admin.views[0]?.state.pageSizeOptions).toEqual([10, 20, 25, 50, 100]);
+  });
+
+  it("uses explicit pageSizeOptions exactly as given — [] stays empty, a custom pageSize is not added", () => {
+    const hidden = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      admin: { view: { pageSize: 20, pageSizeOptions: [] } },
+    });
+    expect(hidden.admin.view.state.pageSizeOptions).toEqual([]);
+    const explicit = defineCollection({
+      slug: "articles",
+      fields: { title: text({ required: true }) },
+      admin: { view: { pageSize: 20, pageSizeOptions: [10, 50] } },
+    });
+    expect(explicit.admin.view.state.pageSizeOptions).toEqual([10, 50]);
+  });
+
   it("defaults admin.view.state.searchField to admin.view.state.searchFields[0] when unset", () => {
     const posts = defineCollection({
       slug: "posts",

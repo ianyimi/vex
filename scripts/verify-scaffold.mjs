@@ -43,6 +43,7 @@ import os from "node:os";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { verifyHooksWiring } from "./verify-hooks-wiring.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -323,6 +324,16 @@ async function runTemplate({ key, label, bare, staticRoutes, seoRoutes, cliEntry
   }
 
   const projectDir = path.join(scaffoldRoot, key);
+  const hooksWiringStart = Date.now();
+  const { ok: hooksWiringOk, errors: hooksWiringErrors } = verifyHooksWiring([projectDir]);
+  ok({ label: "verify-hooks-wiring", ok: hooksWiringOk, ms: Date.now() - hooksWiringStart });
+  if (hooksWiringOk) {
+    console.log(`  \u2713 verify-hooks-wiring (${Date.now() - hooksWiringStart}ms)`);
+  } else {
+    console.error(`  \u2717 verify-hooks-wiring \u2014 ${hooksWiringErrors.join("; ")}`);
+    return { key, label, steps };
+  }
+
   const overrideStart = Date.now();
   try {
     injectOverrides(projectDir, tarballs);

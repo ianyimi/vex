@@ -52,6 +52,11 @@ export const posts = defineCollection({
 server fetch size as `Math.max(serverPageSize, admin.view.pageSize)`, so a single Load More
 click never needs an extra server round-trip just to fill one client page.
 
+`pageSizeOptions` sets the choices in the list's "N per load" picker. Leave it unset and the
+picker offers `[10, 25, 50, 100]` plus your `pageSize` if it isn't one of them, sorted —
+`pageSize: 20` gives `10, 20, 25, 50, 100`. Set it explicitly and it's used exactly as given;
+`pageSizeOptions: []` (or a single entry) hides the picker.
+
 ## Basic usage: a custom list outside the admin panel
 
 Row types are never hand-rolled — `vex generate` (and `vex dev`) writes an

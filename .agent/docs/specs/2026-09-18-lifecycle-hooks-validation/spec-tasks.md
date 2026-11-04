@@ -106,7 +106,7 @@ Verify: pnpm --filter www test && pnpm --filter www exec tsc --noEmit && pnpm --
 - [x] `apps/test/convex/vex.ts` — same inline `createVexMutations` pattern
 - [x] `apps/test/convex/vex/globals.ts` — same
 - [x] `apps/test/convex/vex/media.ts` — same
-- [ ] `scripts/verify-hooks-wiring.mjs` — greps both apps' `vex.ts`/`vex/globals.ts`/`vex/media.ts` for the `createVexMutations`/`vexMutation` wiring, fails on a bare `_generated/server` mutation import — not written; both apps verified manually this round via `tsc --noEmit`, `vitest run`, and a real `vex dev --once` deploy instead
+- [x] `scripts/verify-hooks-wiring.mjs` — checks both apps' `vex.ts`/`vex/globals.ts`/`vex/media.ts` for the `createVexMutations`/`vexMutation` wiring, fails on a bare `_generated/server` mutation import
 
 ## Step 7 — Wire the `base-nextjs` template [agent] — done
 
@@ -124,7 +124,7 @@ Verify: pnpm verify:scaffold
 - [x] `packages/create-vexcms/templates/base-nextjs/convex/vex/globals.ts` — same
 - [x] `packages/create-vexcms/templates/base-nextjs/convex/vex/media.ts` — same
 - [x] `packages/create-vexcms/templates/marketing-site/src/vexcms/collections/pages.ts` — bonus: wired the `slug` field with the same `textValidator` uniqueness check `apps/www` uses (not part of the original plan, which found nothing to migrate here since `marketing-site` has no `convex/vex.ts` of its own — this is the field-validation half, not the trigger-wiring half)
-- [ ] `scripts/verify-scaffold.mjs` — assert the scaffolded `convex/vex.ts` calls `createVexMutations` — not written; `pnpm verify:scaffold` (pack + scaffold + install + typecheck + build, both templates) passed against the current wiring, but nothing yet fails it if the wiring regresses
+- [x] `scripts/verify-scaffold.mjs` — asserts the scaffolded `convex/vex.ts` calls `createVexMutations` (reuses `verify-hooks-wiring.mjs`'s `verifyHooksWiring`), run against the scaffolded project directory after scaffold
 
 ## Step 8 — Docs and changeset [dev]
 
@@ -135,5 +135,5 @@ ADR-011's consequences.
 
 Verify: pnpm changeset status
 
-- [ ] `apps/docs/src/content/docs/guides/lifecycle-hooks.mdx` — `beforeChange`/`afterChange`/`beforeDelete`/`afterDelete`, coverage limits (dashboard edits, `npx convex import` do not fire hooks), BFS trigger recursion note, two-tier validation (client+server Zod vs. server-only `validate()`)
+- [x] `apps/docs/src/content/docs/guides/lifecycle-hooks.mdx` — `beforeChange`/`afterChange`/`beforeDelete`/`afterDelete`, coverage limits (dashboard edits, `npx convex import` do not fire hooks), BFS trigger recursion note, two-tier validation (client+server Zod vs. server-only `validate()`)
 - [x] `.changeset/lifecycle-hooks-validation.md` — major/minor bump on `@vexcms/core` noting the `min`/`max`/etc. server-side enforcement behavior change (shipped as `.changeset/lifecycle-hooks-and-field-validation.md`; bumped `patch` not major/minor — alpha pre-release track keeps every package on the `0.1.0` base, per `.changeset/config-client-server-split.md` precedent)

@@ -120,7 +120,7 @@ export const roadmapBlock = defineBlock({
           feature: "Field Input Consistency Pass",
           description:
             "Touch-ups across field inputs — relationship, upload, array, and blocks — for consistent interaction patterns in the admin panel.",
-          status: "in-progress",
+          status: "shipped",
         },
         {
           feature: "List Views",

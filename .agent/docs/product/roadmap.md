@@ -56,8 +56,10 @@ server-side field validation · ✅ Live preview · ✅ Versioning & drafts · �
 before G so its consistency pass covers them, and the B2 localization ADR — localization
 is a free core feature (2026-10-17).
 
-Deferred out of 0.1.0 with reasons: `ui` / `tabs` (change core invariants — see
-`backlog.md`) · PDF block · block group categorization (post-0.1.0 Track MW).
+Deferred out of 0.1.0 with reasons: PDF block · block group categorization
+(post-0.1.0 Track MW). `ui`/`tabs`/`collapsible`/`row` are no longer deferred — they
+shipped in 0.1.0 alongside `email`/`textarea`/`json` (spec
+`2026-10-16-field-input-consistency-pass`).
 
 **Release milestones after the tag:** first production deployment → 3–5 external design
 partners on Convex → first paid Pro customers.

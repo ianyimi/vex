@@ -990,7 +990,7 @@ export const featuredPosts = query({
           {
             question: "Is it production ready?",
             answer:
-              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation, live preview, versioning and drafts, the richtext/json/email/textarea fields, and the edit-view and list-view overhauls have all landed; the remaining big one is the field input consistency pass, then a responsive pass. The roadmap page has the full list.",
+              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation, live preview, versioning and drafts, the richtext/json/email/textarea fields, the edit-view and list-view overhauls, and the field input consistency pass have all landed; the remaining big one is a responsive pass. The roadmap page has the full list.",
           },
           {
             question: "Which frameworks does it support?",
@@ -1496,8 +1496,8 @@ export const testimonials = defineTable({
           {
             feature: "Field Input Consistency Pass",
             description:
-              "Every input gets correct empty, loading, error, and read-only states. The relationship field is the named offender. The media picker finally honours the upload field's accept filter.",
-            status: ["in-progress"],
+              "Every input has correct empty, loading, error, and read-only states, the relationship field included. The media picker honours the upload field's accept filter.",
+            status: ["shipped"],
           },
           {
             feature: "Edit-View Overhaul",

@@ -155,7 +155,13 @@ export type CtaBlock = {
   id: string
   heading: string
   subheading?: string
-  actions?: { id?: string; label: string; href: string }[]
+  actions?: {
+    id?: string
+    label: string
+    linkType?: ("external" | "internal")[]
+    internalPage?: Id<"pages">[]
+    externalUrl?: string
+  }[]
 }
 
 export type FeatureBlock = {
@@ -235,6 +241,24 @@ export type SEO = {
   ogImage?: string
 }
 
+export type InnerGroup = {
+  /**
+   * test field description
+   */
+  title?: string
+  /**
+   * another test description
+   */
+  description?: string
+  queue?: { id?: string; title?: string; description?: string }[]
+}
+
+export type AnotherGroupNames = {
+  title?: string
+  subtitle?: string
+  list?: InnerGroup[]
+}
+
 export interface Page extends VexDocument {
   _id: Id<"pages">
   vex_status?: "draft" | "published"
@@ -260,11 +284,39 @@ export interface Page extends VexDocument {
    */
   metaDescription?: string
   ogImage?: Id<"images">[]
+  advanced?: {
+    /**
+     * Dogfood field for the email() leaf type — cell renders a mailto: link.
+     */
+    contactEmail?: string
+    /**
+     * Masked text field — this field's admin.mask overrides the project default.
+     */
+    contactPhone?: string
+    /**
+     * Dogfood field for the textarea() leaf type.
+     */
+    notes?: string
+    /**
+     * Dogfood field for the json() leaf type — no shape validation.
+     */
+    customData?: unknown
+    /**
+     * some test description.
+     */
+    test?: string[]
+    /**
+     * some test number array description
+     */
+    test2?: number[][]
+    /**
+     * seo metadata
+     */
+    seo?: SEO
+    anotherTest?: AnotherGroupNames
+  }
+  testImage?: Id<"images">[]
   themes?: Id<"themes">[]
-  /**
-   * seo metadata
-   */
-  seo?: SEO
   updatedAt?: number
 }
 
@@ -1170,9 +1222,9 @@ declare module "@vexcms/core" {
       pages: {
         text: "title" | "slug" | "content" | "metaTitle" | "metaDescription"
         blocks: "blocks"
-        upload: "ogImage"
+        upload: "ogImage" | "testImage"
+        group: "advanced"
         relationship: "themes"
-        group: "seo"
         commitTs: "updatedAt"
       }
       user: {

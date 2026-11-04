@@ -1,8 +1,21 @@
-import { checkbox, defineCollection, number, relationship, select, text, textarea } from "@vexcms/core"
+import {
+  checkbox,
+  defineCollection,
+  number,
+  relationship,
+  select,
+  text,
+  textarea,
+} from "@vexcms/core";
 
-import { TestimonialBulkApproveAction } from "~/components/TestimonialBulkApproveAction"
-import { TestimonialFeatureRowAction } from "~/components/TestimonialFeatureRowAction"
-import { TABLE_SLUG_IMAGES, TABLE_SLUG_TESTIMONIALS, TABLE_SLUG_USERS, TESTIMONIAL_SOURCES } from "~/db/constants"
+import { TestimonialBulkApproveAction } from "~/components/TestimonialBulkApproveAction";
+import { TestimonialFeatureRowAction } from "~/components/TestimonialFeatureRowAction";
+import {
+  TABLE_SLUG_IMAGES,
+  TABLE_SLUG_TESTIMONIALS,
+  TABLE_SLUG_USERS,
+  TESTIMONIAL_SOURCES,
+} from "~/db/constants";
 
 /**
  * List-view acceptance collection: 200 seeded rows,
@@ -42,6 +55,7 @@ export const testimonials = defineCollection({
     icon: "Quote",
     view: {
       sort: { field: "updatedAt", order: "desc" },
+      pageSize: 100,
       searchFields: ["customerName", "company"],
       columns: [
         { field: "customerName", pinned: "left", width: 220 },
@@ -95,7 +109,9 @@ export const testimonials = defineCollection({
     ],
     components: {
       rowActions: [{ id: "test.testimonials.feature", component: TestimonialFeatureRowAction }],
-      bulkActions: [{ id: "test.testimonials.bulkApprove", component: TestimonialBulkApproveAction }],
+      bulkActions: [
+        { id: "test.testimonials.bulkApprove", component: TestimonialBulkApproveAction },
+      ],
     },
   },
   fields: {
@@ -163,4 +179,4 @@ export const testimonials = defineCollection({
       description: "Internal quality score (0-100). Not visible to contributor/user roles.",
     }),
   },
-})
+});

@@ -67,6 +67,15 @@ inserted as G steps 7–8, directly after the layout model (step 6) and before `
 consumes them; former steps 7–16 renumber to 9–18. Integer step headings are required by the
 harness task parser.
 
+**G slot groundwork done (2026-11-03):** G steps 7–8 (core slot model, single field
+registry), 11 (`RenderFields` layout renderer consuming slots), and 15–17 (blocks/array
+item actions, polish) landed; step 18 dogfooded the whole chain end-to-end in `apps/test`
+(root per-type `fields.text.Input`, a per-field `Input`/`beforeInput` chain, and the
+root-only `admin.components.blocks.itemActions` hide). H's edit-view slots (`edit.*`)
+have since shipped too (`2026-10-26-edit-view-overhaul`, launch plan H). A future
+`dev-spec` session on this stem can build I's list-view slots on this groundwork without
+re-deriving G/H's design.
+
 Questions 22 and 24 below are partly answered by S5 (public hooks) and S10 (error boundaries);
 server-component contributions (S14) are tracked in `backlog.md` § "Custom server components in
 admin slots". Known G gap: `field.label` / `field.description` ship as override outlets with no

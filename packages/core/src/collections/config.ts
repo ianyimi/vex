@@ -22,6 +22,9 @@ import {
   type VersionSystemField,
 } from "../versions";
 
+/** The list page-size picker's choices when a collection declares no `pageSizeOptions`. */
+const defaultPageSizeOptions = [10, 25, 50, 100];
+
 function populateCollectionFieldMeta<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
@@ -235,6 +238,15 @@ export function defineCollection<
       .filter(([, field]) => field.admin?.hidden !== true)
       .map(([fieldKey]) => fieldKey);
 
+  // Without explicit `pageSizeOptions`, the defaults plus a custom `pageSize`, sorted —
+  // so `pageSize: 20` offers 10/20/25/50/100 and the picker can select it. Explicit
+  // options (including `[]`, which hides the picker) are used exactly as given.
+  const pageSizeOptions =
+    input.admin?.view?.pageSizeOptions ??
+    [...new Set([...defaultPageSizeOptions, input.admin?.view?.pageSize ?? 10])].sort(
+      (a, b) => a - b,
+    );
+
   const collection = {
     interfaceName: slugToPascalCase({ slug: input.slug }) + "Document",
     ...input,
@@ -271,7 +283,7 @@ export function defineCollection<
           pageSize: input.admin?.view?.pageSize ?? 10,
           searchField: input.admin?.view?.searchField ?? input.admin?.view?.searchFields?.[0],
           searchFields: input.admin?.view?.searchFields ?? [],
-          pageSizeOptions: input.admin?.view?.pageSizeOptions ?? [10, 25, 50, 100],
+          pageSizeOptions,
           // Caps the first-page total-count scan.
           countLimit: input.admin?.view?.countLimit ?? 10000,
           serverPageSize: input.admin?.view?.serverPageSize ?? 100,
@@ -298,8 +310,7 @@ export function defineCollection<
         state: {
           ...view.state,
           searchFields: view.state.searchFields ?? input.admin?.view?.searchFields ?? [],
-          pageSizeOptions:
-            view.state.pageSizeOptions ?? input.admin?.view?.pageSizeOptions ?? [10, 25, 50, 100],
+          pageSizeOptions: view.state.pageSizeOptions ?? pageSizeOptions,
           countLimit: view.state.countLimit ?? input.admin?.view?.countLimit ?? 10000,
           serverPageSize: view.state.serverPageSize ?? input.admin?.view?.serverPageSize ?? 100,
           bulkActions: {

@@ -1,0 +1,205 @@
+---
+title: Lifecycle hooks
+description: beforeChange/beforeDelete/afterChange/afterDelete collection hooks, async field validate(), and the two-tier (client+server Zod, server-only validate()) validation model.
+---
+
+VexCMS collections can run code around a write: a `beforeChange`/`beforeDelete` hook that
+can inspect — or reject — the write before it commits, and an `afterChange`/`afterDelete`
+hook that runs once the write has committed. Fields can also declare an async, server-only
+`validate()` that runs after the generated Zod schema passes, useful for checks that need a
+database read (a uniqueness constraint, for example).
+
+## The four hooks
+
+```ts
+// vex.config.ts
+import { defineCollection, text } from "@vexcms/core";
+
+export const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text({ required: true }),
+    slug: text({ required: true, index: "by_slug" }),
+  },
+  hooks: {
+    beforeChange: async ({ doc, operation, ctx }) => {
+      // Runs inline in the write path, before the document is committed.
+      // Return the (possibly modified) doc, or throw to reject the write.
+      return { ...doc, slug: doc.slug.toLowerCase() };
+    },
+    beforeDelete: async ({ doc, ctx }) => {
+      // Runs inline, before a hard delete. Throw to abort the delete.
+      if (doc.pinned) throw new Error("Cannot delete a pinned post.");
+    },
+    afterChange: async ({ operation, oldDoc, newDoc, ctx }) => {
+      // Runs after the write has committed, via convex-helpers triggers.
+    },
+    afterDelete: async ({ oldDoc, ctx }) => {
+      // Runs after a hard delete has committed.
+    },
+  },
+});
+```
+
+| Hook | Runs | Can reject the write | Receives |
+| --- | --- | --- | --- |
+| `beforeChange` | Inline, before `create`/`update` commits | Yes (throw) | `{ operation, doc, ctx, collection }` — return the doc to persist |
+| `beforeDelete` | Inline, before a hard `remove()` commits | Yes (throw) | `{ id, doc, ctx, collection }` |
+| `afterChange` | After `create`/`update` commits | No | `{ operation, id, oldDoc, newDoc, ctx, collection, commitTs }` |
+| `afterDelete` | After a hard `remove()` commits | No | `{ id, oldDoc, ctx, collection, commitTs }` |
+
+`beforeChange`/`beforeDelete` run for every `create`/`update`/`remove` call, with no extra
+setup. `afterChange`/`afterDelete` additionally require wrapping your app's `mutation`/
+`internalMutation` builders — see [Wiring `afterChange`/`afterDelete`](#wiring-afterchangeafterdelete)
+below.
+
+Author a hook inline, with full contextual typing against your real collection and
+`DataModel` (as above), or via the `beforeChangeHook`/`beforeDeleteHook`/`afterChangeHook`/
+`afterDeleteHook` factories when you want to define a hook in its own file:
+
+```ts
+import { beforeChangeHook } from "@vexcms/core";
+import { TABLE_SLUG_POSTS } from "~/db/constants";
+
+export const slugifyOnChange = beforeChangeHook(TABLE_SLUG_POSTS, ({ doc }) => ({
+  ...doc,
+  slug: doc.slug.toLowerCase(),
+}));
+```
+
+An extracted function that only *claims* to match the hook's shape (annotated by hand with
+`BeforeChangeProps<...>` instead of going through the factory) won't type-check against a
+specific collection's `DataModel` — the factory is what makes `ctx`/`doc` infer against the
+real schema.
+
+### On a versioned collection
+
+With `versions.drafts: true`, `afterChange`/`afterDelete` fire for every row write,
+**including draft rows** — `saveDraft`'s bootstrap insert and patches, `publish`'s
+promotion, `unpublish`'s status flip. `newDoc.vex_status` tells a draft row from a published
+one; the hook decides what it cares about. `operation` describes the row being written, so a
+bootstrapped draft row is reported as `"create"`. `publish` deleting the now-promoted draft
+row fires `afterDelete` with that row as `oldDoc` — check `oldDoc.vex_status === "draft"` to
+ignore it if you only care about published-row deletes.
+
+## Wiring `afterChange`/`afterDelete`
+
+`beforeChange`/`beforeDelete` need nothing beyond `hooks` on the collection config —
+`create`/`update`/`remove` always run them. `afterChange`/`afterDelete` fire through
+[convex-helpers](https://github.com/get-convex/convex-helpers) `Triggers`, which only see a
+write made through a `mutation`/`internalMutation` builder they wrap. Wrap your app's raw
+Convex builders once with `createVexMutations` and build every collection/global/media
+mutation on the result:
+
+```ts
+// convex/vex.ts
+import { collectionsApi, createVexMutations } from "@vexcms/core/server";
+import config from "~/vex.config.server";
+import { internalMutation, mutation, query } from "./_generated/server";
+
+export const { mutation: vexMutation, internalMutation: vexInternalMutation } = createVexMutations({
+  config,
+  mutation,
+  internalMutation,
+});
+
+export const { find, get, search, create, update, remove } = collectionsApi({
+  config,
+  query,
+  mutation: vexMutation,
+  getAuth,
+});
+```
+
+```ts
+// convex/vex/globals.ts and convex/vex/media.ts
+import { globalsApi } from "@vexcms/core/server"; // or mediaApi
+import config from "~/vex.config.server";
+import { query } from "../_generated/server";
+import { getAuth, vexMutation as mutation } from "../vex";
+
+export const { get, find, upsert } = globalsApi({ config, query, mutation, getAuth });
+```
+
+The important part: `globals.ts`/`media.ts` import `mutation` from your own `vex.ts`
+(the trigger-wrapped builder), **not** straight from `./_generated/server`. A write made
+through the raw builder commits fine — nothing about the write itself fails — but its
+`afterChange`/`afterDelete` hooks silently never run.
+
+## Coverage limits
+
+Hooks fire only for writes made through the vexcms API, built on a
+`createVexMutations`-wrapped `mutation`/`internalMutation`. They do **not** fire for:
+
+- Edits made directly in the Convex dashboard's data browser.
+- `npx convex import` (and any other direct `ctx.db` write outside the wrapped builders —
+  your own custom Convex functions included, unless you build them on the same wrapped
+  `mutation`/`internalMutation`).
+
+`beforeChange` also does not run against a form's live-preview state before it's saved — the
+admin panel's live preview reflects unsaved form data client-side; `beforeChange` only sees a
+document once a `create`/`update` call actually reaches the server.
+
+### Trigger recursion is BFS, not immediate
+
+If an `afterChange`/`afterDelete` hook itself writes through the same wrapped `ctx.db` (or
+mutation), that write's own triggers are queued rather than run inline — `convex-helpers`
+processes them breadth-first once the outer write's own trigger callbacks have all run, not
+depth-first as each one fires. A hook that writes to another collection should not assume its
+target's own `afterChange` has already completed by the time its own call returns.
+
+## Server-side field validation
+
+Every field already goes through its generated Zod schema — `required`, `min`/`max`, string
+`url`-shape checks, and similar — on the client (admin form) and, since this write-path
+change, on the server as well: a `create`/`update` call that violates a field's own
+constraints now throws, even if it comes from your own code rather than the admin UI.
+
+A field's `validate()` is the second, server-only tier: it runs after the generated Zod
+schema passes, is async, and receives `ctx`, so it can do a real database read — a
+uniqueness check, for example:
+
+```ts
+import { textValidator, VexError } from "@vexcms/core";
+import { TABLE_SLUG_PAGES } from "~/db/constants";
+
+text({
+  index: "by_slug",
+  required: true,
+  validate: textValidator(TABLE_SLUG_PAGES, async ({ value, doc, vex }) => {
+    const [existing] = await vex.find({
+      collection: TABLE_SLUG_PAGES,
+      withIndex: { name: "by_slug", range: (q) => q.eq("slug", value) },
+      limit: 1,
+    });
+    if (existing && existing._id !== doc._id) {
+      throw new VexError({
+        code: "SLUG_CONFLICT",
+        message: `This slug is already in use by '${existing.title}'.`,
+      });
+    }
+  }),
+}),
+```
+
+Each field type exports its own typed wrapper (`textValidator`, `numberValidator`,
+`arrayValidator`, and so on) so `value`/`doc`/`field` are typed against the real field and
+collection, with no manual cast. `validate()` runs only for a changed field on `update`
+(every field on `create`), and is skipped entirely for a field whose `admin.condition`
+evaluates false on the current document.
+
+**Reject by throwing** — a plain `Error`, a project-specific subclass, or a `ConvexError`
+with structured `data` (an error code, a conflicting document id, etc.). Whatever is thrown
+is re-thrown as one `ConvexError` carrying the failing field's key, so the admin panel can
+attribute the failure to the right input. Returning normally accepts the value.
+
+### Two tiers, summarized
+
+| Tier | Where it runs | Source |
+| --- | --- | --- |
+| Generated Zod schema | Client (admin form) **and** server (every `create`/`update`) | Derived from each field's own config (`required`, `min`, `max`, …) |
+| `validate()` | Server only, after the Zod schema passes | Hand-written per field, with `ctx`/`vex` for database reads |
+
+A write that violates only the generated schema (missing a required field, a string over
+`max`) is rejected before `validate()` ever runs. `validate()` only sees a document that has
+already passed every field's generated constraints.

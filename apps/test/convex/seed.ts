@@ -1009,9 +1009,9 @@ export const featuredPosts = query({
         subheading:
           "One command gives you a Next.js app, a Convex deployment, auth, the admin panel, and a marketing site like this one. Seeded, editable, and yours.",
         actions: [
-          { label: "Get started", href: "https://docs.vexcms.dev/guides/quickstart/" },
-          { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
-          { label: "Why Convex", href: "https://docs.convex.dev/realtime" },
+          { label: "Get started", linkType: ["external"], externalUrl: "https://docs.vexcms.dev/guides/quickstart/" },
+          { label: "View on GitHub", linkType: ["external"], externalUrl: "https://github.com/ianyimi/vex" },
+          { label: "Why Convex", linkType: ["external"], externalUrl: "https://docs.convex.dev/realtime" },
         ],
       },
     ],
@@ -1310,9 +1310,9 @@ export const testimonials = defineTable({
         subheading:
           "One command gives you a Next.js app, a Convex deployment, auth, the admin panel, and a marketing site like this one. Seeded, editable, and yours.",
         actions: [
-          { label: "Get started", href: "https://docs.vexcms.dev/guides/quickstart/" },
-          { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
-          { label: "Why Convex", href: "https://docs.convex.dev/realtime" },
+          { label: "Get started", linkType: ["external"], externalUrl: "https://docs.vexcms.dev/guides/quickstart/" },
+          { label: "View on GitHub", linkType: ["external"], externalUrl: "https://github.com/ianyimi/vex" },
+          { label: "Why Convex", linkType: ["external"], externalUrl: "https://docs.convex.dev/realtime" },
         ],
       },
     ],
@@ -1493,8 +1493,8 @@ export const testimonials = defineTable({
           {
             feature: "Field Input Consistency Pass",
             description:
-              "Every input gets correct empty, loading, error, and read-only states. The relationship field is the named offender. The media picker finally honours the upload field's accept filter.",
-            status: ["in-progress"],
+              "Every input has correct empty, loading, error, and read-only states, the relationship field included. The media picker honours the upload field's accept filter.",
+            status: ["shipped"],
           },
           {
             feature: "Edit-View Overhaul",
@@ -1578,9 +1578,9 @@ export const testimonials = defineTable({
         subheading:
           "One command gives you a Next.js app, a Convex deployment, auth, the admin panel, and a marketing site like this one. Seeded, editable, and yours.",
         actions: [
-          { label: "Get started", href: "https://docs.vexcms.dev/guides/quickstart/" },
-          { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
-          { label: "Why Convex", href: "https://docs.convex.dev/realtime" },
+          { label: "Get started", linkType: ["external"], externalUrl: "https://docs.vexcms.dev/guides/quickstart/" },
+          { label: "View on GitHub", linkType: ["external"], externalUrl: "https://github.com/ianyimi/vex" },
+          { label: "Why Convex", linkType: ["external"], externalUrl: "https://docs.convex.dev/realtime" },
         ],
       },
     ],

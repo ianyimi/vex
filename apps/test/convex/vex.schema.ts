@@ -163,7 +163,17 @@ export const pages = defineTable({
           heading: v.string(),
           subheading: v.optional(v.string()),
           actions: v.optional(
-            v.array(v.object({ id: v.optional(v.string()), label: v.string(), href: v.string() }))
+            v.array(
+              v.object({
+                id: v.optional(v.string()),
+                label: v.string(),
+                linkType: v.optional(
+                  v.array(v.union(v.literal("external"), v.literal("internal")))
+                ),
+                internalPage: v.optional(v.array(v.id("pages"))),
+                externalUrl: v.optional(v.string()),
+              })
+            )
           ),
         }),
         v.object({
@@ -233,14 +243,49 @@ export const pages = defineTable({
   metaTitle: v.optional(v.string()),
   metaDescription: v.optional(v.string()),
   ogImage: v.optional(v.array(v.id("images"))),
-  themes: v.optional(v.array(v.id("themes"))),
-  seo: v.optional(
+  advanced: v.optional(
     v.object({
-      metaTitle: v.optional(v.string()),
-      metaDescription: v.optional(v.string()),
-      ogImage: v.optional(v.string()),
+      contactEmail: v.optional(v.string()),
+      contactPhone: v.optional(v.string()),
+      notes: v.optional(v.string()),
+      customData: v.optional(v.any()),
+      test: v.optional(v.array(v.string())),
+      test2: v.optional(v.array(v.array(v.number()))),
+      seo: v.optional(
+        v.object({
+          metaTitle: v.optional(v.string()),
+          metaDescription: v.optional(v.string()),
+          ogImage: v.optional(v.string()),
+        })
+      ),
+      anotherTest: v.optional(
+        v.object({
+          title: v.optional(v.string()),
+          subtitle: v.optional(v.string()),
+          list: v.optional(
+            v.array(
+              v.object({
+                id: v.optional(v.string()),
+                title: v.optional(v.string()),
+                description: v.optional(v.string()),
+                queue: v.optional(
+                  v.array(
+                    v.object({
+                      id: v.optional(v.string()),
+                      title: v.optional(v.string()),
+                      description: v.optional(v.string()),
+                    })
+                  )
+                ),
+              })
+            )
+          ),
+        })
+      ),
     })
   ),
+  testImage: v.optional(v.array(v.id("images"))),
+  themes: v.optional(v.array(v.id("themes"))),
   updatedAt: v.optional(v.commitTs()),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   vex_publishedAt: v.optional(v.number()),
