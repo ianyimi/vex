@@ -305,12 +305,12 @@ function HeadingDropdown() {
 }
 
 // ---------------------------------------------------------------------------
-// Block toggle button (blockquote, code block)
+// Container block toggle button (blockquote)
 // ---------------------------------------------------------------------------
 
 /**
- * Toolbar button that toggles the current block between paragraph and the
- * given block type (e.g. blockquote).
+ * Toolbar button that wraps the selected blocks in a container block of the
+ * given type (e.g. blockquote), or unwraps them when already inside one.
  *
  * @returns The block toggle button with its active state and tooltip.
  */
@@ -329,7 +329,10 @@ function BlockButton({
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      editor.tf.toggleBlock(blockType);
+      // `wrap`, not a retag: since Plate 53 a blockquote is a container whose
+      // children are blocks, so a plain retag can turn a quote on but never
+      // off again. Same call as `editor.tf.blockquote.toggle()`.
+      editor.tf.toggleBlock(blockType, { wrap: true });
     },
     [editor, blockType]
   );

@@ -6,6 +6,7 @@ export {
   useStorageAdapterMap,
 } from "./VexConfigContext";
 export {
+  COVERING_ROUTE_LINK_ATTRIBUTE,
   FrameworkComponentsContext,
   useFrameworkComponents,
 } from "./useFrameworkComponents";
@@ -17,3 +18,4 @@ export type {
   NavigationBlockerAdapter,
 } from "./useFrameworkComponents";
 export { useVexNavigate } from "./useVexNavigate";
+export { useLastUncoveredValue } from "./useLastUncoveredValue";

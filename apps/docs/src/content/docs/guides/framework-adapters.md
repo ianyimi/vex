@@ -478,7 +478,12 @@ or `user.isAnonymous === true` (Better Auth's `anonymous()` plugin convention �
 once you have configured `anonRole` for read-only public admin access, see the Access
 Control guide) both render "Sign in"; anything else renders "Sign out".
 
-`signInHref` receives the current admin URL (no query string) as `redirectTo`, and must
+`signInHref` receives the current admin URL, including its full query string (list filter,
+sort, search, saved view, active tab, …), as `redirectTo`, so signing in returns to exactly
+the page and state the visitor left. If the new identity can't see that page, the page
+handles it like any other URL (redirect, not-found, or a fallback to the default view). The
+query comes from the `useSearchParams` capability (Step 11); without it, `redirectTo` is the
+path alone. `signInHref` must
 return the full sign-in route URL to link to — typically appending it as a query param
 your sign-in page/route-level auth guard already reads (the same convention a `redirect()`
 to the sign-in page from a server component gate should already be using, see
@@ -529,6 +534,47 @@ sign-in route's URL scheme, and `signOut` against your auth library's own sign-o
 plus whatever "make the server re-check auth state" mechanism your framework offers (a
 full reload is always a safe fallback). A framework with no sign-in/out concept at all —
 omit `auth` entirely; the control simply does not render.
+
+## Step 11 — Covering routes: `useIsRouteCovered` and `useSearchParams` (both optional)
+
+A framework may draw a route *over* the admin without unmounting it — Next.js's
+intercepting routes do this for the templates' root-level `@auth` sign-in modal. The URL then
+belongs to the covering route (`/auth/sign-in?redirectTo=…&modal=1`) while the admin page
+stays mounted underneath and keeps reading the URL. Without help from the adapter, the
+page reads the modal's URL instead of its own. The list's filter, view and search drop and
+the wrong rows load, a tabbed form jumps to its first tab, and the sidebar loses its active
+collection.
+
+```ts
+useIsRouteCovered?: () => boolean;
+useSearchParams?: () => URLSearchParams;
+```
+
+`useIsRouteCovered` returns `true` while a non-admin route covers the admin. While it does:
+
+- admin URL-state readers keep their last admin value;
+- the list view drops URL writes, which would otherwise land on the covering route's URL
+  (e.g. Escape closing the modal also reaching the list's peek panel);
+- admin-wide keyboard shortcuts stand down.
+
+`@vexcms/next`'s `useNextIsRouteCovered` reports `true` while `usePathname()` is outside the
+configured `basePath`. Admin UI only mounts on an admin route, and really leaving the admin
+unmounts it, so a foreign pathname while still mounted can only mean a covering route. With
+`basePath: "/"` the admin shares the app's namespace, so nothing is ever reported as covered.
+Omitted → never covered.
+
+`useSearchParams` reads the current query reactively, including shallow history-only updates
+(the list view's `nuqs` writes), and must be SSR-safe. `AdminTopNav` uses it for the sign-in
+`redirectTo` (Step 10). `@vexcms/next` supplies `useNextSearchParams`, a thin wrapper around
+`useSearchParams` from `next/navigation`.
+
+A link that *opens* a covering route carries the `COVERING_ROUTE_LINK_ATTRIBUTE` data
+attribute (exported from `@vexcms/react`; `AdminTopNav`'s "Sign in" sets it). Your
+`navigationBlocker` must let such a click through: opening the modal leaves nothing behind,
+and the edit view underneath keeps its unsaved state. It must also treat the back-navigation
+that closes the covering route as a return, not a leave. `useNextNavigationBlocker` does both:
+it skips anchors with the attribute, and a `popstate` that lands back on its own sentinel
+entry is not blocked.
 
 ## Wiring it into an app
 

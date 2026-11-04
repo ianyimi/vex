@@ -6,6 +6,7 @@ import { Plate, PlateContent, createPlateEditor, useEditorRef } from "platejs/re
 import { valuesEqual, type VexEditorComponentProps, type RichTextDocument } from "@vexcms/core";
 import type { VexEditorFeature } from "./features/types";
 import { createPluginsFromFeatures } from "./plugins/createPlugins";
+import { wrapFlatBlockquotes } from "./wrapFlatBlockquotes";
 import { Toolbar } from "./components/Toolbar";
 import { EditorContainer } from "./components/EditorContainer";
 import { ImageUpload } from "./components/image/ImageUpload";
@@ -140,7 +141,12 @@ export function PlateEditorField({
     return createPlateEditor({
       plugins,
       override: { components },
-      value: value && value.length > 0 ? (value as any) : DEFAULT_VALUE,
+      // Content saved before Plate 53 holds flat blockquotes; see
+      // `wrapFlatBlockquotes`. (`setValue` below needs no such step — it runs
+      // Plate's full normalizer.) The `as unknown as Value` cast: see `setValue`.
+      value: (value && value.length > 0
+        ? wrapFlatBlockquotes(value)
+        : DEFAULT_VALUE) as unknown as Value,
     });
     // Intentionally keyed on `plugins` only: the editor is rebuilt when the
     // feature set changes, not when `components` or the current `value` change —
@@ -284,7 +290,12 @@ export function PlateEditorField({
           <div
             style={{
               position: "sticky",
-              top: 0,
+              // `position: sticky` pins below the scroll container's padding,
+              // so a padded host would leave a strip of scrolled content
+              // showing above the bar. The host cancels its own padding via
+              // `--vex-form-sticky-top` (the admin's form scroll area sets it
+              // to minus its `padding-top`).
+              top: "var(--vex-form-sticky-top, 0px)",
               zIndex: 10,
               background: "var(--background)",
               // Match the editor root's rounded top corners: this bar's square

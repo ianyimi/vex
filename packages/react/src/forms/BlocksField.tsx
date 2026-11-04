@@ -363,11 +363,13 @@ export function BlocksField<TBlock extends GenericBlockItem>(props: BlocksFieldP
 
   const compact = useCompactForm();
 
+  // Collapse/Expand all only change which blocks are open — never the value — so they stay
+  // available on a read-only field, same as arrays. Order/add/remove controls stay gated.
   function collapseExpandControls(placement: ActionPlacement): ReactNode {
     return (
       <>
-        <HeaderAction placement={placement} icon={<ChevronsDownUpIcon className="size-4" />} label="Collapse all" disabled={Boolean(props.readOnly)} onClick={() => setOpenIds([])} />
-        <HeaderAction placement={placement} icon={<ChevronsUpDownIcon className="size-4" />} label="Expand all" disabled={Boolean(props.readOnly)} onClick={() => setOpenIds(items.map((block) => block.id))} />
+        <HeaderAction placement={placement} icon={<ChevronsDownUpIcon className="size-4" />} label="Collapse all" onClick={() => setOpenIds([])} />
+        <HeaderAction placement={placement} icon={<ChevronsUpDownIcon className="size-4" />} label="Expand all" onClick={() => setOpenIds(items.map((block) => block.id))} />
       </>
     );
   }

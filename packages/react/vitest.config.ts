@@ -62,7 +62,6 @@ export default defineConfig({
         "src/components/ui/select.tsx", // .../r/select.json
         "src/components/ui/separator.tsx", // .../r/separator.json
         "src/components/ui/sheet.tsx", // .../r/sheet.json
-        "src/components/ui/sidebar.tsx", // .../r/sidebar.json
         "src/components/ui/skeleton.tsx", // .../r/skeleton.json
         "src/components/ui/table.tsx", // .../r/table.json
         "src/components/ui/tabs.tsx", // .../r/tabs.json

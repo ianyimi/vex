@@ -1,6 +1,6 @@
-import { createElement } from "react";
+import { createElement, useState } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, waitFor, within } from "@testing-library/react";
 import { convexTest } from "convex-test";
 import {
   buildListViewFindQueryArgs,
@@ -2150,6 +2150,41 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
       const icon = link?.querySelector("svg");
       expect(icon).not.toBeNull();
       expect(icon?.parentElement?.lastElementChild).toBe(icon);
+    });
+
+    it("carries the current page's full query in the redirectTo, and keeps it while a covering route owns the URL", () => {
+      let query = "view=local%3Av1&filter=(title.eq.x)&sort=title.asc";
+      let isCovered = false;
+      const components = {
+        auth: stubAuthAdapter,
+        useSearchParams: () => new URLSearchParams(query),
+        useIsRouteCovered: () => isCovered,
+      } as FrameworkComponents;
+      let forceRender: () => void = () => {};
+      function Harness() {
+        const [, setTick] = useState(0);
+        forceRender = () => setTick((tick) => tick + 1);
+        return createElement(
+          FrameworkComponentsContext.Provider,
+          { value: components },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        );
+      }
+      const utils = renderView(createElement(Harness), {
+        convex: t,
+        access: options.access,
+        auth: { user: null },
+      });
+      const expected = `/auth/sign-in?redirectTo=${encodeURIComponent(
+        `/admin/collections/posts?${new URLSearchParams(query).toString()}`,
+      )}`;
+      expect(utils.getByText("Sign in").closest("a")?.getAttribute("href")).toBe(expected);
+
+      // The sign-in modal itself now owns the URL — the return URL must not become its query.
+      isCovered = true;
+      query = "redirectTo=%2Fadmin&modal=1";
+      act(() => forceRender());
+      expect(utils.getByText("Sign in").closest("a")?.getAttribute("href")).toBe(expected);
     });
 
     it('treats an anonymous session ("isAnonymous: true") as signed out, not signed in', () => {

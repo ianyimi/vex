@@ -116,6 +116,32 @@ export interface FrameworkComponents {
    */
   useNavigate?: () => (href: string) => void;
   /**
+   * Reports whether a route outside the admin currently owns the URL while the admin
+   * stays mounted underneath it — e.g. a Next.js intercepting route such as the app's
+   * root `@auth` sign-in modal. The covered admin page still reads the URL, so without
+   * this its URL state (list filter/view/search, the active tab, open modals, the
+   * sidebar's active collection) would read the covering route's query and reset behind
+   * the modal. While it returns `true`, those readers keep their last admin value
+   * (`useLastUncoveredValue`), the list view drops URL writes, and admin-wide keyboard
+   * shortcuts stand down. Next.js: `useNextIsRouteCovered` from `@vexcms/next`. Omitted →
+   * never covered.
+   *
+   * @returns A hook — called unconditionally, like `useNavigate` — returning `true`
+   *   while a non-admin route covers the admin.
+   */
+  useIsRouteCovered?: () => boolean;
+  /**
+   * The current URL's query, read reactively — including shallow (history-only) updates
+   * such as the list view's filter/sort writes. `AdminTopNav` appends it to the sign-in
+   * return URL so signing in lands on exactly the page and state the visitor left.
+   * Must be SSR-safe (the server render and hydration must agree). Next.js: `useSearchParams`
+   * from `next/navigation`, via `@vexcms/next`'s `useNextSearchParams`. Omitted → the
+   * return URL carries the path only.
+   *
+   * @returns A hook — called unconditionally — returning the current query.
+   */
+  useSearchParams?: () => URLSearchParams;
+  /**
  * Sign-in/out adapter for `AdminTopNav`'s own control (a sign-in/out control in the
  * admin top bar, enabled by anonymous admin
    * access via `anonRole`). Omitted → the control renders nothing, same as today.
@@ -169,6 +195,15 @@ export interface FrameworkAuthAdapter {
    */
   signOut: () => Promise<void>;
 }
+
+/**
+ * Data attribute marking a link that opens a covering route
+ * ({@link FrameworkComponents.useIsRouteCovered}) instead of leaving the admin — e.g.
+ * `AdminTopNav`'s "Sign in", which opens the app's intercepted sign-in modal. A
+ * framework's navigation blocker lets such a click through: the admin stays mounted
+ * underneath with its unsaved state intact, so nothing is being left.
+ */
+export const COVERING_ROUTE_LINK_ATTRIBUTE = "data-vex-covering-route";
 
 /**
  * React context for accessing the framework component overrides.

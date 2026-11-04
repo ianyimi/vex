@@ -1,7 +1,7 @@
 {
   "version": 1,
   "slug": "2026-10-13-richtext-field",
-  "updated": "2026-10-14T21:40:01.764Z",
+  "updated": "2026-11-04T02:53:40.491Z",
   "groups": {
     "Step 1": {
       "attempts": 4,
@@ -129,6 +129,53 @@
         "   Duration  19.16s (transform 4.60s, setup 17.59s, import 145.58s, tests 24.06s, environment 38.52s)",
         "> @vexcms/richtext-plate@0.1.0-alpha.25 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/richtext-plate",
         "> tsc --noEmit -p tsconfig.check.json"
+      ]
+    },
+    "Step 6": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/richtext-plate@0.1.0-alpha.29 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/richtext-plate",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/richtext-plate@0.1.0-alpha.29 build /Users/zaye/Documents/Projects/vex.git/dev/packages/richtext-plate",
+        "> tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+        "CLI Building entry: src/index.ts, src/server.ts, src/editor/index.ts, src/render/index.ts",
+        "CLI Using tsconfig: tsconfig.json",
+        "CLI tsup v8.5.1",
+        "CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/richtext-plate/tsup.config.ts",
+        "CLI Target: es2022",
+        "CLI Cleaning output folder",
+        "ESM Build start",
+        "ESM dist/index.js                         174.00 B",
+        "ESM dist/render/index.js                  153.00 B",
+        "ESM dist/chunk-F7SBF2W7.js                2.62 KB",
+        "ESM dist/PlateEditorField-65FL7OIV.js     156.00 B",
+        "ESM dist/editor/index.js                  762.00 B",
+        "ESM dist/chunk-2ZK6ZQC7.js                64.86 KB",
+        "ESM dist/server.js                        274.00 B",
+        "ESM dist/chunk-TQI4VHEW.js                10.33 KB",
+        "ESM dist/RichText-Q5JGHXUW.js             118.00 B",
+        "ESM dist/index.js.map                     71.00 B",
+        "ESM dist/render/index.js.map              71.00 B",
+        "ESM dist/editor/index.js.map              71.00 B",
+        "ESM dist/chunk-F7SBF2W7.js.map            7.09 KB",
+        "ESM dist/chunk-2ZK6ZQC7.js.map            127.55 KB",
+        "ESM dist/PlateEditorField-65FL7OIV.js.map 71.00 B",
+        "ESM dist/RichText-Q5JGHXUW.js.map         71.00 B",
+        "ESM dist/server.js.map                    1.86 KB",
+        "ESM dist/chunk-TQI4VHEW.js.map            24.44 KB",
+        "ESM ⚡️ Build success in 13ms",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/richtext-plate",
+        " Test Files  2 passed (2)",
+        "      Tests  6 passed (6)",
+        "   Start at  02:09:32",
+        "   Duration  2.44s (transform 420ms, setup 0ms, import 2.15s, tests 198ms, environment 518ms)",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  4 passed (4)",
+        "      Tests  46 passed (46)",
+        "   Start at  02:09:35",
+        "   Duration  4.39s (transform 938ms, setup 319ms, import 5.22s, tests 614ms, environment 610ms)"
       ]
     }
   }

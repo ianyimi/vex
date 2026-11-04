@@ -102,12 +102,12 @@ Verify: pnpm --filter @vexcms/react test -- fields/richtext && pnpm --filter @ve
 
 ## Step 6 — Upgrade `platejs` / `@platejs/*` to 53.x [agent]
 Why: co-editing (Track PL / Pro, `@platejs/yjs` needs `platejs >=53.0.0`) — upgrading before 0.1.0, before users store rich text edited on 52, is cheaper than after; decided 2026-10-21.
-Verify: pnpm install && pnpm --filter @vexcms/richtext-plate typecheck && pnpm --filter @vexcms/richtext-plate build && pnpm --filter @vexcms/react test -- fields/richtext
-- [ ] `pnpm-workspace.yaml` catalog — `platejs` and every `@platejs/*` entry to the current 53.x line (53.3.18 on 2026-10-21); all `@platejs/*` from one release line
-- [ ] read the Plate 52 → 53 changelog / migration notes; record breaking changes that touch `packages/richtext-plate` in the spec
-- [ ] `packages/richtext-plate/src/**` — fix every type/API break; no `@ts-nocheck` reintroduced
-- [ ] stored value compatibility — a `RichTextDocument` saved under 52 still loads and renders under 53 (fixture test)
-- [ ] `scripts/check-packed-manifests.mjs` / peer ranges — `platejs` peer range updated if `richtext-plate` declares one
+Verify: pnpm install && pnpm --filter @vexcms/richtext-plate typecheck && pnpm --filter @vexcms/richtext-plate build && pnpm --filter @vexcms/richtext-plate exec vitest run --maxWorkers=2 src && TZ=UTC pnpm --filter @vexcms/react exec vitest run --maxWorkers=2 src/fields/richtext
+- [x] `pnpm-workspace.yaml` catalog — `platejs` and every `@platejs/*` entry to the current 53.x line (53.3.18 on 2026-10-21); all `@platejs/*` from one release line
+- [x] read the Plate 52 → 53 changelog / migration notes; record breaking changes that touch `packages/richtext-plate` in the spec
+- [x] `packages/richtext-plate/src/**` — fix every type/API break; no `@ts-nocheck` reintroduced
+- [x] stored value compatibility — a `RichTextDocument` saved under 52 still loads and renders under 53 (fixture test)
+- [x] `scripts/check-packed-manifests.mjs` / peer ranges — `platejs` peer range updated if `richtext-plate` declares one
 
 ## Step 7 — Dogfood in `apps/test` [dev]
 Why: proves schema gen → type gen → admin form → cell → front-end render against a real deployment.

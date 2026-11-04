@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { NavigationBlockerAdapter } from "@vexcms/react";
+import { COVERING_ROUTE_LINK_ATTRIBUTE, type NavigationBlockerAdapter } from "@vexcms/react";
 
 /**
  * Next.js App Router implementation of `NavigationBlockerAdapter["useBlocker"]`.
@@ -69,7 +69,10 @@ export function useNextNavigationBlocker(
         event.shiftKey ||
         event.altKey ||
         anchor.target ||
-        anchor.hasAttribute("download")
+        anchor.hasAttribute("download") ||
+        // Opens a covering route (the sign-in modal) over the admin — the guarded page
+        // stays mounted with its unsaved state, so nothing is being left.
+        anchor.hasAttribute(COVERING_ROUTE_LINK_ATTRIBUTE)
       ) {
         return;
       }
@@ -109,6 +112,13 @@ export function useNextNavigationBlocker(
     function onPopState() {
       if (popstateReplayRef.current) {
         popstateReplayRef.current = false;
+        return;
+      }
+
+      // Back from a covering route (closing the sign-in modal) lands ON the sentinel —
+      // the guarded page's own URL — rather than stepping off it: not a leave.
+      if (isSentinelEntry()) {
+        sentinelActiveRef.current = true;
         return;
       }
 
