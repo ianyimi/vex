@@ -1,0 +1,1 @@
+export { anonymizeConfig } from "./anonymizeConfig";

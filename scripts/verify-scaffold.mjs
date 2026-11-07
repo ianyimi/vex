@@ -148,7 +148,11 @@ function packPublishables(publishables, outRoot) {
 function runStep(label, command, args, cwd) {
   console.log(`  \u2192 ${label}`);
   const start = Date.now();
-  const result = spawnSync(command, args, { cwd, stdio: "inherit" });
+  const result = spawnSync(command, args, {
+    cwd,
+    stdio: "inherit",
+    env: { ...process.env, VEX_TELEMETRY_DISABLED: "1" },
+  });
   const ok = result.status === 0;
   const ms = Date.now() - start;
   console.log(

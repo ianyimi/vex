@@ -516,6 +516,9 @@ importers:
       '@vexcms/cli':
         specifier: workspace:*
         version: link:../../packages/cli
+      '@vexcms/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.10(vitest@4.1.10)
@@ -788,6 +791,9 @@ importers:
       '@vexcms/core':
         specifier: workspace:*
         version: link:../core
+      '@vexcms/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
       '@vexcms/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -886,6 +892,12 @@ importers:
       '@types/validate-npm-package-name':
         specifier: 'catalog:'
         version: 4.0.2
+      '@vexcms/core':
+        specifier: workspace:*
+        version: link:../core
+      '@vexcms/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
       tsup:
         specifier: 'catalog:'
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.23)(typescript@6.0.3)(yaml@2.9.0)
@@ -1207,6 +1219,27 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.2
+      tsup:
+        specifier: 'catalog:'
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.23)(typescript@6.0.3)(yaml@2.9.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@edge-runtime/vm@5.0.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.10)(jsdom@26.1.0)(msw@2.15.0(@types/node@20.19.43)(typescript@6.0.3))(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
+
+  packages/telemetry:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.43
+      '@vexcms/core':
+        specifier: workspace:*
+        version: link:../core
+      '@vexcms/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       tsup:
         specifier: 'catalog:'
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.23)(typescript@6.0.3)(yaml@2.9.0)

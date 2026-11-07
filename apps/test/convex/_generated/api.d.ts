@@ -20,6 +20,8 @@ import type * as pages from "../pages.js";
 import type * as posts from "../posts.js";
 import type * as seed from "../seed.js";
 import type * as siteSettings from "../siteSettings.js";
+import type * as telemetry_deriveTelemetryProject from "../telemetry/deriveTelemetryProject.js";
+import type * as telemetry_ingest from "../telemetry/ingest.js";
 import type * as theme from "../theme.js";
 import type * as vex from "../vex.js";
 import type * as vex_firstUser from "../vex/firstUser.js";
@@ -47,6 +49,8 @@ declare const fullApi: ApiFromModules<{
   posts: typeof posts;
   seed: typeof seed;
   siteSettings: typeof siteSettings;
+  "telemetry/deriveTelemetryProject": typeof telemetry_deriveTelemetryProject;
+  "telemetry/ingest": typeof telemetry_ingest;
   theme: typeof theme;
   vex: typeof vex;
   "vex/firstUser": typeof vex_firstUser;

@@ -1216,3 +1216,40 @@ optimization.
 
 **Why deferred.** Developer decision (2026-11-02): implement properly later,
 not as a tweak during the list-view overhaul.
+
+---
+
+## Link telemetry snapshots to issue reports
+
+**What.** A "Project shape" field in the GitHub bug-report issue template where
+reporters may paste the output of `vex telemetry status --json`. That output is
+the same anonymized payload the CLI sends: numbered names, counts, booleans and
+fixed literals, plus `projectId`. With it, an issue can be matched to its config
+shape (and, if the reporter includes `projectId`, to that project's
+`telemetryProjects` row), so bugs can be grouped by configuration (drafts, RBAC
+query constraints, hooks, framework) and weighed against feature usage.
+
+**Why.** Telemetry shows which features are used; issues show where they break.
+Joining the two points 0.1.x work at the configurations that fail most.
+
+**Lift.** Small: one issue-template field, a docs line on the telemetry page, and
+optionally a `projectId` text filter on `telemetryProjects`.
+
+**Blocks.** Build-time telemetry (spec `2026-10-26-build-time-telemetry`) must ship first.
+
+**Why deferred.** Developer decision (2026-11-04): pasting is voluntary, so
+anonymity holds, but it is outside the telemetry spec's scope.
+
+---
+
+## Array-membership (`contains`) filter operator
+
+**What.** A `contains` operator in core's where/filter system (`VexWhere`, `queryConstraintTypes.ts` `FilterOp`, the Convex compiler, `validateSavedListViewConfig`, the list-view filter builder) that matches when an array-stored value includes the given value. `hasMany` select fields (and every select, since selects store arrays) need it for "has option X" filters.
+
+**Why.** `telemetryProjects.fieldTypes` (a `hasMany` select of every field type a project uses) can be displayed but not filtered: `eq` against an array-stored `hasMany` field never matches (`queryArgs.ts` deliberately leaves `hasMany` out of the `eq`→array rewrite; `valuesEqual` needs both sides to be arrays). Views like "Uses Richtext" wait on this. The same gap affects every user's `hasMany` select filters.
+
+**Lift.** Medium: new op through where-node types, the index/filter compiler (filter-only, never an index range), saved-view validation, URL state grammar, and a filter-builder operator for `hasMany` selects, with tests at each layer.
+
+**Blocks.** Nothing.
+
+**Why deferred.** Developer decision (2026-11-05): a core change outside the telemetry spec.

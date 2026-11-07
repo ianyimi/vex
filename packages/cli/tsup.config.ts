@@ -11,4 +11,5 @@ export default defineConfig({
     js: "#!/usr/bin/env node",
   },
   external: ["@vexcms/core", "prettier"],
+  noExternal: ["@vexcms/telemetry"],
 });

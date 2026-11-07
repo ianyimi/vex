@@ -1,0 +1,18 @@
+{
+  "extends": "@vexcms/tsconfig/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@vexcms/core": [
+        "../../packages/core/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ]
+}

@@ -744,6 +744,7 @@ export const testimonials = defineTable({
   internalScore: v.optional(v.number()),
   updatedAt: v.optional(v.commitTs()),
 })
+  .index("by_rating", ["rating"])
   .index("by_source", ["source"])
   .index("by_contributorId", ["contributorId"])
   .index("by_avatar", ["avatar"])
@@ -756,6 +757,155 @@ export const testimonials = defineTable({
     searchField: "company",
     filterFields: [],
   })
+
+export const telemetryEvents = defineTable({
+  event: v.array(v.union(v.literal("dev"), v.literal("deploy"), v.literal("create"))),
+  schemaVersion: v.number(),
+  machineId: v.string(),
+  projectId: v.string(),
+  outcomeStatus: v.array(v.union(v.literal("ok"), v.literal("failed"))),
+  failureStage: v.optional(
+    v.array(
+      v.union(
+        v.literal("resolveConfig"),
+        v.literal("loadConfig"),
+        v.literal("generateSchema"),
+        v.literal("scaffold")
+      )
+    )
+  ),
+  errorCode: v.optional(
+    v.array(
+      v.union(
+        v.literal("configError"),
+        v.literal("accessConfigError"),
+        v.literal("authConfigError"),
+        v.literal("componentConfigError"),
+        v.literal("storageConfigError"),
+        v.literal("unknown")
+      )
+    )
+  ),
+  framework: v.array(v.union(v.literal("next"), v.literal("tanstack"), v.literal("unknown"))),
+  vexCoreVersion: v.optional(v.string()),
+  payload: v.any(),
+}).index("by_projectId", ["projectId"])
+
+export const telemetryProjects = defineTable({
+  projectId: v.string(),
+  firstSeenAt: v.number(),
+  lastSeenAt: v.number(),
+  devEventCount: v.number(),
+  deployEventCount: v.number(),
+  createEventCount: v.number(),
+  failedEventCount: v.number(),
+  lastEvent: v.array(v.union(v.literal("dev"), v.literal("deploy"), v.literal("create"))),
+  lastOutcomeStatus: v.array(v.union(v.literal("ok"), v.literal("failed"))),
+  lastFailureStage: v.optional(
+    v.array(
+      v.union(
+        v.literal("resolveConfig"),
+        v.literal("loadConfig"),
+        v.literal("generateSchema"),
+        v.literal("scaffold")
+      )
+    )
+  ),
+  lastErrorCode: v.optional(
+    v.array(
+      v.union(
+        v.literal("configError"),
+        v.literal("accessConfigError"),
+        v.literal("authConfigError"),
+        v.literal("componentConfigError"),
+        v.literal("storageConfigError"),
+        v.literal("unknown")
+      )
+    )
+  ),
+  framework: v.array(v.union(v.literal("next"), v.literal("tanstack"), v.literal("unknown"))),
+  packageManager: v.array(
+    v.union(
+      v.literal("pnpm"),
+      v.literal("npm"),
+      v.literal("yarn"),
+      v.literal("bun"),
+      v.literal("unknown")
+    )
+  ),
+  os: v.string(),
+  nodeMajor: v.number(),
+  vexCoreVersion: v.optional(v.string()),
+  scaffoldTemplate: v.optional(v.array(v.union(v.literal("base"), v.literal("marketing")))),
+  scaffoldBare: v.optional(v.boolean()),
+  scaffoldMonorepo: v.optional(v.boolean()),
+  scaffoldEmailPassword: v.optional(v.boolean()),
+  scaffoldOauthProviderCount: v.optional(v.number()),
+  scaffoldOrgs: v.optional(v.boolean()),
+  collectionCount: v.optional(v.number()),
+  globalCount: v.optional(v.number()),
+  mediaCollectionCount: v.optional(v.number()),
+  blockCount: v.optional(v.number()),
+  fieldCount: v.optional(v.number()),
+  fieldTypes: v.optional(
+    v.array(
+      v.union(
+        v.literal("text"),
+        v.literal("email"),
+        v.literal("textarea"),
+        v.literal("url"),
+        v.literal("color"),
+        v.literal("number"),
+        v.literal("checkbox"),
+        v.literal("date"),
+        v.literal("commitTs"),
+        v.literal("select"),
+        v.literal("relationship"),
+        v.literal("array"),
+        v.literal("group"),
+        v.literal("blocks"),
+        v.literal("upload"),
+        v.literal("richtext"),
+        v.literal("json"),
+        v.literal("tabs"),
+        v.literal("collapsible"),
+        v.literal("row"),
+        v.literal("ui")
+      )
+    )
+  ),
+  featureDrafts: v.optional(v.boolean()),
+  featureLivePreview: v.optional(v.boolean()),
+  featureConditions: v.optional(v.boolean()),
+  featureSlots: v.optional(v.boolean()),
+  featureInputMasks: v.optional(v.boolean()),
+  featureAuth: v.optional(v.boolean()),
+  authAdapter: v.optional(
+    v.array(v.union(v.literal("none"), v.literal("betterAuth"), v.literal("custom")))
+  ),
+  hookCount: v.optional(v.number()),
+  accessEnabled: v.optional(v.boolean()),
+  accessRoleCount: v.optional(v.number()),
+  accessRuleCount: v.optional(v.number()),
+  accessFieldPermissionRuleCount: v.optional(v.number()),
+  accessQueryConstraintRuleCount: v.optional(v.number()),
+  accessCallbackRuleCount: v.optional(v.number()),
+  accessCustomActionCount: v.optional(v.number()),
+  accessCustomResourceCount: v.optional(v.number()),
+  accessOrganizations: v.optional(v.boolean()),
+  storageUsesPresignedUrl: v.optional(v.boolean()),
+  configTruncated: v.optional(v.boolean()),
+  latestConfig: v.optional(v.any()),
+})
+  .index("by_projectId", ["projectId"])
+  .index("by_lastSeenAt", ["lastSeenAt"])
+  .index("by_collectionCount", ["collectionCount"])
+  .index("by_globalCount", ["globalCount"])
+  .index("by_mediaCollectionCount", ["mediaCollectionCount"])
+  .index("by_blockCount", ["blockCount"])
+  .index("by_fieldCount", ["fieldCount"])
+  .index("by_hookCount", ["hookCount"])
+  .index("by_accessRuleCount", ["accessRuleCount"])
 
 export const session = defineTable({
   expiresAt: v.number(),

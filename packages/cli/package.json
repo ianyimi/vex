@@ -51,6 +51,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@vexcms/core": "workspace:*",
+    "@vexcms/telemetry": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
     "convex": "catalog:",
     "tsup": "catalog:",

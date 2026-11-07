@@ -1,0 +1,45 @@
+{
+  "name": "@vexcms/telemetry",
+  "version": "0.1.0-alpha.27",
+  "description": "VexCMS anonymous build-time telemetry: settings, anonymization and the event sender shared by vex and create-vexcms",
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/telemetry"
+  },
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./config": {
+      "import": "./dist/config.js",
+      "types": "./dist/config.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@vexcms/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@vexcms/core": "workspace:*",
+    "@vexcms/tsconfig": "workspace:*",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -133,6 +133,10 @@ export const testimonials = defineCollection({
       min: [1, "Rating must be at least 1."],
       max: [5, "Rating cannot exceed 5."],
       description: "1-5 star rating.",
+      index: "by_rating",
+      admin: {
+        enableSorting: true,
+      },
     }),
     source: select({
       label: "Source",

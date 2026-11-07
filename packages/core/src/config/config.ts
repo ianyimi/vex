@@ -287,5 +287,8 @@ export function defineServerConfig(props: {
       clientUploads: config.storage.clientUploads,
       adapters: server?.storage?.adapters ?? [],
     },
+    telemetry: {
+      hideLogs: server?.telemetry?.hideLogs ?? false,
+    },
   };
 }

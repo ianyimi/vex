@@ -1,5 +1,10 @@
 // @ts-nocheck
+import { performance } from "node:perf_hooks";
 import { resolve } from "node:path";
+
+import { classifyTelemetryError, recordTelemetryEvent, TELEMETRY_DEV_TIMEOUT_MS } from "@vexcms/telemetry";
+import { anonymizeConfig } from "@vexcms/telemetry/config";
+
 import { generateAndWrite, getOutputPath } from "../lib/generateSchema.js";
 import { killConvexDev, startConvexDev, waitForDeploy } from "../lib/convexProcess.js";
 import { loadConfig, patchConvexTsconfig } from "../lib/loadConfig.js";
@@ -26,7 +31,17 @@ export interface DevOptions {
  */
 export async function devCommand(options: DevOptions = {}) {
   const cwd = options.cwd ? resolve(process.cwd(), options.cwd) : process.cwd();
-  const configPath = resolveConfigPath(cwd);
+  let configPath: string;
+  try {
+    configPath = resolveConfigPath(cwd);
+  } catch (error) {
+    await recordTelemetryEvent({
+      event: "dev",
+      projectDir: cwd,
+      outcome: { status: "failed", stage: "resolveConfig", errorCode: classifyTelemetryError({ error }) },
+    });
+    throw error;
+  }
   if (!isServerConfigPath(configPath)) {
     logger.error(
       `vex dev requires vex.config.server.ts. Found only a client config at ${configPath} — add a server config alongside it.`,
@@ -36,23 +51,75 @@ export async function devCommand(options: DevOptions = {}) {
   logger.info(`Config found: ${configPath}`);
 
   // Initial generation
-  let config = await loadConfig(configPath);
+  const configLoadStart = performance.now();
+  let config;
+  try {
+    config = await loadConfig({ configPath, projectDir: cwd });
+  } catch (error) {
+    await recordTelemetryEvent({
+      event: "dev",
+      projectDir: cwd,
+      outcome: { status: "failed", stage: "loadConfig", errorCode: classifyTelemetryError({ error }) },
+    });
+    throw error;
+  }
+  const configLoadMs = performance.now() - configLoadStart;
   const outputPath = getOutputPath(config, cwd);
 
-  const result = await generateAndWrite(config, cwd, configPath);
+  const schemaGenStart = performance.now();
+  let result;
+  try {
+    result = await generateAndWrite(config, cwd, configPath);
+  } catch (error) {
+    await recordTelemetryEvent({
+      event: "dev",
+      projectDir: cwd,
+      outcome: { status: "failed", stage: "generateSchema", errorCode: classifyTelemetryError({ error }) },
+      hideRunNotice: config.telemetry.hideLogs,
+    });
+    throw error;
+  }
+  const schemaGenMs = performance.now() - schemaGenStart;
   if (result.written) {
     logger.success(`Generated ${config.schema.outputPath}`);
   } else {
     logger.info("Schema up to date (no changes)");
   }
 
-  // If --once, push schema standalone (no long-running process) and exit
+  // If --once, push schema standalone (no long-running process) and exit.
+  // Record the `ok` dev event only after the push resolves — not before it
+  // starts — so a receiver hosted on the SAME deployment the push just hit
+  // isn't raced (recording earlier can time out the send while the push is
+  // still in flight). Report the push result first either way, THEN await
+  // the send (unlike watch mode's fire-and-forget, since the process is
+  // about to exit and would otherwise kill the send mid-flight) — a failed
+  // push uses the default (short) timeout so a dead receiver doesn't delay
+  // the already-decided `process.exit(1)`; a successful push can afford
+  // the longer `TELEMETRY_DEV_TIMEOUT_MS` since there's nothing left to do
+  // but exit 0 either way.
   if (options.once) {
     const ok = await waitForDeploy(cwd);
     if (!ok) {
       logger.error("Schema push failed");
+      await recordTelemetryEvent({
+        event: "dev",
+        projectDir: cwd,
+        config: () => anonymizeConfig({ config }),
+        timings: { configLoadMs, schemaGenMs, schemaChanged: result.written },
+        outcome: { status: "ok" },
+        hideRunNotice: config.telemetry.hideLogs,
+      });
       process.exit(1);
     }
+    await recordTelemetryEvent({
+      event: "dev",
+      projectDir: cwd,
+      config: () => anonymizeConfig({ config }),
+      timings: { configLoadMs, schemaGenMs, schemaChanged: result.written },
+      outcome: { status: "ok" },
+      timeoutMs: TELEMETRY_DEV_TIMEOUT_MS,
+      hideRunNotice: config.telemetry.hideLogs,
+    });
     return;
   }
 
@@ -79,11 +146,24 @@ export async function devCommand(options: DevOptions = {}) {
 
   // Wait for the first deployment. On success, stop the tsconfig watcher
   // (no longer needed). On failure, the watcher already patched the file
-  // which triggers Convex to retry.
+  // which triggers Convex to retry. Either way, record the `ok` dev event
+  // only now — after the first push resolves, not before it starts — same
+  // race-avoidance reason as the `--once` branch above; fire-and-forget
+  // here since the process keeps running the watch loop afterward.
   waitForDeploy(cwd)
     .then(async (deployed) => {
       // Stop watching — Convex only overwrites tsconfig during provisioning
       tsconfigWatcher?.close();
+
+      void recordTelemetryEvent({
+        event: "dev",
+        projectDir: cwd,
+        config: () => anonymizeConfig({ config }),
+        timings: { configLoadMs, schemaGenMs, schemaChanged: result.written },
+        outcome: { status: "ok" },
+        timeoutMs: TELEMETRY_DEV_TIMEOUT_MS,
+        hideRunNotice: config.telemetry.hideLogs,
+      });
 
       if (!deployed) {
         // Patch one more time in case the watcher missed it
@@ -116,7 +196,7 @@ export async function devCommand(options: DevOptions = {}) {
     generating = true;
 
     try {
-      config = await loadConfig(configPath);
+      config = await loadConfig({ configPath, projectDir: cwd });
       const genResult = await generateAndWrite(config, cwd, configPath);
 
       if (genResult.written) {

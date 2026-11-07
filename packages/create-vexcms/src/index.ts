@@ -21,6 +21,7 @@ import { displayInvalidNameError, displayDirectoryNotEmptyError, displaySuccessM
 import { findWorkspaceRoot } from './helpers/monorepo.js';
 import { createInstaller, getPopularProviders, getAdditionalProviders } from './installers/index.js';
 import type { Framework, ProjectOptions } from './installers/types.js';
+import { classifyTelemetryError, recordTelemetryEvent } from '@vexcms/telemetry';
 
 const program = new Command()
   .name('create-vexcms')
@@ -237,7 +238,35 @@ async function main() {
   });
 
   console.log();
-  await installer.initProject(options);
+  try {
+    await installer.initProject(options);
+  } catch (error) {
+    await recordTelemetryEvent({
+      event: 'create',
+      projectDir: targetDir,
+      outcome: { status: 'failed', stage: 'scaffold', errorCode: classifyTelemetryError({ error }) },
+    });
+    throw error;
+  }
+
+  await recordTelemetryEvent({
+    event: 'create',
+    projectDir: targetDir,
+    outcome: { status: 'ok' },
+    create: {
+      framework: options.framework,
+      template: options.bare ? 'base' : 'marketing',
+      bare: options.bare,
+      auth: {
+        emailPassword: options.emailPasswordAuth,
+        oauthProviderCount: options.oauthProviders.length,
+        orgs: options.orgs,
+      },
+      monorepo: options.monorepo,
+      initGit: options.initGit,
+      installDependencies: options.installDependencies,
+    },
+  });
 
   // Success message
   console.log();
