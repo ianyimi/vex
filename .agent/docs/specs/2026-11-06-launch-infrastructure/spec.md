@@ -41,6 +41,12 @@ touches:
   - ".github/workflows/ci.yml"
   - ".changeset/roles-not-client-writable.md"
   - ".changeset/auth-roles-guard.md"
+  - "apps/www/e2e/routes.ts"
+  - ".agent/docs/product/v0.1.0-launch-plan.md"
+  - ".agent/docs/product/backlog.md"
+  - ".agent/docs/standards/anti-patterns.md"
+  - ".agent/docs/product/tech-stack.md"
+  - ".omp/skills/template-sync/SKILL.md"
 prompt_version: 1
 ---
 
@@ -53,7 +59,19 @@ Launch-plan item 15: S (live demo hardening), P (launch analytics & monitoring),
 - **Self-assigned admin.** Anyone can make themselves admin through Better Auth's sign-up (`roles` is client-writable, proven in-process; see `sources.md` §14).
 - **User-table growth.** Scripted sign-ups can grow the user table without bound, and every new user re-runs a whole-table scan for every connected visitor.
 
-S closes both and adds a demo fallback for outages. P adds measurement (Web Analytics on www + docs, sampled Speed Insights on www), a privacy page, spend and usage caps, and uptime alerts. N carries everything into the `create-vexcms` templates. It is **blocked** until quality-pass step 12 (`2026-11-06-quality-pass`) and M (`2026-10-26-build-time-telemetry`) are committed.
+S closes both and adds a demo fallback for outages. P adds measurement (Web Analytics on www + docs, sampled Speed Insights on www), a privacy page, spend and usage caps, and uptime alerts. N carries everything into the `create-vexcms` templates.
+
+Cross-spec decisions in `.agent/docs/product/launch-cross-spec-decisions.md` (2026-11-07) are binding here and add these dependencies:
+
+- **N is blocked** (steps 17–20) until all of these are done:
+  - quality-pass step 12 (`2026-11-06-quality-pass`)
+  - M (`2026-10-26-build-time-telemetry`) committed
+  - public-presence steps 10, 13 and 14 (`2026-11-06-public-presence`)
+  - launch-kit step 9 (`2026-11-06-launch-kit-final-review`)
+
+  That way the template exclusions run against the final www. Public-presence step 17 waits on step 19 here.
+- **`/privacy`** (step 13) runs after public-presence steps 1–2.
+- **The `/tour` screenshot recapture** (step 10) waits for the shared media session, which runs after quality-pass steps 6–7.
 
 High-care: the developer implements; code blocks below are guided stubs plus complete tests. Vendor facts and fetch dates are in `sources.md`.
 
@@ -72,33 +90,41 @@ High-care: the developer implements; code blocks below are guided stubs plus com
 8. **Read-only proof = a permanent convex-test suite + one recorded production run.**
    - **Where the helper lives.** `createConvexTest` lives in `src/testing/`, not `convex/`. The Convex CLI pushes every single-dot module in `convex/` (`sources.md` §14), so a helper that imports `convex-test` would be bundled as a function module. Test files can sit in `convex/` because `*.test.ts` has two dots.
    - **Test environment.** Each Convex test file opens with `// @vitest-environment edge-runtime`, mirroring `packages/next/src/navigation/useNextNavigationBlocker.test.ts`. `convex-test` is inlined, mirroring `packages/core/vitest.config.ts`.
-9. **`/tour` is a static route, a deliberate exception to P-018.** An outage fallback can't depend on the backend that failed. Seeded pages, and their Convex-stored images, are served by Convex. It mirrors `app/unauthorized/page.tsx`: outside the route groups, emitting `<ThemeStyle />` itself. `dynamic = "force-static"` bakes the theme CSS in at build. Screenshots ship from `public/tour/`.
+9. **`/tour` is a static route, a deliberate exception to P-018.** An outage fallback can't depend on the backend that failed. Seeded pages, and their Convex-stored images, are served by Convex. It mirrors `app/unauthorized/page.tsx`: outside the route groups, emitting `<ThemeStyle />` itself. `dynamic = "force-static"` bakes the theme CSS in at build. Screenshots ship from `public/tour/`. `/tour` ships with today's screenshots. The same four are recaptured in the shared media session (cross-spec decision 7, after quality-pass steps 6–7) and copied into both `apps/www/public/tour/` and `apps/test/public/tour/`.
 10. **Convex: Starter now, sizing measured after** (interview). Spending limits need a paid subscription; on Free, writes may fail once usage passes a limit (`sources.md` §8).
 11. **Vercel: Pro for launch.** Set an On-Demand Budget with pause-production. Spend Management is Pro-only, and Hobby is non-commercial with 30-day cooldowns on overage (`sources.md` §11).
 12. **Speed Insights on www only, `sampleRate` 0.05. Web Analytics on docs through a Starlight `Head` override.** The Speed Insights pool is 10k events per 30 days, team-wide, so docs doesn't spend it.
 13. **The marketing template ships no analytics.** `apps/docs` explains how to add it (step 14).
-14. **The privacy page is seeded with the existing Hero + FAQ blocks; its footer link sits after "Licence".** This is how quality-pass step 11 seeds `/accessibility` (P-018, P-021). Contact is GitHub Discussions until R creates an address. The newsletter answer is T's to add.
+14. **The privacy page is seeded with the existing Hero + FAQ blocks** (cross-spec decisions 4, 5, 9).
+    - **Footer link.** Inserted at its position in `2026-11-06-public-presence/public-copy.md` § Footer, the one canonical ordered list of footer links.
+    - **Quoted copy.** The contact answer quotes `public-copy.md` § Privacy contact verbatim, and the release-emails answer quotes § Release emails privacy entry verbatim. So step 13 runs after public-presence steps 1–2.
+    - **Re-seeding.** Content ships by `seed:reinit`.
+    - **Same mechanism as `/accessibility`.** Quality-pass step 11 seeds that page the same way (P-018, P-021).
 15. **Uptime: UptimeRobot Free.** Keyword monitors on `vexcms.dev`, `docs.vexcms.dev` and `vexcms.dev/admin`, plus an HTTP monitor on the prod `.convex.site/api/auth/ok`. Alerts go through the mobile app (`sources.md` §16).
 16. **The apps/test port is limited to template-bound changes plus seed data and new pages** (bootstrap fix, privacy seed, `/tour`). The rate limiter, cron, `AUTH_PROXY_SECRET`, `disableIpTracking` and analytics stay www-only.
-17. **N stays in this spec, last and blocked.** It also carries this spec's base and template changes. Template seeds leave out the vexcms-only pages (`privacy`, `accessibility`, `tour`) and their footer links.
-18. **Operational records live in this spec folder**: `live-proof.md`, `sizing.md`, `operations.md`, `n-sync.md`, `n-runthrough.md`, `bookkeeping.md`. This spec may not edit the launch plan, `backlog.md` or other specs. Step 21 lists those edits instead.
+17. **N stays in this spec, last and blocked.** It also carries this spec's base and template changes. The `marketing-site` template excludes everything vexcms-specific (cross-spec decision 6):
+    - **Collections and routes:** the `posts` collection and `/posts/[slug]`, and every post document. `base-nextjs` already has posts, and `@vexcms/richtext-plate` stays out of the marketing template.
+    - **Pages and routes:** the `privacy`, `accessibility`, `brand` and `launch-week` pages, and `/tour`.
+    - **Footer:** the Privacy, Accessibility, Brand, Discussions, Release emails, Sponsor and Buy Me a Coffee links, and the Sponsors `socialLinks` entry.
+    - **Copy:** the roadmap and FAQ copy is replaced with generic template copy, with no `public-copy.md` strings.
+18. **Operational records live in this spec folder**: `live-proof.md`, `sizing.md`, `operations.md`, `n-sync.md`, `n-runthrough.md`. Step 21 edits `.agent/docs/product/v0.1.0-launch-plan.md` and `.agent/docs/product/backlog.md` directly (cross-spec decision 8).
 
 ## Out of Scope
 
 - PostHog, and an analytics adapter for VexCMS users (roadmap 🔭).
 - Removing `anonymous()` from www or closing email sign-up (considered and rejected in the interview).
-- Brute-force limiting on `/sign-in/email`. Better Auth's limiter is in-memory per isolate on Convex. Proposed for `backlog.md` in step 21.
-- Rate limiting M's telemetry receiver (M's own step 10 decides where it lives). Proposed for `backlog.md`.
+- Brute-force limiting on `/sign-in/email`. Better Auth's limiter is in-memory per isolate on Convex. Step 21 adds it to `backlog.md`.
+- Rate limiting M's telemetry receiver (M's own step 10 decides where it lives). Step 21 adds it to `backlog.md`.
 - The rate limiter, purge cron and `AUTH_PROXY_SECRET` in `apps/test` or either template.
-- CSP and other security headers. Quality-pass step 8 owns them; see § Handoff to quality pass.
-- Accessibility auditing of `/privacy` and `/tour`; the quality pass covers them through the handoff.
-- The privacy page's newsletter answer (T), a `vexcms.dev` contact address (R), and a demo video on `/tour` (T's media kit).
+- CSP and other security headers. Quality-pass step 8 owns them; it has absorbed this spec's origins (§ Handoff to quality pass).
+- Accessibility auditing of `/privacy` and `/tour`; the quality pass covers them (its `inventory.md` and `QUALITY_ROUTES`).
+- A demo video on `/tour`.
 - Vercel WAF rules and custom Convex domains.
 - Making `isBootstrapped` / `promoteFirstAdmin` read in O(1). Only the per-visitor subscription is removed.
 
-## Handoff to quality pass
+## Handoff to quality pass — absorbed 2026-11-07
 
-`2026-11-06-quality-pass` is not edited by this spec. Its steps need these inputs from here, whichever spec lands first:
+`2026-11-06-quality-pass/spec-tasks.md` (updated 2026-11-07) has absorbed this table: its header lists this spec's handoffs, its steps 1, 2 and 7 cover `/privacy`, `/tour` and the admin `error.tsx`, and its step 8 covers the analytics CSP. The table stays as a record of what was handed over. Where it conflicts with `.agent/docs/product/launch-cross-spec-decisions.md`, the decision record wins. In particular, the footer order comes from `public-copy.md` § Footer (decision 4), and routes go in `QUALITY_ROUTES` (decision 3).
 
 | Quality-pass step | Input from this spec |
 |---|---|
@@ -1902,7 +1928,19 @@ Verify: `sizing.md` records the plan, both thresholds, the alert recipients, the
 - [ ] `apps/www/src/app/tour/page.tsx`: `force-static`, `<ThemeStyle />` (baked in at build), `next/image` with fixed dimensions, `robots: { index: false }`
 - [ ] `apps/www/src/app/(vexcms)/admin/error.tsx`: client error boundary → "Demo unavailable" with links to `/tour` and retry
 - [ ] `apps/www/src/app/(vexcms)/admin/[[...path]]/page.tsx`: redirect to `/tour` when session verification fails (Convex unreachable)
-- [ ] `apps/www/public/tour/*.png`: four 1280×800 screenshots of the local admin (dashboard, list view with a saved view, edit view with live preview, media library), captured with the browser tool against :3030 — attach the captures, never start a server
+- [ ] `apps/www/public/tour/*.png`: four 1280×800 screenshots of the local admin (dashboard, list view with a saved view, edit view with live preview, media library), captured with the browser tool against :3030. Attach to the running server; never start one. `/tour` ships with these
+- [ ] `apps/www/e2e/routes.ts`: `QUALITY_ROUTES` holds `{ path: "/tour" }`. Quality-pass step 2 creates the file and seeds it from its inventory, which already lists `/tour`; add the entry only if it's missing. It is never `draft`: the route is static and always public
+- [ ] `[dev]` **Blocked on the shared media session** (public-presence step 16 + launch-kit step 8, after quality-pass steps 6–7; cross-spec decision 7). Recapture the same four screenshots with the same filenames (`dashboard.png`, `list-view.png`, `edit-view-live-preview.png`, `media-library.png`, 1280×800) and copy them into both `apps/www/public/tour/` and `apps/test/public/tour/`
+
+#### apps/www/e2e/routes.ts
+
+1 edit; everything not shown is unchanged. The file exports `QUALITY_ROUTES: { path, draft?: true }[]` (cross-spec decision 3).
+
+**1 — the `/tour` entry in `QUALITY_ROUTES`**, if quality-pass step 2 hasn't already added it:
+
+```ts
+  { path: "/tour" },
+```
 
 #### apps/www/src/lib/routes.ts
 
@@ -2115,7 +2153,7 @@ import config from "~/vex.config.server";
  */
 ```
 
-Verify: `pnpm --filter www build` lists `/tour` as static (`○`). `/tour` on :3030 shows four screenshots at 375 and 1280 with no layout shift. `[dev]` With `NEXT_PUBLIC_CONVEX_URL` pointed at an unreachable host in your own dev server, `/admin` lands on `/tour`, and a thrown render error inside the admin shows the error boundary's `/tour` link.
+Verify: `pnpm --filter www build` lists `/tour` as static (`○`). `/tour` on :3030 shows four screenshots at 375 and 1280 with no layout shift. `rg -n '"/tour"' apps/www/e2e/routes.ts` prints the `QUALITY_ROUTES` entry with no `draft`. `[dev]` With `NEXT_PUBLIC_CONVEX_URL` pointed at an unreachable host in your own dev server, `/admin` lands on `/tour`, and a thrown render error inside the admin shows the error boundary's `/tour` link. After the media session: `cmp apps/www/public/tour/dashboard.png apps/test/public/tour/dashboard.png` (and the other three) prints nothing.
 
 ### Step 11 — Speed Insights on www, sampled
 
@@ -2243,23 +2281,23 @@ Verify: `pnpm --filter docs build` green; after deploy, `https://docs.vexcms.dev
 
 ### Step 13 — Privacy page + footer link
 
-`[agent]`
+`[agent]` **Blocked on:** public-presence steps 1–2 (`public-copy.md` § Footer, § Privacy contact and § Release emails privacy entry exist, and `hello@vexcms.dev` is live). Cross-spec decisions 4, 5, 9.
 
-- [ ] `apps/www/convex/seed.ts`: a `privacy` page (compact Hero + FAQ block: what we collect, cookies, Web Analytics, Speed Insights, the live demo and rate limiting, CLI telemetry with a link to its field list, contact through GitHub Discussions); a `{ label: "Privacy", href: "/privacy" }` footer link after "Licence"
+- [ ] `apps/www/convex/seed.ts`: a `privacy` page (compact Hero + FAQ block: what we collect, cookies, Web Analytics, Speed Insights, the live demo and rate limiting, CLI telemetry with a link to its field list, release emails, contact). The contact and release-emails answers quote `public-copy.md` verbatim
+- [ ] `apps/www/convex/seed.ts`: the Privacy footer link at its position in `public-copy.md` § Footer
+- [ ] `apps/www/e2e/routes.ts`: `QUALITY_ROUTES` holds `{ path: "/privacy" }`. Quality-pass step 2 creates the file from its inventory, which already lists `/privacy`; add the entry only if it's missing. Never `draft`: the page is seeded `vex_status: "published"`
 
 #### apps/www/convex/seed.ts
 
 2 edits; everything not shown is unchanged.
 
-**1 — footer link**, in `footerDoc.content[0].links`, right after the `"Licence"` entry:
+**1 — footer link**, in `footerDoc.content[0].links`. Take its label and its index from `2026-11-06-public-presence/public-copy.md` § Footer, the one canonical ordered list (cross-spec decision 4). Insert it after the entry that precedes Privacy in that list and before the one that follows it, among the entries the seed already has. The `href` is fixed:
 
 ```ts
-          { label: "Licence", href: "https://github.com/ianyimi/vex/blob/master/LICENSE" },
           { label: "Privacy", href: "/privacy" },
-          { label: "Convex", href: "https://convex.dev" },
 ```
 
-**2 — the privacy page.** Inserted after the roadmap page's insert/patch/skip block (`created.push("page:roadmap")` / its closing brace), before the `// ── Testimonials` comment — same `by_slug` + insert/patch/skip pattern as every other page above it:
+**2 — the privacy page.** Inserted after the roadmap page's insert/patch/skip block (`created.push("page:roadmap")` / its closing brace), before the `// ── Testimonials` comment — same `by_slug` + insert/patch/skip pattern as every other page above it. The two `⟪…⟫` strings stand for `public-copy.md` text: replace each with the named section's text copied byte for byte, with no paraphrase (cross-spec decision 5). `/accessibility` (quality-pass step 11) quotes the same § Privacy contact.
 
 ```ts
   const existingPrivacyPage = await ctx.db
@@ -2321,8 +2359,12 @@ Verify: `pnpm --filter docs build` green; after deploy, `https://docs.vexcms.dev
               "create-vexcms and vex collect anonymous usage telemetry by default — no personal data, no IP address, no project content. Opt out at any time with vex telemetry disable, DO_NOT_TRACK=1, or VEX_TELEMETRY_DISABLED=1. Full field list: https://docs.vexcms.dev/guides/telemetry/.",
           },
           {
+            question: "Do you send email?",
+            answer: "⟪public-copy.md § Release emails privacy entry, verbatim⟫",
+          },
+          {
             question: "Who do I contact about this?",
-            answer: "Ask on GitHub Discussions: https://github.com/ianyimi/vex/discussions.",
+            answer: "⟪public-copy.md § Privacy contact, verbatim⟫",
           },
         ],
       },
@@ -2341,7 +2383,17 @@ Verify: `pnpm --filter docs build` green; after deploy, `https://docs.vexcms.dev
   }
 ```
 
-Verify: `pnpm --filter www exec convex run seed:reinit` on dev, then `/privacy` renders on :3030 with every answer and the footer shows "Privacy". After deploy, `npx convex run seed:reinit --prod` and `curl -s https://vexcms.dev/privacy` returns 200.
+#### apps/www/e2e/routes.ts
+
+1 edit; everything not shown is unchanged.
+
+**1 — the `/privacy` entry in `QUALITY_ROUTES`**, if quality-pass step 2 hasn't already added it:
+
+```ts
+  { path: "/privacy" },
+```
+
+Verify: `pnpm --filter www exec convex run seed:reinit` on dev, then `/privacy` renders on :3030 with every answer, and the footer shows "Privacy" at its `public-copy.md` § Footer position. The contact and release-emails answers match `public-copy.md` § Privacy contact and § Release emails privacy entry byte for byte, and `rg -n "⟪" apps/www/convex/seed.ts` returns nothing. After deploy, `npx convex run seed:reinit --prod` and `curl -s -o /dev/null -w '%{http_code}' https://vexcms.dev/privacy` prints `200`.
 
 ### Step 14 — Docs: adding page analytics to a scaffold
 
@@ -2468,32 +2520,41 @@ doesn't duplicate them. `usable-bee-730` is www's production deployment.
 Verify: `operations.md` records the budget, thresholds and pause setting, plus each monitor's URL, keyword, interval and alert contact; a test alert reaches the phone.
 
 ### Step 16 — Port to apps/test
-`[agent]` **Blocked on:** M (`2026-10-26-build-time-telemetry`) committed.
+`[agent]` **Blocked on:** M (`2026-10-26-build-time-telemetry`) committed, and step 13 (so public-presence steps 1–2 as well).
 
-Every file here is a verbatim copy of its `apps/www` counterpart from steps 4, 10 and 13. Before this step, `apps/test/src/components/FirstAdminBootstrap.tsx` is byte-identical to www's pre-fix copy. `apps/test/convex/seed.ts` has the same `"Licence"` footer link and the same `existingRoadmapPage` / `created.push("page:roadmap")` anchors. The admin page has the same `if (!session) { redirect("/unauthorized"); }` branch in `AdminPage`. `apps/test/src/lib/` exists (`metadata.ts`, `vex.ts`, …), so `TOUR_PATH` gets the same home as in www.
+Every file here is a verbatim copy of its `apps/www` counterpart from steps 4, 10 and 13. Before this step, `apps/test/src/components/FirstAdminBootstrap.tsx` is byte-identical to www's pre-fix copy. `apps/test/convex/seed.ts` has the same `footerDoc.content[0].links` array and the same `existingRoadmapPage` / `created.push("page:roadmap")` anchors. The admin page has the same `if (!session) { redirect("/unauthorized"); }` branch in `AdminPage`. `apps/test/src/lib/` exists (`metadata.ts`, `vex.ts`, …), so `TOUR_PATH` gets the same home as in www.
 
 Do NOT port the rate limiter, the purge cron, `AUTH_PROXY_SECRET`, `disableIpTracking` or Speed Insights (decision 16). `apps/test` has unstaged telemetry edits from M today, which is why this step waits for M to land.
 
 - [ ] `apps/test/src/components/FirstAdminBootstrap.tsx`: step 4's edit, verbatim
-- [ ] `apps/test/convex/seed.ts`: step 13's two edits (footer link after `"Licence"`, the `privacy` page block after the roadmap block), verbatim, with the same copy, so both apps describe the same deployment rules
+- [ ] `apps/test/convex/seed.ts`: step 13's two edits, verbatim. The Privacy footer link goes at its `public-copy.md` § Footer position, and the `privacy` page block (same copy, including the two quoted `public-copy.md` answers) goes after the roadmap block, so both apps describe the same deployment rules
 - [ ] `apps/test/src/lib/routes.ts`: step 10's file, verbatim
 - [ ] `apps/test/src/app/tour/page.tsx`: step 10's file, verbatim (it imports `~/components/Container` and `~/components/ThemeStyle`, both present in apps/test)
 - [ ] `apps/test/src/app/(vexcms)/admin/error.tsx`: step 10's file, verbatim
 - [ ] `apps/test/src/app/(vexcms)/admin/[[...path]]/page.tsx`: step 10's four page edits (import, the two JSDoc passages, `redirect(TOUR_PATH)` in the `if (!session)` branch); the signed-in `/unauthorized` redirect stays
-- [ ] `apps/test/public/tour/{dashboard,list-view,edit-view-live-preview,media-library}.png`: the same four filenames as www. Recapture them from apps/test's admin on its running dev server (:3020) with the browser tool, because apps/test's admin shows more collections
+- [ ] `apps/test/public/tour/{dashboard,list-view,edit-view-live-preview,media-library}.png`: copies of www's four files, byte-identical. Step 10's media-session recapture later replaces them in both apps at once (cross-spec decision 7)
 
 No code blocks: each file is identical to the block shown in steps 4, 10 and 13. Copy those blocks; don't re-derive them, so the two apps can't drift.
 
-Verify: `pnpm --filter test typecheck && pnpm --filter test test` green. On the developer's running apps/test dev server (:3020), `/tour` and `/privacy` render, and a signed-out visit shows no `vex/firstUser:isBootstrapped` execution in the Convex dashboard's dev-deployment logs. `diff apps/www/src/app/tour/page.tsx apps/test/src/app/tour/page.tsx` and `diff apps/www/src/app/(vexcms)/admin/error.tsx apps/test/src/app/(vexcms)/admin/error.tsx` print nothing.
+Verify: `pnpm --filter test typecheck && pnpm --filter test test` green. On the developer's running apps/test dev server (:3020), after `pnpm --filter test exec convex run seed:reinit`, `/tour` and `/privacy` render, and a signed-out visit shows no `vex/firstUser:isBootstrapped` execution in the Convex dashboard's dev-deployment logs. These all print nothing: `diff apps/www/src/app/tour/page.tsx apps/test/src/app/tour/page.tsx`, `diff "apps/www/src/app/(vexcms)/admin/error.tsx" "apps/test/src/app/(vexcms)/admin/error.tsx"` and `diff -r apps/www/public/tour apps/test/public/tour`.
 
 ### Step 17 — N: Sync both templates
-`[agent]` **Blocked on:** quality-pass step 12 + M.
+`[agent]` **Blocked on:** all of these, so the exclusions run once, against the final www (cross-spec dependency edges):
+
+- quality-pass step 12
+- M committed
+- public-presence steps 10 (seed copy, footer), 13 (`/brand`) and 14 (www posts and the announcement)
+- launch-kit step 9 (launch-week posts and `/launch-week`)
 
 Run the `template-sync` skill (`.omp/skills/template-sync/SKILL.md`) once for `base-nextjs` ← `apps/test` and once for `marketing-site` ← `apps/www`, per its own preflight (`harness doctor`, `harness state`) and its step 1 (load the app→template translation table in `2026-08-31-wp2-cli-templates/spec.md` before touching anything).
 
 Translation rules specific to this spec, applied on top of the skill's existing ownership boundary (step 3: `base-nextjs` owns auth/admin/media/users/the bootstrap flow; `marketing-site` owns pages/headers/footers/themes/`siteSettings`/seed/site content):
 
-- The template seed (`marketing-site`'s `convex/seed.ts`) omits every vexcms-only page this spec and the quality pass add — `privacy`, `accessibility`, `tour` — and their footer links. A template scaffold is a stranger's blank site; those pages describe THIS deployment, not theirs.
+- **The `marketing-site` template excludes everything vexcms-specific** (cross-spec decision 6). A template scaffold is a stranger's blank site; these describe THIS deployment, not theirs.
+  - The `posts` collection (its `src/vexcms/collections/` file and registration) and the `/posts/[slug]` route, plus every post document in the seed. `base-nextjs` already has posts, and `@vexcms/richtext-plate` stays out of the marketing template and its `package.json`.
+  - The `privacy`, `accessibility`, `brand` and `launch-week` page documents in the seed, and the `/tour` route.
+  - The Privacy, Accessibility, Brand, Discussions, Release emails, Sponsor and Buy Me a Coffee entries in the footer `links`, and the Sponsors entry in `socialLinks`.
+  - The roadmap page and FAQ copy: replaced with generic template copy. No string from `public-copy.md` may appear in the template; `rg -F` each `public-copy.md` line against `packages/create-vexcms/templates/marketing-site` and expect no match.
 - `/tour` and `(vexcms)/admin/error.tsx` are www/test-only. They answer "what does the live demo show when it's down", which has no meaning for a scaffold that has never been deployed. Neither file crosses into either template.
 - The bootstrap fix (step 4/16's `useQuery(..., session?.user ? {} : "skip")`) and the step 1 `roles` `input: false` fix MUST be in both templates — `base-nextjs`'s `FirstAdminBootstrap.tsx` and `base-nextjs`'s `convex/auth/schema.ts`.
 - Template `layout.tsx` (both templates) mounts no `<Analytics />` and no `<SpeedInsights />` — decision 13, the marketing template ships no analytics, and the base template never had either to begin with.
@@ -2511,7 +2572,11 @@ Run: `node scripts/template-diff.mjs --app apps/www` and `node scripts/template-
 |---|---|---|---|---|
 | `src/components/FirstAdminBootstrap.tsx` | CHANGED | base-nextjs | sync | step 4/16's `"skip"` fix; must reach every scaffold |
 | `convex/auth/schema.ts` (`roles` field) | CHANGED | base-nextjs | sync | step 1's `input: false` fix; must reach every scaffold |
-| `convex/seed.ts` (footer links, `privacy`/`accessibility` pages) | CHANGED | marketing-site | sync footer order only; drop the `privacy`/`accessibility` page blocks and their footer links | decision 17: template seeds omit vexcms-only pages |
+| `convex/seed.ts` (footer `links`/`socialLinks`, `privacy`/`accessibility`/`brand`/`launch-week` pages, post documents) | CHANGED | marketing-site | sync structure only; drop those page blocks, every post document, the Privacy/Accessibility/Brand/Discussions/Release emails/Sponsor/Buy Me a Coffee links and the Sponsors `socialLinks` entry | decision 17 / cross-spec decision 6: template seeds omit everything vexcms-specific |
+| `convex/seed.ts` (roadmap page, FAQ block) | CHANGED | marketing-site | replace with generic template copy | cross-spec decision 6: no `public-copy.md` strings in the template |
+| `src/vexcms/collections/posts.ts` (+ its `collections/index.ts` registration) | MISSING | marketing-site | do not add | cross-spec decision 6: `base-nextjs` already ships posts |
+| `src/app/(frontend)/(site)/posts/[slug]/page.tsx` | MISSING | marketing-site | do not add | cross-spec decision 6 |
+| `package.json` (`@vexcms/richtext-plate`) | CHANGED | marketing-site | do not add | cross-spec decision 6: richtext-plate stays out of the marketing template |
 | `src/app/tour/page.tsx` | MISSING | marketing-site | do not add | www/test-only static fallback, meaningless before first deploy |
 | `public/tour/*.png` | MISSING | marketing-site | do not add | screenshots of a deployment the template has never had |
 | `src/app/(vexcms)/admin/error.tsx` | MISSING | base-nextjs | do not add | links to `/tour`, which the template does not ship |
@@ -2521,7 +2586,7 @@ Run: `node scripts/template-diff.mjs --app apps/www` and `node scripts/template-
 <!-- Append every other ORPHANED/CHANGED/MISSING entry `template-diff.mjs` reports for each app run, with its disposition and reason, before this sync is considered complete. -->
 ```
 
-#### Prohibited-pattern sweep — proposed skill update
+#### .omp/skills/template-sync/SKILL.md
 
 The skill's current sweep (`.omp/skills/template-sync/SKILL.md:73-77`) lists `object(`, `ui(`, `tabs(`, `imageUrl(`, `richtext(`, `admin.blockStyles`, a scalar `select` `defaultValue`, `_vexDrafts`, `livePreview`, `vex_status`/`vex_version`, and per-instance `admin.components.Field`. Verified against the current codebase:
 
@@ -2531,7 +2596,7 @@ The skill's current sweep (`.omp/skills/template-sync/SKILL.md:73-77`) lists `ob
 - `_vexDrafts` — not found anywhere in `packages/core/src` or either app's `convex/`; still prohibited (no such internal table/field exists in the current versioning design, which instead patches the same row). Keep.
 - `object(`, `ui(`, `tabs(`, `imageUrl(`, `admin.blockStyles`, scalar `select` `defaultValue`, per-instance `admin.components.Field` — not re-verified in this session (out of this spec's area); keep as-is pending a dedicated check.
 
-Proposed diff (not applied — for whoever runs this step to land in the skill file):
+The diff for the prohibited-pattern sweep. This step prepares it, and step 21 applies it to the skill file:
 
 ```diff
 -   **Prohibited-pattern sweep.** Grep every translated file for `object(`, `ui(`, `tabs(`,
@@ -2551,14 +2616,19 @@ Proposed diff (not applied — for whoever runs this step to land in the skill f
 - [ ] Run `template-sync` skill: `base-nextjs` ← `apps/test`, `marketing-site` ← `apps/www`
 - [ ] `node scripts/template-diff.mjs --app apps/www`
 - [ ] `node scripts/template-diff.mjs --app apps/test`
-- [ ] Regenerate template artifacts per the skill's step 4 last bullet (`convex/_generated/*`, `convex/vex.schema.ts`, `src/vex.types.ts`) if anything touched `vex.config.ts`, a collection, or a block config since the last sync
+- [ ] Regenerate template artifacts per the skill's step 4 last bullet (`convex/_generated/*`, `convex/vex.schema.ts`, `src/vex.types.ts`) if anything touched `vex.config.ts`, a collection, or a block config since the last sync. Dropping the `posts` collection from `marketing-site` always triggers this
+- [ ] Apply the `marketing-site` exclusion list above (cross-spec decision 6): no posts collection, route or documents; no `@vexcms/richtext-plate`; no `privacy`/`accessibility`/`brand`/`launch-week` pages or `/tour`; none of the listed footer or `socialLinks` entries; generic roadmap and FAQ copy
 - [ ] `n-sync.md` in this spec folder
-- [ ] Propose (do not apply) the prohibited-pattern sweep diff above as a note for whoever next edits `.omp/skills/template-sync/SKILL.md`
+- [ ] Prepare the prohibited-pattern sweep diff above; step 21 applies it to `.omp/skills/template-sync/SKILL.md`
 
-Verify: `node scripts/template-diff.mjs --app apps/www` and `--app apps/test` list only the intentional differences recorded in `n-sync.md`; `node scripts/scaffold-smoke.mjs --bare` and `node scripts/scaffold-smoke.mjs` exit 0 (skill step 5).
+Verify: `node scripts/template-diff.mjs --app apps/www` and `--app apps/test` list only the intentional differences recorded in `n-sync.md`; `node scripts/scaffold-smoke.mjs --bare` and `node scripts/scaffold-smoke.mjs` exit 0 (skill step 5). Inside `packages/create-vexcms/templates/marketing-site`, these all return nothing:
+
+- `rg -n "richtext-plate|slug: \"posts\"|\"(privacy|accessibility|brand|launch-week)\"" .`
+- `rg -ni "buttondown|sponsors|buymeacoffee|discussions" .`
+- every non-empty line of `public-copy.md`, fed to `rg -F`
 
 ### Step 18 — N: Scaffold from packed tarballs
-`[agent]` **Blocked on:** step 17.
+`[agent]` **Blocked on:** step 17, and through it quality-pass step 12, M, public-presence steps 10, 13 and 14, and launch-kit step 9.
 
 Run the three scaffold gates in order. `verify-scaffold.mjs` requires every publishable package's `dist/` to be current (`pnpm --filter "@vexcms/*" --filter create-vexcms build` first — the script's own header says this precondition is "not performed here"); it packs tarballs and scaffolds both templates against them, not the workspace. `scaffold-smoke.mjs --bare` scaffolds the base template with no install/git; `scaffold-smoke.mjs` (no flag) does the full marketing scaffold. Neither smoke script needs the packed-tarball precondition — both load installer source directly via `jiti`.
 
@@ -2573,7 +2643,7 @@ Failure-handling rule (AP-020): a defect any of the three gates finds is fixed i
 Verify: `node scripts/verify-scaffold.mjs` exits 0; `node scripts/scaffold-smoke.mjs --bare` exits 0; `node scripts/scaffold-smoke.mjs` exits 0.
 
 ### Step 19 — N: Run-through per template on a fresh Convex deployment
-`[agent]` **Blocked on:** step 18.
+`[agent]` **Blocked on:** step 18, and through it quality-pass step 12, M, public-presence steps 10, 13 and 14, and launch-kit step 9. **Downstream:** public-presence step 17 (README quick start) waits for this step to pass (cross-spec dependency edges).
 
 `[dev]` Create a fresh Convex project per template (two separate projects — scaffolds must not share a deployment). In each scaffold directory: start `vex dev` and `next dev` (the developer starts both; no agent starts a dev server, P-024).
 
@@ -2619,6 +2689,7 @@ deployment per template (step 19's `[dev]` sub-item).
 | Create / edit / publish — `themes` | admin panel, `themes` collection | Create, edit, publish all succeed | |
 | Live preview | open a `pages` edit view with live preview enabled | Preview pane reflects unsaved edits | |
 | Media upload | upload an image through the media library | Upload succeeds; `generateUploadUrl` → `createMediaDocument` round-trip completes | |
+| vexcms-specific content absent | admin sidebar, site footer, `/posts/x`, `/privacy`, `/brand`, `/launch-week`, `/tour` | No `posts` collection; footer shows none of Privacy/Accessibility/Brand/Discussions/Release emails/Sponsor/Buy Me a Coffee and no Sponsors social link; each listed route returns 404; roadmap and FAQ show generic template copy (cross-spec decision 6) | |
 | `next build` | `pnpm build` | Exits 0; seeded routes prerender | |
 
 Fix every failure in both the template and its source app (AP-020), then re-run the failed row.
@@ -2632,7 +2703,7 @@ Fix every failure in both the template and its source app (AP-020), then re-run 
 Verify: `n-runthrough.md` has every check marked pass for both templates.
 
 ### Step 20 — N: create-vexcms README + quickstart match the CLI
-`[agent]` **Blocked on:** step 19.
+`[agent]` **Blocked on:** step 19, and through it everything step 17 waits for.
 
 Procedure: run `pnpm create vexcms` interactively (or `npx create-vexcms@<version>` against the packed tarball from step 18) for both the `base-nextjs` and `marketing-site` presets, capturing the full terminal transcript of each run (every prompt, every output line, including install/typecheck/`vex dev` codegen output) to a file. `packages/create-vexcms/README.md` has unstaged edits from M (telemetry) today — diff the captured transcript against the README's CURRENT committed content plus M's unstaged edits together, so the reconciliation doesn't get reverted when M lands.
 
@@ -2645,88 +2716,100 @@ Reconcile line by line: every prompt and every output line quoted in `packages/c
 
 Verify: every prompt and output line quoted in `packages/create-vexcms/README.md` and `apps/docs/src/content/docs/guides/quickstart.mdx` appears in a captured `create-vexcms` run.
 
-### Step 21 — Bookkeeping proposals
+### Step 21 — Bookkeeping
 `[agent]`
 
-This spec may not edit the launch plan, `backlog.md` or other specs (decision 18). `bookkeeping.md` lists every proposed edit, with its exact target file and exact text, for whoever closes this spec out to apply.
+Edits `.agent/docs/product/v0.1.0-launch-plan.md` and `.agent/docs/product/backlog.md` directly (cross-spec decision 8). Handoffs to sibling specs were applied in the 2026-11-07 consistency review, so none are left here. That includes the privacy contact and release-emails lines, which step 13 now quotes from `public-copy.md`. Fill in commit refs as the steps land.
 
-- [ ] `bookkeeping.md` in this spec folder (contents below)
+- [ ] `.agent/docs/product/v0.1.0-launch-plan.md`: the four edits below
+- [ ] `.agent/docs/product/backlog.md`: the four entries below
+- [ ] `.agent/docs/standards/anti-patterns.md`: the AP below, under the next free `AP-NNN` number
+- [ ] `.agent/docs/product/tech-stack.md`: add `@convex-dev/rate-limiter` (Convex component, www auth rate limits) and `@vercel/speed-insights` (www, sampled), then bump `verified_at`
+- [ ] `.omp/skills/template-sync/SKILL.md`: apply step 17's prohibited-pattern sweep diff (drops `richtext(`, `livePreview` and `vex_status`/`vex_version`, all shipped)
+- [ ] `harness struct`, so the new files are mapped (`apps/www/convex/crons.ts`, `apps/www/convex/auth/{anonymousUsers,rateLimits}.ts`, `apps/www/src/testing/`, `apps/www/src/lib/{routes,analytics}.ts`, the `/tour` routes and `(vexcms)/admin/error.tsx` in both apps, `apps/docs/src/components/Head.astro`)
+- [ ] `harness tasks`: move the S, P and N inbox items to done
+- [ ] Run the `sync-spec` skill against this spec
 
-#### bookkeeping.md
+#### .agent/docs/product/v0.1.0-launch-plan.md
 
-New file, in the spec folder.
+4 edits; everything not shown is unchanged.
 
-```markdown
-# Bookkeeping proposals — 2026-11-06-launch-infrastructure
+**1 — § Task order, item 15.** Tick it, and append the spec and commit refs:
 
-Every edit below is PROPOSED, not applied by this spec (decision 18: this spec may not edit the
-launch plan, `backlog.md`, or other specs). Fill in commit refs when this spec's steps land.
-
-## 1. `v0.1.0-launch-plan.md`
-
-- Tick item 15 ("launch infrastructure") once steps 1–21 land.
-- Tick S's task list items, each annotated with its landing commit ref:
-  - Task 1 ("Anonymous-user cleanup — every 'Admin' click on `apps/www` mints a Better Auth anonymous user and session …"): annotate that
-    `AdminDemoButton.tsx:7-23` no longer mints a session of any kind — it is a plain `/admin`
-    link — so the task's original premise is stale. What this spec actually ships against it:
-    the anonymous-user purge (step 5) covers direct, unauthenticated
-    `POST /sign-in/anonymous` calls, which stay public per decision 3.
-  - Record the roles-escalation fix (step 1's five-place `input: false` fix, closed by step 7's
-    guard) against whichever S task covers auth hardening.
-- Tick P's and N's task lists the same way, each annotated with its commit ref.
-
-## 2. `backlog.md` — new entries
-
-- Brute-force limiting for `/sign-in/email` on Convex. Better Auth's built-in rate limiter uses
-  `memory` storage by default, which is per Convex isolate and does not share state across
-  concurrent function instances — not viable as-is on Convex. Needs either `storage: "database"`
-  through the Better Auth adapter or a dedicated `@convex-dev/rate-limiter` limiter, mirroring
-  this spec's `/sign-in/anonymous` and `/sign-up/email` limits (decision 5).
-- Rate limiting M's telemetry receiver. Out of this spec's scope (M's own step 10 decides where
-  the receiver lives); it has no attested-IP mechanism today and no limiter.
-- O(1) `isBootstrapped` / `promoteFirstAdmin` reads. This spec removes the per-visitor
-  subscription (step 4/16) but leaves the underlying `ctx.db.query(TABLE_SLUG_USERS).collect()`
-  — a full table scan — in place; it still runs once per promotion attempt and once per signed-in
-  bootstrap check.
-- PostHog: revisit when there is a hosted product with signup (launch plan § P's own trigger);
-  until then Vercel Web Analytics covers page traffic.
-
-## 3. Handoffs
-
-- **R** — replace the privacy page's GitHub Discussions contact with the address R creates, in
-  both `apps/www/convex/seed.ts` and `apps/test/convex/seed.ts`'s `privacy` page FAQ item ("How
-  do I ask a question about any of this?").
-- **T** — add the newsletter answer to the privacy page's FAQ (both seed files), and add a demo
-  video to `/tour` (both `apps/www/src/app/tour/page.tsx` and `apps/test/src/app/tour/page.tsx`)
-  once T's media kit has one.
-- **Release notes** — a security note: scaffolds created with `create-vexcms` before this spec's
-  fix (step 1 / the `.changeset/roles-not-client-writable.md` patch) must add `input: false` to
-  their own `convex/auth/schema.ts`'s `roles` field by hand; the patch only fixes new scaffolds
-  and the two live apps.
-
-## 4. Harness
-
-- `.agent/docs/standards/anti-patterns.md` — candidate new AP: Better Auth's
-  `additionalFields` entries default `input: true` (`@better-auth/core` 1.6.23,
-  `DBFieldAttributeConfig.input`); any role/permission field on the `user` table MUST set
-  `input: false` explicitly, or it becomes client-writable through `/sign-up/email` and
-  `/update-user` — proven in-process (`sources.md` §14) and reachable on `vexcms.dev` until
-  step 1's fix.
-- `.agent/docs/product/tech-stack.md` — add `@convex-dev/rate-limiter` and
-  `@vercel/speed-insights` to the dependency inventory.
-- `harness struct` — regenerate after this spec's new files land (`apps/www/convex/crons.ts`,
-  `apps/www/convex/auth/{anonymousUsers,rateLimits}.ts`, `apps/www/src/testing/`, `/tour` routes,
-  `(vexcms)/admin/error.tsx` in both apps, this spec's folder).
-- `.omp/skills/template-sync/SKILL.md` — apply step 17's proposed prohibited-pattern sweep diff
-  (drop `richtext(`, `livePreview` and `vex_status`/`vex_version`, all shipped).
-- `harness tasks` — move the S/P/N inbox items this spec closes out of the launch plan's open
-  task lists into done, per item 1's commit refs.
-- Run the `sync-spec` skill against this spec after implementation.
-
-Verify: `harness doctor` clean.
+```md
+15. [x] **Launch infrastructure (N + S + P)** — … (`2026-11-06-launch-infrastructure`, 21 steps; <commit refs>)
 ```
 
-Verify: `bookkeeping.md` lists every proposed edit with its target file and exact text; `harness doctor` clean.
+**2 — § S Tasks.** Tick each item with its commit ref, and annotate the first one. Under "Anonymous-user cleanup — every 'Admin' click on `apps/www` mints a Better Auth anonymous user and session …", add:
+
+```md
+  - Premise outdated as of 2026-11-06: `AdminDemoButton.tsx` is a plain `/admin` link and mints no session. The hourly purge (`apps/www/convex/auth/anonymousUsers.ts`) covers direct `POST /api/auth/sign-in/anonymous` calls, which stay public; the rate limits are in `apps/www/convex/auth/rateLimits.ts`.
+  - Also shipped: `roles` is no longer client-writable (`input: false` in www, apps/test, the base template, the better-auth README and the auth guide), and `defineServerConfig` now rejects a client-writable `userRolesField`.
+```
+
+**3 — § P and § N Tasks.** Tick each item with its commit ref. Under P's "Decide whether `marketing-site` template ships `<Analytics />`" item, add:
+
+```md
+  - Decided: no. `guides/caching-and-seo.mdx` § Adding page analytics explains how to add it.
+```
+
+**4 — § Release mechanics, Tasks.** Add after "Publish via pnpm; merge `dev` → `master`":
+
+```md
+- [ ] Release notes carry a security note: scaffolds created by `create-vexcms` before 0.1.0 must add `input: false` to `roles` in `authSchema.user.additionalFields`; until then any visitor can sign up as admin. 0.1.0 fails at `vex dev` with `VexAuthConfigError` until they do
+```
+
+#### .agent/docs/product/backlog.md
+
+1 edit; everything not shown is unchanged. Four entries appended in the file's entry format (what · why · lift · blocker · why deferred · where):
+
+```md
+## Brute-force limiting for `/sign-in/email` on Convex
+
+**What.** A per-IP limit on password sign-in for `apps/www` and the templates.
+**Why.** Better Auth's built-in limiter uses `memory` storage, which is per Convex isolate and shares nothing across concurrent executions, so its default `/sign-in/email` rule (3 per 10 s) doesn't hold on Convex.
+**Lift.** Small: one more `authRateLimiter` limit name and path in `apps/www/convex/auth/rateLimits.ts`, reusing the proxy-attested IP.
+**Blocked by.** Nothing.
+**Why deferred.** Only the admin signs in to www, and the launch risk was user-table growth, not credential stuffing.
+**Where.** `2026-11-06-launch-infrastructure` decision 5, `sources.md` §6, §14.
+
+## Rate limiting the telemetry receiver
+
+**What.** A limit on `POST /telemetry/events`.
+**Why.** The receiver has no limiter and no attested IP, so a script can fill its tables.
+**Lift.** Small once its deployment is fixed: the same `@convex-dev/rate-limiter` component, keyed globally or per hashed IP.
+**Blocked by.** M step 10 (the receiver's final home).
+**Why deferred.** Out of the launch-infrastructure spec's scope.
+**Where.** `2026-10-26-build-time-telemetry`, `2026-11-06-launch-infrastructure` decision 5.
+
+## O(1) `isBootstrapped` / `promoteFirstAdmin`
+
+**What.** Read "an admin exists" from an indexed flag instead of `ctx.db.query(user).collect()`.
+**Why.** Both still scan the whole user table; the per-visitor subscription is gone, but every signed-in bootstrap check and promotion attempt pays the scan.
+**Lift.** Medium: a schema field or `siteSettings` flag, both apps and both templates, regenerated artifacts.
+**Blocked by.** Nothing.
+**Why deferred.** After the session-gated `"skip"`, only signed-in users run it.
+**Where.** `apps/www/convex/vex/firstUser.ts`, `2026-11-06-launch-infrastructure` decision 7.
+
+## PostHog for vexcms.dev
+
+**What.** Product analytics (funnels, replay) beside Vercel Web Analytics.
+**Why.** Measures conversions once there are any to measure.
+**Lift.** Small to wire; a consent banner unless run cookieless.
+**Blocked by.** A hosted product with signup.
+**Why deferred.** The conversion that matters today (`create-vexcms`) happens in a terminal and is measured by telemetry and npm downloads.
+**Where.** `v0.1.0-launch-plan.md` § P.
+```
+
+#### .agent/docs/standards/anti-patterns.md
+
+1 edit; append:
+
+```md
+- AP-NNN (2026-11-06, seen 1x) Never declare a role or permission field in Better Auth `additionalFields` without `input: false`. `input` defaults to `true` (`@better-auth/core` 1.6.23), so `/sign-up/email` and `/update-user` write whatever the caller sends: `roles: ["admin"]` on sign-up made an admin, in www, apps/test, the base template and the docs alike. `defineServerConfig` now throws on a client-writable `userRolesField`; keep the flag on any other server-owned field too.
+```
+
+Verify: `rg -n "^15\. \[x\]" .agent/docs/product/v0.1.0-launch-plan.md` prints item 15; the four backlog headings exist; `harness doctor` is clean.
 
 ## Verification
 

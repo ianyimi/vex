@@ -23,6 +23,8 @@ touches:
   - apps/www/convex/seed.ts
   - apps/www/convex/posts.ts
   - apps/www/public/brand/**
+  - apps/www/public/tour/**
+  - apps/test/public/tour/**
   - apps/www/src/vex.config.ts
   - apps/www/src/auth/access.ts
   - apps/www/src/db/constants/index.ts
@@ -39,6 +41,7 @@ touches:
   - .agent/docs/specs/2026-11-06-public-presence/**
   - .agent/docs/product/v0.1.0-launch-plan.md
   - .agent/docs/product/backlog.md
+  - .agent/docs/standards/preferences.md
 prompt_version: 1
 ---
 
@@ -48,17 +51,21 @@ prompt_version: 1
 > High-care: the developer implements, and `spec.md` gives guided stubs.
 > Every step that changes code leaves `pnpm typecheck && pnpm test && pnpm lint` green, plus `pnpm --filter docs build` when docs change.
 >
-> **Single wording source:** `public-copy.md` (step 1). R, O, T and later U and L reuse its strings verbatim. Nothing public names a paid tier, a paid feature, a price or a customer.
-> **Order:** O (steps 3–7) touches nothing but `.github/`, root community files, `scripts/sync-labels.mjs` and GitHub settings, so it can start right away. R and T steps that change `apps/www` add pages and links through `apps/www/convex/seed.ts`, the way `2026-11-06-quality-pass` adds `/accessibility`. See "Handoff to quality pass" in `spec.md`.
-> **Blocked steps:** 16 (demo media) waits for quality-pass step 7, 17 (README quick start) waits for N's template run-through, and 18 (release notes and the release-day copy flip) waits for everything to ship. Every other step can go ahead.
+> **Single wording source:** `public-copy.md` (step 1). R, O, T, the sibling launch specs, and later U and L reuse its strings verbatim, including the footer order (§ Footer) and the legal-page lines (§ Privacy contact, § Release emails privacy entry). Nothing public names a paid tier, a paid feature, a price or a customer.
+> **Binding cross-spec decisions:** `.agent/docs/product/launch-cross-spec-decisions.md` (2026-11-07). Where this spec disagrees with it, the spec is what changed.
+> **Order:** run steps 1–2 early. They gate launch-infra step 13 (`/privacy`) and quality-pass step 11 (`/accessibility`), which quote `public-copy.md` and need a live `hello@vexcms.dev`. O (steps 3–7) touches nothing but `.github/`, root community files, `scripts/sync-labels.mjs` and GitHub settings, so it can start right away. R and T steps that change `apps/www` add pages and links through `apps/www/convex/seed.ts`. Steps 10, 13 and 14 land before launch-infra's N sync (steps 17–20). The quality pass absorbed this spec's www handoff on 2026-11-07 (see "Handoff to quality pass" in `spec.md`).
+> **Blocked steps:** 16 (demo media) waits for quality-pass steps 6–7. 17 (README quick start) waits for launch-infra step 19 (N's run-through). 18 (release-day copy flip and the GitHub Release) waits for Release. Every other step can go ahead.
 > **Default branch:** GitHub reads issue forms, `FUNDING.yml`, the PR template and community files from `master` only. Files committed on `dev` go live at the Release merge (decision). Settings such as labels, Discussions and private vulnerability reporting apply as soon as they are set.
+> **Re-seeding:** `seed:reinit` (patch mode) everywhere. Step 10 amends P-021 to say so.
 > **Sources:** `sources.md` (GitHub docs, third-party widgets, `payloadcms/payload` setup, badges) and `competitors.md` (Payload, Sanity, Strapi). Every row carries its URL and the fetch date (2026-11-06).
-> **Out of scope:** paid tiers and their design, the inline newsletter form, transferring the repo to the `vexcms` org, the `create-vexcms` marketing template (N decides what it takes from www), U's launch kit, L's review, `apps/docs` beyond the roadmap, comparison page and header links, the unstaged telemetry work, and edits to other specs.
+> **Out of scope:** paid tiers and their design, the inline newsletter form, transferring the repo to the `vexcms` org, U's launch kit, L's review, `apps/docs` beyond the roadmap, comparison page and header links, the unstaged telemetry work, and edits to other specs. The `create-vexcms` marketing template takes nothing vexcms-specific from this spec: no `posts`, no `/brand`, no post documents, none of the Brand / Discussions / Release emails / Sponsor / Buy Me a Coffee footer links or the Sponsors `socialLinks` entry, and no `public-copy.md` roadmap or FAQ strings (cross-spec decision 6).
 
 ## Step 1 — Public commitments copy [agent]
 Why: Q's output is the wording every later step reuses verbatim. One file makes the copy diffable and gives L's consistency matrix its source.
-Verify: `public-copy.md` holds every string named in spec.md step 1. `rg -o "Paid add-ons may come later.*?nothing free becomes paid\." public-copy.md | sort -u | wc -l` prints `1`. `rg -ni "pro tier|agency|enterprise|maprios|\bSSO\b|audit log|co-edit|annual licen" public-copy.md` returns nothing.
+Verify: `public-copy.md` holds every string named in spec.md step 1. `rg -o "Paid add-ons may come later.*?nothing free becomes paid\." public-copy.md | sort -u | wc -l` prints `1`. `rg -ni "pro tier|agency|enterprise|maprios|\bSSO\b|audit log|co-edit|annual licen" public-copy.md` returns nothing. § Footer lists 16 `links` and 2 `socialLinks`, with no duplicate label or href. § Privacy contact and § Release emails privacy entry each hold exactly one line
 - [ ] `public-copy.md`: the paid-work line, the post-0.1.0 roadmap (three phases, free-feature list, one line per item), the "who builds this" copy with the one-week triage line, the funding framing, the support-channel line, the contact addresses, the follow line, the Sponsors tier and goal copy, and the SECURITY response window
+- [ ] `public-copy.md` § Footer: the canonical ordered `links` and `socialLinks` for www, which every seed edit inserts at (cross-spec decision 4)
+- [ ] `public-copy.md` § Privacy contact and § Release emails privacy entry, quoted by `/privacy` and `/accessibility` (cross-spec decision 5)
 - [ ] A table in `public-copy.md` tracking each `planned` issue number, filled in by step 7
 
 ## Step 2 — Accounts, addresses and the `vexcms` org [dev]
@@ -122,10 +129,11 @@ Verify: `pnpm --filter docs build`. `rg -n "Enterprise|annual licence|co-editing
 
 ## Step 10 — www and apps/test seed copy: roadmap page, FAQ, footer [dev]
 Why: the www roadmap block and FAQ summarise Q and must not name paid work. "Who builds this" and the funding and follow links are R's public surface. Footer links are seed data (P-018), so this needs no code.
-Verify: `pnpm --filter www typecheck && pnpm --filter www test`. `rg -n "Enterprise Add-Ons|annual licence|co-editing|Multi-Component" apps/www/convex/seed.ts apps/test/convex/seed.ts apps/www/src/vexcms/blocks` returns nothing. Re-seed per P-021 (wipe `pages`, `headers`, `footers`, then `seed:init`) on the dev deployment; `/roadmap` and `/` render the new copy and the footer links on the running www (port 3030, P-024)
-- [ ] `apps/www/convex/seed.ts`: roadmap page hero, stats and items (shipped list corrected, post-0.1.0 items as `planned` in phase order, paid and dropped items removed); FAQ "What does it cost?" ends with the paid line; new "Who builds VexCMS?" item; FAQ `supportLink` → Discussions; footer `links` + `socialLinks` gain Sponsor, Buy Me a Coffee, Release emails and Discussions
+Verify: `pnpm --filter www typecheck && pnpm --filter www test`. `rg -n "Enterprise Add-Ons|annual licence|co-editing|Multi-Component" apps/www/convex/seed.ts apps/test/convex/seed.ts apps/www/src/vexcms/blocks` returns nothing. `pnpm --filter www exec convex run seed:reinit` on the dev deployment; `/roadmap` and `/` render the new copy on the running www (port 3030, P-024), and the footer entries present so far appear in `public-copy.md` § Footer order
+- [ ] `apps/www/convex/seed.ts`: roadmap page hero, stats and items (shipped list corrected, post-0.1.0 items as `planned` in phase order, paid and dropped items removed); FAQ "What does it cost?" ends with the paid line; new "Who builds VexCMS?" item; FAQ `supportLink` → Discussions; footer `links` gain Discussions, Release emails, Sponsor and Buy Me a Coffee, and `socialLinks` gains GitHub Sponsors, each at its § Footer position
 - [ ] `apps/www/src/vexcms/blocks/Roadmap/config.ts` and `FAQ/config.ts` `defaultValue`s aligned to `public-copy.md` (these ship to admins adding a new block)
 - [ ] `apps/test/convex/seed.ts` and the matching `apps/test` block `defaultValue`s: the same copy changes (`apps/test` stays a superset of www). Run this only after the telemetry work in `apps/test` is committed
+- [ ] `.agent/docs/standards/preferences.md` P-021: name `seed:reinit` (patch mode) as the way a content change ships, replacing "wipe rows, then `seed:init`" (cross-spec decision 9)
 
 ## Step 11 — Docs header links and the slim README [dev]
 Why: R's links on the docs, and T's landing README. The 300-line feature reference duplicates the docs and goes stale. The README becomes the pitch plus links.
@@ -141,51 +149,55 @@ Verify: `pnpm --filter docs build`; the page renders in the sidebar after Roadma
 
 ## Step 13 — Brand kit: logos, `/brand` page, footer link [dev]
 Why: U's posts, Product Hunt and the social card need fixed logo files at stable public URLs. The media kit lives on www (decision) as a seeded page, because Next serves no index for a public folder.
-Verify: `pnpm --filter www typecheck && pnpm --filter www test`; after re-seed, `/brand` renders, and every link on it returns 200 (`curl -sI http://localhost:3030/brand/<file>`). The footer shows "Brand"
-- [ ] `apps/www/public/brand/`: `vexcms-logo-light.svg`, `vexcms-logo-dark.svg`, `vexcms-mark.svg`, plus 1024 px PNG exports of each (light and dark)
-- [ ] `apps/www/convex/seed.ts`: a `brand` page (Hero compact + CTA actions linking each file) and a footer "Brand" link. Same edit in `apps/test/convex/seed.ts` (after the telemetry commit)
-- [ ] Add `/brand` to the quality pass's `apps/www/e2e/routes.ts` if that file exists
+Verify: `pnpm --filter www typecheck && pnpm --filter www test`; after `seed:reinit`, `/brand` renders, and every link on it returns 200 (`curl -sI http://localhost:3030/brand/<file>`). The footer shows "Brand" at its § Footer position
+- [ ] `apps/www/public/brand/`: `vexcms-logo-light.svg`, `vexcms-logo-dark.svg`, `vexcms-mark.svg`, 1024 px PNG exports of each, and `vexcms-mark-240.png` (240×240, the Product Hunt logo)
+- [ ] `apps/www/convex/seed.ts`: a `brand` page (Hero compact + CTA actions linking each file) and the footer "Brand" link at its § Footer position. Same edit in `apps/test/convex/seed.ts` (after the telemetry commit)
+- [ ] `apps/www/e2e/routes.ts`: `{ path: "/brand" }` in `QUALITY_ROUTES`, if the file exists
 
 ## Step 14 — www posts and the announcement post [dev]
 Why: T's announcement needs a canonical URL that every cross-post in U points at, and U's feature series needs more posts after it. The `posts` collection and `/posts/[slug]` route already exist in `apps/test`. www mirrors them (decision) and dogfoods the richtext field.
-Verify: `pnpm --filter www exec vex generate && pnpm --filter www typecheck && pnpm --filter www test && pnpm --filter www build`. In the running admin, the seeded announcement opens as a draft, and live preview renders it at `/posts/vexcms-0-1-0`. As an anonymous visitor the URL 404s until it's published. Publishing it on the dev deployment, then unpublishing, shows and hides it
+Verify: `pnpm --filter www exec vex generate && pnpm --filter www typecheck && pnpm --filter www test && pnpm --filter www build`. After `seed:reinit`, the seeded announcement opens as a draft in the running admin, and live preview renders it at `/posts/vexcms-0-1-0`. As an anonymous visitor the URL 404s. The draft audit (spec.md step 14, cross-spec decision 3) is recorded in quality-pass `findings.md`
 - [ ] `@vexcms/richtext-plate` (`workspace:*`) in `apps/www/package.json`; `editor: plateEditor()` in `apps/www/src/vex.config.ts`
 - [ ] `apps/www/src/db/constants/index.ts`: `TABLE_SLUG_POSTS`; `apps/www/src/vexcms/collections/posts.ts` (title, slug, excerpt, body richtext, ogImage; drafts + autosave; live preview); export it in `collections/index.ts`
 - [ ] `apps/www/src/lib/useSitePreviewMode.ts` (port of `apps/test`'s); `PageContent.tsx` imports it instead of its private copy
 - [ ] `apps/www/src/auth/access.ts`: anonymous and demo roles read published posts only
 - [ ] `apps/www/convex/posts.ts` (`getBySlug`, `getBySlugPreview`, `publishedSlugs`); `apps/www/src/app/(frontend)/(site)/posts/[slug]/page.tsx` + `PostContent.tsx` (mirrors `apps/test`); `generatePostMetadata` in `apps/www/src/lib/metadata.ts`; `apps/www/src/app/sitemap.ts` lists published posts
 - [ ] `apps/www/convex/seed.ts`: the announcement post (`vex_status: "draft"`), with its Plate JSON body and the canonical URL from `public-copy.md`
-- [ ] Add `/posts/vexcms-0-1-0` to `apps/www/e2e/routes.ts` if that file exists
+- [ ] `apps/www/e2e/routes.ts`: `{ path: "/posts/vexcms-0-1-0", draft: true }` in `QUALITY_ROUTES`, if the file exists. The `draft` flag is removed in the D1 edit that publishes the post
 
 ## Step 15 — Private planning docs out of the public repo [dev]
 Why: Q keeps tiers, pricing, licence enforcement and customer specifics private. All of it is public today: `.agent/` is tracked on `master` and `dev` of a public repo (pitch deck, `post-v0.1.0-plan.md`, `product/roadmap.md`). Launch traffic is when strangers read the tree. This is a launch blocker for L.
-Verify: on GitHub, `gh api "repos/ianyimi/vex/contents/.agent/docs/research/pitch-deck?ref=dev"` returns 404 once the change is pushed. `rg -n '\$995|\$2,500|Agency tier|maprios' $(git ls-files)` returns nothing tracked. `harness doctor` is clean. Whether history is rewritten is recorded as an explicit decision
-- [ ] `[agent]` `private-inventory.md`: every tracked file holding tiers, prices, licence enforcement, ENT-P or customer specifics, with the matching line counts. This spec folder is included, since steps 15 and 19 quote the exposed lines
-- [ ] `[dev]` Choose A (move the whole `.agent/` out to the central `../agents` link that `harness doctor` suggests) or B (move only the inventoried files to a private repo and gitignore their paths). Run it when no other session has unstaged `.agent/` edits
+Verify: on GitHub, `gh api "repos/ianyimi/vex/contents/.agent?ref=dev"` returns 404 once the change is pushed. `git ls-files .agent | wc -l` prints `0`, and `.agent` resolves through the `harness install` link. `harness doctor` is clean. Whether history is rewritten is recorded as an explicit decision
+- [ ] `[agent]` `private-inventory.md`: every tracked file holding tiers, prices, licence enforcement, ENT-P or customer specifics, with the matching line counts (this spec folder included). It's the evidence for the history-rewrite decision; the move itself takes all of `.agent/`
+- [ ] `[dev]` Move the whole `.agent/` to the central `../agents` link with `harness install` (option A, cross-spec decision 10), as soon as no session has unstaged `.agent/` edits. Every `.agent/docs/specs/…` path keeps resolving through the link
 - [ ] `[dev]` Decide on history rewriting (destructive: `git filter-repo` + force-push, and clones and forks keep the old history). Record the decision either way
 
-## Step 16 — Demo media: hero GIF, screenshots, demo video [dev] [blocked: quality-pass step 7 (www visual fixes)]
-Why: recorded media freezes the UI. Recording before the quality pass's visual fixes would ship pre-fix screens to the README, `/brand` and U's posts.
-Verify: the GIF is ≤ 10 MB and loops on GitHub; the MP4 is H.264, 30–60 s, ≤ 10 MB if it's also attached on GitHub; every new `/brand` link returns 200; the README hero renders on the branch preview
+## Step 16 — Demo media: hero GIF, screenshots, demo video [dev] [blocked: quality-pass steps 6–7 (admin and www visual fixes)]
+Why: recorded media freezes the UI. Recording before the quality pass's admin and www fixes would ship pre-fix screens to the README, `/brand`, `/tour` and U's posts. One shared session covers this step, launch-kit step 8's clips and launch-infra's `/tour` recapture (cross-spec decision 7).
+Verify: the GIF is ≤ 10 MB and loops on GitHub; the MP4 is H.264, 30–60 s, ≤ 10 MB if it's also attached on GitHub; every new `/brand` link returns 200; the README hero renders on the branch preview; the 4 `/tour` screenshots are byte-identical in `apps/www/public/tour/` and `apps/test/public/tour/`; launch-kit step 8's verify passes for its 4 clips
 - [ ] Record one take of building a site with the packages (scaffold → collection → admin edit → live preview → publish). Export a 30–60 s MP4 and a cut-down looping GIF
 - [ ] Screenshots at fixed sizes (1280×800 admin, 1280×800 live preview, 390×844 mobile admin, 1270×760 Product Hunt gallery)
+- [ ] Same session: launch-kit step 8's 4 feature clips into `apps/www/public/launch/`
+- [ ] Same session: recapture launch-infra step 10's 4 `/tour` screenshots (1280×800: dashboard, list view with a saved view, edit view with live preview, media library), same file names, into `apps/www/public/tour/` and `apps/test/public/tour/`
 - [ ] `apps/www/public/brand/`: add the MP4, screenshots and a `vexcms-media-kit.zip`; extend the `/brand` CTA actions in both seeds
 - [ ] `README.md` hero: the looping GIF linking to the MP4 on `/brand`
 
-## Step 17 — README quick start [dev] [blocked: N's template run-through (launch item 15)]
+## Step 17 — README quick start [dev] [blocked: launch-infra step 19 (N's template run-through)]
 Why: the quick start must be the command list that N's manual run-through proved on a fresh Convex deployment, not today's 7-command flow.
 Verify: the three commands, run verbatim in an empty directory against a fresh Convex deployment, end at a signed-in admin
 - [ ] `README.md` quick start: the three commands from N's run-through and a link to the docs quickstart for the manual setup
 
 ## Step 18 — 0.1.0 release notes and release-day copy flip [dev] [blocked: Release (everything else shipped)]
-Why: release notes describe what actually shipped, and the alpha wording on every surface changes on the day `0.1.0` is on npm. Nothing changes after L except these version strings.
-Verify: `gh release view v0.1.0 --repo ianyimi/vex --json isLatest --jq .isLatest` prints `true`. `gh api repos/ianyimi/vex/releases/latest --jq .tag_name` prints `v0.1.0`. `rg -n "@alpha|0\.1\.0-alpha" README.md apps/docs/src/content/docs apps/docs/astro.config.mjs apps/www/convex/seed.ts` returns nothing. The announcement is reachable anonymously
-- [ ] `[agent]` `release-notes.md` drafted from `.changeset/*.md`, the package CHANGELOGs and the docs roadmap's shipped list: highlights, breaking changes since the alphas, upgrade notes. `[dev]` edits it
+Why: release notes describe what actually shipped. The alpha wording changes on the day `0.1.0` is on npm, through launch-kit's `copy-flip.patch`, which L reviews (launch-kit steps 11 and 21) and Release applies unchanged (cross-spec decision 2). Nothing changes after L except the Release version bumps and that patch.
+Verify: `gh release view v0.1.0 --repo ianyimi/vex --json isLatest --jq .isLatest` prints `true`. `gh api repos/ianyimi/vex/releases/latest --jq .tag_name` prints `v0.1.0`. Post-apply check: `rg -n "@alpha|0\.1\.0-alpha" README.md apps/docs/src/content/docs apps/docs/astro.config.mjs apps/www/convex/seed.ts apps/test/convex/seed.ts apps/www/package.json apps/www/src/vexcms/blocks apps/test/src/vexcms/blocks` returns nothing; a hit is a gap in the patch, reported back to L, not hand-fixed. The announcement is still a draft
+- [ ] `[agent]` `release-notes.md` drafted from `.changeset/*.md`, the package CHANGELOGs and the docs roadmap's shipped list: highlights, breaking changes since the alphas, upgrade notes. `[dev]` edits it before L reads it
+- [ ] `[dev]` Apply `.agent/docs/specs/2026-11-06-launch-kit-final-review/copy-flip.patch` unchanged (`git apply`), then `seed:reinit` on production
 - [ ] `[dev]` Once changesets has published, run `gh release create v0.1.0 --target master --title "VexCMS 0.1.0" --notes-file .agent/docs/specs/2026-11-06-public-presence/release-notes.md --latest`
-- [ ] `[dev]` Copy flip: README alpha warning and `@alpha` tags; docs roadmap intro and the `llms.txt` details; www roadmap stats + FAQ "Is it production ready?"; announcement `vex_status: "published"` in both seeds, then re-seed
+
+D1 note (not part of Release): on D1 morning the announcement is published from the admin; the same day its seed `vex_status` flips to `"published"` in both seeds (then `seed:reinit`) and its `draft` flag leaves `QUALITY_ROUTES`. From then on it is reachable anonymously. The steps live in `2026-11-06-launch-kit-final-review/launch-kit.md` § Launch-morning checklist (cross-spec decision 1).
 
 ## Step 19 — Bookkeeping [agent]
-Why: plan and backlog stay the source of truth. This spec never edits them directly during the interview, so the edits it proposes are applied here.
+Why: plan and backlog stay the source of truth. This step edits them directly (cross-spec decision 8).
 Verify: launch plan item 16 and the Q, R, O and T task lists ticked, with commit refs; each new backlog entry follows `backlog.md`'s entry format; `harness doctor` clean
 - [ ] `v0.1.0-launch-plan.md`: tick item 16 and the Q, R, O and T tasks, with evidence. The Q task's paid line and free-feature list are updated to the decided wording
-- [ ] `backlog.md`: the repo transfer to `vexcms`; the inline newsletter form; `createGithubReleases: false` + one release per version; a generated sponsors image; a posts index page if U's series needs one
+- [ ] `backlog.md`: the repo transfer to `vexcms`; the inline newsletter form; `createGithubReleases: false` + one release per version; a generated sponsors image. (No posts-index entry: launch-kit's `/launch-week` recap page resolved it)
