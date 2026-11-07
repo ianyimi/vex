@@ -1,5 +1,16 @@
 # @vexcms/core
 
+## 0.1.0-alpha.30
+
+### Patch Changes
+
+- 32277bf: New `server.telemetry.hideLogs` option on `defineServerConfig` (default `false`). It hides the
+  two-line telemetry reminder the `vex` CLI prints after each run that sends an event. It does
+  not disable telemetry: opt out with `vex telemetry disable`, `DO_NOT_TRACK=1` or
+  `VEX_TELEMETRY_DISABLED=1`. The resolved `VexConfig.telemetry` is always present.
+- 898172f: A custom `admin.view.pageSize` now appears in the list's "N per load" picker when `pageSizeOptions` is left unset: the defaults plus `pageSize`, sorted (`pageSize: 20` → `10, 20, 25, 50, 100`). Saved views without their own `pageSizeOptions` inherit the same list. Explicit `pageSizeOptions` are used exactly as given, and `[]` still hides the picker.
+- 898172f: A root-level `{ id, hidden: true }` entry in `admin.components.blocks.itemActions`, `blocks.headerActions` or `array.itemActions` now hides that built-in action. `defineConfig()` used to resolve these lists early, which dropped hide-only entries, so hiding a built-in block or array action had no effect.
+
 ## 0.1.0-alpha.29
 
 ### Patch Changes

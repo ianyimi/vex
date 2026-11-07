@@ -37,6 +37,7 @@ export const authSchema = {
         type: "string[]",
         defaultValue: [USER_ROLES.user],
         required: true,
+        input: false,
       },
     },
   },
