@@ -8,7 +8,7 @@ export default defineConfig({
     pool: "threads",
     globals: true,
     environment: "jsdom",
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "convex/**/*.test.ts"],
     passWithNoTests: true,
     // `./src/testing/setup.ts` just re-exports `@vexcms/next/testing` (the
     // Next-preferred barrel wrapping `@vexcms/react/testing`, whose

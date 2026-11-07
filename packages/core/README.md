@@ -18,8 +18,7 @@ This scaffolds a complete project with all `@vexcms/*` packages, authentication,
 
 ```bash
 pnpm add @vexcms/core@alpha @vexcms/cli@alpha @vexcms/next@alpha @vexcms/react@alpha @vexcms/better-auth@alpha @vexcms/file-storage-convex@alpha
-# Optional — rich text editor package; there is no `richtext` field to attach
-# it to yet (see Field Types below and https://docs.vexcms.dev for the roadmap)
+# Rich text editor package — attaches to a `richtext()` field via `editor: plateEditor()`
 pnpm add @vexcms/richtext-plate@alpha
 ```
 
@@ -30,16 +29,15 @@ pnpm add @vexcms/richtext-plate@alpha
 Define your CMS structure with a type-safe, declarative API:
 
 ```typescript
-import { defineConfig, defineCollection, text, select } from "@vexcms/core"
+import { defineConfig, defineCollection, text, richtext, select } from "@vexcms/core"
 
 const posts = defineCollection({
   slug: "posts",
   labels: { singular: "Post", plural: "Posts" },
   fields: {
     title: text({ label: "Title", required: true }),
-    // Long prose is a multiline `text` field. A `richtext` field is on the
-    // roadmap and does not exist yet.
-    body: text({ label: "Body" }),
+    // Rich prose uses the `richtext` field; see the Field Types section below.
+    body: richtext({ label: "Body" }),
     category: select({
       label: "Category",
       options: [
@@ -367,8 +365,8 @@ then import `mutation/internalMutation` from `./triggers` everywhere a generated
 
 `min`/`max` on `text`, `number`, `date`, `array`, `blocks`, `upload`, and `relationship` are
 enforced here too — a write through the Local API that violates a declared constraint is
-rejected, not just a form. A dedicated lifecycle-hooks guide is still to be written; until then this README is the
-reference for the hook-coverage caveats and the BFS trigger-recursion note.
+rejected, not just a form. The [Lifecycle Hooks guide](https://docs.vexcms.dev/guides/lifecycle-hooks/)
+covers the hook-coverage caveats and the BFS trigger-recursion note.
 
 ### Live Preview
 

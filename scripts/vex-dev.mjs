@@ -17,7 +17,8 @@ function startVex() {
   console.log('🚀 Starting vex dev...');
   vexProcess = spawn('node', ['packages/cli/dist/index.js', 'dev', '--cwd', 'apps/test'], {
     cwd: projectRoot,
-    stdio: 'inherit'
+    stdio: 'inherit',
+    env: { ...process.env, VEX_TELEMETRY_DISABLED: '1' }
   });
   
   vexProcess.on('exit', (code, signal) => {

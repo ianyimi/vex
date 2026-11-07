@@ -7,6 +7,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { useIsMobile, useIsMobileAfterOwnMount } from "../hooks/use-mobile"
 import { useVexConfig } from "../config/VexConfigContext"
+import { useIsRouteCovered } from "../config/useIsRouteCovered"
 import { writeAdminCookie } from "../adminCookie"
 import { cn } from "../utils/cn"
 import { Button } from "./button"
@@ -133,8 +134,11 @@ function SidebarProvider({
     return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
   }, [isMobile, setOpen, setOpenMobile])
 
-  // Adds a keyboard shortcut to toggle the sidebar.
+  // Adds a keyboard shortcut to toggle the sidebar. Stands down while a covering route
+  // (the sign-in modal) owns the page — its keystrokes are not meant for the admin.
+  const isRouteCovered = useIsRouteCovered()
   React.useEffect(() => {
+    if (isRouteCovered) return
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
         event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
@@ -147,7 +151,7 @@ function SidebarProvider({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [toggleSidebar])
+  }, [isRouteCovered, toggleSidebar])
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.

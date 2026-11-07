@@ -1,5 +1,20 @@
 # www
 
+## 0.1.0-alpha.30
+
+### Patch Changes
+
+- Updated dependencies [a4fea41]
+- Updated dependencies [32277bf]
+- Updated dependencies [898172f]
+- Updated dependencies [a4fea41]
+- Updated dependencies [898172f]
+  - @vexcms/react@0.1.0-alpha.30
+  - @vexcms/next@0.1.0-alpha.30
+  - @vexcms/core@0.1.0-alpha.30
+  - @vexcms/better-auth@0.1.0-alpha.30
+  - @vexcms/file-storage-convex@0.1.0-alpha.30
+
 ## 0.1.0-alpha.29
 
 ### Patch Changes

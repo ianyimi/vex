@@ -2818,8 +2818,104 @@ Verify: pnpm --filter @vexcms/react test -- fields/richtext && pnpm --filter @ve
 - [ ] peer ranges in `packages/richtext-plate/package.json` and
       `scripts/check-packed-manifests.mjs` updated if they pin 52
 
+#### Plate 52 → 53 breaking changes (read 2026-11-03)
+
+Source: every `CHANGELOG.md` entry from 52.3.x up to the 53.x line in `udecode/plate` at tag
+`platejs@53.5.2`, for each package `richtext-plate` imports or pulls transitively (`platejs`,
+`@platejs/core`, `@platejs/slate`, `@platejs/utils`, `basic-nodes`, `code-block`, `link`,
+`list`, `media`, `table`, plus `floating`/`indent`/`resizable`). Plate publishes no separate
+52→53 migration guide; the `### Major Changes` changelog entries are the migration notes.
+Current 53.x on 2026-11-03: `platejs`/`core`/`utils` 53.5.2, `slate` 53.3.18, `basic-nodes`
+53.0.0, `code-block` 53.0.0, `link` 53.3.5, `list` 53.3.13, `media` 53.1.4, `table` 53.0.9 —
+Plate versions each package independently, so "one release line" means one major (53),
+each at its latest 53.x (`link` 53.3.5 requires `platejs >=53.3.5`, `table` 53.0.9
+requires `>=53.0.7`).
+
+Breaking changes, and where each lands in `packages/richtext-plate`:
+
+1. **`@platejs/basic-nodes` 53.0.0 (major) — blockquote is a container block.** Stored
+   shape moves from `{ type: "blockquote", children: [{ text }] }` to
+   `{ type: "blockquote", children: [{ type: "p", children: [{ text }] }] }`. The
+   changelog says legacy flat values "still normalize on load"; probed against 53.5.2 that
+   is only partly true — `createPlateEditor({ value })` does **not** normalize the initial
+   value, only `editor.tf.setValue` and edits inside the quote do. Touches:
+   - `editor/components/Toolbar.tsx` `BlockButton blockType="blockquote"` — called
+     `editor.tf.toggleBlock("blockquote")` (retag). Probed: on 53 a retag turns a quote on
+     but toggling it off is a no-op. **Fixed:** `toggleBlock(blockType, { wrap: true })`,
+     the body of `BaseBlockquotePlugin`'s own `toggle`.
+   - `Toolbar.tsx` `useIsBlockActive("blockquote")` — probed: `editor.api.block({ match })`
+     finds the quote ancestor of the inner `p`. **No change.**
+   - Stored values — probed: toggling off an un-normalized 52 flat quote **deletes its
+     text**. Normalizing on load with `shouldNormalizeEditor: true` fixes that but makes
+     Plate emit the normalized document on mount, so opening any 52 document with a quote
+     dirtied the form and autosaved. **Fixed:** new
+     `editor/wrapFlatBlockquotes.ts` rewrites flat quotes to the container shape on the
+     editor's initial value only (a quote with a direct text child is exactly the 52
+     shape); no emit until the user edits. The `setValue` sync path already normalizes.
+   - `render/RichText.tsx` + `render/components/Elements.tsx` `BlockquoteElementStatic` —
+     the static editor does not normalize, so 52-authored flat quotes render exactly as
+     before; 53-authored container quotes render `blockquote > p`, adding the paragraph's
+     own `4px` vertical margin inside the quote. **No change** (standard `<blockquote><p>`
+     markup; noted as the one visual difference).
+   - `editor/components/EditorContainer.tsx` `.vex-editor-root blockquote` CSS — same
+     inner-paragraph markup in the admin editor. **No change.**
+   - Behaviour only (no code): `Shift+Tab` lifts nested quoted blocks; `Backspace` on an
+     empty later quoted paragraph deletes in place; `Backspace` at the start of a heading
+     resets it to a paragraph before merging.
+2. **`@platejs/core` 53.0.0 (minor, behaviour)** — `splitReset` on selected heading text
+   resets the trailing block to a paragraph; new `lift` break/delete rule action. No API
+   `richtext-plate` calls.
+3. **`@platejs/code-block` 53.0.0 (major, behaviour only)** — `Backspace` at the start of a
+   non-empty first code line stays inside the block; an empty inner code line merges into
+   the previous line instead of unwrapping. `toggleCodeBlock` (Toolbar) and the
+   `code_block`/`code_line` node types are unchanged.
+4. **`@platejs/table` 53.0.0 (major)** — `useTableElement` no longer returns
+   `isSelectingCell` (not used: `EditorElements.tsx` `TableElement` and `TableToolbar.tsx`
+   do not call `useTableElement`); a second `selectAll` inside a table escalates to the whole
+   document (behaviour). `insertTable`/`insertTableRow`/`insertTableColumn`/`deleteRow`/
+   `deleteColumn`/`deleteTable` keep their signatures; `table`/`tr`/`td`/`th` keys unchanged.
+5. **Deprecations / additive (no break):** `normalizeInitialValue` → `transformInitialValue`
+   (53.0.7; `richtext-plate` uses neither); `editor.tf.setChildren` added beside
+   `editor.tf.setValue` (53.3.18, slate 0.146 history rework — `PlateEditorField`'s
+   external-value sync keeps `setValue`); `@platejs/media` 53.1.4 rejects unsafe iframe
+   URLs (media embed not enabled); `@platejs/link` 53.x is patch-only. `@platejs/list`
+   53.0.2 drops `listStart` from unordered items during normalization (harmless).
+6. **Plugin keys / node types:** none renamed. `p`, `h1`–`h6`, `blockquote`, `code_block`,
+   `code_line`, `a`, `img`, `hr`, `table`/`tr`/`td`/`th`, list `indent`/`listStyleType`
+   props are identical in 52 and 53; only blockquote's child shape changes (item 1).
+   `tsc` on `richtext-plate` passed against 53 with zero source changes — every break
+   above is runtime-only.
+7. **`@platejs/list` 53.3.13 (patch, but breaking) — "Fix the headless entry requiring
+   React at runtime".** `BaseListPlugin` no longer carries `render.belowNodes`; the
+   `<ul>/<ol><li>` wrapper moved to the React-only `ListPlugin`. `RichText` builds its
+   static editor from `BaseListPlugin`, so every bulleted/numbered list rendered as bare
+   paragraphs on the front end. **Fixed:** `RichText` configures `BaseListPlugin` with
+   `render.belowNodes: renderIndentListStatic` (`render/components/Elements.tsx`), the same
+   wrapper markup 52's `BaseListPlugin` emitted — Plate's own `BaseListKit` does the same
+   (`BlockListStatic`). The admin editor uses `ListPlugin` and is unaffected.
+8. **Invalid static markup (dates from 52, fixed here because item 7's wrapper is now ours).**
+   `ParagraphElementStatic` wrapped its children in `<p>`, so the list wrapper produced
+   `<p><ul>`/`<p><ol>`, and `LinkElementStatic` wrapped the `<a>` in a block `SlateElement`
+   `<div>` inside that `<p>`. The result was React nesting errors and a hydration failure
+   on the front end and in the list-view peek panel, and every link on its own line.
+   **Fixed:** list paragraphs render as a `<div>` styled the same; the link's
+   `SlateElement` renders `as="a"`. `RichText.test.tsx` asserts no `p ul`/`p ol`/`p div`.
+
+Peer ranges: `richtext-plate` takes `platejs`/`@platejs/*` as `dependencies` (catalog),
+declares no Plate peer, and `scripts/check-packed-manifests.mjs` pins no Plate version —
+nothing to update.
+
+Stored-value compatibility tests: `src/test/fixtures.ts` `PLATE_52_DOCUMENT` is a real
+`posts.body` saved by the 52 editor in `apps/test` (heading, marks, bulleted list, flat
+blockquote, link, inline image). `src/render/RichText.test.tsx` and
+`src/editor/PlateEditorField.test.tsx` run it through 53; the package gains a
+`vitest.config.ts` (jsdom) and a `test` script.
+
 Verify: `pnpm install && pnpm --filter @vexcms/richtext-plate typecheck && pnpm --filter
-@vexcms/richtext-plate build && pnpm --filter @vexcms/react test -- fields/richtext`
+@vexcms/richtext-plate build && pnpm --filter @vexcms/richtext-plate exec vitest run
+--maxWorkers=2 src && pnpm --filter @vexcms/react exec vitest run --maxWorkers=2
+src/fields/richtext` (react tests with `TZ=UTC`; the old `test -- fields/richtext` form
+passed the pattern after `--`, which vitest ignored, running the whole suite)
 
 ### Step 7 — Dogfood in `apps/test` [dev]
 

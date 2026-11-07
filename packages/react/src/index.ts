@@ -172,7 +172,7 @@ export {
   useStorageAdapterMap,
 } from "./config";
 export type { NavigationBlockerAdapter, FrameworkAuthAdapter } from "./config";
-export { useVexNavigate } from "./config";
+export { useVexNavigate, COVERING_ROUTE_LINK_ATTRIBUTE } from "./config";
 export { useVexAuth, VexAuthProvider, useAuthTransition, AuthTransitionProvider, type AuthTransitionState } from "./auth";
 
 export {

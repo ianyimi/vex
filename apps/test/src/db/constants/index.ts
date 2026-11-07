@@ -73,6 +73,9 @@ export const TABLE_SLUG_TESTIMONIALS = "testimonials" as const;
 export type TestimonialDoc = Doc<typeof TABLE_SLUG_TESTIMONIALS>;
 export type TestimonialID = Id<typeof TABLE_SLUG_TESTIMONIALS>;
 
+export const TABLE_SLUG_TELEMETRY_EVENTS = "telemetryEvents" as const;
+export const TABLE_SLUG_TELEMETRY_PROJECTS = "telemetryProjects" as const;
+
 /**
  * Where a testimonial was collected from. Indexed (`by_source`, declared on
  * the `source` field itself) so the list view can sort/filter by it with

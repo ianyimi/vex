@@ -176,15 +176,19 @@ function ensureSchemaFileExists(cwd: string): void {
  * Load and validate the project's `vex.config.server.ts` (or equivalent),
  * resolving environment variables and tsconfig path aliases via jiti before
  * evaluating it.
- * @param configPath - Absolute path to the vex config file.
+ * @param props.configPath - Absolute path to the vex config file.
+ * @param props.projectDir - Absolute path to the project root (where `.env.local`
+ *   and `convex/` live), independent of which directory the config file itself is
+ *   in (`vex.config.server.ts` may be colocated with it at the root or nested
+ *   under `src/`).
  * @returns The evaluated, validated `VexConfig` object.
  * @throws {Error} When the module's default export is not a config object.
  */
-export async function loadConfig(configPath: string): Promise<VexConfig> {
-  const cwd = dirname(configPath);
+export async function loadConfig(props: { configPath: string; projectDir: string }): Promise<VexConfig> {
+  const { configPath, projectDir } = props;
 
   // Load .env.local so transitive imports can access env vars
-  loadDotEnv(cwd);
+  loadDotEnv(projectDir);
   // Ensure NODE_ENV is set — env validation libraries like @t3-oss/env require it
   if (!process.env.NODE_ENV) {
     process.env.NODE_ENV = "development";
@@ -193,9 +197,9 @@ export async function loadConfig(configPath: string): Promise<VexConfig> {
   // Ensure vex.schema.ts exists — the schema.ts file imports it, and jiti
   // will fail if it doesn't exist. On first run, we create an empty placeholder
   // that gets overwritten by the generate step immediately after config loads.
-  ensureSchemaFileExists(cwd);
+  ensureSchemaFileExists(projectDir);
 
-  const jiti = createJiti(configPath, createJitiOptions(cwd));
+  const jiti = createJiti(configPath, createJitiOptions(projectDir));
 
   const mod = (await jiti.import(configPath)) as VexConfig | { default: VexConfig };
 

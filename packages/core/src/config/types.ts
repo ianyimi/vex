@@ -504,6 +504,25 @@ export interface VexServerConfigInput {
     /** Storage adapters configured for the project. */
     adapters: VexStorageAdapter[];
   };
+  /**
+   * Anonymous CLI telemetry display settings. Telemetry itself (what's
+   * collected, and whether it fires at all) is controlled entirely outside
+   * the project config — see `@vexcms/telemetry` and `vex telemetry
+   * enable|disable|status`, plus the `DO_NOT_TRACK` / `VEX_TELEMETRY_DISABLED`
+   * environment variables. This group only affects CLI log output.
+   */
+  telemetry?: {
+    /**
+     * Hides the one-line per-run anonymous-telemetry reminder that `vex dev`
+     * and `vex deploy` print to stderr after every attempted send. Default
+     * `false`.
+     *
+     * This ONLY silences that log line — it does not disable telemetry. To
+     * actually opt out, use `vex telemetry disable`, `DO_NOT_TRACK=1`, or
+     * `VEX_TELEMETRY_DISABLED=1`.
+     */
+    hideLogs?: boolean;
+  };
 }
 
 /**
@@ -602,4 +621,11 @@ export interface VexConfig extends VexClientConfig {
   auth?: { adapter: VexAuthAdapter };
   /** Storage adapters and client-side upload functions, both always resolved. */
   storage: { clientUploads: ClientUploadMap; adapters: VexStorageAdapter[] };
+  /**
+   * Resolved anonymous-telemetry display settings — always fully populated
+   * after defaults are applied. `hideLogs` only silences the per-run
+   * reminder line; it never disables telemetry itself (see
+   * {@link VexServerConfigInput.telemetry}).
+   */
+  telemetry: { hideLogs: boolean };
 }

@@ -7,9 +7,18 @@ touches:
   - packages/cli/package.json
   - packages/create-vexcms/src/**
   - packages/create-vexcms/package.json
-  - apps/telemetry/**
+  - apps/test/src/vexcms/collections/**
+  - apps/test/src/db/constants/index.ts
+  - apps/test/src/vex.config.ts
+  - apps/test/src/auth/access.ts
+  - apps/test/convex/http.ts
+  - apps/test/convex/telemetry/**
+  - apps/test/package.json
+  - apps/test/vitest.config.ts
   - apps/docs/src/content/docs/guides/telemetry.mdx
   - .changeset/**
+  - scripts/verify-scaffold.mjs
+  - scripts/vex-dev.mjs
 prompt_version: 1
 ---
 
@@ -17,29 +26,35 @@ prompt_version: 1
 
 ## Overview
 
-Launch-plan item **M**. The `vex` CLI and `create-vexcms` send one anonymous event per run, describing the **shape** of the project's vex config (with every name replaced by a number), the scaffold choices and the vex-owned timings. The goal is to aim 0.1.x work at what real projects build. The pattern follows Next.js, Astro and Turborepo: opt-out, a first-run notice, `DO_NOT_TRACK`, off in CI, and a public field list. Events go to `apps/telemetry`, a vendor-owned vexcms app. Input: `../2026-10-24-telemetry/stem.md` (T1–T9). Tier: low-care.
+Launch-plan item **M**. The `vex` CLI and `create-vexcms` send one anonymous event per run. Each event carries the **shape** of the project's vex config (every name replaced by a number), the scaffold choices, vex-owned timings and a coarse run outcome. The goal is to aim 0.1.x work at what real projects build and where setups break. The pattern follows Next.js, Astro and Turborepo: opt-out, a first-run notice, `DO_NOT_TRACK`, off in CI, and a public field list. While the developer confirms the pipeline, the receiver lives in `apps/test`. It keeps a raw event log plus one row per project with flat columns, so declared list views can filter and sort by feature and size. Input: `../2026-10-24-telemetry/stem.md` (T1–T9). Tier: low-care.
 
 ## Design Decisions
 
-1. **One event per run, from `vex dev` (after the first generation only), `vex deploy` and `create-vexcms`.** `vex generate` sends nothing. Why: counts projects and command use without one event per watch reload.
-2. **New published package `@vexcms/telemetry`, used by both CLIs.** Why: one notice, one settings file, one sender, so the two binaries can't drift.
+1. **One event per run, from `vex dev` (once per process, after the first generation attempt, ok or failed), `vex deploy` and `create-vexcms`.** Watch reloads and `vex generate` send nothing. Why: counts projects and command use without one event per watch reload.
+2. **Private workspace package `@vexcms/telemetry` (`"private": true`), bundled into `@vexcms/cli` and `create-vexcms` at build time via tsup's `noExternal`.** Both consumers list it as a `devDependency`, never a real `dependency`, because tsup inlines its code into each CLI's own `dist` output — npm consumers of the published `@vexcms/cli`/`create-vexcms` packages never need to resolve the private package themselves. Why: one notice, one settings file, one sender, so the two binaries can't drift, without publishing a third package.
 3. **Payload = the allowlisted config shape with numbered names** (`collection1`, `field2`, `block3`). Booleans, numeric limits and known enum literals are kept. Select options become `optionCount`. Functions become `true`. Every other string and any unknown key is dropped. Why: keeps the config insight that bare counts lose; an allowlist means a new config key leaks nothing until it is reviewed.
 4. **Names are dropped, never hashed.** Why: a hash of a guessable name can be reversed with a dictionary.
 5. **Ids: a random `machineId`; `projectId` = sha256(per-machine random salt + realpath of the project).** Why: can't be reversed or linked across machines. The rejected option, a hash of the git remote with a global salt, would let anyone match public repos by hashing their URLs.
 6. **Settings live at `$XDG_CONFIG_HOME/vexcms/telemetry.json` (fallback `~/.config/vexcms/telemetry.json`).** Precedence: `DO_NOT_TRACK` → `VEX_TELEMETRY_DISABLED` → CI → stored setting → default on. Env vars can only turn telemetry off. Why: the standard XDG location, and nothing in the environment can switch telemetry on against the user's setting.
 7. **In-process `fetch` with a 1.5s `AbortSignal.timeout`; errors swallowed.** `dev` doesn't await; `deploy` and `create` await, bounded at 1.5s. Why: Next.js's detached-flush process has open leak reports ([#97716](https://github.com/vercel/next.js/issues/97716), [discussion #92805](https://github.com/vercel/next.js/discussions/92805)). `vex dev` lives long enough to finish an in-process send.
 8. **Timings are vex-owned only:** `configLoadMs`, `schemaGenMs`, `schemaChanged`. Why: Convex push and deploy times mostly measure the network and Convex.
-9. **`VEX_TELEMETRY_DEBUG=1` prints the payload and doesn't send; `VEX_TELEMETRY_ENDPOINT` overrides the URL; `vex telemetry status --json` prints the exact payload.** Why: local testing against `apps/telemetry`, and the transparency T8 promises.
-10. **The receiver is `apps/telemetry`, a vexcms app.** An HTTP action at `POST /events` with a 32KB body cap, a `schemaVersion` check and a strict Convex validator; no IP is read or stored; a read-only `telemetryEvents` collection in the admin. No rate limiting. Why: isolated from the marketing site; spam is cleaned up during analysis.
-11. **Retention is indefinite, documented on the docs page; only the vendor team can read the data.** Why: the payload is anonymous under decisions 3–5, so GDPR's storage-limitation rule doesn't apply. The docs page also states that a schema's shape is a fingerprint.
-12. **Legal review is a `[dev]` gate before release, not before implementation.** Why: wording can change without code changes.
+9. **`VEX_TELEMETRY_DEBUG=1` prints the payload and doesn't send; `VEX_TELEMETRY_ENDPOINT` overrides the URL; `vex telemetry status --json` prints the exact payload.** Why: local testing against the receiver, and the transparency T8 promises.
+10. **The receiver lives in `apps/test` for now.** An HTTP action at `POST /telemetry/events` with a 512KB (`524_288` byte) body cap, a `schemaVersion` check and a strict Convex validator; no IP is read or stored. No rate limiting. The final home (`apps/www` or a dedicated app) and the real `DEFAULT_TELEMETRY_ENDPOINT` are a developer decision taken before release, outside this spec. Why: confirm the full pipeline on an unpublished app before committing to a deployment.
+11. **Two collections: a raw `telemetryEvents` log and a `telemetryProjects` summary, one row per `projectId`.** The ingest mutation derives the project row's flat checkbox, number and select columns from the payload. Only the columns that views sort on are indexed. Declared `admin.views` give a starter set of analyses. Why: vexcms list views can't filter or sort `json` fields; per-project rows count apps rather than `vex dev` runs; and because the columns are derived on the server, a new column is an app change plus a backfill from stored payloads, with no CLI release.
+12. **The payload is the stable contract; collection columns are not.** Old CLIs keep sending their `schemaVersion` forever, so the payload carries every analysis dimension now: full anonymized shape, access-rule breakdown (boolean/callback/field-map/query-constraint), lifecycle hook counts, framework, auth adapter kind, storage adapter kinds and list-view usage. Why: data missing from the payload can't be recovered later.
+13. **`outcome` is a coarse category: `ok`, or `failed` with a vex-owned stage (`resolveConfig`/`loadConfig`/`generateSchema`/`scaffold`) and an allowlisted error code taken from core's config-error class names.** No messages, stacks, paths or values. Why: shows which configuration shapes fail without becoming crash reporting.
+14. **Retention is indefinite, documented on the docs page; only the vendor team can read the data.** Why: the payload is anonymous under decisions 3–5, so GDPR's storage-limitation rule doesn't apply. The docs page also states that a schema's shape is a fingerprint.
+15. **Legal review is a `[dev]` gate before release, not before implementation.** Why: wording can change without code changes.
+16. **No package versioning in this spec.** `@vexcms/telemetry` is private and unpublished, so it needs no changeset of its own; running `changeset version` for `@vexcms/cli` and `create-vexcms`, choosing the version line and joining the `fixed` group are left to the developer after confirmation.
 
 ## Out of Scope
 
 - `vex telemetry link` and any linking to a customer (post-0.1.0, opt-in, licence-bound; T9).
 - Runtime, browser or Convex-deployment telemetry.
-- Error and crash reporting.
-- Dashboards and aggregation in `apps/telemetry` beyond the vex admin list view.
+- Error and crash reporting beyond `outcome`'s stage and error category: no messages, stacks or Convex push/deploy failures.
+- Charts or custom dashboard screens; analysis is done with declared and saved list views.
+- Choosing and deploying the final receiver (`apps/www` or a dedicated app).
+- Linking telemetry to issues or feedback (backlog: "Link telemetry snapshots to issue reports").
 - Convex push/deploy timing, and rate limiting on the endpoint.
 
 ## Implementation
@@ -57,26 +72,18 @@ Why: `vex` and `create-vexcms` share one notice, one settings file and one sende
 - [ ] `packages/telemetry/src/constants.ts`
 - [ ] `packages/telemetry/src/types.ts`
 - [ ] `packages/telemetry/src/index.ts`
-- [ ] `.changeset/telemetry-package-scaffold.md`
 
-No other repo files change: `turbo.json` runs tasks by script name across every workspace package, so a new package is picked up automatically. The root `tsconfig.json` holds no `references` array (no project-reference graph in this repo), so nothing there needs the new package either. `.changeset/config.json`'s `fixed` group only lists packages that currently exist — it is edited once telemetry starts shipping version bumps alongside the others; a single new package with its own alpha changeset does not require joining that group yet, and `.changeset/pre.json` is maintained by the `changeset`/`changeset version` CLI itself, never hand-edited.
+No other repo files change: `turbo.json` runs tasks by script name across every workspace package, so a new package is picked up automatically. The root `tsconfig.json` holds no `references` array (no project-reference graph in this repo), so nothing there needs the new package either. `@vexcms/telemetry` is private and unpublished, so it needs no changeset of its own, and `.changeset/config.json`'s `fixed` group only lists packages that currently exist — it is edited once `@vexcms/cli` and `create-vexcms` start shipping version bumps that depend on telemetry's bundled code, and `.changeset/pre.json` is maintained by the `changeset`/`changeset version` CLI itself, never hand-edited.
 
 #### packages/telemetry/package.json
 
-Mirrors `packages/cli/package.json`'s fields minus `bin`, and depends on nothing beyond Node built-ins and the global `fetch` — so no runtime `dependencies` at all. `@vexcms/core` is a type-only peer (per the shared contract), matched by a `workspace:*` devDependency per P-013/P-014.
+Mirrors `packages/cli/package.json`'s fields minus `bin` and `keywords`/`files`, and depends on nothing beyond Node built-ins and the global `fetch` — so no runtime `dependencies` at all. `"private": true`: unlike `@vexcms/cli` and `create-vexcms`, this package is never published; it is bundled into both of them at build time via tsup `noExternal` (Step 6/Step 9), so it carries no `publishConfig`. `@vexcms/core` is a type-only peer (per the shared contract), matched by a `workspace:*` devDependency per P-013/P-014. Two export subpaths: `.` for the barrel and `./config` for the settings/config entry point added in Step 2.
 
 ```json
 {
   "name": "@vexcms/telemetry",
   "version": "0.1.0-alpha.27",
   "description": "VexCMS anonymous build-time telemetry: settings, anonymization and the event sender shared by vex and create-vexcms",
-  "keywords": [
-    "cms",
-    "headless-cms",
-    "convex",
-    "typescript",
-    "telemetry"
-  ],
   "license": "Apache-2.0",
   "author": "Isaiah Anyimi",
   "homepage": "https://docs.vexcms.dev",
@@ -85,19 +92,21 @@ Mirrors `packages/cli/package.json`'s fields minus `bin`, and depends on nothing
     "url": "git+https://github.com/ianyimi/vex.git",
     "directory": "packages/telemetry"
   },
+  "private": true,
   "sideEffects": false,
   "type": "module",
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./config": {
+      "import": "./dist/config.js",
+      "types": "./dist/config.d.ts"
     }
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
     "clean": "rm -rf dist",
@@ -114,10 +123,6 @@ Mirrors `packages/cli/package.json`'s fields minus `bin`, and depends on nothing
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
-  },
-  "publishConfig": {
-    "access": "public",
-    "tag": "alpha"
   }
 }
 ```
@@ -130,7 +135,7 @@ Same shape as `packages/cli/tsup.config.ts` minus the `banner` (this package shi
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/config.ts"],
   format: ["esm"],
   tsconfig: "tsconfig.build.json",
   dts: false, // Declarations come from `tsc --emitDeclarationOnly` in the build script — tsup's rollup-dts pegs the CPU on this graph.
@@ -220,6 +225,7 @@ export default defineConfig({
     pool: "threads",
     globals: true,
     include: ["src/**/*.test.ts"],
+    passWithNoTests: true,
   },
 });
 ```
@@ -229,16 +235,22 @@ export default defineConfig({
 Every literal is a named constant per P-003; `TELEMETRY_ENV` centralizes the env var names so later steps never inline them.
 
 ```ts
+/** Current shape version stamped on every outgoing `TelemetryEvent`. */
 export const TELEMETRY_SCHEMA_VERSION = 1;
 
+/** Public docs page explaining what telemetry collects and how to disable it. */
 export const TELEMETRY_DOCS_URL = "https://docs.vexcms.dev/guides/telemetry/";
 
+/** HTTP endpoint telemetry events are POSTed to unless overridden by `VEX_TELEMETRY_ENDPOINT`. */
 export const DEFAULT_TELEMETRY_ENDPOINT = "https://telemetry.vexcms.dev/events";
 
+/** Maximum time, in milliseconds, a telemetry send is allowed to block the caller. */
 export const TELEMETRY_TIMEOUT_MS = 1500;
 
-export const TELEMETRY_MAX_BODY_BYTES = 32_768;
+/** Maximum serialized event body size, in bytes, before `fitTelemetryEvent` truncates or drops the payload. */
+export const TELEMETRY_MAX_BODY_BYTES = 524_288;
 
+/** Environment variable names telemetry reads, keyed by their purpose. */
 export const TELEMETRY_ENV = {
   doNotTrack: "DO_NOT_TRACK",
   disabled: "VEX_TELEMETRY_DISABLED",
@@ -247,6 +259,7 @@ export const TELEMETRY_ENV = {
   xdgConfigHome: "XDG_CONFIG_HOME",
 } as const;
 
+/** CLI commands that each emit at most one telemetry event per invocation. */
 export const TELEMETRY_EVENTS = ["dev", "deploy", "create"] as const;
 ```
 
@@ -257,10 +270,13 @@ Per the shared contract: every type this step owns, with `TelemetryEvent["config
 ```ts
 import type { TELEMETRY_EVENTS, TELEMETRY_SCHEMA_VERSION } from "./constants";
 
+/** Subset of process environment variables telemetry reads; never the full `process.env`. */
 export type TelemetryEnv = Record<string, string | undefined>;
 
+/** Derived from {@link TELEMETRY_EVENTS}. */
 export type TelemetryEventName = (typeof TELEMETRY_EVENTS)[number];
 
+/** Per-machine telemetry state persisted to the settings file. */
 export interface TelemetrySettings {
   enabled?: boolean;
   machineId: string;
@@ -268,20 +284,24 @@ export interface TelemetrySettings {
   noticeShownAt?: string;
 }
 
+/** Runtime/toolchain facts recorded on every telemetry event. */
 export interface TelemetryEnvironment {
   vexVersions: Record<string, string>;
   nodeVersion: string;
   os: NodeJS.Platform;
   arch: string;
   packageManager: "pnpm" | "npm" | "yarn" | "bun" | "unknown";
+  framework: "next" | "tanstack" | "unknown";
 }
 
+/** Vex-owned timing data for one `dev`/`deploy` run's config load and schema generation. */
 export interface TelemetryTimings {
   configLoadMs: number;
   schemaGenMs: number;
   schemaChanged: boolean;
 }
 
+/** Scaffold choices recorded on a `create-vexcms` run's telemetry event. */
 export interface TelemetryCreateOptions {
   framework: string;
   template: "base" | "marketing";
@@ -296,6 +316,31 @@ export interface TelemetryCreateOptions {
   installDependencies: boolean;
 }
 
+/** Pipeline stage a `dev`/`deploy`/`create` run failed at — vex-owned stages only, never the Convex push/deploy itself. */
+export const TELEMETRY_FAILURE_STAGES = ["resolveConfig", "loadConfig", "generateSchema", "scaffold"] as const;
+
+/** Derived from {@link TELEMETRY_FAILURE_STAGES}. */
+export type TelemetryFailureStage = (typeof TELEMETRY_FAILURE_STAGES)[number];
+
+/** Allowlisted classification of a caught error, resolved by `classifyTelemetryError` from the error's `name` — never its message. */
+export const TELEMETRY_ERROR_CODES = [
+  "configError",
+  "accessConfigError",
+  "authConfigError",
+  "componentConfigError",
+  "storageConfigError",
+  "unknown",
+] as const;
+
+/** Derived from {@link TELEMETRY_ERROR_CODES}. */
+export type TelemetryErrorCode = (typeof TELEMETRY_ERROR_CODES)[number];
+
+/** Whether a run completed or failed, and if it failed, where and with what allowlisted error code. */
+export type TelemetryOutcome =
+  | { status: "ok" }
+  | { status: "failed"; stage: TelemetryFailureStage; errorCode: TelemetryErrorCode };
+
+/** The full payload one `vex dev`/`vex deploy`/`create-vexcms` run sends to the telemetry endpoint. */
 export interface TelemetryEvent {
   schemaVersion: typeof TELEMETRY_SCHEMA_VERSION;
   event: TelemetryEventName;
@@ -303,6 +348,7 @@ export interface TelemetryEvent {
   projectId: string;
   sentAt: string;
   environment: TelemetryEnvironment;
+  outcome: TelemetryOutcome;
   config?: unknown;
   timings?: TelemetryTimings;
   create?: TelemetryCreateOptions;
@@ -318,22 +364,7 @@ export * from "./constants";
 export * from "./types";
 ```
 
-#### .changeset/telemetry-package-scaffold.md
-
-Per P-025 (pre-release mode), every changeset is `patch`.
-
-```markdown
----
-"@vexcms/telemetry": patch
----
-
-New `@vexcms/telemetry` package scaffold: constants, shared types, and the build/test/typecheck
-setup shared by `vex` and `create-vexcms`'s upcoming anonymous build-time telemetry. No runtime
-behavior yet — later steps in this spec add settings persistence, enablement checks, config
-anonymization and the event sender.
-```
-
-Verify: `pnpm --filter @vexcms/telemetry build test typecheck` green; `scripts/check-packed-manifests.mjs --sweep` green.
+Verify: `pnpm --filter @vexcms/telemetry run build && pnpm --filter @vexcms/telemetry run test && pnpm --filter @vexcms/telemetry run typecheck && node scripts/check-packed-manifests.mjs --sweep` green.
 
 ### Step 2 — Settings file and enablement [agent]
 
@@ -374,11 +405,14 @@ export function resolveSettingsPath(props: { env: TelemetryEnv }): string {
 }
 
 function isTelemetrySettings(value: unknown): value is TelemetrySettings {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
   return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { machineId?: unknown }).machineId === "string" &&
-    typeof (value as { salt?: unknown }).salt === "string"
+    "machineId" in value &&
+    typeof value.machineId === "string" &&
+    "salt" in value &&
+    typeof value.salt === "string"
   );
 }
 
@@ -791,7 +825,7 @@ function resolveProjectPath(projectDir: string): string {
 New file. A fixed salt still yields a path-dependent digest, so exact hex values aren't asserted — instead the test locks in the properties that matter: determinism, salt sensitivity, path sensitivity, symlink-equivalence, and the 64-char hex shape.
 
 ```ts
-import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -851,7 +885,7 @@ describe("createProjectId", () => {
 
       expect(idForSymlink).toBe(idForRealPath);
     } finally {
-      rmSync(linkPath, { force: true });
+      unlinkSync(linkPath);
     }
   });
 });
@@ -875,7 +909,7 @@ Verify: `pnpm --filter @vexcms/telemetry test anonymizeConfig` green, including 
 - [ ] `src/types.ts` — add `AnonymizedField`, `AnonymizedBlock`, `AnonymizedResource`, `AnonymizedMediaCollection`, `AnonymizedConfig`; narrow `TelemetryEvent.config` from `unknown` to `AnonymizedConfig`
 - [ ] `src/anonymizeConfig.ts`
 - [ ] `src/anonymizeConfig.test.ts`
-- [ ] `src/index.ts` — barrel-export `./anonymizeConfig`
+- [ ] `src/config.ts` — new file, re-exports `anonymizeConfig` as the `@vexcms/telemetry/config` subpath entry (see Step 1's `package.json` `exports` map); `anonymizeConfig` is NOT exported from the root `src/index.ts` barrel
 
 Numbering scheme (binding on the implementer): collections, globals, media collections, and blocks each get their OWN counter (`collectionN`, `globalN`, `mediaN`, `blockN`), counted in the order they appear in `config.collections` / `config.globals` / `config.mediaCollections` / each `blocks()` field's `blocks` array as the whole config is walked depth-first (collections, then globals, then media collections). Fields share ONE counter (`fieldN`) across every resource and every nesting depth, incremented in the same depth-first traversal order, so a field inside an `array()` item or a block gets the next number exactly where it is encountered. `relationship()` and `upload()` targets are resolved through the already-assigned `collectionN` / `mediaN` name — never dropped, never the original slug — because collection and media names are assigned in a first pass (they don't depend on field traversal), before any field is visited.
 
@@ -883,9 +917,19 @@ Numbering scheme (binding on the implementer): collections, globals, media colle
 
 2 edits to the file Step 1 created — everything else unchanged.
 
-**1 — new interfaces.** Add above the `TelemetryEvent` interface, and add `AdminFieldType, Alignment, ColorFormat, SelectDisplay, StorageAdapterProtocol` to the existing `import type { ... } from "@vexcms/core";` line (alongside `VexConfig`):
+**1 — new interfaces.** Add above the `TelemetryEvent` interface, and add a new `import type { ... } from "@vexcms/core";` line for the enum/literal types these interfaces reference:
 
 ```ts
+import type {
+  AdminFieldType,
+  Alignment,
+  ColorFormat,
+  CommitTsFieldAdminFormat,
+  CommitTsFieldOn,
+  SelectDisplay,
+  StorageAdapterProtocol,
+} from "@vexcms/core";
+
 /**
  * One field inside an {@link AnonymizedConfig} payload. Every property is
  * either the field's `type`, a generated name (`field1`), a count, a
@@ -909,7 +953,7 @@ export interface AnonymizedField {
   step?: number;
   rows?: number;
   defaultValue?: boolean;
-  format?: ColorFormat;
+  format?: ColorFormat | CommitTsFieldAdminFormat;
   themeColors?: boolean;
   time?: {
     hidden: boolean;
@@ -930,6 +974,9 @@ export interface AnonymizedField {
   tabCount?: number;
   tabs?: { fieldCount: number; fields: AnonymizedField[] }[];
   hasCustomCell?: boolean;
+  enableSorting?: boolean;
+  enableHiding?: boolean;
+  on?: CommitTsFieldOn;
 }
 
 /** One block definition inside an anonymized `blocks()` field. */
@@ -948,6 +995,11 @@ export interface AnonymizedResource {
   hasDrafts: boolean;
   hasLivePreview: boolean;
   indexCount?: number;
+  timestamps: boolean;
+  savedViewCount?: number;
+  defaultSortIsCustom?: boolean;
+  bulkDelete?: boolean;
+  hookCounts: Record<"beforeChange" | "beforeDelete" | "afterChange" | "afterDelete", number>;
 }
 
 /** One anonymized media collection — an {@link AnonymizedResource} plus its storage adapter kind. */
@@ -959,7 +1011,7 @@ export interface AnonymizedMediaCollection extends AnonymizedResource {
  * Privacy-reviewed shape of `VexConfig` sent as `TelemetryEvent.config`.
  * Collection, global, media collection, and block NAMES are replaced with
  * `collectionN` / `globalN` / `mediaN` / `blockN`; field names with `fieldN`
- * — each counter running in traversal order (see Step 4's numbering scheme).
+ * — each counter running in traversal order.
  * No collection, field, block, or role NAME ever appears in this shape, only
  * counts, booleans, numbers, and allowlisted enum literals.
  */
@@ -980,14 +1032,28 @@ export interface AnonymizedConfig {
     inputMasks: boolean;
     /**
      * Always `false` — `@vexcms/core` has no localization feature yet
-     * (richtext is deliberately locale-agnostic, design decision 1). Reserved
-     * so the docs page and this shape don't change again the day core adds one.
+     * (richtext is deliberately locale-agnostic). Reserved so the docs page
+     * and this shape don't change again the day core adds one.
      */
     localization: false;
     auth: boolean;
-    access: { enabled: boolean; roleCount: number };
+    authAdapter: "none" | "betterAuth" | "custom";
+    access: {
+      enabled: boolean;
+      roleCount: number;
+      ruleCount: number;
+      fieldPermissionRuleCount: number;
+      queryConstraintRuleCount: number;
+      callbackRuleCount: number;
+      customActionCount: number;
+      customResourceCount: number;
+      organizations: boolean;
+    };
+    hookCount: number;
   };
   storageAdapterKinds: StorageAdapterProtocol[];
+  /** Set only when `fitTelemetryEvent` dropped the per-resource arrays to fit the size cap; every count and `features` field still reflects the real config. */
+  truncated?: true;
 }
 ```
 
@@ -1003,6 +1069,7 @@ Walks a resolved `VexConfig` depth-first and produces the numbered, allowlisted-
 
 ```ts
 import {
+  ADMIN_CUSTOM_SUBJECTS,
   ADMIN_FIELDS,
   type AdminDataField,
   type AdminField,
@@ -1012,6 +1079,7 @@ import {
   type GlobalConfig,
   type MediaCollectionConfig,
   type StorageAdapterProtocol,
+  type VexAccessConfig,
   type VexConfig,
 } from "@vexcms/core";
 import type {
@@ -1040,6 +1108,15 @@ function buildSlugNameMap(props: { slugs: string[]; prefix: string }): Map<strin
 function nextName(props: { context: AnonymizeContext; kind: "block" | "field" }): string {
   props.context.counters[props.kind] += 1;
   return `${props.kind}${props.context.counters[props.kind]}`;
+}
+
+function isInjectedUpdatedAt(props: { key: string; field: AdminField }): boolean {
+  const meta = props.field.meta as Record<string, unknown> | undefined;
+  return (
+    props.key === "updatedAt" &&
+    props.field.type === ADMIN_FIELDS.commitTs.type &&
+    meta?.locked !== true
+  );
 }
 
 function hasSlotOverrides(components: {
@@ -1074,6 +1151,96 @@ function hasRootSlotOverrides(admin: VexConfig["admin"]): boolean {
   );
 }
 
+const RESOURCE_HOOK_NAMES = ["beforeChange", "beforeDelete", "afterChange", "afterDelete"] as const;
+
+function buildHookCounts(hooks: object): AnonymizedResource["hookCounts"] {
+  const record = hooks as Record<string, unknown>;
+  return Object.fromEntries(
+    RESOURCE_HOOK_NAMES.map((name) => [name, typeof record[name] === "function" ? 1 : 0]),
+  ) as AnonymizedResource["hookCounts"];
+}
+
+const AUTH_ADAPTER_KINDS = {
+  "better-auth": "betterAuth",
+} as const;
+
+function anonymizeAuthAdapter(auth: VexConfig["auth"]): "none" | "betterAuth" | "custom" {
+  if (!auth) {
+    return "none";
+  }
+  return AUTH_ADAPTER_KINDS[auth.adapter.name as keyof typeof AUTH_ADAPTER_KINDS] ?? "custom";
+}
+
+function anonymizeAccess(access: VexAccessConfig | undefined): AnonymizedConfig["features"]["access"] {
+  if (!access) {
+    return {
+      enabled: false,
+      roleCount: 0,
+      ruleCount: 0,
+      fieldPermissionRuleCount: 0,
+      queryConstraintRuleCount: 0,
+      callbackRuleCount: 0,
+      customActionCount: 0,
+      customResourceCount: 0,
+      organizations: false,
+    };
+  }
+
+  const knownSubjects = new Set<string>([
+    ...access.resources.map((resource) => resource.slug),
+    access.userCollectionSlug,
+    ...(access.orgCollectionSlug ? [access.orgCollectionSlug] : []),
+    ...Object.keys(ADMIN_CUSTOM_SUBJECTS),
+  ]);
+  const subjectKeys = new Set<string>();
+  for (const subjectChecks of Object.values(access.permissions)) {
+    for (const subjectKey of Object.keys(subjectChecks)) {
+      subjectKeys.add(subjectKey);
+    }
+  }
+  const customResourceCount = [...subjectKeys].filter((subjectKey) => !knownSubjects.has(subjectKey)).length;
+
+  let ruleCount = 0;
+  let fieldPermissionRuleCount = 0;
+  let queryConstraintRuleCount = 0;
+  let callbackRuleCount = 0;
+  for (const subjectChecks of Object.values(access.permissions)) {
+    for (const subjectValue of Object.values(subjectChecks)) {
+      const checks =
+        typeof subjectValue === "boolean" ? [subjectValue] : Object.values(subjectValue as Record<string, unknown>);
+      for (const check of checks) {
+        ruleCount += 1;
+        if (typeof check === "function") {
+          callbackRuleCount += 1;
+        } else if (check !== null && typeof check === "object") {
+          if ("where" in check || "withIndex" in check) {
+            queryConstraintRuleCount += 1;
+          } else {
+            fieldPermissionRuleCount += 1;
+          }
+        }
+      }
+    }
+  }
+
+  const customActionCount = Object.values(access.customActions ?? {}).reduce(
+    (sum, customAction) => sum + (customAction?.query?.length ?? 0) + (customAction?.mutation?.length ?? 0),
+    0,
+  );
+
+  return {
+    enabled: access.enabled,
+    roleCount: access.roles.length,
+    ruleCount,
+    fieldPermissionRuleCount,
+    queryConstraintRuleCount,
+    callbackRuleCount,
+    customActionCount,
+    customResourceCount,
+    organizations: access.organizations,
+  };
+}
+
 function dataFieldBase(props: { field: AdminDataField; name: string; context: AnonymizeContext }): AnonymizedField {
   const { field, name, context } = props;
   if (typeof field.admin.condition === "function") {
@@ -1092,6 +1259,8 @@ function dataFieldBase(props: { field: AdminDataField; name: string; context: An
     cellAlignment: field.admin.cellAlignment,
     hasValidate: typeof field.validate === "function",
     hasIndex: field.index !== undefined,
+    enableSorting: field.admin.enableSorting,
+    enableHiding: field.admin.enableHiding,
   };
 }
 
@@ -1245,6 +1414,8 @@ function anonymizeField(props: { field: AdminField; context: AnonymizeContext })
       };
     case ADMIN_FIELDS.ui.type:
       return { ...uiFieldBase({ field, name, context }), hasCustomCell: typeof field.admin.components.Cell === "function" };
+    case ADMIN_FIELDS.commitTs.type:
+      return { ...dataFieldBase({ field, name, context }), on: field.on, format: field.admin.format };
     default: {
       const exhaustive: never = field;
       return exhaustive;
@@ -1260,7 +1431,17 @@ function anonymizeBlock(props: { block: BlockConfig; context: AnonymizeContext }
 }
 
 function anonymizeResourceFields(props: { fields: Record<string, AdminField>; context: AnonymizeContext }): AnonymizedField[] {
-  return Object.values(props.fields).map((field) => anonymizeField({ field, context: props.context }));
+  return Object.entries(props.fields)
+    .filter(([key, field]) => !isInjectedUpdatedAt({ key, field }))
+    .map(([, field]) => anonymizeField({ field, context: props.context }));
+}
+
+function hasTimestamps(fields: Record<string, AdminField>): boolean {
+  return Object.entries(fields).some(([key, field]) => isInjectedUpdatedAt({ key, field }));
+}
+
+function resourceFieldCount(fields: Record<string, AdminField>): number {
+  return Object.entries(fields).filter(([key, field]) => !isInjectedUpdatedAt({ key, field })).length;
 }
 
 function anonymizeCollectionLike(props: {
@@ -1271,11 +1452,16 @@ function anonymizeCollectionLike(props: {
   const { resource, name, context } = props;
   return {
     name,
-    fieldCount: Object.keys(resource.fields).length,
+    fieldCount: resourceFieldCount(resource.fields),
     fields: anonymizeResourceFields({ fields: resource.fields, context }),
     hasDrafts: resource.versions.drafts,
     hasLivePreview: resource.admin.livePreview !== undefined,
     indexCount: resource.indexes?.length ?? 0,
+    timestamps: hasTimestamps(resource.fields),
+    savedViewCount: resource.admin.views?.length ?? 0,
+    defaultSortIsCustom: resource.admin.view.state.sort.field !== "_creationTime",
+    bulkDelete: resource.admin.view.state.bulkActions.delete,
+    hookCounts: buildHookCounts(resource.hooks),
   };
 }
 
@@ -1283,10 +1469,12 @@ function anonymizeGlobal(props: { global: GlobalConfig; name: string; context: A
   const { global, name, context } = props;
   return {
     name,
-    fieldCount: Object.keys(global.fields).length,
+    fieldCount: resourceFieldCount(global.fields),
     fields: anonymizeResourceFields({ fields: global.fields, context }),
     hasDrafts: global.versions.drafts,
     hasLivePreview: global.admin.livePreview !== undefined,
+    timestamps: hasTimestamps(global.fields),
+    hookCounts: buildHookCounts(global.hooks),
   };
 }
 
@@ -1366,9 +1554,12 @@ export function anonymizeConfig(props: { config: VexConfig }): AnonymizedConfig 
       inputMasks: context.flags.inputMasks || Object.keys(config.fields.inputMasks).length > 0,
       localization: false,
       auth: config.auth !== undefined,
-      access: config.access
-        ? { enabled: config.access.enabled, roleCount: config.access.roles.length }
-        : { enabled: false, roleCount: 0 },
+      authAdapter: anonymizeAuthAdapter(config.auth),
+      access: anonymizeAccess(config.access),
+      hookCount: [...collections, ...globals, ...mediaCollections].reduce(
+        (sum, resource) => sum + Object.values(resource.hookCounts).reduce((a, b) => a + b, 0),
+        0,
+      ),
     },
     storageAdapterKinds: [...new Set(config.storage.adapters.map((adapter) => adapter.type))],
   };
@@ -1383,11 +1574,14 @@ Three groups: an exact-shape test on a minimal config, a dedicated test proving 
 import { describe, expect, it } from "vitest";
 import {
   ADMIN_FIELDS,
+  afterChangeHook,
   array,
+  beforeChangeHook,
   blocks,
   checkbox,
   collapsible,
   color,
+  commitTs,
   date,
   defineBlock,
   defineCollection,
@@ -1395,6 +1589,7 @@ import {
   defineGlobal,
   defineServerConfig,
   email,
+  globalBeforeChangeHook,
   group,
   json,
   number,
@@ -1442,6 +1637,14 @@ const ALLOWED_ENUM_VALUES = new Set([
   "right",
   "center",
   "presigned-url",
+  "save",
+  "publish",
+  "all",
+  "relative",
+  "datetime",
+  "none",
+  "betterAuth",
+  "custom",
 ]);
 
 describe("anonymizeConfig — exact shape", () => {
@@ -1469,6 +1672,11 @@ describe("anonymizeConfig — exact shape", () => {
           hasDrafts: false,
           hasLivePreview: false,
           indexCount: 0,
+          timestamps: false,
+          savedViewCount: 0,
+          defaultSortIsCustom: false,
+          bulkDelete: true,
+          hookCounts: { beforeChange: 0, beforeDelete: 0, afterChange: 0, afterDelete: 0 },
           fields: [
             {
               name: "field1",
@@ -1484,6 +1692,8 @@ describe("anonymizeConfig — exact shape", () => {
               min: 3,
               max: 100,
               hasSearchIndex: false,
+              enableSorting: false,
+              enableHiding: true,
             },
             {
               name: "field2",
@@ -1495,6 +1705,8 @@ describe("anonymizeConfig — exact shape", () => {
               cellAlignment: "left",
               hasValidate: false,
               hasIndex: false,
+              enableSorting: false,
+              enableHiding: true,
               defaultValue: true,
             },
           ],
@@ -1510,7 +1722,19 @@ describe("anonymizeConfig — exact shape", () => {
         inputMasks: false,
         localization: false,
         auth: false,
-        access: { enabled: false, roleCount: 0 },
+        authAdapter: "none",
+        access: {
+          enabled: false,
+          roleCount: 0,
+          ruleCount: 0,
+          fieldPermissionRuleCount: 0,
+          queryConstraintRuleCount: 0,
+          callbackRuleCount: 0,
+          customActionCount: 0,
+          customResourceCount: 0,
+          organizations: false,
+        },
+        hookCount: 0,
       },
       storageAdapterKinds: [],
     };
@@ -1535,6 +1759,137 @@ describe("anonymizeConfig — unknown keys", () => {
   });
 });
 
+describe("anonymizeConfig — injected updatedAt", () => {
+  it("a collection without timestamps: false gets timestamps: true, no updatedAt-derived field, and an unchanged fieldCount", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text({ required: true, min: 3, max: 100 }),
+        featured: checkbox({ defaultValue: true }),
+      },
+    });
+    const config = defineServerConfig({ config: defineConfig({ collections: [collection] }) });
+
+    const output = anonymizeConfig({ config });
+
+    expect(output.collections[0]!.timestamps).toBe(true);
+    expect(output.collections[0]!.fieldCount).toBe(2);
+    expect(output.collections[0]!.fields).toHaveLength(2);
+    expect(output.fieldCount).toBe(2);
+    expect(output.collections[0]!.fields.some((field) => field.type === "commitTs")).toBe(false);
+  });
+
+  it("a user-declared commitTs field survives with its own on/format, not mistaken for the injected updatedAt", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      timestamps: false,
+      fields: {
+        title: text({ required: true }),
+        publishedCommitTs: commitTs({ on: "publish", admin: { format: "relative" } }),
+      },
+    });
+    const config = defineServerConfig({ config: defineConfig({ collections: [collection] }) });
+
+    const output = anonymizeConfig({ config });
+    const commitTsField = output.collections[0]!.fields.find((field) => field.type === "commitTs")!;
+
+    expect(commitTsField).toBeDefined();
+    expect(commitTsField.on).toBe("publish");
+    expect(commitTsField.format).toBe("relative");
+    expect(output.collections[0]!.fieldCount).toBe(2);
+  });
+});
+
+describe("anonymizeConfig — lifecycle hooks", () => {
+  it("counts declared hooks per resource and sums them into features.hookCount", () => {
+    const collection = defineCollection({
+      slug: "hookedPosts",
+      timestamps: false,
+      fields: { title: text({ required: true }) },
+      hooks: {
+        beforeChange: beforeChangeHook("hookedPosts", async ({ doc }) => doc),
+        afterChange: afterChangeHook("hookedPosts", () => {}),
+      },
+    });
+    const global = defineGlobal({
+      slug: "hookedSettings",
+      label: "Hooked Settings",
+      fields: { tagline: text() },
+      hooks: {
+        beforeChange: globalBeforeChangeHook("hookedSettings", async ({ doc }) => doc),
+      },
+    });
+    const config = defineServerConfig({
+      config: defineConfig({ collections: [collection], globals: [global] }),
+    });
+
+    const output = anonymizeConfig({ config });
+
+    expect(output.collections[0]!.hookCounts).toEqual({
+      beforeChange: 1,
+      beforeDelete: 0,
+      afterChange: 1,
+      afterDelete: 0,
+    });
+    expect(output.globals[0]!.hookCounts).toEqual({
+      beforeChange: 1,
+      beforeDelete: 0,
+      afterChange: 0,
+      afterDelete: 0,
+    });
+    expect(output.features.hookCount).toBe(3);
+  });
+});
+
+describe("anonymizeConfig — access detail", () => {
+  it("classifies every rule and counts custom actions/resources exactly", () => {
+    const collection = defineCollection({
+      slug: "docs",
+      timestamps: false,
+      fields: { title: text({ required: true }) },
+    });
+    const config: VexConfig = {
+      ...defineServerConfig({ config: defineConfig({ collections: [collection] }) }),
+      access: {
+        enabled: true,
+        roles: ["admin", "editor"],
+        resources: [collection],
+        customActions: { docs: { query: ["search"], mutation: ["archive", "restore"] } },
+        defaultPermissionMode: "deny",
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        orgCollectionSlug: undefined,
+        organizations: false,
+        permissions: {
+          admin: {
+            docs: {
+              read: true,
+              create: () => true,
+              update: { where: { field: "title", op: "neq", value: "" } },
+              delete: { title: true, body: false },
+            },
+            apiKeys: { create: true },
+          },
+        },
+      } as unknown as VexConfig["access"],
+    };
+
+    const output = anonymizeConfig({ config });
+
+    expect(output.features.access).toEqual({
+      enabled: true,
+      roleCount: 2,
+      ruleCount: 5,
+      fieldPermissionRuleCount: 1,
+      queryConstraintRuleCount: 1,
+      callbackRuleCount: 1,
+      customActionCount: 3,
+      customResourceCount: 1,
+      organizations: false,
+    });
+  });
+});
+
 describe("anonymizeConfig — leak test", () => {
   const CLIENTS_SLUG = "secretProjectClients";
   const POSTS_SLUG = "secretProjectPosts";
@@ -1546,6 +1901,8 @@ describe("anonymizeConfig — leak test", () => {
     POSTS_SLUG,
     SETTINGS_SLUG,
     ASSETS_SLUG,
+    "secretSavedViewName",
+    "secret-view-where-value",
     "Codename Phoenix",
     "classifiedTierAlpha",
     "Internal only — do not share externally",
@@ -1566,8 +1923,16 @@ describe("anonymizeConfig — leak test", () => {
 
   const clientsCollection = defineCollection({
     slug: CLIENTS_SLUG,
-    timestamps: false,
     fields: { name: text({ required: true, label: "Codename Phoenix" }) },
+    admin: {
+      views: [
+        {
+          viewId: "secretView",
+          name: "secretSavedViewName",
+          state: { where: { field: "name", op: "eq", value: "secret-view-where-value" } },
+        },
+      ],
+    },
   });
 
   const postsCollection = defineCollection({
@@ -1720,12 +2085,12 @@ describe("anonymizeConfig — leak test", () => {
 });
 ```
 
-#### packages/telemetry/src/index.ts
+#### packages/telemetry/src/config.ts
 
-1 edit — add, alongside the existing `export * from "./projectId";` line:
+New file — the entire `@vexcms/telemetry/config` subpath entry (see Step 1's `package.json` `exports` map and `tsup.config.ts` `entry` list). `anonymizeConfig` is reached only through this subpath; the root barrel (`src/index.ts`) never exports it, since it's the one function in the package that needs a runtime `@vexcms/core` import and callers that don't anonymize a config shouldn't pay for it.
 
 ```ts
-export * from "./anonymizeConfig";
+export { anonymizeConfig } from "./anonymizeConfig";
 ```
 
 Verify: `pnpm --filter @vexcms/telemetry test anonymizeConfig`
@@ -1741,16 +2106,20 @@ Why: T2, T7, T8. Telemetry never delays or fails a command.
 - [ ] `packages/telemetry/src/showTelemetryNotice.test.ts`
 - [ ] `packages/telemetry/src/recordTelemetryEvent.ts`
 - [ ] `packages/telemetry/src/recordTelemetryEvent.test.ts`
+- [ ] `packages/telemetry/src/classifyTelemetryError.ts`
+- [ ] `packages/telemetry/src/classifyTelemetryError.test.ts`
+- [ ] `packages/telemetry/src/fitTelemetryEvent.ts`
+- [ ] `packages/telemetry/src/fitTelemetryEvent.test.ts`
 - [ ] `packages/telemetry/src/index.ts`
 
 #### packages/telemetry/src/collectEnvironment.ts
 
-Reads the project's `package.json` for `@vexcms/*` / `create-vexcms` version strings and detects the package manager from a lockfile in `projectDir`, falling back to `npm_config_user_agent`.
+Reads the project's `package.json` for `@vexcms/*` / `create-vexcms` version strings, detects the package manager from a lockfile in `projectDir` (falling back to `npm_config_user_agent`), and detects the framework from the same dependency fields.
 
 ```ts
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { TelemetryEnvironment } from "./types.js";
+import type { TelemetryEnvironment } from "./types";
 
 const LOCKFILE_PACKAGE_MANAGERS = {
   "pnpm-lock.yaml": "pnpm",
@@ -1786,6 +2155,31 @@ function collectVexVersions(packageJson: Record<string, unknown>): Record<string
     }
   }
   return versions;
+}
+
+const FRAMEWORK_DEPENDENCIES = {
+  next: "next",
+  "@tanstack/react-start": "tanstack",
+} as const;
+
+function detectFramework(packageJson: Record<string, unknown>): TelemetryEnvironment["framework"] {
+  const dependencyFields = ["dependencies", "devDependencies"] as const;
+  const depNames = new Set<string>();
+  for (const field of dependencyFields) {
+    const deps = packageJson[field];
+    if (typeof deps !== "object" || deps === null) {
+      continue;
+    }
+    for (const name of Object.keys(deps as Record<string, string>)) {
+      depNames.add(name);
+    }
+  }
+  for (const [dependency, framework] of Object.entries(FRAMEWORK_DEPENDENCIES)) {
+    if (depNames.has(dependency)) {
+      return framework;
+    }
+  }
+  return "unknown";
 }
 
 function detectPackageManager(props: {
@@ -1830,6 +2224,7 @@ export function collectEnvironment(props: { projectDir: string }): TelemetryEnvi
     os: process.platform,
     arch: process.arch,
     packageManager: detectPackageManager({ projectDir: props.projectDir, env: process.env }),
+    framework: detectFramework(packageJson),
   };
 }
 ```
@@ -1841,7 +2236,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { collectEnvironment } from "./collectEnvironment.js";
+import { collectEnvironment } from "./collectEnvironment";
 
 describe("collectEnvironment", () => {
   let projectDir: string;
@@ -1899,16 +2294,41 @@ describe("collectEnvironment", () => {
     const environment = collectEnvironment({ projectDir });
     expect(environment.vexVersions).toEqual({});
   });
+
+  it("detects the framework from a next dependency", () => {
+    writeFileSync(
+      join(projectDir, "package.json"),
+      JSON.stringify({ dependencies: { next: "15.0.0" } }),
+    );
+
+    expect(collectEnvironment({ projectDir }).framework).toBe("next");
+  });
+
+  it("detects the framework from a @tanstack/react-start dependency", () => {
+    writeFileSync(
+      join(projectDir, "package.json"),
+      JSON.stringify({ dependencies: { "@tanstack/react-start": "1.0.0" } }),
+    );
+
+    expect(collectEnvironment({ projectDir }).framework).toBe("tanstack");
+  });
+
+  it("falls back to unknown framework with neither dependency present", () => {
+    writeFileSync(join(projectDir, "package.json"), JSON.stringify({ dependencies: { react: "19.0.0" } }));
+
+    expect(collectEnvironment({ projectDir }).framework).toBe("unknown");
+  });
 });
 ```
 
 #### packages/telemetry/src/sendTelemetryEvent.ts
 
-Fire-and-forget POST, bounded by `AbortSignal.timeout`. Every failure (network error, timeout, non-2xx) is swallowed — a command's exit code and timing must never depend on the network. `VEX_TELEMETRY_DEBUG` short-circuits to a stderr dump with no request.
+Fire-and-forget POST, bounded by `AbortSignal.timeout`. Every failure (network error, timeout, non-2xx) is swallowed — a command's exit code and timing must never depend on the network. `fitTelemetryEvent` runs first so oversize events are shrunk or dropped before either the debug or send path; `VEX_TELEMETRY_DEBUG` then short-circuits to a stderr dump with no request.
 
 ```ts
-import { DEFAULT_TELEMETRY_ENDPOINT, TELEMETRY_ENV, TELEMETRY_MAX_BODY_BYTES, TELEMETRY_TIMEOUT_MS } from "./constants.js";
-import type { TelemetryEnv, TelemetryEvent } from "./types.js";
+import { DEFAULT_TELEMETRY_ENDPOINT, TELEMETRY_ENV, TELEMETRY_TIMEOUT_MS } from "./constants";
+import { fitTelemetryEvent } from "./fitTelemetryEvent";
+import type { TelemetryEnv, TelemetryEvent } from "./types";
 
 function isDebugEnabled(env: TelemetryEnv): boolean {
   const value = env[TELEMETRY_ENV.debug];
@@ -1918,23 +2338,27 @@ function isDebugEnabled(env: TelemetryEnv): boolean {
 /**
  * Sends one telemetry event over HTTP, never throwing and never delaying the
  * caller beyond {@link TELEMETRY_TIMEOUT_MS}. In debug mode the event is
- * printed to stderr instead of being sent.
+ * printed to stderr instead of being sent. Oversize events are shrunk or
+ * dropped by {@link fitTelemetryEvent} before either path runs, so debug
+ * mode always shows exactly what would be sent.
  *
  * @param props.event The event to send.
  * @param props.env Environment used to resolve `VEX_TELEMETRY_ENDPOINT` and
  *   `VEX_TELEMETRY_DEBUG`.
  */
 export async function sendTelemetryEvent(props: { event: TelemetryEvent; env: TelemetryEnv }): Promise<void> {
+  const fittedEvent = fitTelemetryEvent({ event: props.event });
+  if (!fittedEvent) {
+    return;
+  }
+
   if (isDebugEnabled(props.env)) {
-    process.stderr.write(`[vex telemetry] ${JSON.stringify(props.event, null, 2)}\n`);
+    process.stderr.write(`[vex telemetry] ${JSON.stringify(fittedEvent, null, 2)}\n`);
     return;
   }
 
   const endpoint = props.env[TELEMETRY_ENV.endpoint] ?? DEFAULT_TELEMETRY_ENDPOINT;
-  const body = JSON.stringify(props.event);
-  if (Buffer.byteLength(body, "utf8") > TELEMETRY_MAX_BODY_BYTES) {
-    return;
-  }
+  const body = JSON.stringify(fittedEvent);
 
   try {
     await fetch(endpoint, {
@@ -1957,9 +2381,9 @@ Uses a real `node:http` server for the happy path, and a server that accepts the
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TELEMETRY_SCHEMA_VERSION } from "./constants.js";
-import { sendTelemetryEvent } from "./sendTelemetryEvent.js";
-import type { TelemetryEnv, TelemetryEvent } from "./types.js";
+import { TELEMETRY_SCHEMA_VERSION } from "./constants";
+import { sendTelemetryEvent } from "./sendTelemetryEvent";
+import type { TelemetryEnv, TelemetryEvent } from "./types";
 
 function buildEvent(): TelemetryEvent {
   return {
@@ -2054,9 +2478,9 @@ describe("sendTelemetryEvent", () => {
 Printed once per machine, stamping `noticeShownAt` so every later call is silent.
 
 ```ts
-import { TELEMETRY_DOCS_URL, TELEMETRY_ENV } from "./constants.js";
-import { writeTelemetrySettings } from "./settings.js";
-import type { TelemetryEnv, TelemetrySettings } from "./types.js";
+import { TELEMETRY_DOCS_URL, TELEMETRY_ENV } from "./constants";
+import { writeTelemetrySettings } from "./settings";
+import type { TelemetryEnv, TelemetrySettings } from "./types";
 
 function buildNoticeText(): string {
   return [
@@ -2099,9 +2523,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TELEMETRY_DOCS_URL } from "./constants.js";
-import { showTelemetryNotice } from "./showTelemetryNotice.js";
-import type { TelemetryEnv, TelemetrySettings } from "./types.js";
+import { TELEMETRY_DOCS_URL } from "./constants";
+import { showTelemetryNotice } from "./showTelemetryNotice";
+import type { TelemetryEnv, TelemetrySettings } from "./types";
 
 describe("showTelemetryNotice", () => {
   let configHome: string;
@@ -2153,23 +2577,23 @@ describe("showTelemetryNotice", () => {
 The single entry point used by the CLI and `create-vexcms`: checks enablement, shows the notice, builds the event and sends it. Never rejects.
 
 ```ts
-import { collectEnvironment } from "./collectEnvironment.js";
-import { createProjectId } from "./projectId.js";
-import { readTelemetrySettings } from "./settings.js";
-import { sendTelemetryEvent } from "./sendTelemetryEvent.js";
-import { showTelemetryNotice } from "./showTelemetryNotice.js";
-import { isTelemetryEnabled } from "./isTelemetryEnabled.js";
-import { TELEMETRY_SCHEMA_VERSION } from "./constants.js";
-import { anonymizeConfig } from "./anonymizeConfig.js";
+import { collectEnvironment } from "./collectEnvironment";
+import { createProjectId } from "./projectId";
+import { readTelemetrySettings } from "./settings";
+import { sendTelemetryEvent } from "./sendTelemetryEvent";
+import { showTelemetryNotice } from "./showTelemetryNotice";
+import { isTelemetryEnabled } from "./isTelemetryEnabled";
+import { TELEMETRY_SCHEMA_VERSION } from "./constants";
 import type {
+  AnonymizedConfig,
   TelemetryCreateOptions,
   TelemetryEnv,
   TelemetryEvent,
   TelemetryEventName,
+  TelemetryOutcome,
   TelemetrySettings,
   TelemetryTimings,
-} from "./types.js";
-import type { VexConfig } from "@vexcms/core";
+} from "./types";
 
 /**
  * Assembles the full telemetry payload for one event, deterministic given
@@ -2178,8 +2602,8 @@ import type { VexConfig } from "@vexcms/core";
  * @param props.event The event name.
  * @param props.projectDir Absolute path to the project directory.
  * @param props.settings The machine's telemetry settings.
- * @param props.config Optional loaded project config, anonymized when
- *   present.
+ * @param props.outcome Whether the run succeeded, or failed with a stage and error code.
+ * @param props.config Optional already-anonymized project config.
  * @param props.timings Optional build/dev timing data.
  * @param props.create Optional `create-vexcms` scaffold options.
  * @returns The complete {@link TelemetryEvent}.
@@ -2188,7 +2612,8 @@ export function buildTelemetryEvent(props: {
   event: TelemetryEventName;
   projectDir: string;
   settings: TelemetrySettings;
-  config?: VexConfig;
+  outcome: TelemetryOutcome;
+  config?: AnonymizedConfig;
   timings?: TelemetryTimings;
   create?: TelemetryCreateOptions;
 }): TelemetryEvent {
@@ -2199,7 +2624,8 @@ export function buildTelemetryEvent(props: {
     projectId: createProjectId({ salt: props.settings.salt, projectDir: props.projectDir }),
     sentAt: new Date().toISOString(),
     environment: collectEnvironment({ projectDir: props.projectDir }),
-    ...(props.config ? { config: anonymizeConfig({ config: props.config }) } : {}),
+    outcome: props.outcome,
+    ...(props.config ? { config: props.config } : {}),
     ...(props.timings ? { timings: props.timings } : {}),
     ...(props.create ? { create: props.create } : {}),
   };
@@ -2212,17 +2638,19 @@ export function buildTelemetryEvent(props: {
  *
  * @param props.event The event name.
  * @param props.projectDir Absolute path to the project directory.
+ * @param props.outcome Whether the run succeeded, or failed with a stage and error code.
  * @param props.env Environment to resolve settings/enablement against;
  *   defaults to `process.env`.
- * @param props.config Optional loaded project config.
+ * @param props.config Optional already-anonymized project config.
  * @param props.timings Optional build/dev timing data.
  * @param props.create Optional `create-vexcms` scaffold options.
  */
 export async function recordTelemetryEvent(props: {
   event: TelemetryEventName;
   projectDir: string;
+  outcome: TelemetryOutcome;
   env?: TelemetryEnv;
-  config?: VexConfig;
+  config?: AnonymizedConfig;
   timings?: TelemetryTimings;
   create?: TelemetryCreateOptions;
 }): Promise<void> {
@@ -2238,6 +2666,7 @@ export async function recordTelemetryEvent(props: {
     event: props.event,
     projectDir: props.projectDir,
     settings: noticedSettings,
+    outcome: props.outcome,
     config: props.config,
     timings: props.timings,
     create: props.create,
@@ -2255,9 +2684,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { TELEMETRY_SCHEMA_VERSION } from "./constants.js";
-import { recordTelemetryEvent } from "./recordTelemetryEvent.js";
-import type { TelemetryEnv } from "./types.js";
+import { TELEMETRY_SCHEMA_VERSION } from "./constants";
+import { recordTelemetryEvent } from "./recordTelemetryEvent";
+import type { TelemetryEnv } from "./types";
 
 describe("recordTelemetryEvent", () => {
   let configHome: string;
@@ -2288,7 +2717,7 @@ describe("recordTelemetryEvent", () => {
       VEX_TELEMETRY_ENDPOINT: `http://127.0.0.1:${port}/events`,
     };
 
-    await recordTelemetryEvent({ event: "dev", projectDir, env });
+    await recordTelemetryEvent({ event: "dev", projectDir, env, outcome: { status: "ok" } });
 
     expect(requested).toBe(false);
     await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -2312,7 +2741,7 @@ describe("recordTelemetryEvent", () => {
       VEX_TELEMETRY_ENDPOINT: `http://127.0.0.1:${port}/events`,
     };
 
-    await recordTelemetryEvent({ event: "dev", projectDir, env });
+    await recordTelemetryEvent({ event: "dev", projectDir, env, outcome: { status: "ok" } });
 
     expect(received.body).not.toContain(projectDir);
     const event = JSON.parse(received.body);
@@ -2325,28 +2754,348 @@ describe("recordTelemetryEvent", () => {
 });
 ```
 
-#### packages/telemetry/src/index.ts
+#### packages/telemetry/src/classifyTelemetryError.ts
 
-Edits are additive: 4 new export lines beside the barrel entries from steps 1–4; nothing else in the file changes.
-
-**1 — exports.** Add alongside the existing `anonymizeConfig` export line:
+Classifies a caught error into a fixed {@link TelemetryErrorCode} by its `name` only — never its message, which may carry project-specific details. Checks `error.name` against an allowlist of core's config-error class names so no runtime `@vexcms/core` import is needed (those classes already set `this.name` in their constructors).
 
 ```ts
-export * from "./collectEnvironment.js";
-export * from "./sendTelemetryEvent.js";
-export * from "./showTelemetryNotice.js";
-export * from "./recordTelemetryEvent.js";
+import type { TelemetryErrorCode } from "./types";
+
+const ERROR_CODE_BY_NAME: Record<string, TelemetryErrorCode> = {
+  VexConfigError: "configError",
+  VexAccessConfigError: "accessConfigError",
+  VexAuthConfigError: "authConfigError",
+  VexComponentConfigError: "componentConfigError",
+  VexStorageConfigError: "storageConfigError",
+};
+
+/**
+ * Classifies a caught error into a fixed {@link TelemetryErrorCode} for the
+ * telemetry payload, by its `name` — never its message, which may carry
+ * project-specific details. Unrecognized error names map to `"unknown"`.
+ *
+ * @param props.error - The error caught at a vex-owned pipeline stage.
+ * @returns The matching allowlisted code, or `"unknown"`.
+ */
+export function classifyTelemetryError(props: { error: unknown }): TelemetryErrorCode {
+  const { error } = props;
+  if (error instanceof Error && error.name in ERROR_CODE_BY_NAME) {
+    return ERROR_CODE_BY_NAME[error.name] as TelemetryErrorCode;
+  }
+  return "unknown";
+}
 ```
 
-Verify: `pnpm --filter @vexcms/telemetry test -- collectEnvironment sendTelemetryEvent showTelemetryNotice recordTelemetryEvent`
-</content>
+#### packages/telemetry/src/classifyTelemetryError.test.ts
+
+```ts
+import { describe, expect, it } from "vitest";
+import { classifyTelemetryError } from "./classifyTelemetryError";
+
+function namedError(name: string): Error {
+  const error = new Error("boom");
+  error.name = name;
+  return error;
+}
+
+describe("classifyTelemetryError", () => {
+  it("maps VexConfigError to configError", () => {
+    expect(classifyTelemetryError({ error: namedError("VexConfigError") })).toBe("configError");
+  });
+
+  it("maps VexAccessConfigError to accessConfigError", () => {
+    expect(classifyTelemetryError({ error: namedError("VexAccessConfigError") })).toBe("accessConfigError");
+  });
+
+  it("maps VexAuthConfigError to authConfigError", () => {
+    expect(classifyTelemetryError({ error: namedError("VexAuthConfigError") })).toBe("authConfigError");
+  });
+
+  it("maps VexComponentConfigError to componentConfigError", () => {
+    expect(classifyTelemetryError({ error: namedError("VexComponentConfigError") })).toBe("componentConfigError");
+  });
+
+  it("maps VexStorageConfigError to storageConfigError", () => {
+    expect(classifyTelemetryError({ error: namedError("VexStorageConfigError") })).toBe("storageConfigError");
+  });
+
+  it("returns unknown for an unrecognized Error name", () => {
+    expect(classifyTelemetryError({ error: namedError("SyntaxError") })).toBe("unknown");
+  });
+
+  it("returns unknown for a non-Error value", () => {
+    expect(classifyTelemetryError({ error: "boom" })).toBe("unknown");
+  });
+});
+```
+
+#### packages/telemetry/src/fitTelemetryEvent.ts
+
+Shrinks a telemetry event's `config` to fit {@link TELEMETRY_MAX_BODY_BYTES}: first tries the event unchanged, then with `config`'s per-resource arrays dropped (every count and `features` field kept, `truncated: true` set), then gives up and returns `undefined` if it's still oversize.
+
+```ts
+import { TELEMETRY_MAX_BODY_BYTES } from "./constants";
+import type { TelemetryEvent } from "./types";
+
+/**
+ * Shrinks a telemetry event's `config` to fit {@link TELEMETRY_MAX_BODY_BYTES}:
+ * first tries the event unchanged, then with `config`'s per-resource arrays
+ * dropped (every count and `features` field kept, `truncated: true` set),
+ * then gives up and returns `undefined` if it's still oversize.
+ *
+ * @param props.event The event to fit.
+ * @returns The event (possibly with a truncated `config`), or `undefined`
+ *   when even a truncated `config` doesn't fit the cap.
+ */
+export function fitTelemetryEvent(props: { event: TelemetryEvent }): TelemetryEvent | undefined {
+  const { event } = props;
+  if (Buffer.byteLength(JSON.stringify(event), "utf8") <= TELEMETRY_MAX_BODY_BYTES) {
+    return event;
+  }
+  if (!event.config) {
+    return undefined;
+  }
+
+  const truncatedEvent: TelemetryEvent = {
+    ...event,
+    config: { ...event.config, collections: [], globals: [], mediaCollections: [], truncated: true },
+  };
+  if (Buffer.byteLength(JSON.stringify(truncatedEvent), "utf8") <= TELEMETRY_MAX_BODY_BYTES) {
+    return truncatedEvent;
+  }
+  return undefined;
+}
+```
+
+#### packages/telemetry/src/fitTelemetryEvent.test.ts
+
+Covers the three outcomes: unchanged, truncated-and-fits, and dropped (both when truncation still doesn't fit and when there's no `config` to truncate at all).
+
+```ts
+import { describe, expect, it } from "vitest";
+import { TELEMETRY_MAX_BODY_BYTES, TELEMETRY_SCHEMA_VERSION } from "./constants";
+import { fitTelemetryEvent } from "./fitTelemetryEvent";
+import type { AnonymizedConfig, AnonymizedResource, TelemetryEvent } from "./types";
+
+function buildEnvironment(): TelemetryEvent["environment"] {
+  return {
+    vexVersions: {},
+    nodeVersion: process.version,
+    os: process.platform,
+    arch: process.arch,
+    packageManager: "pnpm",
+    framework: "unknown",
+  };
+}
+
+function buildBaseEvent(config: AnonymizedConfig): TelemetryEvent {
+  return {
+    schemaVersion: TELEMETRY_SCHEMA_VERSION,
+    event: "dev",
+    machineId: "machine-1",
+    projectId: "project-1",
+    sentAt: new Date().toISOString(),
+    environment: buildEnvironment(),
+    outcome: { status: "ok" },
+    config,
+  };
+}
+
+function buildSmallConfig(): AnonymizedConfig {
+  return {
+    collectionCount: 1,
+    globalCount: 0,
+    mediaCollectionCount: 0,
+    blockCount: 0,
+    fieldCount: 1,
+    collections: [
+      {
+        name: "collection1",
+        fieldCount: 1,
+        fields: [{ name: "field1", type: "text", required: true }],
+        hasDrafts: false,
+        hasLivePreview: false,
+        timestamps: false,
+        hookCounts: { beforeChange: 0, beforeDelete: 0, afterChange: 0, afterDelete: 0 },
+      },
+    ],
+    globals: [],
+    mediaCollections: [],
+    features: {
+      drafts: false,
+      livePreview: false,
+      conditions: false,
+      slots: false,
+      inputMasks: false,
+      localization: false,
+      auth: false,
+      authAdapter: "none",
+      access: {
+        enabled: false,
+        roleCount: 0,
+        ruleCount: 0,
+        fieldPermissionRuleCount: 0,
+        queryConstraintRuleCount: 0,
+        callbackRuleCount: 0,
+        customActionCount: 0,
+        customResourceCount: 0,
+        organizations: false,
+      },
+      hookCount: 0,
+    },
+    storageAdapterKinds: [],
+  };
+}
+
+function buildOversizeResources(count: number): AnonymizedResource[] {
+  return Array.from({ length: count }, (_, index) => ({
+    name: `collection${index + 1}`,
+    fieldCount: 1,
+    fields: [
+      {
+        name: `field${index + 1}`,
+        type: "text",
+        required: true,
+        hidden: false,
+        readOnly: false,
+        position: "main",
+        cellAlignment: "left",
+        hasValidate: false,
+        hasIndex: false,
+        hasMask: false,
+        min: 3,
+        max: 100,
+        hasSearchIndex: false,
+        enableSorting: false,
+        enableHiding: true,
+      },
+    ],
+    hasDrafts: false,
+    hasLivePreview: false,
+    indexCount: 0,
+    timestamps: false,
+    savedViewCount: 0,
+    defaultSortIsCustom: false,
+    bulkDelete: true,
+    hookCounts: { beforeChange: 0, beforeDelete: 0, afterChange: 0, afterDelete: 0 },
+  }));
+}
+
+function buildOversizeConfig(): AnonymizedConfig {
+  const collections = buildOversizeResources(3000);
+  return {
+    collectionCount: collections.length,
+    globalCount: 0,
+    mediaCollectionCount: 0,
+    blockCount: 0,
+    fieldCount: collections.length,
+    collections,
+    globals: [],
+    mediaCollections: [],
+    features: {
+      drafts: false,
+      livePreview: false,
+      conditions: false,
+      slots: false,
+      inputMasks: false,
+      localization: false,
+      auth: false,
+      authAdapter: "none",
+      access: {
+        enabled: false,
+        roleCount: 0,
+        ruleCount: 0,
+        fieldPermissionRuleCount: 0,
+        queryConstraintRuleCount: 0,
+        callbackRuleCount: 0,
+        customActionCount: 0,
+        customResourceCount: 0,
+        organizations: false,
+      },
+      hookCount: 0,
+    },
+    storageAdapterKinds: [],
+  };
+}
+
+describe("fitTelemetryEvent", () => {
+  it("returns an under-cap event unchanged", () => {
+    const event = buildBaseEvent(buildSmallConfig());
+
+    expect(fitTelemetryEvent({ event })).toEqual(event);
+  });
+
+  it("truncates an oversize config's per-resource arrays, keeping every count and features, and fits the cap", () => {
+    const oversizeConfig = buildOversizeConfig();
+    const event = buildBaseEvent(oversizeConfig);
+    expect(Buffer.byteLength(JSON.stringify(event), "utf8")).toBeGreaterThan(TELEMETRY_MAX_BODY_BYTES);
+
+    const fitted = fitTelemetryEvent({ event });
+
+    expect(fitted).toBeDefined();
+    expect(fitted?.config).toEqual({
+      ...oversizeConfig,
+      collections: [],
+      globals: [],
+      mediaCollections: [],
+      truncated: true,
+    });
+    expect(fitted?.config?.collectionCount).toBe(3000);
+    expect(fitted?.config?.fieldCount).toBe(3000);
+    expect(fitted?.config?.features).toEqual(oversizeConfig.features);
+    expect(Buffer.byteLength(JSON.stringify(fitted), "utf8")).toBeLessThanOrEqual(TELEMETRY_MAX_BODY_BYTES);
+  });
+
+  it("drops an event that is still oversize after truncation", () => {
+    const hugeStorageAdapterKinds = Array.from({ length: 60_000 }, () => "presigned-url" as const);
+    const config: AnonymizedConfig = { ...buildSmallConfig(), storageAdapterKinds: hugeStorageAdapterKinds };
+    const event = buildBaseEvent(config);
+    expect(Buffer.byteLength(JSON.stringify(event), "utf8")).toBeGreaterThan(TELEMETRY_MAX_BODY_BYTES);
+
+    const truncatedStillOversize: TelemetryEvent = {
+      ...event,
+      config: { ...config, collections: [], globals: [], mediaCollections: [], truncated: true },
+    };
+    expect(Buffer.byteLength(JSON.stringify(truncatedStillOversize), "utf8")).toBeGreaterThan(
+      TELEMETRY_MAX_BODY_BYTES,
+    );
+
+    expect(fitTelemetryEvent({ event })).toBeUndefined();
+  });
+
+  it("drops an oversize event with no config at all", () => {
+    const hugeEnvironment = { ...buildEnvironment(), vexVersions: { "@vexcms/huge": "x".repeat(600_000) } };
+    const event: TelemetryEvent = { ...buildBaseEvent(buildSmallConfig()), config: undefined, environment: hugeEnvironment };
+    expect(Buffer.byteLength(JSON.stringify(event), "utf8")).toBeGreaterThan(TELEMETRY_MAX_BODY_BYTES);
+
+    expect(fitTelemetryEvent({ event })).toBeUndefined();
+  });
+});
+```
+
+#### packages/telemetry/src/index.ts
+
+Edits are additive: 6 new export lines beside the barrel entries from steps 1–3 (Step 4 did not touch this file — `anonymizeConfig` lives in `src/config.ts` instead); nothing else in the file changes.
+
+**1 — exports.** Add alongside the existing barrel entries from steps 1–3 (`anonymizeConfig` is NOT re-exported here — it lives only in `src/config.ts`, the `@vexcms/telemetry/config` subpath, per Step 4):
+
+```ts
+export * from "./collectEnvironment";
+export * from "./sendTelemetryEvent";
+export * from "./showTelemetryNotice";
+export * from "./recordTelemetryEvent";
+export * from "./classifyTelemetryError";
+export * from "./fitTelemetryEvent";
+```
+
+Verify: `pnpm --filter @vexcms/telemetry test -- collectEnvironment sendTelemetryEvent showTelemetryNotice recordTelemetryEvent classifyTelemetryError fitTelemetryEvent`
 
 ### Step 6 — CLI wiring [agent]
 
 Why: `vex dev` / `vex deploy` emit events; `vex telemetry` controls them.
 
-- [ ] `packages/cli/package.json` depends on `@vexcms/telemetry` (`workspace:*`)
-- [ ] `packages/cli/tsup.config.ts` marks `@vexcms/telemetry` external
+- [ ] `packages/cli/package.json` adds `@vexcms/telemetry` (`workspace:*`) as a `devDependency` — `tsup.config.ts`'s `noExternal` bundles it into `dist`, so it's never a real runtime dependency
+- [ ] `packages/cli/tsup.config.ts` adds `@vexcms/telemetry` to `noExternal` (it stays out of `external`, unlike `@vexcms/core`)
 - [ ] `packages/cli/src/commands/telemetry.ts`: `enable` / `disable` / `status [--json]`
 - [ ] `packages/cli/src/commands/dev.ts`: time `loadConfig` and `generateAndWrite`, record one `dev` event after the first generation (not on reloads), don't await
 - [ ] `packages/cli/src/commands/deploy.ts`: record a `deploy` event and await it (bounded at 1.5s) before exit
@@ -2356,13 +3105,18 @@ Why: `vex dev` / `vex deploy` emit events; `vex telemetry` controls them.
 
 1 edit — everything else unchanged.
 
-**1 — `dependencies`.** Add the new workspace dependency alongside the existing two:
+**1 — `devDependencies`.** Add the new workspace dependency alongside the existing ones. `packages/cli/tsup.config.ts`'s `noExternal: ["@vexcms/telemetry"]` bundles it straight into `dist/index.js`, so published `@vexcms/cli` consumers never need to resolve the private `@vexcms/telemetry` package — it's a build-time-only devDependency, not a runtime `dependencies` entry:
 
 ```json
-  "dependencies": {
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@vexcms/core": "workspace:*",
     "@vexcms/telemetry": "workspace:*",
-    "chokidar": "catalog:",
-    "jiti": "catalog:"
+    "@vexcms/tsconfig": "workspace:*",
+    "convex": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
 ```
 
@@ -2370,26 +3124,29 @@ Why: `vex dev` / `vex deploy` emit events; `vex telemetry` controls them.
 
 1 edit — everything else unchanged.
 
-**1 — `external`.** `@vexcms/telemetry` ships as a workspace package the same way `@vexcms/core` does — it must not be bundled into the CLI's dist output:
+**1 — `noExternal`.** `@vexcms/telemetry` is a private workspace package (unlike `@vexcms/core`, which stays in `external`) — tsup must bundle it into the CLI's `dist` output so npm consumers of `@vexcms/cli` never need to resolve it:
 
 ```ts
-  external: ["@vexcms/core", "@vexcms/telemetry", "prettier"],
+  external: ["@vexcms/core", "prettier"],
+  noExternal: ["@vexcms/telemetry"],
 ```
 
 #### packages/cli/src/commands/telemetry.ts
 
-New file. Implements `vex telemetry enable|disable|status [--json]`. `status --json` loads the project's config the same way `vex dev` does and prints the exact `dev`-event payload via `buildTelemetryEvent`, without sending it.
+New file. Implements `vex telemetry enable|disable|status [--json]`. `status --json` loads the project's config the same way `vex dev` does, builds the exact `dev`-event payload via `buildTelemetryEvent` (anonymizing the config first), passes it through `fitTelemetryEvent` to apply the same size cap the sender uses, and prints the fitted payload without sending it.
 
 ```ts
 import { resolve } from "node:path";
 
 import {
   buildTelemetryEvent,
+  fitTelemetryEvent,
   isTelemetryEnabled,
   readTelemetrySettings,
   resolveSettingsPath,
   writeTelemetrySettings,
 } from "@vexcms/telemetry";
+import { anonymizeConfig } from "@vexcms/telemetry/config";
 
 import { loadConfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
@@ -2440,8 +3197,19 @@ export async function telemetryCommand(props: {
           process.exit(1);
         }
         const config = await loadConfig(configPath);
-        const event = buildTelemetryEvent({ event: "dev", projectDir: cwd, settings, config });
-        console.log(JSON.stringify(event, null, 2));
+        const event = buildTelemetryEvent({
+          event: "dev",
+          projectDir: cwd,
+          settings,
+          config: anonymizeConfig({ config }),
+          outcome: { status: "ok" },
+        });
+        const fittedEvent = fitTelemetryEvent({ event });
+        if (!fittedEvent) {
+          logger.error("Telemetry payload exceeds the size cap even after truncation — nothing would be sent.");
+          process.exit(1);
+        }
+        console.log(JSON.stringify(fittedEvent, null, 2));
         return;
       }
 
@@ -2463,28 +3231,68 @@ export async function telemetryCommand(props: {
 
 2 edits — everything else unchanged. The file keeps its existing `// @ts-nocheck`.
 
-**1 — imports.** Add the `node:perf_hooks` import beside the existing `node:path` import, and the telemetry import above the local `../lib/*` imports:
+**1 — imports.** Add the `node:perf_hooks` import beside the existing `node:path` import, and the telemetry imports (the main entrypoint plus the `/config` subpath for `anonymizeConfig`) above the local `../lib/*` imports:
 
 ```ts
 import { performance } from "node:perf_hooks";
 import { resolve } from "node:path";
 
-import { recordTelemetryEvent } from "@vexcms/telemetry";
+import { classifyTelemetryError, recordTelemetryEvent } from "@vexcms/telemetry";
+import { anonymizeConfig } from "@vexcms/telemetry/config";
 
 import { generateAndWrite, getOutputPath } from "../lib/generateSchema.js";
 ```
 
-**2 — initial generation block.** Replace the body from `// Initial generation` through the end of the `if (result.written) { … }` block with timed versions, and fire the `dev` event once, right after:
+**2 — from the function body through the initial generation block.** Replace the body from `const configPath = resolveConfigPath(cwd);` through the end of the `if (result.written) { … }` block. `resolveConfigPath`, `loadConfig`, and `generateAndWrite` are the three vex-owned stages — each failure records one `failed` `dev` event (awaited, so the process does not exit before it sends) and rethrows unchanged; the `if (!isServerConfigPath(...))` branch's existing `process.exit(1)` behavior is untouched. A successful first generation records one `ok` `dev` event, fire-and-forget, right after:
 
 ```ts
+  let configPath: string;
+  try {
+    configPath = resolveConfigPath(cwd);
+  } catch (error) {
+    await recordTelemetryEvent({
+      event: "dev",
+      projectDir: cwd,
+      outcome: { status: "failed", stage: "resolveConfig", errorCode: classifyTelemetryError({ error }) },
+    });
+    throw error;
+  }
+  if (!isServerConfigPath(configPath)) {
+    logger.error(
+      `vex dev requires vex.config.server.ts. Found only a client config at ${configPath} — add a server config alongside it.`,
+    );
+    process.exit(1);
+  }
+  logger.info(`Config found: ${configPath}`);
+
   // Initial generation
   const configLoadStart = performance.now();
-  let config = await loadConfig(configPath);
+  let config;
+  try {
+    config = await loadConfig(configPath);
+  } catch (error) {
+    await recordTelemetryEvent({
+      event: "dev",
+      projectDir: cwd,
+      outcome: { status: "failed", stage: "loadConfig", errorCode: classifyTelemetryError({ error }) },
+    });
+    throw error;
+  }
   const configLoadMs = performance.now() - configLoadStart;
   const outputPath = getOutputPath(config, cwd);
 
   const schemaGenStart = performance.now();
-  const result = await generateAndWrite(config, cwd, configPath);
+  let result;
+  try {
+    result = await generateAndWrite(config, cwd, configPath);
+  } catch (error) {
+    await recordTelemetryEvent({
+      event: "dev",
+      projectDir: cwd,
+      outcome: { status: "failed", stage: "generateSchema", errorCode: classifyTelemetryError({ error }) },
+    });
+    throw error;
+  }
   const schemaGenMs = performance.now() - schemaGenStart;
   if (result.written) {
     logger.success(`Generated ${config.schema.outputPath}`);
@@ -2495,8 +3303,9 @@ import { generateAndWrite, getOutputPath } from "../lib/generateSchema.js";
   void recordTelemetryEvent({
     event: "dev",
     projectDir: cwd,
-    config,
+    config: anonymizeConfig({ config }),
     timings: { configLoadMs, schemaGenMs, schemaChanged: result.written },
+    outcome: { status: "ok" },
   });
 ```
 
@@ -2504,25 +3313,91 @@ The `regenerate()` function later in the file (used by the file watcher on every
 
 #### packages/cli/src/commands/deploy.ts
 
-2 edits — everything else unchanged.
-
-**1 — imports.** Add the telemetry import above the local `../lib/*` imports:
+The whole function body changes throughout (three wrapped stages plus the success event), so `deployCommand` is shown complete — everything else in the file (imports beside the new telemetry import, and the rest of the file) is unchanged:
 
 ```ts
-import { recordTelemetryEvent } from "@vexcms/telemetry";
+import { classifyTelemetryError, recordTelemetryEvent } from "@vexcms/telemetry";
+import { anonymizeConfig } from "@vexcms/telemetry/config";
 
-import { generateAndWrite } from "../lib/generateSchema.js";
-```
+import { generateAndWrite, type GenerateResult } from "../lib/generateSchema.js";
+import { deployToProduction } from "../lib/convexProcess.js";
+import { loadConfig } from "../lib/loadConfig.js";
+import { logger } from "../lib/logger.js";
+import { isServerConfigPath, resolveConfigPath } from "../lib/resolveConfigPath.js";
 
-**2 — end of `deployCommand`.** After the existing `logger.success("Deployed to production")`, record and await a `deploy` event before the function returns (the sender itself is bounded by `TELEMETRY_TIMEOUT_MS` = 1.5s and never rejects):
+import type { VexConfig } from "@vexcms/core";
 
-```ts
+/**
+ * `vex deploy` — generate schema, auto-migrate if enabled, then run
+ * `convex deploy` to push to production. Replaces `convex deploy` in CI.
+ */
+export async function deployCommand(): Promise<void> {
+  const cwd = process.cwd();
+
+  let configPath: string;
+  try {
+    configPath = resolveConfigPath(cwd);
+  } catch (error) {
+    await recordTelemetryEvent({
+      event: "deploy",
+      projectDir: cwd,
+      outcome: { status: "failed", stage: "resolveConfig", errorCode: classifyTelemetryError({ error }) },
+    });
+    throw error;
+  }
+  if (!isServerConfigPath(configPath)) {
+    logger.error(
+      `vex deploy requires vex.config.server.ts. Found only a client config at ${configPath} — add a server config alongside it.`,
+    );
+    process.exit(1);
+  }
+  logger.info(`Config found: ${configPath}`);
+
+  let config: VexConfig;
+  try {
+    config = await loadConfig(configPath);
+  } catch (error) {
+    await recordTelemetryEvent({
+      event: "deploy",
+      projectDir: cwd,
+      outcome: { status: "failed", stage: "loadConfig", errorCode: classifyTelemetryError({ error }) },
+    });
+    throw error;
+  }
+
+  // Use `convex deploy` for all schema pushes (interim + final)
+  const pushSchema = (pushCwd: string) => deployToProduction(pushCwd);
+
+  let result: GenerateResult;
+  try {
+    result = await generateAndWrite(config, cwd, configPath, { pushSchema });
+  } catch (error) {
+    await recordTelemetryEvent({
+      event: "deploy",
+      projectDir: cwd,
+      outcome: { status: "failed", stage: "generateSchema", errorCode: classifyTelemetryError({ error }) },
+    });
+    throw error;
+  }
+  if (result.written) {
+    logger.success(`Generated ${config.schema.outputPath}`);
+  } else {
+    logger.info("Schema up to date (no changes)");
+  }
+
+  // Final deploy — push everything to production
+  if (!deployToProduction(cwd)) {
+    logger.error("convex deploy failed");
+    process.exit(1);
+  }
+
   logger.success("Deployed to production");
 
   await recordTelemetryEvent({
     event: "deploy",
     projectDir: cwd,
-    config,
+    config: anonymizeConfig({ config }),
+    outcome: { status: "ok" },
   });
 }
 ```
@@ -2617,26 +3492,36 @@ Verify: `pnpm --filter @vexcms/cli build` green, then `node packages/cli/dist/in
 
 Why: scaffold choices are the earliest adoption signal.
 
-- [ ] `packages/create-vexcms/package.json`: add `@vexcms/telemetry` dependency
-- [ ] `packages/create-vexcms/src/index.ts`: record a `create` event after `initProject` completes, awaited
+- [ ] `packages/create-vexcms/package.json`: add `@vexcms/telemetry` as a `devDependency` (plus `@vexcms/core` as a type-only `devDependency`)
+- [ ] `packages/create-vexcms/tsup.config.ts`: new file, `noExternal: ["@vexcms/telemetry"]`
+- [ ] `packages/create-vexcms/src/index.ts`: wrap `initProject` — on throw, record a `failed` `create` event (`stage: "scaffold"`) and rethrow; otherwise record an `ok` `create` event, both awaited
+
+#### packages/create-vexcms/tsup.config.ts
+
+New file. `create-vexcms`'s `scripts.build` previously ran the bare `tsup src/index.ts --format esm --dts` CLI invocation, which externalizes every `node_modules` import by default — any workspace dependency had to resolve as a real `dependencies` entry at install time. A `tsup.config.ts` now sits beside it (picked up automatically even though `build` still passes `src/index.ts` on the CLI) and bundles `@vexcms/telemetry` straight into `dist/index.js`, the same `noExternal` pattern `packages/cli/tsup.config.ts` uses:
+
+```ts
+import { defineConfig } from "tsup";
+
+export default defineConfig({
+  noExternal: ["@vexcms/telemetry"],
+});
+```
 
 #### packages/create-vexcms/package.json
 
-1 edit — everything else unchanged. Add `@vexcms/telemetry` to `dependencies`, beside the other scoped package (`@inquirer/prompts`). `create-vexcms`'s `tsup` build (`tsup src/index.ts --format esm --dts`, no `tsup.config.ts`, no `noExternal`) externalizes every `node_modules` import by default, so `@vexcms/telemetry` is never bundled into `dist/index.js` — it has to resolve as a real `dependencies` entry at install time, same as `chalk` or `commander`. `workspace:*` is correct here (P-013: internal deps on siblings stay exact; only peer deps use `workspace:^`); `scripts/check-packed-manifests.mjs --packed` and `scripts/verify-scaffold.mjs` both pack every non-private `packages/*` directory and derive their tarball list dynamically (`readPublishablePackages`/`injectOverrides`), so `@vexcms/telemetry` is picked up automatically once Step 1 adds it — no hardcoded list to update.
+1 edit — everything else unchanged. Add `@vexcms/telemetry` to `devDependencies`, plus `@vexcms/core` as a type-only `devDependency` (`create-vexcms`'s `tsconfig.json` sets `"module": "ESNext"` / `"moduleResolution": "bundler"`, and nothing under `src/` imports a runtime value from `@vexcms/core` — only `packages/cli/src/commands/deploy.ts`-style type usage would need it, and `create-vexcms` doesn't even have that; it's there so installer/type code can reference `VexConfig`-adjacent types if needed). With `tsup.config.ts`'s `noExternal: ["@vexcms/telemetry"]` bundling telemetry straight into `dist/index.js`, published `create-vexcms` consumers never need to resolve the private `@vexcms/telemetry` package — it's a build-time-only devDependency, not a runtime `dependencies` entry, same reasoning as `packages/cli/package.json` in Step 6. `workspace:*` is correct here (P-013: internal deps on siblings stay exact; only peer deps use `workspace:^`); `scripts/check-packed-manifests.mjs --packed` and `scripts/verify-scaffold.mjs` both pack every non-private `packages/*` directory and derive their tarball list dynamically (`readPublishablePackages`), so a private `@vexcms/telemetry` devDependency never shows up in a published tarball's manifest.
 
 ```json
 {
-  "dependencies": {
-    "chalk": "catalog:",
-    "commander": "catalog:",
-    "execa": "catalog:",
-    "fs-extra": "catalog:",
-    "@inquirer/prompts": "catalog:",
+  "devDependencies": {
+    "@types/fs-extra": "catalog:",
+    "@types/validate-npm-package-name": "catalog:",
+    "@vexcms/core": "workspace:*",
     "@vexcms/telemetry": "workspace:*",
-    "ora": "catalog:",
-    "sort-package-json": "catalog:",
-    "validate-npm-package-name": "catalog:",
-    "yaml": "catalog:"
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
 ```
@@ -2648,18 +3533,28 @@ Why: scaffold choices are the earliest adoption signal.
 **1 — import.** Beside the existing `import type { Framework, ProjectOptions } from './installers/types.js';` line, add:
 
 ```ts
-import { recordTelemetryEvent } from '@vexcms/telemetry';
+import { classifyTelemetryError, recordTelemetryEvent } from '@vexcms/telemetry';
 ```
 
-**2 — after `await installer.initProject(options);` in `main()`.** `template` follows the same `bare` flag `base.ts`/`nextjs.ts` already branch on (`options.bare` skips the marketing overlay — see `base.ts`'s `if (!options.bare)` guard), so it maps directly without introducing a new concept. `projectDir` is `targetDir`, the absolute path `fs.ensureDir` just created; it never appears in the emitted event (`recordTelemetryEvent` hashes it into `projectId` via `createProjectId`, Step 3) and `oauthProviders` only contributes a count, so the event carries no project name or path. The call is awaited and bounded by `sendTelemetryEvent`'s `TELEMETRY_TIMEOUT_MS` (1500 ms) — `recordTelemetryEvent` itself never rejects.
+**2 — around `await installer.initProject(options);` in `main()`.** `template` follows the same `bare` flag `base.ts`/`nextjs.ts` already branch on (`options.bare` skips the marketing overlay — see `base.ts`'s `if (!options.bare)` guard), so it maps directly without introducing a new concept. `projectDir` is `targetDir`, the absolute path `fs.ensureDir` just created; it never appears in the emitted event (`recordTelemetryEvent` hashes it into `projectId` via `createProjectId`, Step 3) and `oauthProviders` only contributes a count, so the event carries no project name or path. `initProject` is wrapped — a throw records a `failed` `create` event (`stage: "scaffold"`, `classifyTelemetryError`) and rethrows unchanged, so `main().catch(...)`'s existing error output and exit code are untouched; otherwise an `ok` event follows. Both calls are awaited and bounded by `sendTelemetryEvent`'s `TELEMETRY_TIMEOUT_MS` (1500 ms) — `recordTelemetryEvent` itself never rejects.
 
 ```ts
   console.log();
-  await installer.initProject(options);
+  try {
+    await installer.initProject(options);
+  } catch (error) {
+    await recordTelemetryEvent({
+      event: 'create',
+      projectDir: targetDir,
+      outcome: { status: 'failed', stage: 'scaffold', errorCode: classifyTelemetryError({ error }) },
+    });
+    throw error;
+  }
 
   await recordTelemetryEvent({
     event: 'create',
     projectDir: targetDir,
+    outcome: { status: 'ok' },
     create: {
       framework: options.framework,
       template: options.bare ? 'base' : 'marketing',
@@ -2682,340 +3577,1448 @@ import { recordTelemetryEvent } from '@vexcms/telemetry';
 
 Verify: `pnpm --filter @vexcms/telemetry --filter create-vexcms build && VEX_TELEMETRY_DEBUG=1 node packages/create-vexcms/dist/index.js /tmp/vex-telemetry-check --yes` prints exactly one `[vex telemetry] { "event": "create", … }` JSON block to stderr with `create.framework`, `create.template`, `create.auth`, `create.monorepo`, `create.initGit`, `create.installDependencies` populated and no `my-vexcms-app`/`vex-telemetry-check` project name or `/tmp/vex-telemetry-check` path anywhere in the printed payload.
 
-### Step 8 — `apps/telemetry` ingest app (vexcms) [agent + dev]
+### Step 8 — Telemetry receiver in apps/test [agent]
 
-Why: T7. A vendor-owned receiver with a read-only admin.
+Why: a vendor-owned receiver for the anonymous events `recordTelemetryEvent` (Step 5) sends. `apps/test` is the receiver's home for now — it already has a live Convex deployment, an admin panel, and an `access` config to extend; a dedicated receiver app is a later step, not part of this one. Two collections: `telemetryEvents` is the append-only raw log (one row per ingested event, `timestamps: false`, received time is Convex's own `_creationTime` — no separate `receivedAt` field); `telemetryProjects` is one row per `projectId`, upserted on every event, with flat typed columns computed SERVER-SIDE in the ingest mutation from the event payload. Flat columns, not a `json` blob, because a `json` field cannot be filtered or sorted in a vexcms list view — every dimension worth slicing by (framework, failure stage, field counts, RBAC usage) needs its own checkbox/number/select/text column, and a column is only sortable when a declared index leads with it (`_creationTime` is always sortable with no index). The index budget is deliberately small — `by_projectId` (lookup), `by_lastSeenAt`, `by_collectionCount`, `by_fieldCount`, `by_hookCount`, `by_ruleCount` on `telemetryProjects`, `by_projectId` alone on `telemetryEvents` — 6 and 1, both far under Convex's 32-index-per-table ceiling. Both collections are read-only in the admin for every role: no role gets `create`/`update`/`delete`, and only `admin` gets `read` plus the saved-view actions (`readViews`/`createView`/`updateView`/`deleteView`) so the starter `admin.views` are usable and extendable from the panel.
 
-`create-vexcms` is invoked with `--monorepo --bare --yes`: `--bare` skips the
-marketing-site collection overlay (the scaffold is the `base-nextjs` template —
-`src/vexcms/collections/{images,users}.ts`, `src/auth/access.ts` scoped to
-`images`/`users`, `convex/http.ts` with only the Better Auth catch-all route),
-`--yes` accepts every prompt default (`framework: "nextjs"`, `emailPasswordAuth:
-true`, `orgs: false`, `initGit: true`, `installDependencies: false`), and
-`--monorepo` resolves the target to `apps/telemetry` under the detected
-`pnpm-workspace.yaml` root and rewrites dependencies to `workspace:`/`catalog:`
-protocols. `installPackageName` is derived from the positional arg
-(`updatePackageName`, `packages/create-vexcms/src/installers/base.ts:160`), so
-`apps/telemetry/package.json`'s `"name"` is already `"telemetry"` after the
-scaffold runs — no manual rename, matching the existing bare names
-(`"test"`, `"docs"`) the `.changeset/config.json` `ignore` array already uses.
+`apps/test/convex/telemetry/{deriveTelemetryProject,ingest}.ts` cannot depend on `@vexcms/telemetry` at runtime: that package's `settings.ts`/`projectId.ts` import `node:fs`/`node:os`/`node:crypto`, and Convex's default (non-`"use node"`) runtime — the only runtime `internalMutation`/`httpAction` bodies that call `ctx.db` can run in — does not support Node built-ins. Every `@vexcms/telemetry` import in this step is `import type`, erased at compile time, so the Convex bundler never sees those specifiers; `TELEMETRY_SCHEMA_VERSION` (`1`) and `TELEMETRY_MAX_BODY_BYTES` (`524_288`) are inlined as local constants in `convex/http.ts` instead, the same pattern `apps/test/convex/schema.ts` already follows for `vex`-internal literals. `@vexcms/core`, by contrast, already runs at Convex runtime in this app (`convex/pages.ts`, `convex/vex/media.ts` import it directly; `convex/vex.ts` imports its `/server` entry) — `ADMIN_FIELDS` and `STORAGE_ADAPTER_PROTOCOLS` are imported from its root entry the same way in `deriveTelemetryProject.ts`.
 
-`apps/telemetry`'s Convex functions (`convex/events.ts`, `convex/http.ts`)
-cannot depend on `@vexcms/telemetry`: the package's `settings.ts` and
-`projectId.ts` import `node:fs`/`node:os`/`node:crypto`, and Convex's default
-(non-`"use node"`) runtime — the only runtime `internalMutation` and
-`httpAction` bodies that call `ctx.db` can run in — does not support Node
-built-ins; a bundled-but-unused import would still break if Convex's bundler
-tried to resolve those specifiers. `TELEMETRY_SCHEMA_VERSION` (`1`) and
-`TELEMETRY_MAX_BODY_BYTES` (`32_768`) are inlined as local constants in both
-files instead, matching how `apps/test/convex/schema.ts` already inlines
-`vex`-internal literals rather than importing them from `packages/core`.
+`convex/schema.ts` and `convex/vex.schema.ts` are **not** hand-edited: once `telemetryEvents`/`telemetryProjects` are added to `vex.config.ts`'s `collections` array, the developer's already-running `vex dev` regenerates `vex.schema.ts` and syncs `convex/schema.ts`'s import list and `defineSchema({ … })` body automatically, the same way every other collection in this app already gets there.
 
-`convex/schema.ts` and `convex/vex.schema.ts` are **not** hand-edited: once
-`telemetryEvents` is added to `vex.config.ts`'s `collections` array, the
-`[dev]`-run `vex deploy` (`packages/cli/src/commands/deploy.ts` →
-`generateAndWrite`) regenerates `vex.schema.ts` and syncs the import list and
-`defineSchema({ … })` body of `convex/schema.ts` automatically
-(`packages/cli/src/lib/generateSchema.ts:229`, `syncSchemaImports`) — the
-table name is the collection's bare `slug` (`telemetryEvents`), no `vex_`
-prefix (that prefix is reserved for the two framework-internal tables
-`vex_globals`/`vex_versions`, hardcoded in
-`packages/core/src/schema/generateVexSchema.ts`). `pnpm-workspace.yaml`
-already globs `apps/*` and `turbo.json`'s tasks are global — neither needs an
-edit for a new app.
+- [ ] `src/db/constants/index.ts`
+- [ ] `src/vexcms/collections/telemetryEvents.ts`
+- [ ] `src/vexcms/collections/telemetryProjects.ts`
+- [ ] `src/vexcms/collections/index.ts`
+- [ ] `src/vex.config.ts`
+- [ ] `src/auth/access.ts`
+- [ ] `apps/test/package.json`
+- [ ] `apps/test/vitest.config.ts`
+- [ ] `convex/telemetry/deriveTelemetryProject.ts`
+- [ ] `convex/telemetry/deriveTelemetryProject.test.ts`
+- [ ] `convex/telemetry/ingest.ts`
+- [ ] `convex/http.ts`
+- [ ] [dev] confirm schema regeneration and run the end-to-end confirmation script
 
-#### apps/telemetry
+#### src/db/constants/index.ts
 
-- [ ] [agent] Scaffold the app and install it into the workspace:
-  ```sh
-  pnpm --filter create-vexcms build
-  node packages/create-vexcms/dist/index.js telemetry --monorepo --bare --yes
-  pnpm install
-  ```
-  (Published equivalent once `create-vexcms` ships: `pnpm create vexcms@alpha
-  telemetry --monorepo --bare --yes`.) The installer refuses to scaffold if
-  `apps/telemetry` already exists and prints `Run 'pnpm install' from
-  <workspaceRoot> to link the new workspace member.` — `pnpm install` is run
-  because `--yes` resolves `installDependencies` to `false`.
+1 edit — below the existing `TABLE_SLUG_TESTIMONIALS`/`TestimonialDoc`/`TestimonialID` block, everything else unchanged.
 
-#### .changeset/config.json
+**1 — new table slugs.**
 
-- [ ] [agent] Add `"telemetry"` to the `ignore` array, alongside the existing
-  `"test"`/`"docs"` entries (changesets matches on each app's `package.json`
-  `"name"`, not its directory path) — `apps/telemetry` is never published, the
-  same reasoning as `apps/test` (P-020).
+```ts
+export const TABLE_SLUG_TELEMETRY_EVENTS = "telemetryEvents" as const;
+export const TABLE_SLUG_TELEMETRY_PROJECTS = "telemetryProjects" as const;
+```
 
-  1 edit — the `ignore` array.
+#### src/vexcms/collections/telemetryEvents.ts
 
-  ```json
-  "ignore": [
-    "@vexcms/tsconfig",
-    "test",
-    "docs",
-    "telemetry"
-  ],
-  ```
+New file. The raw, append-only ingest log — `payload` (the exact JSON the client sent) is the deep-dive column; the other fields are flattened out of it purely so the default list view is scannable without opening the JSON. `select` fields always store their value as an array regardless of `hasMany` (`@vexcms/core`'s `select()` validator is unconditionally `v.array(v.union(...))`), so `event`, `outcomeStatus`, `failureStage`, `errorCode` and `framework` below are all array-stored even though each only ever holds one value.
 
-#### apps/telemetry/src/db/constants/index.ts
+```ts
+import { defineCollection, json, number, select, text } from "@vexcms/core";
 
-- [ ] [agent] Add the telemetry table slug.
+import { TABLE_SLUG_TELEMETRY_EVENTS } from "~/db/constants";
 
-  1 edit — below the existing `TABLE_SLUG_IMAGES` constant.
-
-  ```ts
-  export const TABLE_SLUG_TELEMETRY_EVENTS = "telemetryEvents" as const
-  ```
-
-#### apps/telemetry/src/vexcms/collections/telemetryEvents.ts
-
-- [ ] [agent] New collection, fields mirroring `TelemetryEvent`. `config`,
-  `environment`, `timings` and `create` are `json()` (no shape enforcement at
-  the schema level — `anonymizeConfig`/`collectEnvironment` own their shapes).
-  `receivedAt` is `date()` (stored as `v.number()`, a Unix-ms timestamp set by
-  `convex/events.ts`, never sent by the client); `sentAt` is the client-set
-  ISO string from the payload and stays `text()`.
-
-  ```ts
-  import { date, defineCollection, json, number, select, text } from "@vexcms/core"
-
-  import { TABLE_SLUG_TELEMETRY_EVENTS } from "~/db/constants"
-
-  export const telemetryEvents = defineCollection({
-    slug: TABLE_SLUG_TELEMETRY_EVENTS,
-    interfaceName: "TelemetryEvent",
-    labels: {
-      singular: "Telemetry Event",
-      plural: "Telemetry Events",
+export const telemetryEvents = defineCollection({
+  slug: TABLE_SLUG_TELEMETRY_EVENTS,
+  interfaceName: "TelemetryEvent",
+  timestamps: false,
+  labels: {
+    singular: "Telemetry Event",
+    plural: "Telemetry Events",
+  },
+  admin: {
+    useAsTitle: "event",
+    icon: "Radar",
+    view: {
+      sort: { field: "_creationTime", order: "desc" },
+      columns: [
+        { field: "event", width: 110 },
+        { field: "projectId", width: 220 },
+        { field: "outcomeStatus", width: 110 },
+        { field: "failureStage", width: 150 },
+        { field: "errorCode", width: 170 },
+        { field: "framework", width: 110 },
+        { field: "vexCoreVersion", width: 150 },
+        { field: "machineId", hidden: true },
+        { field: "schemaVersion", hidden: true },
+        { field: "payload", hidden: true },
+      ],
+      bulkActions: { delete: false },
     },
-    admin: {
-      useAsTitle: "event",
-      icon: "Radar",
+  },
+  fields: {
+    event: select({
+      label: "Event",
+      required: true,
+      options: [
+        { label: "Dev", value: "dev" },
+        { label: "Deploy", value: "deploy" },
+        { label: "Create", value: "create" },
+      ],
+    }),
+    schemaVersion: number({
+      label: "Schema Version",
+      required: true,
+    }),
+    machineId: text({
+      label: "Machine ID",
+      required: true,
+    }),
+    projectId: text({
+      label: "Project ID",
+      required: true,
+      index: "by_projectId",
+    }),
+    outcomeStatus: select({
+      label: "Outcome",
+      required: true,
+      options: [
+        { label: "Ok", value: "ok" },
+        { label: "Failed", value: "failed" },
+      ],
+    }),
+    failureStage: select({
+      label: "Failure Stage",
+      options: [
+        { label: "Resolve Config", value: "resolveConfig" },
+        { label: "Load Config", value: "loadConfig" },
+        { label: "Generate Schema", value: "generateSchema" },
+        { label: "Scaffold", value: "scaffold" },
+      ],
+    }),
+    errorCode: select({
+      label: "Error Code",
+      options: [
+        { label: "Config Error", value: "configError" },
+        { label: "Access Config Error", value: "accessConfigError" },
+        { label: "Auth Config Error", value: "authConfigError" },
+        { label: "Component Config Error", value: "componentConfigError" },
+        { label: "Storage Config Error", value: "storageConfigError" },
+        { label: "Unknown", value: "unknown" },
+      ],
+    }),
+    framework: select({
+      label: "Framework",
+      required: true,
+      options: [
+        { label: "Next.js", value: "next" },
+        { label: "TanStack", value: "tanstack" },
+        { label: "Unknown", value: "unknown" },
+      ],
+    }),
+    vexCoreVersion: text({
+      label: "vex Core Version",
+    }),
+    payload: json({
+      label: "Payload",
+      required: true,
+    }),
+  },
+});
+```
+
+#### src/vexcms/collections/telemetryProjects.ts
+
+New file. One row per `projectId`. Every analysis dimension gets its own typed column so it can be filtered/sorted from the admin list; `latestConfig` keeps the full anonymized config around for deep dives the flat columns don't cover. Only the 6 columns named in the Why above declare an `index` — every other column is still filterable (a `where` on a non-indexed field compiles to a remainder filter, `resolveQueryIndex`), just not sortable. `timestamps: false`: this collection already carries its own `firstSeenAt`/`lastSeenAt`, so the auto-injected `updatedAt`/`by_updatedAt` commitTs field and index would be a redundant 7th index.
+
+```ts
+import { checkbox, date, defineCollection, json, number, select, text } from "@vexcms/core";
+
+import { TABLE_SLUG_TELEMETRY_PROJECTS } from "~/db/constants";
+
+export const telemetryProjects = defineCollection({
+  slug: TABLE_SLUG_TELEMETRY_PROJECTS,
+  interfaceName: "TelemetryProject",
+  timestamps: false,
+  labels: {
+    singular: "Telemetry Project",
+    plural: "Telemetry Projects",
+  },
+  admin: {
+    useAsTitle: "projectId",
+    icon: "Gauge",
+    view: {
+      sort: { field: "lastSeenAt", order: "desc" },
+      columns: [
+        { field: "projectId", pinned: "left", width: 220 },
+        { field: "framework", width: 110 },
+        { field: "packageManager", width: 110 },
+        { field: "devEventCount", width: 90 },
+        { field: "deployEventCount", width: 100 },
+        { field: "createEventCount", width: 100 },
+        { field: "failedEventCount", width: 90 },
+        { field: "lastOutcomeStatus", width: 110 },
+        { field: "collectionCount", width: 100 },
+        { field: "fieldCount", width: 90 },
+        { field: "lastSeenAt", width: 170 },
+      ],
+      bulkActions: { delete: false },
     },
-    fields: {
-      schemaVersion: number({
-        label: "Schema Version",
-        required: true,
-      }),
-      event: select({
-        label: "Event",
-        required: true,
-        options: [
-          { label: "Dev", value: "dev" },
-          { label: "Deploy", value: "deploy" },
-          { label: "Create", value: "create" },
-        ],
-      }),
-      machineId: text({
-        label: "Machine ID",
-        required: true,
-      }),
-      projectId: text({
-        label: "Project ID",
-        required: true,
-      }),
-      sentAt: text({
-        label: "Sent At",
-        required: true,
-        description: "ISO timestamp set by the sending CLI.",
-      }),
-      environment: json({
-        label: "Environment",
-        required: true,
-      }),
-      config: json({
-        label: "Config",
-      }),
-      timings: json({
-        label: "Timings",
-      }),
-      create: json({
-        label: "Create Options",
-      }),
-      receivedAt: date({
-        label: "Received At",
-        required: true,
-        description: "Set by convex/events.ts on insert; never sent by the client.",
-      }),
-    },
-  })
-  ```
-
-#### apps/telemetry/src/vexcms/collections/index.ts
-
-- [ ] [agent] Barrel export.
-
-  1 edit — add alongside the existing exports.
-
-  ```ts
-  export * from "./telemetryEvents"
-  ```
-
-#### apps/telemetry/src/vex.config.ts
-
-- [ ] [agent] Register the collection.
-
-  2 edits.
-
-  **1 — import, beside the existing `images, users` import.**
-  ```ts
-  import { images, telemetryEvents, users } from "~/vexcms/collections"
-  ```
-
-  **2 — `collections` array in `defineConfig({ … })`.**
-  ```ts
-    collections: [users, telemetryEvents],
-  ```
-
-#### apps/telemetry/src/auth/access.ts
-
-- [ ] [agent] Read-only admin: every role is denied `create`/`update`/`delete`
-  on `telemetryEvents`; `admin` keeps `read` (the inserting write path is
-  `convex/events.ts`'s `internalMutation`, which calls `ctx.db.insert`
-  directly and never goes through this access-gated layer, so the deny here
-  only affects the admin panel and the public `vex` CRUD api).
-
-  3 edits.
-
-  **1 — import, beside the existing `images, users` import.**
-  ```ts
-  import { images, telemetryEvents, users } from "~/vexcms/collections"
-  ```
-
-  **2 — `resources` array.**
-  ```ts
-    resources: [images, users, telemetryEvents],
-  ```
-
-  **3 — `[USER_ROLES.admin]` permissions entry.**
-  ```ts
-      [USER_ROLES.admin]: {
-        "*": true,
-        telemetryEvents: {
-          "*": false,
-          read: true,
+    views: [
+      {
+        viewId: "recently-active",
+        name: "Recently Active",
+        description: "Every known project, newest activity first.",
+        state: {
+          sort: { field: "lastSeenAt", order: "desc" },
+          columns: [
+            "projectId",
+            "framework",
+            "devEventCount",
+            "deployEventCount",
+            "createEventCount",
+            "lastOutcomeStatus",
+            "lastSeenAt",
+          ],
         },
       },
-  ```
+      {
+        viewId: "failing-setups",
+        name: "Failing Setups",
+        description: "Projects whose most recent event failed.",
+        state: {
+          where: { field: "lastOutcomeStatus", op: "eq", value: "failed" },
+          sort: { field: "lastSeenAt", order: "desc" },
+          columns: ["projectId", "framework", "lastFailureStage", "lastErrorCode", "failedEventCount", "lastSeenAt"],
+        },
+      },
+      {
+        viewId: "uses-drafts",
+        name: "Uses Drafts",
+        description: "Projects with at least one draft-enabled collection or global.",
+        state: {
+          where: { field: "featureDrafts", op: "eq", value: true },
+          sort: { field: "lastSeenAt", order: "desc" },
+          columns: ["projectId", "framework", "collectionCount", "fieldCount", "lastSeenAt"],
+        },
+      },
+      {
+        viewId: "uses-rbac",
+        name: "Uses RBAC",
+        description: "Projects with access control enabled.",
+        state: {
+          where: { field: "accessEnabled", op: "eq", value: true },
+          sort: { field: "lastSeenAt", order: "desc" },
+          columns: ["projectId", "framework", "accessRoleCount", "accessRuleCount", "lastSeenAt"],
+        },
+      },
+      {
+        viewId: "query-constraint-access",
+        name: "Query-Constraint Access",
+        description: "Projects declaring at least one query-constraint access rule.",
+        state: {
+          where: { field: "accessQueryConstraintRuleCount", op: "gt", value: 0 },
+          sort: { field: "lastSeenAt", order: "desc" },
+          columns: ["projectId", "accessQueryConstraintRuleCount", "accessRuleCount", "lastSeenAt"],
+        },
+      },
+      {
+        viewId: "largest-apps",
+        name: "Largest Apps",
+        description: "Projects ranked by field count.",
+        state: {
+          sort: { field: "fieldCount", order: "desc" },
+          columns: [
+            "projectId",
+            "collectionCount",
+            "fieldCount",
+            "globalCount",
+            "mediaCollectionCount",
+            "blockCount",
+            "lastSeenAt",
+          ],
+        },
+      },
+      {
+        viewId: "nextjs",
+        name: "Next.js",
+        description: "Projects running the Next.js framework.",
+        state: {
+          where: { field: "framework", op: "eq", value: "next" },
+          sort: { field: "lastSeenAt", order: "desc" },
+          columns: ["projectId", "packageManager", "devEventCount", "lastSeenAt"],
+        },
+      },
+      {
+        viewId: "tanstack",
+        name: "TanStack",
+        description: "Projects running the TanStack Start framework.",
+        state: {
+          where: { field: "framework", op: "eq", value: "tanstack" },
+          sort: { field: "lastSeenAt", order: "desc" },
+          columns: ["projectId", "packageManager", "devEventCount", "lastSeenAt"],
+        },
+      },
+      {
+        viewId: "custom-hooks",
+        name: "Custom Hooks",
+        description: "Projects declaring at least one collection/global lifecycle hook.",
+        state: {
+          sort: { field: "hookCount", order: "desc" },
+          columns: ["projectId", "hookCount", "framework", "lastSeenAt"],
+        },
+      },
+    ],
+  },
+  fields: {
+    projectId: text({
+      label: "Project ID",
+      required: true,
+      index: "by_projectId",
+    }),
+    firstSeenAt: date({
+      label: "First Seen At",
+      required: true,
+    }),
+    lastSeenAt: date({
+      label: "Last Seen At",
+      required: true,
+      index: "by_lastSeenAt",
+      admin: { enableSorting: true },
+    }),
+    devEventCount: number({
+      label: "Dev Event Count",
+      required: true,
+    }),
+    deployEventCount: number({
+      label: "Deploy Event Count",
+      required: true,
+    }),
+    createEventCount: number({
+      label: "Create Event Count",
+      required: true,
+    }),
+    failedEventCount: number({
+      label: "Failed Event Count",
+      required: true,
+    }),
+    lastEvent: select({
+      label: "Last Event",
+      required: true,
+      options: [
+        { label: "Dev", value: "dev" },
+        { label: "Deploy", value: "deploy" },
+        { label: "Create", value: "create" },
+      ],
+    }),
+    lastOutcomeStatus: select({
+      label: "Last Outcome",
+      required: true,
+      options: [
+        { label: "Ok", value: "ok" },
+        { label: "Failed", value: "failed" },
+      ],
+    }),
+    lastFailureStage: select({
+      label: "Last Failure Stage",
+      options: [
+        { label: "Resolve Config", value: "resolveConfig" },
+        { label: "Load Config", value: "loadConfig" },
+        { label: "Generate Schema", value: "generateSchema" },
+        { label: "Scaffold", value: "scaffold" },
+      ],
+    }),
+    lastErrorCode: select({
+      label: "Last Error Code",
+      options: [
+        { label: "Config Error", value: "configError" },
+        { label: "Access Config Error", value: "accessConfigError" },
+        { label: "Auth Config Error", value: "authConfigError" },
+        { label: "Component Config Error", value: "componentConfigError" },
+        { label: "Storage Config Error", value: "storageConfigError" },
+        { label: "Unknown", value: "unknown" },
+      ],
+    }),
+    framework: select({
+      label: "Framework",
+      required: true,
+      options: [
+        { label: "Next.js", value: "next" },
+        { label: "TanStack", value: "tanstack" },
+        { label: "Unknown", value: "unknown" },
+      ],
+    }),
+    packageManager: select({
+      label: "Package Manager",
+      required: true,
+      options: [
+        { label: "pnpm", value: "pnpm" },
+        { label: "npm", value: "npm" },
+        { label: "Yarn", value: "yarn" },
+        { label: "Bun", value: "bun" },
+        { label: "Unknown", value: "unknown" },
+      ],
+    }),
+    os: text({
+      label: "OS",
+      required: true,
+    }),
+    nodeMajor: number({
+      label: "Node Major Version",
+      required: true,
+    }),
+    vexCoreVersion: text({
+      label: "vex Core Version",
+    }),
+    scaffoldTemplate: select({
+      label: "Scaffold Template",
+      options: [
+        { label: "Base", value: "base" },
+        { label: "Marketing", value: "marketing" },
+      ],
+    }),
+    scaffoldBare: checkbox({
+      label: "Scaffold Bare",
+    }),
+    scaffoldMonorepo: checkbox({
+      label: "Scaffold Monorepo",
+    }),
+    scaffoldEmailPassword: checkbox({
+      label: "Scaffold Email/Password Auth",
+    }),
+    scaffoldOauthProviderCount: number({
+      label: "Scaffold OAuth Provider Count",
+    }),
+    scaffoldOrgs: checkbox({
+      label: "Scaffold Organizations",
+    }),
+    collectionCount: number({
+      label: "Collection Count",
+      index: "by_collectionCount",
+      admin: { enableSorting: true },
+    }),
+    globalCount: number({
+      label: "Global Count",
+    }),
+    mediaCollectionCount: number({
+      label: "Media Collection Count",
+    }),
+    blockCount: number({
+      label: "Block Count",
+    }),
+    fieldCount: number({
+      label: "Field Count",
+      index: "by_fieldCount",
+      admin: { enableSorting: true },
+    }),
+    featureDrafts: checkbox({
+      label: "Uses Drafts",
+    }),
+    featureLivePreview: checkbox({
+      label: "Uses Live Preview",
+    }),
+    featureConditions: checkbox({
+      label: "Uses Conditional Fields",
+    }),
+    featureSlots: checkbox({
+      label: "Uses Admin Slots",
+    }),
+    featureInputMasks: checkbox({
+      label: "Uses Input Masks",
+    }),
+    featureAuth: checkbox({
+      label: "Uses Auth",
+    }),
+    authAdapter: select({
+      label: "Auth Adapter",
+      options: [
+        { label: "None", value: "none" },
+        { label: "Better Auth", value: "betterAuth" },
+        { label: "Custom", value: "custom" },
+      ],
+    }),
+    hookCount: number({
+      label: "Hook Count",
+      index: "by_hookCount",
+      admin: { enableSorting: true },
+    }),
+    accessEnabled: checkbox({
+      label: "Access Enabled",
+    }),
+    accessRoleCount: number({
+      label: "Access Role Count",
+    }),
+    accessRuleCount: number({
+      label: "Access Rule Count",
+      index: "by_ruleCount",
+      admin: { enableSorting: true },
+    }),
+    accessFieldPermissionRuleCount: number({
+      label: "Access Field-Permission Rule Count",
+    }),
+    accessQueryConstraintRuleCount: number({
+      label: "Access Query-Constraint Rule Count",
+    }),
+    accessCallbackRuleCount: number({
+      label: "Access Callback Rule Count",
+    }),
+    accessCustomActionCount: number({
+      label: "Access Custom Action Count",
+    }),
+    accessCustomResourceCount: number({
+      label: "Access Custom Resource Count",
+    }),
+    accessOrganizations: checkbox({
+      label: "Access Organizations",
+    }),
+    savedViewCount: number({
+      label: "Saved View Count",
+    }),
+    customSortCount: number({
+      label: "Custom Default Sort Count",
+    }),
+    bulkDeleteDisabledCount: number({
+      label: "Bulk Delete Disabled Count",
+    }),
+    storageUsesPresignedUrl: checkbox({
+      label: "Storage Uses Presigned URL",
+    }),
+    textFieldCount: number({ label: "text() Field Count" }),
+    emailFieldCount: number({ label: "email() Field Count" }),
+    textareaFieldCount: number({ label: "textarea() Field Count" }),
+    urlFieldCount: number({ label: "url() Field Count" }),
+    colorFieldCount: number({ label: "color() Field Count" }),
+    numberFieldCount: number({ label: "number() Field Count" }),
+    checkboxFieldCount: number({ label: "checkbox() Field Count" }),
+    dateFieldCount: number({ label: "date() Field Count" }),
+    commitTsFieldCount: number({ label: "commitTs() Field Count" }),
+    selectFieldCount: number({ label: "select() Field Count" }),
+    relationshipFieldCount: number({ label: "relationship() Field Count" }),
+    arrayFieldCount: number({ label: "array() Field Count" }),
+    groupFieldCount: number({ label: "group() Field Count" }),
+    blocksFieldCount: number({ label: "blocks() Field Count" }),
+    uploadFieldCount: number({ label: "upload() Field Count" }),
+    richtextFieldCount: number({ label: "richtext() Field Count" }),
+    jsonFieldCount: number({ label: "json() Field Count" }),
+    tabsFieldCount: number({ label: "tabs() Field Count" }),
+    collapsibleFieldCount: number({ label: "collapsible() Field Count" }),
+    rowFieldCount: number({ label: "row() Field Count" }),
+    uiFieldCount: number({ label: "ui() Field Count" }),
+    configTruncated: checkbox({
+      label: "Config Truncated",
+    }),
+    latestConfig: json({
+      label: "Latest Config",
+    }),
+  },
+});
+```
 
-#### apps/telemetry/convex/events.ts
+#### src/vexcms/collections/index.ts
 
-- [ ] [agent] New file. `TELEMETRY_EVENT_NAMES` is inlined (see note above);
-  `insert` is a plain `internalMutation` from `./_generated/server`, not the
-  hook-wrapped `vexInternalMutation` (`apps/test/convex/vex.ts`'s
-  `createVexMutations` pattern) — a telemetry row has no `afterChange`/
-  `afterDelete` hooks to fire.
+1 edit — add alongside the existing exports, between `./posts` and `./testimonials` (alphabetical order).
 
-  ```ts
-  import { v } from "convex/values"
+```ts
+export * from "./telemetryEvents";
+export * from "./telemetryProjects";
+```
 
-  import { internalMutation } from "./_generated/server"
+#### src/vex.config.ts
 
-  const TELEMETRY_EVENT_NAMES = ["dev", "deploy", "create"] as const
+2 edits — everything else unchanged.
 
-  /** Inserts one ingested telemetry event; `receivedAt` is server-set. */
-  export const insert = internalMutation({
-    args: {
-      schemaVersion: v.number(),
-      event: v.union(...TELEMETRY_EVENT_NAMES.map((name) => v.literal(name))),
-      machineId: v.string(),
-      projectId: v.string(),
-      sentAt: v.string(),
-      environment: v.any(),
-      config: v.optional(v.any()),
-      timings: v.optional(v.any()),
-      create: v.optional(v.any()),
+**1 — import, beside the existing `~/vexcms/collections` import.**
+
+```ts
+import {
+  articles,
+  caseStudies,
+  changelog,
+  comments,
+  fields,
+  footers,
+  headers,
+  images,
+  pages,
+  posts,
+  telemetryEvents,
+  telemetryProjects,
+  testimonials,
+  themes,
+  users,
+} from "~/vexcms/collections";
+```
+
+**2 — `collections` array in `defineConfig({ … })`.**
+
+```ts
+  collections: [
+    pages,
+    users,
+    headers,
+    footers,
+    themes,
+    articles,
+    caseStudies,
+    changelog,
+    comments,
+    posts,
+    fields,
+    testimonials,
+    telemetryEvents,
+    telemetryProjects,
+  ],
+```
+
+#### src/auth/access.ts
+
+3 edits — everything else unchanged. Both collections are read-only for every role: `telemetryEvents`/`telemetryProjects` get no entry under any non-admin role, and `defineAccess`'s undeclared-subject posture is pinned to deny (every other role here starts its own block with `"*": false`), so they stay fully denied for `guest`/`editor`/`contributor`/`user` with no extra code. `admin` is the one role with a blanket `"*": true`, so it needs an explicit per-resource override to carve read+views out of that grant without also carving out create/update/delete denial — matching the existing `read: true, readViews: true, createView: ..., updateView: ..., deleteView: ...` shape `testimonials`' `contributor` block already uses for the same `VIEW_ACTIONS` matrix.
+
+**1 — import, beside the existing `~/vexcms/collections` import.**
+
+```ts
+import {
+  articles,
+  caseStudies,
+  changelog,
+  comments,
+  fields,
+  footers,
+  headers,
+  images,
+  pages,
+  posts,
+  telemetryEvents,
+  telemetryProjects,
+  testimonials,
+  themes,
+  users,
+} from "~/vexcms/collections";
+```
+
+**2 — `resources` array.**
+
+```ts
+  resources: [
+    footers,
+    headers,
+    images,
+    pages,
+    themes,
+    users,
+    articles,
+    caseStudies,
+    changelog,
+    comments,
+    nav,
+    siteSettings,
+    posts,
+    announcement,
+    fields,
+    testimonials,
+    telemetryEvents,
+    telemetryProjects,
+  ],
+```
+
+**3 — `[USER_ROLES.admin]` permissions entry.**
+
+```ts
+    [USER_ROLES.admin]: {
+      "*": true,
+      telemetryEvents: {
+        "*": false,
+        read: true,
+        readViews: true,
+        createView: true,
+        updateView: true,
+        deleteView: true,
+      },
+      telemetryProjects: {
+        "*": false,
+        read: true,
+        readViews: true,
+        createView: true,
+        updateView: true,
+        deleteView: true,
+      },
     },
-    handler: async (ctx, args) => {
-      await ctx.db.insert("telemetryEvents", { ...args, receivedAt: Date.now() })
+```
+
+#### apps/test/package.json
+
+1 edit — `devDependencies`, beside the existing `@vexcms/cli` entry. Type-only (`deriveTelemetryProject.ts` only `import type`s from it), but still needs a real workspace resolution for TypeScript to find the package's `.d.ts`.
+
+```json
+    "@vexcms/cli": "workspace:*",
+    "@vexcms/telemetry": "workspace:*",
+```
+
+#### apps/test/vitest.config.ts
+
+1 edit — `test.include`, so the colocated Convex-side test below actually runs under `pnpm --filter test test`.
+
+```ts
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "convex/**/*.test.ts"],
+```
+
+#### convex/telemetry/deriveTelemetryProject.ts
+
+New file. A pure function — no `ctx`, no I/O — so `convex/telemetry/ingest.ts` can call it directly and its test needs nothing beyond a plain `Doc<"telemetryProjects">` fixture. Always returns every column: an event with no `config` (a failed load, or any `dev`/`deploy` event whose pipeline never reached config resolution) carries the previous row's config-derived columns forward unchanged instead of clearing them, and an event with no `create` does the same for the scaffold columns — `ctx.db.insert`/`ctx.db.patch` in `ingest.ts` always receive a complete, valid row either way.
+
+```ts
+import { ADMIN_FIELDS, STORAGE_ADAPTER_PROTOCOLS } from "@vexcms/core";
+import type {
+  AnonymizedConfig,
+  AnonymizedField,
+  AnonymizedResource,
+  TelemetryCreateOptions,
+  TelemetryEnvironment,
+  TelemetryErrorCode,
+  TelemetryEvent,
+  TelemetryEventName,
+  TelemetryFailureStage,
+  TelemetryOutcome,
+} from "@vexcms/telemetry";
+
+import type { Doc } from "../_generated/dataModel";
+
+type FieldTypeCounts = Record<`${keyof typeof ADMIN_FIELDS}FieldCount`, number>;
+
+const FIELD_TYPE_KEYS = Object.keys(ADMIN_FIELDS) as (keyof typeof ADMIN_FIELDS)[];
+
+interface ScaffoldColumns {
+  scaffoldTemplate?: TelemetryCreateOptions["template"][];
+  scaffoldBare?: boolean;
+  scaffoldMonorepo?: boolean;
+  scaffoldEmailPassword?: boolean;
+  scaffoldOauthProviderCount?: number;
+  scaffoldOrgs?: boolean;
+}
+
+interface ResourceConfigColumns extends FieldTypeCounts {
+  savedViewCount?: number;
+  customSortCount?: number;
+  bulkDeleteDisabledCount?: number;
+}
+
+interface ConfigColumns extends ResourceConfigColumns {
+  collectionCount?: number;
+  globalCount?: number;
+  mediaCollectionCount?: number;
+  blockCount?: number;
+  fieldCount?: number;
+  featureDrafts?: boolean;
+  featureLivePreview?: boolean;
+  featureConditions?: boolean;
+  featureSlots?: boolean;
+  featureInputMasks?: boolean;
+  featureAuth?: boolean;
+  authAdapter?: AnonymizedConfig["features"]["authAdapter"][];
+  hookCount?: number;
+  accessEnabled?: boolean;
+  accessRoleCount?: number;
+  accessRuleCount?: number;
+  accessFieldPermissionRuleCount?: number;
+  accessQueryConstraintRuleCount?: number;
+  accessCallbackRuleCount?: number;
+  accessCustomActionCount?: number;
+  accessCustomResourceCount?: number;
+  accessOrganizations?: boolean;
+  storageUsesPresignedUrl?: boolean;
+  configTruncated?: boolean;
+  latestConfig?: AnonymizedConfig;
+}
+
+export interface TelemetryProjectPatch extends ConfigColumns, ScaffoldColumns {
+  projectId: string;
+  firstSeenAt: number;
+  lastSeenAt: number;
+  devEventCount: number;
+  deployEventCount: number;
+  createEventCount: number;
+  failedEventCount: number;
+  lastEvent: TelemetryEventName[];
+  lastOutcomeStatus: TelemetryOutcome["status"][];
+  lastFailureStage?: TelemetryFailureStage[];
+  lastErrorCode?: TelemetryErrorCode[];
+  framework: TelemetryEnvironment["framework"][];
+  packageManager: TelemetryEnvironment["packageManager"][];
+  os: string;
+  nodeMajor: number;
+  vexCoreVersion?: string;
+}
+
+function parseNodeMajor(nodeVersion: string): number {
+  const match = /^v?(\d+)\./.exec(nodeVersion);
+  return match?.[1] === undefined ? 0 : Number(match[1]);
+}
+
+function countFieldTypes(fields: AnonymizedField[], counts: Record<string, number>): void {
+  for (const field of fields) {
+    counts[field.type] = (counts[field.type] ?? 0) + 1;
+    if (field.items) countFieldTypes([field.items], counts);
+    if (field.fields) countFieldTypes(field.fields, counts);
+    if (field.blocks) for (const block of field.blocks) countFieldTypes(block.fields, counts);
+    if (field.tabs) for (const tab of field.tabs) countFieldTypes(tab.fields, counts);
+  }
+}
+
+function aggregateResourceUsage(resources: AnonymizedResource[]): {
+  savedViewCount: number;
+  customSortCount: number;
+  bulkDeleteDisabledCount: number;
+} {
+  let savedViewCount = 0;
+  let customSortCount = 0;
+  let bulkDeleteDisabledCount = 0;
+  for (const resource of resources) {
+    savedViewCount += resource.savedViewCount ?? 0;
+    if (resource.defaultSortIsCustom) customSortCount += 1;
+    if (resource.bulkDelete === false) bulkDeleteDisabledCount += 1;
+  }
+  return { savedViewCount, customSortCount, bulkDeleteDisabledCount };
+}
+
+function deriveResourceConfigColumns(config: AnonymizedConfig): ResourceConfigColumns {
+  const fieldTypeCounts: Record<string, number> = {};
+  for (const collection of config.collections) countFieldTypes(collection.fields, fieldTypeCounts);
+  for (const global of config.globals) countFieldTypes(global.fields, fieldTypeCounts);
+  for (const media of config.mediaCollections) countFieldTypes(media.fields, fieldTypeCounts);
+
+  const usage = aggregateResourceUsage([...config.collections, ...config.mediaCollections]);
+  const fieldTypeColumns = Object.fromEntries(
+    FIELD_TYPE_KEYS.map((type) => [`${type}FieldCount`, fieldTypeCounts[type] ?? 0]),
+  ) as FieldTypeCounts;
+
+  return {
+    savedViewCount: usage.savedViewCount,
+    customSortCount: usage.customSortCount,
+    bulkDeleteDisabledCount: usage.bulkDeleteDisabledCount,
+    ...fieldTypeColumns,
+  };
+}
+
+function previousResourceConfigColumns(existing: Doc<"telemetryProjects"> | null): ResourceConfigColumns {
+  const fieldTypeColumns = Object.fromEntries(
+    FIELD_TYPE_KEYS.map((type) => {
+      const key = `${type}FieldCount` as const;
+      return [key, existing?.[key] ?? 0];
+    }),
+  ) as FieldTypeCounts;
+  return {
+    savedViewCount: existing?.savedViewCount,
+    customSortCount: existing?.customSortCount,
+    bulkDeleteDisabledCount: existing?.bulkDeleteDisabledCount,
+    ...fieldTypeColumns,
+  };
+}
+
+/**
+ * Derives every `telemetryProjects` column sourced from an event's `config`.
+ * `config.truncated` means `fitTelemetryEvent` (in `@vexcms/telemetry`)
+ * dropped `collections`/`globals`/`mediaCollections` to fit the body-size
+ * cap before sending — every count and `features` field is still the real
+ * value, but nothing that requires walking those now-empty arrays
+ * (`<type>FieldCount`, `savedViewCount`, `customSortCount`,
+ * `bulkDeleteDisabledCount`) can be recomputed, so those columns carry
+ * `existing`'s values forward instead of being zeroed.
+ */
+function deriveConfigColumns(config: AnonymizedConfig, existing: Doc<"telemetryProjects"> | null): ConfigColumns {
+  return {
+    collectionCount: config.collectionCount,
+    globalCount: config.globalCount,
+    mediaCollectionCount: config.mediaCollectionCount,
+    blockCount: config.blockCount,
+    fieldCount: config.fieldCount,
+    featureDrafts: config.features.drafts,
+    featureLivePreview: config.features.livePreview,
+    featureConditions: config.features.conditions,
+    featureSlots: config.features.slots,
+    featureInputMasks: config.features.inputMasks,
+    featureAuth: config.features.auth,
+    authAdapter: [config.features.authAdapter],
+    hookCount: config.features.hookCount,
+    accessEnabled: config.features.access.enabled,
+    accessRoleCount: config.features.access.roleCount,
+    accessRuleCount: config.features.access.ruleCount,
+    accessFieldPermissionRuleCount: config.features.access.fieldPermissionRuleCount,
+    accessQueryConstraintRuleCount: config.features.access.queryConstraintRuleCount,
+    accessCallbackRuleCount: config.features.access.callbackRuleCount,
+    accessCustomActionCount: config.features.access.customActionCount,
+    accessCustomResourceCount: config.features.access.customResourceCount,
+    accessOrganizations: config.features.access.organizations,
+    storageUsesPresignedUrl: config.storageAdapterKinds.includes(STORAGE_ADAPTER_PROTOCOLS.presignedUrl),
+    configTruncated: config.truncated,
+    latestConfig: config,
+    ...(config.truncated ? previousResourceConfigColumns(existing) : deriveResourceConfigColumns(config)),
+  };
+}
+
+function previousConfigColumns(existing: Doc<"telemetryProjects"> | null): ConfigColumns {
+  return {
+    collectionCount: existing?.collectionCount,
+    globalCount: existing?.globalCount,
+    mediaCollectionCount: existing?.mediaCollectionCount,
+    blockCount: existing?.blockCount,
+    fieldCount: existing?.fieldCount,
+    featureDrafts: existing?.featureDrafts,
+    featureLivePreview: existing?.featureLivePreview,
+    featureConditions: existing?.featureConditions,
+    featureSlots: existing?.featureSlots,
+    featureInputMasks: existing?.featureInputMasks,
+    featureAuth: existing?.featureAuth,
+    authAdapter: existing?.authAdapter,
+    hookCount: existing?.hookCount,
+    accessEnabled: existing?.accessEnabled,
+    accessRoleCount: existing?.accessRoleCount,
+    accessRuleCount: existing?.accessRuleCount,
+    accessFieldPermissionRuleCount: existing?.accessFieldPermissionRuleCount,
+    accessQueryConstraintRuleCount: existing?.accessQueryConstraintRuleCount,
+    accessCallbackRuleCount: existing?.accessCallbackRuleCount,
+    accessCustomActionCount: existing?.accessCustomActionCount,
+    accessCustomResourceCount: existing?.accessCustomResourceCount,
+    accessOrganizations: existing?.accessOrganizations,
+    storageUsesPresignedUrl: existing?.storageUsesPresignedUrl,
+    configTruncated: existing?.configTruncated,
+    latestConfig: existing?.latestConfig as AnonymizedConfig | undefined,
+    ...previousResourceConfigColumns(existing),
+  };
+}
+
+function deriveScaffoldColumns(
+  create: TelemetryCreateOptions | undefined,
+  existing: Doc<"telemetryProjects"> | null,
+): ScaffoldColumns {
+  if (!create) {
+    return {
+      scaffoldTemplate: existing?.scaffoldTemplate,
+      scaffoldBare: existing?.scaffoldBare,
+      scaffoldMonorepo: existing?.scaffoldMonorepo,
+      scaffoldEmailPassword: existing?.scaffoldEmailPassword,
+      scaffoldOauthProviderCount: existing?.scaffoldOauthProviderCount,
+      scaffoldOrgs: existing?.scaffoldOrgs,
+    };
+  }
+  return {
+    scaffoldTemplate: [create.template],
+    scaffoldBare: create.bare,
+    scaffoldMonorepo: create.monorepo,
+    scaffoldEmailPassword: create.auth.emailPassword,
+    scaffoldOauthProviderCount: create.auth.oauthProviderCount,
+    scaffoldOrgs: create.auth.orgs,
+  };
+}
+
+/**
+ * Derives the full `telemetryProjects` column patch for one ingested event.
+ * Always returns every column — an event carrying no `config` (a failed
+ * load, or a `dev`/`deploy` event whose load never reached config
+ * resolution) reuses `existing`'s config-derived columns unchanged; an
+ * event carrying no `create` reuses `existing`'s scaffold columns
+ * unchanged.
+ *
+ * @param props.event - The ingested, already-validated telemetry event.
+ * @param props.existing - The project's current row, or `null` for a
+ *   project's first-ever event.
+ * @returns The complete column set for `ctx.db.insert`/`ctx.db.patch`.
+ */
+export function deriveTelemetryProject(props: {
+  event: TelemetryEvent;
+  existing: Doc<"telemetryProjects"> | null;
+}): TelemetryProjectPatch {
+  const { event, existing } = props;
+  const { outcome } = event;
+  const now = Date.now();
+
+  return {
+    projectId: event.projectId,
+    firstSeenAt: existing?.firstSeenAt ?? now,
+    lastSeenAt: now,
+    devEventCount: (existing?.devEventCount ?? 0) + (event.event === "dev" ? 1 : 0),
+    deployEventCount: (existing?.deployEventCount ?? 0) + (event.event === "deploy" ? 1 : 0),
+    createEventCount: (existing?.createEventCount ?? 0) + (event.event === "create" ? 1 : 0),
+    failedEventCount: (existing?.failedEventCount ?? 0) + (outcome.status === "failed" ? 1 : 0),
+    lastEvent: [event.event],
+    lastOutcomeStatus: [outcome.status],
+    lastFailureStage: outcome.status === "failed" ? [outcome.stage] : existing?.lastFailureStage,
+    lastErrorCode: outcome.status === "failed" ? [outcome.errorCode] : existing?.lastErrorCode,
+    framework: [event.environment.framework],
+    packageManager: [event.environment.packageManager],
+    os: event.environment.os,
+    nodeMajor: parseNodeMajor(event.environment.nodeVersion),
+    vexCoreVersion: event.environment.vexVersions["@vexcms/core"] ?? existing?.vexCoreVersion,
+    ...deriveScaffoldColumns(event.create, existing),
+    ...(event.config ? deriveConfigColumns(event.config, existing) : previousConfigColumns(existing)),
+  };
+}
+```
+
+#### convex/telemetry/deriveTelemetryProject.test.ts
+
+New file.
+
+```ts
+import { describe, expect, it } from "vitest";
+import type { TelemetryEvent } from "@vexcms/telemetry";
+
+import type { Doc, Id } from "../_generated/dataModel";
+import { deriveTelemetryProject, type TelemetryProjectPatch } from "./deriveTelemetryProject";
+
+function asExistingRow(patch: TelemetryProjectPatch): Doc<"telemetryProjects"> {
+  const existingId = "scratch-project" as Id<"telemetryProjects">;
+  return { _id: existingId, _creationTime: 0, ...patch };
+}
+
+const baseEnvironment = {
+  vexVersions: { "@vexcms/core": "0.1.0-alpha.27" },
+  nodeVersion: "v20.11.0",
+  os: "darwin",
+  arch: "arm64",
+  packageManager: "pnpm",
+  framework: "next",
+} satisfies TelemetryEvent["environment"];
+
+const sampleConfig = {
+  collectionCount: 1,
+  globalCount: 0,
+  mediaCollectionCount: 0,
+  blockCount: 0,
+  fieldCount: 2,
+  collections: [
+    {
+      name: "collection1",
+      fieldCount: 2,
+      fields: [
+        { name: "field1", type: "text", required: true },
+        { name: "field2", type: "select", hasMany: false, optionCount: 2 },
+      ],
+      hasDrafts: false,
+      hasLivePreview: false,
+      indexCount: 0,
+      timestamps: true,
+      savedViewCount: 1,
+      defaultSortIsCustom: true,
+      bulkDelete: true,
+      hookCounts: { beforeChange: 0, beforeDelete: 0, afterChange: 1, afterDelete: 0 },
     },
-  })
-  ```
+  ],
+  globals: [],
+  mediaCollections: [],
+  features: {
+    drafts: false,
+    livePreview: false,
+    conditions: false,
+    slots: false,
+    inputMasks: false,
+    localization: false,
+    auth: true,
+    authAdapter: "betterAuth",
+    access: {
+      enabled: true,
+      roleCount: 2,
+      ruleCount: 3,
+      fieldPermissionRuleCount: 1,
+      queryConstraintRuleCount: 1,
+      callbackRuleCount: 1,
+      customActionCount: 0,
+      customResourceCount: 0,
+      organizations: false,
+    },
+    hookCount: 1,
+  },
+  storageAdapterKinds: ["presigned-url"],
+} satisfies NonNullable<TelemetryEvent["config"]>;
 
-#### apps/telemetry/convex/http.ts
+describe("deriveTelemetryProject", () => {
+  it("produces a complete patch for a project's first (config-bearing) event", () => {
+    const event: TelemetryEvent = {
+      schemaVersion: 1,
+      event: "dev",
+      machineId: "machine-1",
+      projectId: "project-1",
+      sentAt: new Date().toISOString(),
+      environment: baseEnvironment,
+      outcome: { status: "ok" },
+      config: sampleConfig,
+    };
 
-- [ ] [agent] Add the ingest route. The handler never reads
-  `x-forwarded-for`/`x-real-ip` or any other header for the caller's IP — only
-  `content-length`, for the size check — so no IP ever reaches the stored
-  document. No CORS headers: the endpoint is called by the `vex`/`create-vexcms`
-  CLIs over `fetch`, never a browser, so no preflight is needed.
+    const patch = deriveTelemetryProject({ event, existing: null });
 
-  1 edit — 1 new import plus 1 new `http.route({ … })` registration, both
-  added above the existing `export default http`.
+    expect(patch).toMatchObject({
+      projectId: "project-1",
+      devEventCount: 1,
+      deployEventCount: 0,
+      createEventCount: 0,
+      failedEventCount: 0,
+      lastEvent: ["dev"],
+      lastOutcomeStatus: ["ok"],
+      lastFailureStage: undefined,
+      lastErrorCode: undefined,
+      framework: ["next"],
+      packageManager: ["pnpm"],
+      os: "darwin",
+      nodeMajor: 20,
+      vexCoreVersion: "0.1.0-alpha.27",
+      collectionCount: 1,
+      fieldCount: 2,
+      textFieldCount: 1,
+      selectFieldCount: 1,
+      numberFieldCount: 0,
+      hookCount: 1,
+      accessEnabled: true,
+      accessRuleCount: 3,
+      savedViewCount: 1,
+      customSortCount: 1,
+      bulkDeleteDisabledCount: 0,
+      storageUsesPresignedUrl: true,
+      latestConfig: sampleConfig,
+    });
+  });
 
-  **1 — imports, beside the existing `httpAction` import.**
-  ```ts
-  import { internal } from "./_generated/api"
-  ```
+  it("carries forward config-derived and scaffold columns when a later event has no config (a failed load)", () => {
+    const createEvent: TelemetryEvent = {
+      schemaVersion: 1,
+      event: "create",
+      machineId: "machine-1",
+      projectId: "project-1",
+      sentAt: new Date().toISOString(),
+      environment: baseEnvironment,
+      outcome: { status: "ok" },
+      config: sampleConfig,
+      create: {
+        framework: "nextjs",
+        template: "base",
+        bare: true,
+        auth: { emailPassword: true, oauthProviderCount: 1, orgs: false },
+        monorepo: false,
+        initGit: true,
+        installDependencies: false,
+      },
+    };
+    const existing = asExistingRow(deriveTelemetryProject({ event: createEvent, existing: null }));
 
-  **2 — after the existing POST `/api/auth/` route registration, before `export default http`.**
-  ```ts
-  const TELEMETRY_SCHEMA_VERSION = 1
-  const TELEMETRY_MAX_BODY_BYTES = 32_768
+    const failedEvent: TelemetryEvent = {
+      schemaVersion: 1,
+      event: "dev",
+      machineId: "machine-1",
+      projectId: "project-1",
+      sentAt: new Date().toISOString(),
+      environment: baseEnvironment,
+      outcome: { status: "failed", stage: "loadConfig", errorCode: "configError" },
+    };
 
-  const telemetryEventsHandler = httpAction(async (ctx, request) => {
-    const contentLength = request.headers.get("content-length")
-    if (contentLength !== null && Number(contentLength) > TELEMETRY_MAX_BODY_BYTES) {
-      return new Response(null, { status: 413 })
+    const patch = deriveTelemetryProject({ event: failedEvent, existing });
+
+    expect(patch).toMatchObject({
+      failedEventCount: 1,
+      devEventCount: 1,
+      createEventCount: 1,
+      lastOutcomeStatus: ["failed"],
+      lastFailureStage: ["loadConfig"],
+      lastErrorCode: ["configError"],
+      collectionCount: 1,
+      fieldCount: 2,
+      textFieldCount: 1,
+      latestConfig: sampleConfig,
+      scaffoldTemplate: ["base"],
+      scaffoldBare: true,
+    });
+    expect(patch.firstSeenAt).toBe(existing.firstSeenAt);
+  });
+
+  it("on a truncated config, updates scalar/feature/access columns from the real payload but carries forward the array-derived columns unchanged", () => {
+    const firstEvent: TelemetryEvent = {
+      schemaVersion: 1,
+      event: "dev",
+      machineId: "machine-1",
+      projectId: "project-1",
+      sentAt: new Date().toISOString(),
+      environment: baseEnvironment,
+      outcome: { status: "ok" },
+      config: sampleConfig,
+    };
+    const existing = asExistingRow(deriveTelemetryProject({ event: firstEvent, existing: null }));
+
+    const truncatedConfig = {
+      ...sampleConfig,
+      collectionCount: 50,
+      fieldCount: 300,
+      collections: [],
+      globals: [],
+      mediaCollections: [],
+      features: {
+        ...sampleConfig.features,
+        hookCount: 7,
+        access: { ...sampleConfig.features.access, ruleCount: 12 },
+      },
+      truncated: true,
+    } satisfies NonNullable<TelemetryEvent["config"]>;
+
+    const truncatedEvent: TelemetryEvent = {
+      schemaVersion: 1,
+      event: "deploy",
+      machineId: "machine-1",
+      projectId: "project-1",
+      sentAt: new Date().toISOString(),
+      environment: baseEnvironment,
+      outcome: { status: "ok" },
+      config: truncatedConfig,
+    };
+
+    const patch = deriveTelemetryProject({ event: truncatedEvent, existing });
+
+    expect(patch).toMatchObject({
+      configTruncated: true,
+      collectionCount: 50,
+      fieldCount: 300,
+      hookCount: 7,
+      accessRuleCount: 12,
+      latestConfig: truncatedConfig,
+      textFieldCount: existing.textFieldCount,
+      selectFieldCount: existing.selectFieldCount,
+      savedViewCount: existing.savedViewCount,
+      customSortCount: existing.customSortCount,
+      bulkDeleteDisabledCount: existing.bulkDeleteDisabledCount,
+    });
+    expect(patch.textFieldCount).toBe(1);
+    expect(patch.selectFieldCount).toBe(1);
+    expect(patch.savedViewCount).toBe(1);
+    expect(patch.customSortCount).toBe(1);
+    expect(patch.bulkDeleteDisabledCount).toBe(0);
+  });
+
+  it("on a project's first-ever event arriving already truncated, zeroes the array-derived columns instead of inventing values", () => {
+    const truncatedConfig = {
+      ...sampleConfig,
+      collections: [],
+      globals: [],
+      mediaCollections: [],
+      truncated: true,
+    } satisfies NonNullable<TelemetryEvent["config"]>;
+
+    const event: TelemetryEvent = {
+      schemaVersion: 1,
+      event: "dev",
+      machineId: "machine-1",
+      projectId: "project-2",
+      sentAt: new Date().toISOString(),
+      environment: baseEnvironment,
+      outcome: { status: "ok" },
+      config: truncatedConfig,
+    };
+
+    const patch = deriveTelemetryProject({ event, existing: null });
+
+    expect(patch).toMatchObject({
+      configTruncated: true,
+      collectionCount: sampleConfig.collectionCount,
+      fieldCount: sampleConfig.fieldCount,
+      textFieldCount: 0,
+      selectFieldCount: 0,
+      numberFieldCount: 0,
+      savedViewCount: undefined,
+      customSortCount: undefined,
+      bulkDeleteDisabledCount: undefined,
+    });
+  });
+});
+```
+
+#### convex/telemetry/ingest.ts
+
+New file. The args validator is this mutation's full runtime validation of the client-sent payload — there is no separate schema-parse step, so `http.ts`'s handler below just forwards the JSON-parsed body and lets this validator reject (caught as a 400) whatever doesn't match. `os` stays `v.string()` rather than enumerating every `NodeJS.Platform` literal — the sender (`collectEnvironment`) only ever puts `process.platform` there, so the closed set is already guaranteed upstream and re-encoding it here would just be restating that guarantee. `.unique()` on the `by_projectId` lookup turns an accidental duplicate row into a thrown error (a 400 to the client) instead of a silently-wrong upsert.
+
+```ts
+import { v } from "convex/values";
+import type { TelemetryEvent } from "@vexcms/telemetry";
+
+import { internalMutation } from "../_generated/server";
+import { deriveTelemetryProject } from "./deriveTelemetryProject";
+
+const TELEMETRY_EVENT_NAMES = ["dev", "deploy", "create"] as const;
+const TELEMETRY_FAILURE_STAGES = ["resolveConfig", "loadConfig", "generateSchema", "scaffold"] as const;
+const TELEMETRY_ERROR_CODES = [
+  "configError",
+  "accessConfigError",
+  "authConfigError",
+  "componentConfigError",
+  "storageConfigError",
+  "unknown",
+] as const;
+const TELEMETRY_FRAMEWORKS = ["next", "tanstack", "unknown"] as const;
+const TELEMETRY_PACKAGE_MANAGERS = ["pnpm", "npm", "yarn", "bun", "unknown"] as const;
+const TELEMETRY_CREATE_TEMPLATES = ["base", "marketing"] as const;
+
+const outcomeValidator = v.union(
+  v.object({ status: v.literal("ok") }),
+  v.object({
+    status: v.literal("failed"),
+    stage: v.union(...TELEMETRY_FAILURE_STAGES.map((stage) => v.literal(stage))),
+    errorCode: v.union(...TELEMETRY_ERROR_CODES.map((code) => v.literal(code))),
+  }),
+);
+
+const environmentValidator = v.object({
+  vexVersions: v.record(v.string(), v.string()),
+  nodeVersion: v.string(),
+  os: v.string(),
+  arch: v.string(),
+  packageManager: v.union(...TELEMETRY_PACKAGE_MANAGERS.map((packageManager) => v.literal(packageManager))),
+  framework: v.union(...TELEMETRY_FRAMEWORKS.map((framework) => v.literal(framework))),
+});
+
+const createValidator = v.object({
+  framework: v.string(),
+  template: v.union(...TELEMETRY_CREATE_TEMPLATES.map((template) => v.literal(template))),
+  bare: v.boolean(),
+  auth: v.object({
+    emailPassword: v.boolean(),
+    oauthProviderCount: v.number(),
+    orgs: v.boolean(),
+  }),
+  monorepo: v.boolean(),
+  initGit: v.boolean(),
+  installDependencies: v.boolean(),
+});
+
+/**
+ * Ingests one telemetry event: inserts the raw row into `telemetryEvents`
+ * and upserts the derived `telemetryProjects` row for its `projectId`. The
+ * args validator above is this mutation's complete runtime validation of
+ * the client-sent payload — `event` below is that already-validated
+ * payload, read as `TelemetryEvent` for `deriveTelemetryProject`.
+ */
+export const ingest = internalMutation({
+  args: {
+    schemaVersion: v.literal(1),
+    event: v.union(...TELEMETRY_EVENT_NAMES.map((name) => v.literal(name))),
+    machineId: v.string(),
+    projectId: v.string(),
+    sentAt: v.string(),
+    environment: environmentValidator,
+    outcome: outcomeValidator,
+    config: v.optional(v.any()),
+    timings: v.optional(v.any()),
+    create: v.optional(createValidator),
+  },
+  handler: async (ctx, args) => {
+    const event = args as TelemetryEvent;
+    const { outcome } = event;
+
+    await ctx.db.insert("telemetryEvents", {
+      event: [event.event],
+      schemaVersion: event.schemaVersion,
+      machineId: event.machineId,
+      projectId: event.projectId,
+      outcomeStatus: [outcome.status],
+      failureStage: outcome.status === "failed" ? [outcome.stage] : undefined,
+      errorCode: outcome.status === "failed" ? [outcome.errorCode] : undefined,
+      framework: [event.environment.framework],
+      vexCoreVersion: event.environment.vexVersions["@vexcms/core"],
+      payload: event,
+    });
+
+    const existing = await ctx.db
+      .query("telemetryProjects")
+      .withIndex("by_projectId", (q) => q.eq("projectId", event.projectId))
+      .unique();
+
+    const patch = deriveTelemetryProject({ event, existing });
+
+    if (existing) {
+      await ctx.db.patch(existing._id, patch);
+    } else {
+      await ctx.db.insert("telemetryProjects", patch);
     }
+  },
+});
+```
 
-    const bodyText = await request.text()
-    if (new TextEncoder().encode(bodyText).length > TELEMETRY_MAX_BODY_BYTES) {
-      return new Response(null, { status: 413 })
-    }
+#### convex/http.ts
 
-    let body: unknown
-    try {
-      body = JSON.parse(bodyText)
-    } catch {
-      return new Response(null, { status: 400 })
-    }
+1 edit — 2 new imports plus 1 new `http.route({ … })` registration, all added above the existing `export default http`; the existing auth routes are unchanged.
 
-    if (
-      typeof body !== "object" ||
-      body === null ||
-      (body as { schemaVersion?: unknown }).schemaVersion !== TELEMETRY_SCHEMA_VERSION
-    ) {
-      return new Response(null, { status: 400 })
-    }
+**1 — imports: `type FunctionArgs` added to the existing `convex/server` import, plus a new `internal` import beside the existing `httpAction` import.**
 
-    try {
-      await ctx.runMutation(internal.events.insert, body as Record<string, unknown>)
-    } catch {
-      return new Response(null, { status: 400 })
-    }
+```ts
+import { httpRouter, type FunctionArgs } from "convex/server"
 
-    return new Response(null, { status: 204 })
-  })
+import { internal } from "./_generated/api"
+```
 
-  http.route({
-    handler: telemetryEventsHandler,
-    method: "POST",
-    path: "/events",
-  })
-  ```
+**2 — after the existing POST `/api/auth/` route registration, before `export default http`.**
 
-#### packages/telemetry/src/constants.ts
+```ts
+const TELEMETRY_SCHEMA_VERSION = 1
+const TELEMETRY_MAX_BODY_BYTES = 524_288
 
-- [ ] [dev] Create the Convex deployment and deploy `apps/telemetry`, then
-  point the CLI's default endpoint at it.
+const telemetryEventsHandler = httpAction(async (ctx, request) => {
+  const contentLength = request.headers.get("content-length")
+  if (contentLength !== null && Number(contentLength) > TELEMETRY_MAX_BODY_BYTES) {
+    return new Response(null, { status: 413 })
+  }
 
+  const bodyText = await request.text()
+  if (new TextEncoder().encode(bodyText).length > TELEMETRY_MAX_BODY_BYTES) {
+    return new Response(null, { status: 413 })
+  }
+
+  let body: unknown
+  try {
+    body = JSON.parse(bodyText)
+  } catch {
+    return new Response(null, { status: 400 })
+  }
+
+  if (typeof body !== "object" || body === null) {
+    return new Response(null, { status: 400 })
+  }
+  if (!("schemaVersion" in body) || body.schemaVersion !== TELEMETRY_SCHEMA_VERSION) {
+    return new Response(null, { status: 400 })
+  }
+
+  const payload = body as FunctionArgs<typeof internal.telemetry.ingest.ingest>
+  try {
+    await ctx.runMutation(internal.telemetry.ingest.ingest, payload)
+  } catch {
+    return new Response(null, { status: 400 })
+  }
+
+  return new Response(null, { status: 204 })
+})
+
+http.route({
+  handler: telemetryEventsHandler,
+  method: "POST",
+  path: "/telemetry/events",
+})
+```
+
+No IP header is ever read — only `content-length`, for the size check — so no IP reaches the stored document. No CORS headers: the endpoint is called by the `vex`/`create-vexcms` CLIs over `fetch`, never a browser, so no preflight is needed.
+
+**No `convex-test` integration test for `ingest`.**
+
+`apps/test` has no `convex-test` devDependency (unlike `packages/core`, which runs its Convex-backed suites against it) — `convex-test` is a repo-wide peer-optional dependency other packages opt into, and adding it here is out of scope for this step. `ingest.ts`'s own logic is 2 straight-line `ctx.db` calls (one insert, one indexed lookup-then-insert-or-patch) with zero branching of its own; every piece of branching logic — counters, last-outcome, carried-forward columns, field-type counting — lives in `deriveTelemetryProject`, which is fully covered above without needing a Convex runtime at all. The `[dev]` end-to-end script below is the acceptance check for the `ctx.db` wiring itself.
+
+- [ ] [dev] Confirm the developer's already-running `vex dev` in `apps/test` picked up `telemetryEvents`/`telemetryProjects` and regenerated `convex/vex.schema.ts` / `convex/schema.ts` (P-024 — no agent starts `vex dev`; it is already running).
+- [ ] [dev] Read the receiver URL: `npx convex env get CONVEX_SITE_URL` from `apps/test` (or the Convex dashboard's HTTP Actions URL) — the base for `VEX_TELEMETRY_ENDPOINT`.
+- [ ] [dev] End-to-end confirmation script:
   ```sh
-  cd apps/telemetry
-  npx convex dev --once --configure new   # first-time only: links a Convex deployment
-  pnpm exec vex deploy                    # generates/syncs the schema and runs `convex deploy`
+  export VEX_TELEMETRY_ENDPOINT="<CONVEX_SITE_URL>/telemetry/events"
+
+  # ok events from two real apps in the monorepo
+  pnpm --filter test vex:generate
+  pnpm --filter www vex:generate
+
+  # a freshly scaffolded project — its own `create` event, then an ok `dev` event
+  pnpm --filter create-vexcms build
+  node packages/create-vexcms/dist/index.js /tmp/vex-telemetry-e2e --yes
+  (cd /tmp/vex-telemetry-e2e && pnpm exec vex dev --once)
+
+  # break that scaffold's config, retry, and confirm a `failed` dev event lands
+  # (e.g. point src/vex.config.ts's `access.userCollectionSlug` at a slug that
+  # doesn't exist, forcing a VexAccessConfigError at loadConfig)
+  (cd /tmp/vex-telemetry-e2e && pnpm exec vex dev --once)
+
+  # opt-out — confirm this run adds nothing
+  (cd apps/test && DO_NOT_TRACK=1 pnpm exec vex dev --once)
   ```
+- [ ] [dev] In `/admin/telemetryProjects`: 3 rows (`test`, `www`, the `/tmp/vex-telemetry-e2e` scaffold), each with `devEventCount`/`createEventCount` ≥ 1 and `framework`/`packageManager`/`os`/`collectionCount`/`fieldCount` populated from the ok events; the scaffold's row additionally shows `failedEventCount` ≥ 1, `lastOutcomeStatus: ["failed"]`, `lastFailureStage`/`lastErrorCode` set from the broken-config retry. In `/admin/telemetryEvents`: one row per command above, `payload` showing the exact JSON sent. The `DO_NOT_TRACK=1` run adds no 4th row to either collection.
+- [ ] [dev] Exercise the "Failing Setups", "Largest Apps" and "Query-Constraint Access" tabs on `/admin/telemetryProjects` and confirm each renders the expected subset with no console error.
 
-  Read the deployment's HTTP Actions URL from the Convex dashboard (or
-  `npx convex env get CONVEX_SITE_URL` from `apps/telemetry`) — it has the
-  form `https://<deployment-name>.convex.site`.
-
-  1 edit — replace the placeholder endpoint.
-
-  ```ts
-  export const DEFAULT_TELEMETRY_ENDPOINT = "https://<deployment-name>.convex.site/events"
-  ```
-
-Verify: `curl -i -X POST https://<deployment-name>.convex.site/events -H "Content-Type: application/json" -d '{"schemaVersion":1,"event":"dev","machineId":"m1","projectId":"p1","sentAt":"2026-10-26T00:00:00.000Z","environment":{"vexVersions":{},"nodeVersion":"v20.0.0","os":"darwin","arch":"arm64","packageManager":"pnpm"}}'` → `204` and a new row visible (read-only) in `apps/telemetry`'s admin at `/telemetryEvents`; same request with `"schemaVersion":2` → `400`; same request with a `"padding"` string long enough to push the body past 32768 bytes (e.g. `node -e 'console.log(JSON.stringify({schemaVersion:1,event:"dev",machineId:"m1",projectId:"p1",sentAt:"2026-10-26T00:00:00.000Z",environment:{},padding:"a".repeat(33000)}))'` piped into `-d @-`) → `413`; the stored document has no IP field.
+Verify: `pnpm --filter test test -- deriveTelemetryProject` green; `pnpm --filter test typecheck` green; `[dev]` end-to-end confirmation script above produces the rows described.
 
 ### Step 9 — Public docs page [agent]
 Why: T8. Every field sent is listed publicly.
@@ -3026,15 +5029,19 @@ Why: T8. Every field sent is listed publicly.
 
 New guide. The `guides` sidebar group is `autogenerate: { directory: 'guides' }` in
 `apps/docs/astro.config.mjs`, so this file needs no manual sidebar entry — it appears
-automatically, sorted by its `title`. The example payload below is a placeholder; during
-implementation it MUST be regenerated by running `vex telemetry status --json` against
-`apps/test` and pasted in verbatim, since `anonymizeConfig` (step 4) owns the exact field
-allowlist and this page has to match it exactly, not approximate it.
+automatically, sorted by its `title`. Real output of `vex telemetry status --json` run
+against the `apps/test` fixture project.
+`machineId`/`projectId` are replaced with all-zero placeholders, `collections`/`globals` are
+trimmed to one representative entry each, and `@vexcms/telemetry` is dropped from
+`vexVersions` (an internal workspace dependency of the fixture, not something a real project
+installs — telemetry ships bundled inside `vex` and `create-vexcms`), since the
+`TelemetryEvent`/`AnonymizedConfig` types own the exact field allowlist and this page has to
+match them exactly, not approximate them.
 
 ````mdx
 ---
 title: Telemetry
-description: What vex and create-vexcms send, why, how to opt out, and the exact payload shape.
+description: What vex and create-vexcms send, why, and the exact payload shape.
 ---
 
 VexCMS's CLI (`vex`) and scaffolder (`create-vexcms`) collect anonymous, aggregate usage data
@@ -3050,22 +5057,22 @@ deployment or ships to your app's browser bundle.
 
 | Event | Command | Timing |
 |---|---|---|
-| `dev` | `vex dev` | Once, after the first successful config load + schema generation. Not sent again on later file-watch reloads in the same process. Fire-and-forget — `vex dev` does not wait on it. |
-| `deploy` | `vex deploy` | Once per deploy, awaited (bounded to ~1.5s) before the process exits. |
-| `create` | `create-vexcms` | Once, after project scaffolding finishes. Awaited (bounded) before the CLI exits. |
+| `dev` | `vex dev` | Once per process, after the first config load and schema generation attempt — whether it succeeds or fails. Not sent again on later file-watch reloads in the same process. A successful attempt is fire-and-forget; a failed attempt is awaited before the error is rethrown, so the event is sent even though the process is about to exit. |
+| `deploy` | `vex deploy` | Once per invocation, ok or failed, awaited (bounded to ~1.5s) before the process exits. |
+| `create` | `create-vexcms` | Once per invocation, ok or failed, awaited (bounded to ~1.5s) before the CLI exits. |
 
 Each event is one HTTP POST. There is no session concept and no batching.
 
 ## The first-run notice
 
 The first time any of the three commands run on a machine, a one-time notice is printed to
-stderr: what is collected, a link to this page, and how to disable telemetry. It is never
-shown again on that machine (a timestamp is stored locally) and it never blocks or delays the
-command.
+stderr: what is collected, a link to this page, and how to disable telemetry
+(`vex telemetry disable`, or `DO_NOT_TRACK=1`). It is never shown again on that machine (a
+timestamp is stored locally) and it never blocks or delays the command.
 
 ## Field reference
 
-Every event shares this envelope:
+Every event shares this envelope (`TelemetryEvent`):
 
 | Field | Type | Description |
 |---|---|---|
@@ -3074,10 +5081,11 @@ Every event shares this envelope:
 | `machineId` | `string` | A random id generated once per machine on first run. Not derived from any hardware identifier. |
 | `projectId` | `string` | A per-machine, per-project anonymous id — see [Anonymous ids](#anonymous-ids). |
 | `sentAt` | `string` | ISO-8601 timestamp of when the event was sent. |
-| `environment` | `object` | Runtime environment — see below. |
+| `environment` | `object` | Runtime environment — see [`environment`](#environment). |
+| `outcome` | `object` | Whether the run succeeded or failed, and where — see [`outcome`](#outcome). |
 | `config` | `object \| undefined` | Anonymized project config, present when a `vex.config.ts` was loaded — see [Config payload](#config-payload). |
-| `timings` | `object \| undefined` | Build timings, present on `dev` events. |
-| `create` | `object \| undefined` | Scaffold choices, present on `create` events. |
+| `timings` | `object \| undefined` | Build timings, present on `dev` events — see [`timings`](#timings-dev-events-only). |
+| `create` | `object \| undefined` | Scaffold choices, present on `create` events — see [`create`](#create-create-events-only). |
 
 ### `environment`
 
@@ -3088,6 +5096,18 @@ Every event shares this envelope:
 | `os` | `string` | `process.platform` (e.g. `"darwin"`, `"linux"`, `"win32"`). |
 | `arch` | `string` | `process.arch` (e.g. `"arm64"`, `"x64"`). |
 | `packageManager` | `"pnpm" \| "npm" \| "yarn" \| "bun" \| "unknown"` | Detected from the project's lockfile, falling back to `npm_config_user_agent`. |
+| `framework` | `"next" \| "tanstack" \| "unknown"` | Detected from the project's `next` / `@tanstack/react-start` dependency. |
+
+### `outcome`
+
+A coarse category only — enough to find which stage and kind of setup is failing, never a
+message, a stack trace, a file path, or a config value.
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | `"ok" \| "failed"` | Whether the run completed. |
+| `stage` | `"resolveConfig" \| "loadConfig" \| "generateSchema" \| "scaffold"` | Present only when `status` is `"failed"`. Which vex-owned pipeline stage the failure happened in. Convex push/deploy failures are never reported — only vex's own config-resolve, config-load, schema-generation, and scaffold stages are. |
+| `errorCode` | `"configError" \| "accessConfigError" \| "authConfigError" \| "componentConfigError" \| "storageConfigError" \| "unknown"` | Present only when `status` is `"failed"`. The caught error's allowlisted class name, never its message. |
 
 ### `timings` (`dev` events only)
 
@@ -3114,87 +5134,677 @@ Every event shares this envelope:
 ### Config payload
 
 When a `vex.config.ts` is present, `config` carries an **anonymized** snapshot of its shape,
-never its content:
+never its content. Collection, global, media collection, block and field NAMES are replaced
+with generated, numbered placeholders (`collection1`, `global1`, `media1`, `block1`,
+`field1`, …), each counter running in traversal order — never their real names.
 
-- Collections, globals, blocks and fields are renamed to generated, numbered placeholders
-  (`collection1`, `global1`, `block1`, `field1`, …) in a stable order — never their real names.
-- Every field reports its `type` (e.g. `"text"`, `"richText"`, `"relationship"`) and only
-  allowlisted booleans, numbers and enum options for that type (e.g. `required`,
-  `localized`, a relationship's `hasMany`). Any string value a field can hold (defaults,
-  labels, descriptions, regex patterns, URLs) is dropped entirely.
-- `select` / `radio` fields report an `optionCount` (how many options were configured), never
-  the option values themselves.
-- Validator and hook functions on a field report as the boolean `true` (a function was
-  configured) — never their source or return values.
-- Top-level config reports feature flags and counts only: versions/drafts enabled,
-  live preview enabled, conditional fields/slots/input masks in use, localization enabled,
-  which auth adapter and storage adapter *kinds* are configured (e.g. `"better-auth"`,
-  `"convex-file-storage"`), and counts of collections/globals/blocks.
+#### Top level (`AnonymizedConfig`)
+
+| Field | Type | Description |
+|---|---|---|
+| `collectionCount` | `number` | Number of collections. |
+| `globalCount` | `number` | Number of globals. |
+| `mediaCollectionCount` | `number` | Number of media collections. |
+| `blockCount` | `number` | Number of block definitions across every `blocks()` field. |
+| `fieldCount` | `number` | Number of fields across every resource and nesting depth. |
+| `collections` | `AnonymizedResource[]` | One entry per collection — see [Resources](#resources). |
+| `globals` | `AnonymizedResource[]` | One entry per global. |
+| `mediaCollections` | `AnonymizedMediaCollection[]` | One entry per media collection — a resource plus `storageAdapterKind`. |
+| `features.drafts` | `boolean` | Whether any resource has drafts enabled. |
+| `features.livePreview` | `boolean` | Whether any resource has live preview enabled. |
+| `features.conditions` | `boolean` | Whether any field uses a conditional `admin.condition`. |
+| `features.slots` | `boolean` | Whether any slot fields are configured. |
+| `features.inputMasks` | `boolean` | Whether any field has an input mask. |
+| `features.localization` | `false` | Always `false` — `@vexcms/core` has no localization feature yet. Reserved so this shape doesn't change again the day core adds one. |
+| `features.auth` | `boolean` | Whether auth is configured. |
+| `features.authAdapter` | `"none" \| "betterAuth" \| "custom"` | Which auth adapter kind is configured. |
+| `features.access.enabled` | `boolean` | Whether an access-control config is present. |
+| `features.access.roleCount` | `number` | Number of declared roles. |
+| `features.access.ruleCount` | `number` | Total permission rules declared. |
+| `features.access.fieldPermissionRuleCount` | `number` | Rules scoped to individual fields. |
+| `features.access.queryConstraintRuleCount` | `number` | Rules expressed as a query constraint (`where`). |
+| `features.access.callbackRuleCount` | `number` | Rules expressed as a callback function. |
+| `features.access.customActionCount` | `number` | Declared custom actions. |
+| `features.access.customResourceCount` | `number` | Declared custom resources. |
+| `features.access.organizations` | `boolean` | Whether organizations are enabled. |
+| `features.hookCount` | `number` | Total lifecycle hooks declared across every resource. |
+| `storageAdapterKinds` | `StorageAdapterProtocol[]` | Distinct storage adapter kinds configured (e.g. `"convex-file-storage"`). |
+
+#### Resources (`AnonymizedResource`, `AnonymizedMediaCollection`)
+
+One entry per collection, global, or media collection.
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | `string` | Generated placeholder (`collection1`, `global1`, `media1`). |
+| `fieldCount` | `number` | Number of fields on this resource. |
+| `fields` | `AnonymizedField[]` | This resource's fields — see [Fields](#fields). |
+| `hasDrafts` | `boolean` | Whether drafts are enabled. |
+| `hasLivePreview` | `boolean` | Whether live preview is enabled. |
+| `indexCount` | `number \| undefined` | Number of declared indexes. |
+| `timestamps` | `boolean` | Whether `createdAt`/`updatedAt` timestamps are enabled. |
+| `savedViewCount` | `number \| undefined` | Number of admin saved views configured. |
+| `defaultSortIsCustom` | `boolean \| undefined` | Whether the default list sort differs from the built-in default. |
+| `bulkDelete` | `boolean \| undefined` | Whether bulk delete is enabled in the admin list view. |
+| `hookCounts` | `Record<"beforeChange" \| "beforeDelete" \| "afterChange" \| "afterDelete", number>` | Count of declared lifecycle hooks of each kind (`0` or `1` each). |
+| `storageAdapterKind` | `StorageAdapterProtocol \| undefined` | Media collections only — the storage adapter kind in use. |
+
+#### Blocks (`AnonymizedBlock`)
+
+One entry per block definition inside a `blocks()` field.
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | `string` | Generated placeholder (`block1`). |
+| `fieldCount` | `number` | Number of fields in this block. |
+| `defaultCollapsed` | `boolean \| undefined` | Whether the block starts collapsed in the admin UI. |
+| `fields` | `AnonymizedField[]` | This block's fields. |
+
+#### Fields (`AnonymizedField`)
+
+Every field reports its `type` and only allowlisted booleans, numbers and enum options for
+that type. Any string value a field can hold (defaults, labels, descriptions, regex
+patterns, URLs) is dropped entirely, except the three allowlisted booleans/enums below.
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | `string` | Generated placeholder (`field1`). |
+| `type` | `AdminFieldType` | The field type (e.g. `"text"`, `"richText"`, `"relationship"`). |
+| `required` | `boolean \| undefined` | Whether the field is required. |
+| `hidden` | `boolean \| undefined` | Whether the field is hidden in the admin UI. |
+| `readOnly` | `boolean \| undefined` | Whether the field is read-only in the admin UI. |
+| `position` | `"main" \| "sidebar" \| undefined` | Admin layout position. |
+| `cellAlignment` | `Alignment \| undefined` | List-view cell alignment. |
+| `hasValidate` | `boolean \| undefined` | Whether a custom validator function is configured — never its logic. |
+| `hasIndex` | `boolean \| undefined` | Whether the field is indexed. |
+| `hasSearchIndex` | `boolean \| undefined` | Whether the field is part of a search index. |
+| `hasMask` | `boolean \| undefined` | Whether an input mask is configured — never its pattern. |
+| `min` | `number \| undefined` | Minimum value/length constraint. |
+| `max` | `number \| undefined` | Maximum value/length constraint. |
+| `step` | `number \| undefined` | Numeric step constraint. |
+| `rows` | `number \| undefined` | Textarea row count. |
+| `defaultValue` | `boolean \| undefined` | Whether a default value is configured (checkbox fields only) — never the value itself. |
+| `format` | `ColorFormat \| CommitTsFieldAdminFormat \| undefined` | Color field format, or a `commitTs` field's admin display format (e.g. `"relative"`). |
+| `themeColors` | `boolean \| undefined` | Whether a color field restricts to theme colors. |
+| `time.hidden` | `boolean \| undefined` | Date field: whether the time portion is hidden. |
+| `time.use12HourFormat` | `boolean \| undefined` | Date field: whether a 12-hour clock is used. |
+| `time.timePicker.hour` | `boolean \| undefined` | Date field: whether the hour picker is shown. |
+| `time.timePicker.minute` | `boolean \| undefined` | Date field: whether the minute picker is shown. |
+| `time.timePicker.second` | `boolean \| undefined` | Date field: whether the second picker is shown. |
+| `hasMany` | `boolean \| undefined` | Relationship/upload field: whether multiple targets are allowed. |
+| `optionCount` | `number \| undefined` | Select/radio field: number of configured options — never the option values. |
+| `display` | `SelectDisplay \| undefined` | Select field display mode. |
+| `searchable` | `boolean \| undefined` | Relationship field: whether target search is enabled. |
+| `target` | `string \| undefined` | Relationship/upload field: the resolved `collectionN`/`mediaN` placeholder it targets — never the real collection name. |
+| `hasAccept` | `boolean \| undefined` | Upload field: whether a file-type allowlist is configured — never the list itself. |
+| `hasMediaTarget` | `boolean \| undefined` | Upload field: whether a specific media collection target is set. |
+| `defaultCollapsed` | `boolean \| undefined` | Array/blocks field: whether rows/blocks start collapsed. |
+| `items` | `AnonymizedField \| undefined` | Array field: the anonymized item field definition. |
+| `fields` | `AnonymizedField[] \| undefined` | Group field: nested fields. |
+| `blocks` | `AnonymizedBlock[] \| undefined` | Blocks field: the anonymized block definitions — see [Blocks](#blocks-anonymizedblock). |
+| `tabCount` | `number \| undefined` | Tabs field: number of tabs. |
+| `tabs` | `{ fieldCount: number; fields: AnonymizedField[] }[] \| undefined` | Tabs field: each tab's field count and anonymized fields. |
+| `hasCustomCell` | `boolean \| undefined` | Whether a custom list-view cell renderer is configured. |
+| `enableSorting` | `boolean \| undefined` | Whether the list view can sort by this field. |
+| `enableHiding` | `boolean \| undefined` | Whether this field's column can be hidden in the list view. |
+| `on` | `"create" \| "update" \| "publish" \| undefined` | `commitTs` field: which lifecycle event sets the timestamp. |
 
 Any config key not on this allowlist is silently dropped, not sent as-is.
 
 #### Example payload
 
-Regenerated from `vex telemetry status --json` run against `apps/test` (do not hand-edit;
-re-run the command and paste the output here whenever the schema changes):
+Real output of `vex telemetry status --json` run against the `apps/test` fixture project (a
+config with 24 collections, 3 globals, 1 media collection and 585 fields in total, covering
+every supported field type). `machineId` and `projectId` below have been replaced with
+all-zero placeholders of the same shape. The `collections` and `globals` arrays have been
+trimmed from the real 24 and 3 entries down to one representative collection — `collection4`,
+showing a `text` field next to a `blocks` field whose block nests `text`, `upload`, and two
+`array` fields each holding a `group` — and one representative global — `global2`, showing
+`relationship`, `upload`, and sidebar-positioned fields — so this page stays readable. The
+top-level counts (`collectionCount`, `fieldCount`, etc.) are the real, untrimmed totals for
+the fixture project; `mediaCollections` and `features` are shown in full since the project
+only has one media collection. `@vexcms/telemetry` has been removed from `vexVersions` below:
+it's an internal workspace dependency of this monorepo's test fixture, not something a real
+project installs — telemetry ships bundled inside `vex` and `create-vexcms`.
 
 ```json
 {
   "schemaVersion": 1,
   "event": "dev",
-  "machineId": "3f1b1e2a-2b3e-4f90-9c3a-7c2a6d9e4b11",
-  "projectId": "8d9a6a1f4e3c2b1a0f9e8d7c6b5a4938271605f4e3d2c1b0a9988776655443322",
-  "sentAt": "2026-10-26T18:04:12.000Z",
+  "machineId": "00000000-0000-0000-0000-000000000000",
+  "projectId": "0000000000000000000000000000000000000000000000000000000000000000",
+  "sentAt": "2026-11-04T17:00:55.631Z",
   "environment": {
     "vexVersions": {
-      "@vexcms/core": "^0.1.0",
-      "@vexcms/next": "^0.1.0",
-      "@vexcms/react": "^0.1.0"
+      "@vexcms/better-auth": "workspace:*",
+      "@vexcms/core": "workspace:*",
+      "@vexcms/file-storage-convex": "workspace:*",
+      "@vexcms/next": "workspace:*",
+      "@vexcms/react": "workspace:*",
+      "@vexcms/richtext-plate": "workspace:*",
+      "@vexcms/cli": "workspace:*"
     },
-    "nodeVersion": "v22.9.0",
+    "nodeVersion": "v24.9.0",
     "os": "darwin",
     "arch": "arm64",
-    "packageManager": "pnpm"
+    "packageManager": "pnpm",
+    "framework": "next"
+  },
+  "outcome": {
+    "status": "ok"
   },
   "config": {
+    "collectionCount": 24,
+    "globalCount": 3,
+    "mediaCollectionCount": 1,
+    "blockCount": 20,
+    "fieldCount": 585,
     "collections": [
       {
-        "name": "collection1",
+        "name": "collection4",
+        "fieldCount": 2,
         "fields": [
-          { "name": "field1", "type": "text", "required": true, "localized": false },
-          { "name": "field2", "type": "richText", "required": false },
-          { "name": "field3", "type": "select", "optionCount": 3, "required": true },
-          { "name": "field4", "type": "relationship", "hasMany": false, "required": false }
+          {
+            "name": "field172",
+            "type": "text",
+            "required": true,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": true,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMask": false,
+            "hasSearchIndex": false
+          },
+          {
+            "name": "field173",
+            "type": "blocks",
+            "required": false,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "defaultCollapsed": false,
+            "max": 1,
+            "blocks": [
+              {
+                "name": "block16",
+                "fieldCount": 5,
+                "fields": [
+                  {
+                    "name": "field174",
+                    "type": "text",
+                    "required": false,
+                    "hidden": false,
+                    "readOnly": false,
+                    "position": "main",
+                    "cellAlignment": "left",
+                    "hasValidate": false,
+                    "hasIndex": false,
+                    "enableSorting": false,
+                    "enableHiding": true,
+                    "hasMask": false,
+                    "hasSearchIndex": false
+                  },
+                  {
+                    "name": "field175",
+                    "type": "upload",
+                    "required": false,
+                    "hidden": false,
+                    "readOnly": false,
+                    "position": "main",
+                    "cellAlignment": "left",
+                    "hasValidate": false,
+                    "hasIndex": false,
+                    "enableSorting": false,
+                    "enableHiding": true,
+                    "hasMany": false,
+                    "hasAccept": false,
+                    "target": "media1"
+                  },
+                  {
+                    "name": "field176",
+                    "type": "text",
+                    "required": false,
+                    "hidden": false,
+                    "readOnly": false,
+                    "position": "main",
+                    "cellAlignment": "left",
+                    "hasValidate": false,
+                    "hasIndex": false,
+                    "enableSorting": false,
+                    "enableHiding": true,
+                    "hasMask": false,
+                    "hasSearchIndex": false
+                  },
+                  {
+                    "name": "field177",
+                    "type": "array",
+                    "required": false,
+                    "hidden": false,
+                    "readOnly": false,
+                    "position": "main",
+                    "cellAlignment": "left",
+                    "hasValidate": false,
+                    "hasIndex": false,
+                    "enableSorting": false,
+                    "enableHiding": true,
+                    "items": {
+                      "name": "field178",
+                      "type": "group",
+                      "required": true,
+                      "hidden": false,
+                      "readOnly": false,
+                      "position": "main",
+                      "cellAlignment": "left",
+                      "hasValidate": false,
+                      "hasIndex": false,
+                      "enableSorting": false,
+                      "enableHiding": true,
+                      "defaultCollapsed": false,
+                      "fields": [
+                        {
+                          "name": "field179",
+                          "type": "text",
+                          "required": true,
+                          "hidden": false,
+                          "readOnly": false,
+                          "position": "main",
+                          "cellAlignment": "left",
+                          "hasValidate": false,
+                          "hasIndex": false,
+                          "enableSorting": false,
+                          "enableHiding": true,
+                          "hasMask": false,
+                          "hasSearchIndex": false
+                        },
+                        {
+                          "name": "field180",
+                          "type": "text",
+                          "required": true,
+                          "hidden": false,
+                          "readOnly": false,
+                          "position": "main",
+                          "cellAlignment": "left",
+                          "hasValidate": false,
+                          "hasIndex": false,
+                          "enableSorting": false,
+                          "enableHiding": true,
+                          "hasMask": false,
+                          "hasSearchIndex": false
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "field181",
+                    "type": "array",
+                    "required": false,
+                    "hidden": false,
+                    "readOnly": false,
+                    "position": "main",
+                    "cellAlignment": "left",
+                    "hasValidate": false,
+                    "hasIndex": false,
+                    "enableSorting": false,
+                    "enableHiding": true,
+                    "items": {
+                      "name": "field182",
+                      "type": "group",
+                      "required": true,
+                      "hidden": false,
+                      "readOnly": false,
+                      "position": "main",
+                      "cellAlignment": "left",
+                      "hasValidate": false,
+                      "hasIndex": false,
+                      "enableSorting": false,
+                      "enableHiding": true,
+                      "defaultCollapsed": false,
+                      "fields": [
+                        {
+                          "name": "field183",
+                          "type": "text",
+                          "required": true,
+                          "hidden": false,
+                          "readOnly": false,
+                          "position": "main",
+                          "cellAlignment": "left",
+                          "hasValidate": false,
+                          "hasIndex": false,
+                          "enableSorting": false,
+                          "enableHiding": true,
+                          "hasMask": false,
+                          "hasSearchIndex": false
+                        },
+                        {
+                          "name": "field184",
+                          "type": "text",
+                          "required": true,
+                          "hidden": false,
+                          "readOnly": false,
+                          "position": "main",
+                          "cellAlignment": "left",
+                          "hasValidate": false,
+                          "hasIndex": false,
+                          "enableSorting": false,
+                          "enableHiding": true,
+                          "hasMask": false,
+                          "hasSearchIndex": false
+                        },
+                        {
+                          "name": "field185",
+                          "type": "text",
+                          "required": false,
+                          "hidden": false,
+                          "readOnly": false,
+                          "position": "main",
+                          "cellAlignment": "left",
+                          "hasValidate": false,
+                          "hasIndex": false,
+                          "enableSorting": false,
+                          "enableHiding": true,
+                          "hasMask": false,
+                          "hasSearchIndex": false
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
         ],
-        "versions": true,
-        "drafts": true
+        "hasDrafts": false,
+        "hasLivePreview": false,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
       }
     ],
-    "globals": [],
-    "blocks": [],
+    "globals": [
+      {
+        "name": "global2",
+        "fieldCount": 9,
+        "fields": [
+          {
+            "name": "field565",
+            "type": "text",
+            "required": true,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMask": false,
+            "hasSearchIndex": false
+          },
+          {
+            "name": "field567",
+            "type": "relationship",
+            "required": false,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMany": false,
+            "target": "collection5"
+          },
+          {
+            "name": "field569",
+            "type": "upload",
+            "required": false,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMany": false,
+            "hasAccept": false,
+            "target": "media1"
+          },
+          {
+            "name": "field570",
+            "type": "text",
+            "required": false,
+            "hidden": false,
+            "readOnly": false,
+            "position": "sidebar",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMask": false,
+            "hasSearchIndex": false
+          }
+        ],
+        "hasDrafts": false,
+        "hasLivePreview": false,
+        "timestamps": false,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      }
+    ],
+    "mediaCollections": [
+      {
+        "name": "media1",
+        "fieldCount": 9,
+        "fields": [
+          {
+            "name": "field577",
+            "type": "text",
+            "required": true,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMask": false,
+            "hasSearchIndex": true
+          },
+          {
+            "name": "field578",
+            "type": "text",
+            "required": true,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMask": false,
+            "hasSearchIndex": false
+          },
+          {
+            "name": "field579",
+            "type": "text",
+            "required": true,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMask": false,
+            "hasSearchIndex": false
+          },
+          {
+            "name": "field580",
+            "type": "number",
+            "required": true,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMask": false
+          },
+          {
+            "name": "field581",
+            "type": "text",
+            "required": true,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMask": false,
+            "hasSearchIndex": false
+          },
+          {
+            "name": "field582",
+            "type": "checkbox",
+            "required": false,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": true,
+            "enableSorting": false,
+            "enableHiding": true,
+            "defaultValue": false
+          },
+          {
+            "name": "field583",
+            "type": "text",
+            "required": true,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMask": false,
+            "hasSearchIndex": false
+          },
+          {
+            "name": "field584",
+            "type": "number",
+            "required": false,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMask": false
+          },
+          {
+            "name": "field585",
+            "type": "number",
+            "required": false,
+            "hidden": false,
+            "readOnly": false,
+            "position": "main",
+            "cellAlignment": "left",
+            "hasValidate": false,
+            "hasIndex": false,
+            "enableSorting": false,
+            "enableHiding": true,
+            "hasMask": false
+          }
+        ],
+        "hasDrafts": false,
+        "hasLivePreview": false,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        },
+        "storageAdapterKind": "presigned-url"
+      }
+    ],
     "features": {
+      "drafts": true,
       "livePreview": true,
-      "localization": false,
       "conditions": true,
-      "slots": false,
-      "inputMasks": false
+      "slots": true,
+      "inputMasks": true,
+      "localization": false,
+      "auth": true,
+      "authAdapter": "betterAuth",
+      "access": {
+        "enabled": true,
+        "roleCount": 5,
+        "ruleCount": 102,
+        "fieldPermissionRuleCount": 0,
+        "queryConstraintRuleCount": 10,
+        "callbackRuleCount": 19,
+        "customActionCount": 2,
+        "customResourceCount": 2,
+        "organizations": false
+      },
+      "hookCount": 0
     },
-    "auth": { "kind": "better-auth" },
-    "storage": { "kind": "convex-file-storage" },
-    "counts": { "collections": 1, "globals": 0, "blocks": 0 }
-  },
-  "timings": {
-    "configLoadMs": 42,
-    "schemaGenMs": 118,
-    "schemaChanged": true
+    "storageAdapterKinds": [
+      "presigned-url"
+    ]
   }
 }
 ```
 
+Note this example has no `timings` key: `vex telemetry status --json` shows what the
+anonymized config payload would look like, not an actual `vex dev` run's measured timings, so
+`timings` is only ever present on a real `dev` event sent from a live `vex dev` process.
+
 ## What is never sent
 
 - Collection, field, global or block **names**, or any other project-specific string (labels,
-  descriptions, defaults, regex patterns, URLs).
+  descriptions, defaults, regex patterns, URLs, option values, mask patterns).
 - Document or media **content** of any kind.
 - File system **paths** — only a one-way hash derived from the resolved project path (see
   below), never the path itself.
@@ -3204,6 +5814,9 @@ re-run the command and paste the output here whenever the schema changes):
 - Environment variables, other than the telemetry control vars themselves, are never read or
   sent.
 - Any **user identity**: name, email, account, or organization.
+- **Error messages, stack traces, or caught error details** of any kind — only the coarse
+  `outcome.stage`/`outcome.errorCode` categories above. Convex push/deploy failures are never
+  reported.
 
 ## Anonymous ids
 
@@ -3215,16 +5828,11 @@ Two ids appear in every payload, and neither can be reversed to a real name or p
   (`realpath`-ed) absolute path of the project directory. It lets us tell "this is the same
   project run twice" without the project path, salt, or machine id ever leaving your machine
   in reversible form. A different machine (different salt) produces a different id for the
-  same project.
-
-### Fingerprint caveat
-
-`projectId` is stable for a given project on a given machine, so if you run `vex dev` from
-the same directory on the same machine many times, those events share a `projectId`. This is
-intentional — it is how repeat runs of one project are not double-counted — but it does mean
-the id is a per-machine, per-path fingerprint, not a one-time nonce. It cannot be correlated
-across machines (different salts) or back to a path or identity without access to your local
-settings file, which never leaves your machine.
+  same project. Because the id is stable per project per machine, repeated runs of one
+  project from the same directory share a `projectId` by design — this is how repeat runs are
+  not double-counted, not a one-time nonce. It cannot be correlated across machines (different
+  salts) or back to a path or identity without access to your local settings file, which never
+  leaves your machine.
 
 ## Retention and access
 
@@ -3241,12 +5849,13 @@ Telemetry can be disabled per machine, per invocation, or automatically:
 | `vex telemetry disable` | Stores `enabled: false` in the local settings file (`~/.config/vexcms/telemetry.json`, or under `$XDG_CONFIG_HOME` if set). Persists across runs. |
 | `vex telemetry enable` | Re-enables after a prior `disable`. |
 | `vex telemetry status [--json]` | Shows whether telemetry is enabled, why (reason), and the settings file path. With `--json`, prints the exact payload that would be sent for the current project, without sending it. |
-| `DO_NOT_TRACK=1` (or any truthy value other than `0`/`false`) | Disables telemetry for that invocation, regardless of stored settings. Takes precedence over everything except nothing — it is checked first. |
+| `DO_NOT_TRACK=1` (or any truthy value other than `0`/`false`) | Disables telemetry for that invocation, regardless of stored settings. Takes precedence over everything else. |
 | `VEX_TELEMETRY_DISABLED=1` | Same effect as `DO_NOT_TRACK`, checked next. |
 | CI environments | Telemetry is off automatically when a CI environment is detected — no action needed. |
 
 Precedence, highest first: `DO_NOT_TRACK` → `VEX_TELEMETRY_DISABLED` → CI detection → the
-stored `enabled` setting → on by default.
+stored `enabled` setting → on by default. None of the environment-variable overrides can
+force telemetry *on* — they only ever turn it off.
 
 ## Debug mode
 
@@ -3263,16 +5872,68 @@ waiting for `vex telemetry status --json` to finish a full config load.
 
 Verify: `pnpm --filter docs build`
 
-### Step 10 — Legal review [dev]
+### Step 10 — Legal review and release gate [dev]
 
 - [ ] [dev] Review the opt-out default, the `showTelemetryNotice` text (Step 5) and `guides/telemetry.mdx` (Step 9) under GDPR and CCPA
 - [ ] [dev] Apply wording changes to `packages/telemetry/src/showTelemetryNotice.ts` (and its test's expected text) and the docs page
+- [ ] [dev] Choose the receiver's final home (`apps/www` or a dedicated vexcms app), move the Step 8 collections, `convex/telemetry/` and the `/telemetry/events` route there, and set `DEFAULT_TELEMETRY_ENDPOINT` in `packages/telemetry/src/constants.ts` to its `.convex.site/telemetry/events` URL. Until then the constant points at a placeholder host, so a released CLI would send nothing anywhere
+- [ ] [dev] Version the packages (`changeset version`; decide whether `@vexcms/telemetry` joins the `fixed` group in `.changeset/config.json`)
 
 Verify: wording approved; `pnpm --filter @vexcms/telemetry test` and `pnpm --filter docs build` green after edits.
 
+### Step 11 — Keep repo-internal runs out of telemetry [agent]
+
+Why: `scripts/verify-scaffold.mjs` and `scripts/vex-dev.mjs` run `vex` against `apps/test` as part of the repo's own verification and local dev loop; neither run is a real project, so neither should emit a telemetry event.
+
+- [ ] `scripts/verify-scaffold.mjs` (edit)
+- [ ] `scripts/vex-dev.mjs` (edit)
+
+#### scripts/verify-scaffold.mjs
+
+1 edit — everything else unchanged.
+
+**1 — `runStep`'s `spawnSync` call.** Add `env` so every subprocess this helper runs (including `vex dev`/`vex deploy` invocations elsewhere in this script) inherits a disabled telemetry flag:
+
+```js
+function runStep(label, command, args, cwd) {
+  console.log(`  \u2192 ${label}`);
+  const start = Date.now();
+  const result = spawnSync(command, args, {
+    cwd,
+    stdio: "inherit",
+    env: { ...process.env, VEX_TELEMETRY_DISABLED: "1" },
+  });
+  const ok = result.status === 0;
+  const ms = Date.now() - start;
+  console.log(
+    ok
+      ? `  \u2713 ${label} (${ms}ms)`
+      : `  \u2717 ${label} \u2014 exit ${result.status} (${ms}ms)`
+  );
+  return { label, ok, exitCode: result.status, ms };
+}
+```
+
+#### scripts/vex-dev.mjs
+
+1 edit — everything else unchanged.
+
+**1 — the `spawn('node', [...])` call.** Add `env` beside the existing `cwd`/`stdio`:
+
+```js
+  vexProcess = spawn('node', ['packages/cli/dist/index.js', 'dev', '--cwd', 'apps/test'], {
+    cwd: projectRoot,
+    stdio: 'inherit',
+    env: { ...process.env, VEX_TELEMETRY_DISABLED: '1' }
+  });
+```
+
+Verify: `CI= XDG_CONFIG_HOME=$(mktemp -d) VEX_TELEMETRY_DEBUG=1 node scripts/verify-scaffold.mjs 2>&1 | grep -c '\[vex telemetry\]'` prints `0` (`CI` cleared so the count is not zero merely because CI detection disabled telemetry).
+
 ## Verification
 
-- `pnpm --filter @vexcms/telemetry --filter @vexcms/cli --filter create-vexcms build test typecheck`
+- `pnpm --filter @vexcms/telemetry --filter @vexcms/cli --filter create-vexcms run build`, then the same filters with `run test` and `run typecheck` (one script per `pnpm run`; extra words are forwarded to the script as arguments)
 - `node scripts/check-packed-manifests.mjs --sweep` and `node scripts/verify-scaffold.mjs`
 - Acceptance (stem): `secretProject` leak test green (Step 4); each off switch sends nothing (Steps 2, 5, 6); unreachable endpoint resolves ≤1.6s (Step 5); every payload key appears in the docs field table (Step 9)
 - `pnpm --filter docs build`
+- `CI= XDG_CONFIG_HOME=$(mktemp -d) VEX_TELEMETRY_DEBUG=1 node scripts/verify-scaffold.mjs 2>&1 | grep -c '\[vex telemetry\]'` prints `0` (Step 11)

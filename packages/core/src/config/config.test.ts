@@ -410,3 +410,26 @@ describe("defineServerConfig", () => {
     expect(server.auth).toEqual({ adapter });
   });
 });
+
+describe("defineServerConfig — telemetry.hideLogs", () => {
+  it("defaults to false when telemetry is omitted", () => {
+    const server = defineServerConfig({ config: defineConfig() });
+    expect(server.telemetry).toEqual({ hideLogs: false });
+  });
+
+  it("passes through an explicit hideLogs: true", () => {
+    const server = defineServerConfig({
+      config: defineConfig(),
+      server: { telemetry: { hideLogs: true } },
+    });
+    expect(server.telemetry).toEqual({ hideLogs: true });
+  });
+
+  it("resolves hideLogs: false when the group is present but hideLogs is omitted", () => {
+    const server = defineServerConfig({
+      config: defineConfig(),
+      server: { telemetry: {} },
+    });
+    expect(server.telemetry).toEqual({ hideLogs: false });
+  });
+});

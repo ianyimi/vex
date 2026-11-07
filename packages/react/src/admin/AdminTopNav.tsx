@@ -12,11 +12,11 @@ import {
 } from "@vexcms/core";
 import { adminHref } from "./adminHref";
 import { useVexConfig } from "../config/VexConfigContext";
-import { useFrameworkComponents } from "../config/useFrameworkComponents";
+import { COVERING_ROUTE_LINK_ATTRIBUTE, useFrameworkComponents } from "../config/useFrameworkComponents";
+import { useLastUncoveredValue } from "../config/useLastUncoveredValue";
 import { useVexAuth } from "../auth/VexAuthContext";
 import { convexQuery } from "@convex-dev/react-query";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useQueryState } from "nuqs";
 import { cn } from "../utils/cn";
 
 /**
@@ -70,18 +70,17 @@ function ViewSiteButton({ className }: { className?: string }) {
 
 /**
  * Reconstructs the current admin URL from the same route pieces `AdminTopNav` already
- * derives for its breadcrumbs — used ONLY as the sign-in redirect target (below), so
- * signing back in lands on the admin page the visitor was viewing. Deliberately NOT
- * `window.location` (would need a client-only effect to avoid an SSR/hydration mismatch,
- * and this component's auth state is already resolved server-side with no flash — adding
- * a client-only redirect target would reintroduce exactly the flash this avoids
- * elsewhere). On a collection list, the active saved view (`?view=`) is kept so signing
- * in returns to the same tab — if the new identity can't see that view, the list falls
- * back to its default the same way an unknown view id always does. Other query params
- * (search/sort/filter) are not preserved.
+ * derives for its breadcrumbs, plus the current query — used ONLY as the sign-in
+ * redirect target (below), so signing back in lands on exactly the page and state the
+ * visitor left (list filter/sort/search/view, active tab, …). If the new identity can't
+ * see that page or view, the page itself handles it the same way it handles any URL
+ * (redirect, not-found, fallback to the default view). The query comes from
+ * `FrameworkComponents.useSearchParams` (SSR-safe), never `window.location`, so the
+ * server render and hydration agree.
  *
- * @param props - The same `basePath`/active-route pieces `AdminTopNav`'s body computes.
- * @returns The current admin URL (plus `?view=` on a collection list), via `adminHref`.
+ * @param props - The same `basePath`/active-route pieces `AdminTopNav`'s body computes,
+ *   plus `search`, the current query string without its leading `?` (`""` for none).
+ * @returns The current admin URL, via `adminHref`, with the query appended.
  */
 function buildCurrentAdminHref(props: {
   basePath: string;
@@ -89,27 +88,30 @@ function buildCurrentAdminHref(props: {
   activeCollection: CollectionConfig | MediaCollectionConfig | undefined;
   isCollections: boolean;
   isGlobals: boolean;
-  view: string | null;
+  search: string;
 }): string {
+  const query = props.search ? `?${props.search}` : "";
   if (props.activeCollection) {
-    return props.activeDocID
-      ? adminHref(
-          { type: "document", slug: props.activeCollection.slug, id: props.activeDocID },
-          props.basePath,
-        )
-      : `${adminHref({ type: "collection", slug: props.activeCollection.slug }, props.basePath)}${
-          props.view ? `?view=${encodeURIComponent(props.view)}` : ""
-        }`;
+    return `${
+      props.activeDocID
+        ? adminHref(
+            { type: "document", slug: props.activeCollection.slug, id: props.activeDocID },
+            props.basePath,
+          )
+        : adminHref({ type: "collection", slug: props.activeCollection.slug }, props.basePath)
+    }${query}`;
   }
   if (props.isCollections) {
-    return adminHref({ type: "collections" }, props.basePath);
+    return `${adminHref({ type: "collections" }, props.basePath)}${query}`;
   }
   if (props.isGlobals) {
-    return props.activeDocID
-      ? adminHref({ type: "global", slug: props.activeDocID }, props.basePath)
-      : adminHref({ type: "globals" }, props.basePath);
+    return `${
+      props.activeDocID
+        ? adminHref({ type: "global", slug: props.activeDocID }, props.basePath)
+        : adminHref({ type: "globals" }, props.basePath)
+    }${query}`;
   }
-  return adminHref({ type: "dashboard" }, props.basePath);
+  return `${adminHref({ type: "dashboard" }, props.basePath)}${query}`;
 }
 
 /**
@@ -154,7 +156,14 @@ function AuthControl(props: { className?: string; currentHref: string }): ReactN
     return (
       <Button
         nativeButton={false}
-        render={<VexLink href={auth.signInHref(props.currentHref)} />}
+        render={
+          <VexLink
+            href={auth.signInHref(props.currentHref)}
+            // Opens the app's sign-in modal over the admin — not a navigation away from
+            // it, so an unsaved-changes guard lets it through.
+            {...{ [COVERING_ROUTE_LINK_ATTRIBUTE]: "" }}
+          />
+        }
         variant="outline"
         icon="LogIn"
         iconPosition="right"
@@ -354,16 +363,17 @@ export default function AdminTopNav(props: { activeSlug?: string; activeDocID?: 
     isGlobals,
     activeGlobal,
   });
-  // nuqs (the list view's own URL-state source, adapter mounted by the admin layout) reads
-  // `?view=` identically on the server and the client — no hydration mismatch.
-  const [view] = useQueryState("view");
+  // The current query, appended to the sign-in return URL. Under a covering route (the
+  // sign-in modal itself) the URL is the modal's — keep the admin page's own query.
+  const frameworkComponents = useFrameworkComponents();
+  const search = useLastUncoveredValue(frameworkComponents.useSearchParams?.().toString() ?? "");
   const currentHref = buildCurrentAdminHref({
     basePath: config.basePath,
     activeDocID: props.activeDocID,
     activeCollection,
     isCollections,
     isGlobals,
-    view,
+    search,
   });
 
   // Built FLAT, in logical order (Home → Collection → [Document]), exactly like the

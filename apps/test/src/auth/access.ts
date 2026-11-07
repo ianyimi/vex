@@ -12,6 +12,8 @@ import {
   images,
   pages,
   posts,
+  telemetryEvents,
+  telemetryProjects,
   testimonials,
   themes,
   users,
@@ -44,6 +46,8 @@ export const access = defineAccess({
     announcement,
     fields,
     testimonials,
+    telemetryEvents,
+    telemetryProjects,
   ],
   customResources: {
     edit: {
@@ -59,6 +63,22 @@ export const access = defineAccess({
   permissions: {
     [USER_ROLES.admin]: {
       "*": true,
+      telemetryEvents: {
+        "*": false,
+        read: true,
+        readViews: true,
+        createView: true,
+        updateView: true,
+        deleteView: true,
+      },
+      telemetryProjects: {
+        "*": false,
+        read: true,
+        readViews: true,
+        createView: true,
+        updateView: true,
+        deleteView: true,
+      },
     },
 
     // ── Guest: anonymous demo session (Polish — anonymous admin access). Exclusively

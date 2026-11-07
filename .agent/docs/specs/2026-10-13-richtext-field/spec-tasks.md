@@ -102,29 +102,29 @@ Verify: pnpm --filter @vexcms/react test -- fields/richtext && pnpm --filter @ve
 
 ## Step 6 — Upgrade `platejs` / `@platejs/*` to 53.x [agent]
 Why: co-editing (Track PL / Pro, `@platejs/yjs` needs `platejs >=53.0.0`) — upgrading before 0.1.0, before users store rich text edited on 52, is cheaper than after; decided 2026-10-21.
-Verify: pnpm install && pnpm --filter @vexcms/richtext-plate typecheck && pnpm --filter @vexcms/richtext-plate build && pnpm --filter @vexcms/react test -- fields/richtext
-- [ ] `pnpm-workspace.yaml` catalog — `platejs` and every `@platejs/*` entry to the current 53.x line (53.3.18 on 2026-10-21); all `@platejs/*` from one release line
-- [ ] read the Plate 52 → 53 changelog / migration notes; record breaking changes that touch `packages/richtext-plate` in the spec
-- [ ] `packages/richtext-plate/src/**` — fix every type/API break; no `@ts-nocheck` reintroduced
-- [ ] stored value compatibility — a `RichTextDocument` saved under 52 still loads and renders under 53 (fixture test)
-- [ ] `scripts/check-packed-manifests.mjs` / peer ranges — `platejs` peer range updated if `richtext-plate` declares one
+Verify: pnpm install && pnpm --filter @vexcms/richtext-plate typecheck && pnpm --filter @vexcms/richtext-plate build && pnpm --filter @vexcms/richtext-plate exec vitest run --maxWorkers=2 src && TZ=UTC pnpm --filter @vexcms/react exec vitest run --maxWorkers=2 src/fields/richtext
+- [x] `pnpm-workspace.yaml` catalog — `platejs` and every `@platejs/*` entry to the current 53.x line (53.3.18 on 2026-10-21); all `@platejs/*` from one release line
+- [x] read the Plate 52 → 53 changelog / migration notes; record breaking changes that touch `packages/richtext-plate` in the spec
+- [x] `packages/richtext-plate/src/**` — fix every type/API break; no `@ts-nocheck` reintroduced
+- [x] stored value compatibility — a `RichTextDocument` saved under 52 still loads and renders under 53 (fixture test)
+- [x] `scripts/check-packed-manifests.mjs` / peer ranges — `platejs` peer range updated if `richtext-plate` declares one
 
 ## Step 7 — Dogfood in `apps/test` [dev]
 Why: proves schema gen → type gen → admin form → cell → front-end render against a real deployment.
 Verify: `pnpm --filter test typecheck && pnpm --filter test build`; manual: create/edit a post body in the running admin (P-024 — attach, never start a dev server), save draft, publish, view the rendered page
-- [ ] `apps/test/package.json` — `@vexcms/richtext-plate: workspace:*`
-- [ ] `apps/test/src/vex.config.ts` — `editor: plateEditor()`
-- [ ] `apps/test/src/vexcms/collections/posts.ts` — `body: richtext({ label: "Body", mediaCollectionSlug: "images" })`
-- [ ] `apps/test/convex/posts.ts` — `getBySlug` query for the public page
-- [ ] regenerate schema + types (`vex generate`)
-- [ ] `apps/test/src/app/(frontend)/(site)/posts/[slug]/page.tsx` — renders `body` with `RichText`
+- [x] `apps/test/package.json` — `@vexcms/richtext-plate: workspace:*`
+- [x] `apps/test/src/vex.config.ts` — `editor: plateEditor()`
+- [x] `apps/test/src/vexcms/collections/posts.ts` — `body: richtext({ label: "Body", mediaCollectionSlug: "images" })`
+- [x] `apps/test/convex/posts.ts` — `getBySlug` query for the public page
+- [x] regenerate schema + types (`vex generate`)
+- [x] `apps/test/src/app/(frontend)/(site)/posts/[slug]/page.tsx` — renders `body` with `RichText`
 
 ## Step 8 — Docs, README, packed-tarball probe, changeset [agent]
 Why: acceptance criteria — public docs stop saying richtext doesn't exist; consumers typecheck against the published artifact.
-Verify: `node scripts/check-packed-manifests.mjs --richtext` passes; `node scripts/check-packed-manifests.mjs --richtext --richtext-negative` exits non-zero (AP-013); `pnpm --filter docs build`
-- [ ] `apps/docs/src/content/docs/fields/richtext.mdx` new; `coming-soon.mdx` drops richtext
-- [ ] `packages/core/README.md` — remove the three "no richtext" statements
-- [ ] `packages/richtext-plate/README.md` — install + `editor: plateEditor()` + `RichText` render
-- [ ] `scripts/check-packed-manifests.mjs` — packed-tarball consumer probe importing `richtext()`, `plateEditor`, `RichText`
-- [ ] `.changeset/*.md` — `patch` for core, react, richtext-plate (P-025)
-- [ ] launch plan: D status → done
+Verify: `node scripts/check-packed-manifests.mjs --richtext` passes; `! node scripts/check-packed-manifests.mjs --richtext --richtext-negative` passes (AP-013 — confirms the probe detects a missing export); `pnpm --filter docs build`
+- [x] `apps/docs/src/content/docs/fields/richtext.mdx` new; `coming-soon.mdx` drops richtext
+- [x] `packages/core/README.md` — remove the three "no richtext" statements
+- [x] `packages/richtext-plate/README.md` — install + `editor: plateEditor()` + `RichText` render
+- [x] `scripts/check-packed-manifests.mjs` — packed-tarball consumer probe importing `richtext()`, `plateEditor`, `RichText`
+- [x] `.changeset/*.md` — `patch` for core, react, richtext-plate (P-025)
+- [x] launch plan: D status → done

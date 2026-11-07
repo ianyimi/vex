@@ -29,7 +29,7 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · �
 - ✅ Static prerendering, path-based revalidation, `sitemap.xml` / `robots.txt`
 - ✅ Exported React test kit — run the admin panel's own component suite against your config
 - ✅ Lifecycle hooks — `beforeChange` / `beforeDelete` (inline, may reject a write) and `afterChange` / `afterDelete` (via `convex-helpers` triggers), wired by default in `create-vexcms`'s `base-nextjs` template and both hand-maintained apps
-- ✅ Custom `validate()` — async, server-side, database-aware (uniqueness checks and cross-document rules), enforced on every write. A dedicated `lifecycle-hooks` guide covering both of the above is still to write; see `@vexcms/core`'s README until then.
+- ✅ Custom `validate()` — async, server-side, database-aware (uniqueness checks and cross-document rules), enforced on every write. Both are covered in the [lifecycle hooks guide](/guides/lifecycle-hooks/)
 - ✅ Live preview — the admin panel streams unsaved form state onto your real route, for collections and globals alike. Preview settings declare per collection/global or in one root `admin.livePreview` map; `url` takes a literal path, a `(doc) => string` resolver, or a `{ server }` resolver that reads the database. Origin-allowlisted and gated per request by a session-verified cookie
 - ✅ `email`, `textarea`, and `json` fields — `textarea` adds a character counter, `json` is a CodeMirror editor
 - ✅ `tabs`, `collapsible`, `row`, and `ui` layout fields — organize sibling fields into tabs, collapsible sections, and side-by-side rows, or drop in a non-persisted display/action component, all legal anywhere a `fields` record is
@@ -40,13 +40,13 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · �
 - ✅ List views — per-collection search, sort, an AND/OR filter builder with per-field filter inputs, column visibility/order/pinning/resizing, page size, local and shared saved views (`admin.view` / `admin.views`), a peek panel, row and bulk actions, server-prerendered first paint. See the [list views guide](/guides/list-views/)
 - ✅ `commitTs()` field — Convex's own commit timestamp, read-only and auto-indexed; the auto-injected `updatedAt` uses it
 - ✅ Edit-view overhaul — reorganized header with a ⋯ actions menu, every built-in action a replaceable `admin.components.edit` slot contribution, an unsaved-changes guard, duplicate for documents and blocks, and collection URLs under `/admin/collections/<slug>`. See the [admin customization guide](/guides/admin-customization/)
+- ✅ Field input consistency pass — consistent empty, loading, error, and read-only states across inputs, the relationship field included, and the media picker honours the upload field's `accept` filter
 
 ## In progress
 
 These are the v0.1.0 launch track, in the order they ship.
 
 - 🔄 Localization design — the storage model and versioning interaction decided before anyone has data to migrate. Localization ships free in the core
-- 🔄 Field input consistency pass — relationship field and others get consistent interaction and loading patterns
 - 🔄 Responsive pass across the admin panel, marketing template, and docs
 
 ## Planned

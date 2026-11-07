@@ -24,12 +24,12 @@ catalog:
   "@inquirer/prompts": 7.10.1
   "@lezer/highlight": 1.2.5
   "@next/eslint-plugin-next": 15.5.20
-  "@platejs/basic-nodes": 52.3.10
-  "@platejs/code-block": 52.3.16
-  "@platejs/link": 52.3.17
-  "@platejs/list": 52.3.10
-  "@platejs/media": 52.3.10
-  "@platejs/table": 52.3.20
+  "@platejs/basic-nodes": 53.0.0
+  "@platejs/code-block": 53.0.0
+  "@platejs/link": 53.3.5
+  "@platejs/list": 53.3.13
+  "@platejs/media": 53.1.4
+  "@platejs/table": 53.0.9
   "@t3-oss/env-nextjs": 0.13.11
   "@tailwindcss/postcss": 4.3.2
   "@tanstack/react-form": 1.33.1
@@ -78,7 +78,7 @@ catalog:
   next: 16.4.3
   nuqs: 2.9.0
   ora: 8.1.0
-  platejs: 52.3.21
+  platejs: 53.5.2
   pluralize-esm: 9.0.5
   prettier: 3.9.5
   react: 19.2.7

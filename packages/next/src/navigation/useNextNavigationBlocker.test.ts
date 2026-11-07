@@ -9,18 +9,32 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock, replace: replaceMock }),
 }));
 
+import { COVERING_ROUTE_LINK_ATTRIBUTE } from "@vexcms/react";
 import { useNextNavigationBlocker } from "./useNextNavigationBlocker";
+
+/**
+ * A back press off the sentinel: the browser lands on the guarded page's own entry
+ * (no sentinel marker in its state), then fires `popstate`.
+ */
+function backOffSentinel(): void {
+  act(() => {
+    window.history.replaceState(null, "", window.location.href);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+}
 
 function clickAnchor(props: {
   href: string;
   target?: string;
   download?: boolean;
   ctrlKey?: boolean;
+  coveringRoute?: boolean;
 }): MouseEvent {
   const anchor = document.createElement("a");
   anchor.href = props.href;
   if (props.target) anchor.target = props.target;
   if (props.download) anchor.setAttribute("download", "");
+  if (props.coveringRoute) anchor.setAttribute(COVERING_ROUTE_LINK_ATTRIBUTE, "");
   document.body.appendChild(anchor);
   const event = new MouseEvent("click", {
     bubbles: true,
@@ -76,9 +90,7 @@ describe("useNextNavigationBlocker", () => {
     rerender({ when: true });
     expect(pushStateSpy).toHaveBeenCalledTimes(1);
     expect(window.location.pathname).toBe("/admin/posts/123");
-    act(() => {
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    });
+    backOffSentinel();
     expect(onBlock).toHaveBeenCalledTimes(1);
   });
 
@@ -135,12 +147,35 @@ describe("useNextNavigationBlocker", () => {
     expect(onBlock).not.toHaveBeenCalled();
   });
 
+  it("lets a click on a covering-route link (the sign-in modal) through while blocking", () => {
+    const onBlock = vi.fn();
+    renderHook(() => useNextNavigationBlocker({ when: true, onBlock }));
+    const event = clickAnchor({ href: "/auth/sign-in?modal=1", coveringRoute: true });
+    expect(event.defaultPrevented).toBe(false);
+    expect(onBlock).not.toHaveBeenCalled();
+  });
+
+  it("does not block the back navigation that closes a covering route and lands on the sentinel", () => {
+    const onBlock = vi.fn();
+    renderHook(() => useNextNavigationBlocker({ when: true, onBlock }));
+    // The covering route was pushed on top of the sentinel; closing it returns ONTO the
+    // sentinel entry (its state still carries the marker), then fires `popstate`.
+    const sentinelState: unknown = window.history.state;
+    act(() => {
+      window.history.pushState(null, "", "/auth/sign-in?modal=1");
+      window.history.replaceState(sentinelState, "", "/admin/posts/123");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(onBlock).not.toHaveBeenCalled();
+    // Still guarded: a real back press off the sentinel afterwards is blocked.
+    backOffSentinel();
+    expect(onBlock).toHaveBeenCalledTimes(1);
+  });
+
   it("blocks a back/forward (popstate) navigation while blocking", () => {
     const onBlock = vi.fn();
     renderHook(() => useNextNavigationBlocker({ when: true, onBlock }));
-    act(() => {
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    });
+    backOffSentinel();
     expect(onBlock).toHaveBeenCalledTimes(1);
   });
 
@@ -157,9 +192,7 @@ describe("useNextNavigationBlocker", () => {
     const goSpy = vi.spyOn(window.history, "go").mockImplementation(() => {});
     const onBlock = vi.fn();
     renderHook(() => useNextNavigationBlocker({ when: true, onBlock }));
-    act(() => {
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    });
+    backOffSentinel();
     const proceed = onBlock.mock.calls[0]?.[0] as () => void;
     act(() => proceed());
     expect(goSpy).toHaveBeenCalledTimes(1);
@@ -172,9 +205,7 @@ describe("useNextNavigationBlocker", () => {
       .mockImplementation(() => window.dispatchEvent(new PopStateEvent("popstate")));
     const onBlock = vi.fn();
     renderHook(() => useNextNavigationBlocker({ when: true, onBlock }));
-    act(() => {
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    });
+    backOffSentinel();
     const proceed = onBlock.mock.calls[0]?.[0] as () => void;
     act(() => proceed());
     expect(goSpy).toHaveBeenCalledTimes(1);

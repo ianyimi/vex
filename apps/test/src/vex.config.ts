@@ -14,6 +14,8 @@ import {
   images,
   pages,
   posts,
+  telemetryEvents,
+  telemetryProjects,
   testimonials,
   themes,
   users,
@@ -27,6 +29,7 @@ import { resolvePagePath } from "./lib/resolvePagePath";
 import { announcement } from "./vexcms/globals/announcement";
 import { nav } from "./vexcms/globals/nav";
 import { siteSettings } from "./vexcms/globals/siteSettings";
+import { TrimOnBlurTextInput } from "./vexcms/admin/TrimOnBlurTextInput";
 
 /**
  * VexCMS client-safe configuration for the demo/development site.
@@ -45,11 +48,29 @@ const vexConfig = defineConfig({
   access,
   authCollections: betterAuthCollections(authSchema),
   editor: plateEditor(),
+  fields: {
+    inputMasks: {
+      number: "999-999-9999",
+    },
+  },
   admin: {
     sidebar: {
       side: "right",
     },
     components: {
+      fields: {
+        text: {
+          Input: [{ id: "acme.text.trimOnBlur", component: TrimOnBlurTextInput }],
+        },
+      },
+      // Hides the built-in "Duplicate" block action for every `blocks()`
+      // field project-wide (S4/S9: hiding is `{ id, hidden: true }` naming
+      // the built-in, never a silent id collision). `blocks.item.actions`
+      // is a root-only slot — it has no per-block-type scope, so this
+      // applies to every block type, not CTA alone.
+      blocks: {
+        itemActions: [{ id: BUILTIN_CONTRIBUTION_IDS.block.duplicate, hidden: true }],
+      },
       edit: {
         // Dogfoods a root-level `admin.components.edit.actionsMenu.items` contribution,
         // ordered after the built-ins (default array order — no `order`/`before`/`after`
@@ -120,6 +141,8 @@ const vexConfig = defineConfig({
     posts,
     fields,
     testimonials,
+    telemetryEvents,
+    telemetryProjects,
   ],
   mediaCollections: [images],
   globals: [nav, siteSettings, announcement],

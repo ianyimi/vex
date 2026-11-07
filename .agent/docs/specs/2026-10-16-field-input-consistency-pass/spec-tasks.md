@@ -537,13 +537,13 @@ Verify: pnpm --filter @vexcms/react test -- fields DataTable adminHref AdminSide
 
 ## Step 18 — Dogfood in `apps/test` + plan bookkeeping [dev]
 Why: proves every new path end-to-end against the developer's running deployment (P-024: attach, never start).
-Verify: pnpm --filter test typecheck && pnpm --filter www typecheck; browser smoke on the running admin of every changed input
-- [ ] `apps/test` collections — new fields, `tabs`/`collapsible`/`row`, conditions, masks, `fields.inputMasks`
-- [ ] regenerate schema + types (`vex generate`)
-- [ ] browser smoke checklist recorded
-- [ ] `.agent/docs/product/v0.1.0-launch-plan.md` — G re-scoped/in-progress; block items removed from H; non-goals updated
-- [ ] `.agent/docs/product/roadmap.md` — drop the `json`/`email`/`textarea`/`tabs` deferral
-- [ ] `apps/test/src/vex.config.ts` — root `admin.components.fields.text.Input` per-type override example
-- [ ] `apps/test/src/vexcms/collections/pages.ts` — one field with a per-field `admin.components.Input` override wrapping the built-in via `renderDefault`, and a `field.beforeInput` contribution
-- [ ] `apps/test/src/vexcms/blocks/CTA/config.ts` — `admin.components.blocks.itemActions` hides one built-in block action (`{ id: "vex.block.duplicate", hidden: true }`)
-- [ ] plugin-system stem bookkeeping (`.agent/docs/specs/2026-10-21-plugin-system/stem.md` "G placement" note) — mark G's slot groundwork (steps 7-8, 11, 15-17) done, out of this spec's touched-files list
+Verify: `pnpm --filter test typecheck && pnpm --filter www typecheck`; browser smoke on the running admin of every changed input
+- [x] `apps/test` collections — new fields, `tabs`/`collapsible`/`row`, conditions, masks, `fields.inputMasks`
+- [x] regenerate schema + types (`vex generate`)
+- [x] browser smoke checklist recorded
+- [x] `.agent/docs/product/v0.1.0-launch-plan.md` — G re-scoped/in-progress; block items removed from H; non-goals updated
+- [x] `.agent/docs/product/roadmap.md` — drop the `json`/`email`/`textarea`/`tabs` deferral
+- [x] `apps/test/src/vex.config.ts` — root `admin.components.fields.text.Input` per-type override example
+- [x] `apps/test/src/vexcms/collections/pages.ts` — one field with a per-field `admin.components.Input` override wrapping the built-in via `renderDefault`, and a `field.beforeInput` contribution
+- [x] `apps/test/src/vexcms/blocks/CTA/config.ts` — `admin.components.blocks.itemActions` hides one built-in block action (`{ id: "vex.block.duplicate", hidden: true }`)
+- [x] plugin-system stem bookkeeping (`.agent/docs/specs/2026-10-21-plugin-system/stem.md` "G placement" note) — mark G's slot groundwork (steps 7-8, 11, 15-17) done, out of this spec's touched-files list

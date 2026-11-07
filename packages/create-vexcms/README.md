@@ -186,6 +186,14 @@ The installer walks up from the current directory for the nearest `pnpm-workspac
 present in the host workspace's catalog to `catalog:` (other dependencies keep literal
 versions), and skips both `git init` and dependency install — the root workspace owns them.
 
+## Telemetry
+
+`create-vexcms` sends one anonymous event per run (template, options, ok or failed), the same
+opt-out telemetry the `vex` CLI uses. Disable it with `DO_NOT_TRACK=1`,
+`VEX_TELEMETRY_DISABLED=1`, or `vex telemetry disable` inside a scaffolded project; it is
+always off in CI. Every field sent is listed in the
+[Telemetry guide](https://docs.vexcms.dev/guides/telemetry/).
+
 ## Versioning
 
 `create-vexcms` is versioned alongside every `@vexcms/*` package. Running

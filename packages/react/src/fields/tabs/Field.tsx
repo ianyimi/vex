@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { Badge } from "../../ui/badge";
 import { useFailedSubmitAttempt, useFieldErrorCounts } from "../../forms/useFieldErrorCount";
 import { useFieldSetsVisible } from "../useFieldCondition";
+import { useLastUncoveredValue } from "../../config/useLastUncoveredValue";
 import {
   dataFieldNames,
   fieldName,
@@ -89,10 +90,12 @@ export function FormTabs(props: {
   const defaultValue = defaultTab ? tabValue(defaultTab) : "";
   const useUrlState = context.isTopLevel === true;
 
-  const [urlTab, setUrlTab] = useQueryState(
+  const [liveUrlTab, setUrlTab] = useQueryState(
     fieldKey,
     parseAsString.withDefault(defaultValue),
   );
+  // Under a covering route (the sign-in modal) the URL is the modal's — keep this form's tab.
+  const urlTab = useLastUncoveredValue(liveUrlTab);
   const [localTab, setLocalTab] = useState(defaultValue);
   const selectedTab = useUrlState ? urlTab : localTab;
   const activeTab = tabs.some((tab) => tabValue(tab) === selectedTab) ? selectedTab : defaultValue;

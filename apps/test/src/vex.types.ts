@@ -155,7 +155,13 @@ export type CtaBlock = {
   id: string
   heading: string
   subheading?: string
-  actions?: { id?: string; label: string; href: string }[]
+  actions?: {
+    id?: string
+    label: string
+    linkType?: ("external" | "internal")[]
+    internalPage?: Id<"pages">[]
+    externalUrl?: string
+  }[]
 }
 
 export type FeatureBlock = {
@@ -235,6 +241,24 @@ export type SEO = {
   ogImage?: string
 }
 
+export type InnerGroup = {
+  /**
+   * test field description
+   */
+  title?: string
+  /**
+   * another test description
+   */
+  description?: string
+  queue?: { id?: string; title?: string; description?: string }[]
+}
+
+export type AnotherGroupNames = {
+  title?: string
+  subtitle?: string
+  list?: InnerGroup[]
+}
+
 export interface Page extends VexDocument {
   _id: Id<"pages">
   vex_status?: "draft" | "published"
@@ -260,11 +284,39 @@ export interface Page extends VexDocument {
    */
   metaDescription?: string
   ogImage?: Id<"images">[]
+  advanced?: {
+    /**
+     * Dogfood field for the email() leaf type — cell renders a mailto: link.
+     */
+    contactEmail?: string
+    /**
+     * Masked text field — this field's admin.mask overrides the project default.
+     */
+    contactPhone?: string
+    /**
+     * Dogfood field for the textarea() leaf type.
+     */
+    notes?: string
+    /**
+     * Dogfood field for the json() leaf type — no shape validation.
+     */
+    customData?: unknown
+    /**
+     * some test description.
+     */
+    test?: string[]
+    /**
+     * some test number array description
+     */
+    test2?: number[][]
+    /**
+     * seo metadata
+     */
+    seo?: SEO
+    anotherTest?: AnotherGroupNames
+  }
+  testImage?: Id<"images">[]
   themes?: Id<"themes">[]
-  /**
-   * seo metadata
-   */
-  seo?: SEO
   updatedAt?: number
 }
 
@@ -858,6 +910,121 @@ export interface Testimonial extends VexDocument {
   updatedAt?: number
 }
 
+type TelemetryEventEventOption = "dev" | "deploy" | "create"
+type TelemetryEventOutcomeStatusOption = "ok" | "failed"
+type TelemetryEventFailureStageOption =
+  "resolveConfig" | "loadConfig" | "generateSchema" | "scaffold"
+type TelemetryEventErrorCodeOption =
+  | "configError"
+  | "accessConfigError"
+  | "authConfigError"
+  | "componentConfigError"
+  | "storageConfigError"
+  | "unknown"
+type TelemetryEventFrameworkOption = "next" | "tanstack" | "unknown"
+export interface TelemetryEvent extends VexDocument {
+  _id: Id<"telemetryEvents">
+  event: TelemetryEventEventOption[]
+  schemaVersion: number
+  machineId: string
+  projectId: string
+  outcomeStatus: TelemetryEventOutcomeStatusOption[]
+  failureStage?: TelemetryEventFailureStageOption[]
+  errorCode?: TelemetryEventErrorCodeOption[]
+  framework: TelemetryEventFrameworkOption[]
+  vexCoreVersion?: string
+  payload: unknown
+}
+
+type TelemetryProjectLastEventOption = "dev" | "deploy" | "create"
+type TelemetryProjectLastOutcomeStatusOption = "ok" | "failed"
+type TelemetryProjectLastFailureStageOption =
+  "resolveConfig" | "loadConfig" | "generateSchema" | "scaffold"
+type TelemetryProjectLastErrorCodeOption =
+  | "configError"
+  | "accessConfigError"
+  | "authConfigError"
+  | "componentConfigError"
+  | "storageConfigError"
+  | "unknown"
+type TelemetryProjectFrameworkOption = "next" | "tanstack" | "unknown"
+type TelemetryProjectPackageManagerOption = "pnpm" | "npm" | "yarn" | "bun" | "unknown"
+type TelemetryProjectScaffoldTemplateOption = "base" | "marketing"
+type TelemetryProjectFieldTypesOption =
+  | "text"
+  | "email"
+  | "textarea"
+  | "url"
+  | "color"
+  | "number"
+  | "checkbox"
+  | "date"
+  | "commitTs"
+  | "select"
+  | "relationship"
+  | "array"
+  | "group"
+  | "blocks"
+  | "upload"
+  | "richtext"
+  | "json"
+  | "tabs"
+  | "collapsible"
+  | "row"
+  | "ui"
+type TelemetryProjectAuthAdapterOption = "none" | "betterAuth" | "custom"
+export interface TelemetryProject extends VexDocument {
+  _id: Id<"telemetryProjects">
+  projectId: string
+  firstSeenAt: number
+  lastSeenAt: number
+  devEventCount: number
+  deployEventCount: number
+  createEventCount: number
+  failedEventCount: number
+  lastEvent: TelemetryProjectLastEventOption[]
+  lastOutcomeStatus: TelemetryProjectLastOutcomeStatusOption[]
+  lastFailureStage?: TelemetryProjectLastFailureStageOption[]
+  lastErrorCode?: TelemetryProjectLastErrorCodeOption[]
+  framework: TelemetryProjectFrameworkOption[]
+  packageManager: TelemetryProjectPackageManagerOption[]
+  os: string
+  nodeMajor: number
+  vexCoreVersion?: string
+  scaffoldTemplate?: TelemetryProjectScaffoldTemplateOption[]
+  scaffoldBare?: boolean
+  scaffoldMonorepo?: boolean
+  scaffoldEmailPassword?: boolean
+  scaffoldOauthProviderCount?: number
+  scaffoldOrgs?: boolean
+  collectionCount?: number
+  globalCount?: number
+  mediaCollectionCount?: number
+  blockCount?: number
+  fieldCount?: number
+  fieldTypes?: TelemetryProjectFieldTypesOption[]
+  featureDrafts?: boolean
+  featureLivePreview?: boolean
+  featureConditions?: boolean
+  featureSlots?: boolean
+  featureInputMasks?: boolean
+  featureAuth?: boolean
+  authAdapter?: TelemetryProjectAuthAdapterOption[]
+  hookCount?: number
+  accessEnabled?: boolean
+  accessRoleCount?: number
+  accessRuleCount?: number
+  accessFieldPermissionRuleCount?: number
+  accessQueryConstraintRuleCount?: number
+  accessCallbackRuleCount?: number
+  accessCustomActionCount?: number
+  accessCustomResourceCount?: number
+  accessOrganizations?: boolean
+  storageUsesPresignedUrl?: boolean
+  configTruncated?: boolean
+  latestConfig?: unknown
+}
+
 export interface SessionDocument extends VexDocument {
   _id: Id<"session">
   expiresAt: number
@@ -1057,6 +1224,8 @@ export type CollectionSlug =
   | "posts"
   | "fields"
   | "testimonials"
+  | "telemetryEvents"
+  | "telemetryProjects"
   | "session"
   | "account"
   | "verification"
@@ -1088,6 +1257,8 @@ export type DocumentBySlug = {
   posts: Post
   fields: FieldsExample
   testimonials: Testimonial
+  telemetryEvents: TelemetryEvent
+  telemetryProjects: TelemetryProject
   session: SessionDocument
   account: AccountDocument
   verification: VerificationDocument
@@ -1122,6 +1293,8 @@ declare module "@vexcms/core" {
       | "posts"
       | "fields"
       | "testimonials"
+      | "telemetryEvents"
+      | "telemetryProjects"
       | "session"
       | "account"
       | "verification"
@@ -1149,6 +1322,8 @@ declare module "@vexcms/core" {
       posts: Post
       fields: FieldsExample
       testimonials: Testimonial
+      telemetryEvents: TelemetryEvent
+      telemetryProjects: TelemetryProject
       session: SessionDocument
       account: AccountDocument
       verification: VerificationDocument
@@ -1170,9 +1345,9 @@ declare module "@vexcms/core" {
       pages: {
         text: "title" | "slug" | "content" | "metaTitle" | "metaDescription"
         blocks: "blocks"
-        upload: "ogImage"
+        upload: "ogImage" | "testImage"
+        group: "advanced"
         relationship: "themes"
-        group: "seo"
         commitTs: "updatedAt"
       }
       user: {
@@ -1278,6 +1453,62 @@ declare module "@vexcms/core" {
         checkbox: "featured" | "approved"
         relationship: "contributorId" | "avatar"
         commitTs: "updatedAt"
+      }
+      telemetryEvents: {
+        select: "event" | "outcomeStatus" | "failureStage" | "errorCode" | "framework"
+        number: "schemaVersion"
+        text: "machineId" | "projectId" | "vexCoreVersion"
+        json: "payload"
+      }
+      telemetryProjects: {
+        text: "projectId" | "os" | "vexCoreVersion"
+        date: "firstSeenAt" | "lastSeenAt"
+        number:
+          | "devEventCount"
+          | "deployEventCount"
+          | "createEventCount"
+          | "failedEventCount"
+          | "nodeMajor"
+          | "scaffoldOauthProviderCount"
+          | "collectionCount"
+          | "globalCount"
+          | "mediaCollectionCount"
+          | "blockCount"
+          | "fieldCount"
+          | "hookCount"
+          | "accessRoleCount"
+          | "accessRuleCount"
+          | "accessFieldPermissionRuleCount"
+          | "accessQueryConstraintRuleCount"
+          | "accessCallbackRuleCount"
+          | "accessCustomActionCount"
+          | "accessCustomResourceCount"
+        select:
+          | "lastEvent"
+          | "lastOutcomeStatus"
+          | "lastFailureStage"
+          | "lastErrorCode"
+          | "framework"
+          | "packageManager"
+          | "scaffoldTemplate"
+          | "fieldTypes"
+          | "authAdapter"
+        checkbox:
+          | "scaffoldBare"
+          | "scaffoldMonorepo"
+          | "scaffoldEmailPassword"
+          | "scaffoldOrgs"
+          | "featureDrafts"
+          | "featureLivePreview"
+          | "featureConditions"
+          | "featureSlots"
+          | "featureInputMasks"
+          | "featureAuth"
+          | "accessEnabled"
+          | "accessOrganizations"
+          | "storageUsesPresignedUrl"
+          | "configTruncated"
+        json: "latestConfig"
       }
       session: {
         date: "expiresAt" | "createdAt" | "updatedAt"
@@ -1421,10 +1652,23 @@ declare module "@vexcms/core" {
         by_updatedAt: readonly ["updatedAt"]
       }
       testimonials: {
+        by_rating: readonly ["rating"]
         by_source: readonly ["source"]
         by_contributorId: readonly ["contributorId"]
         by_avatar: readonly ["avatar"]
         by_updatedAt: readonly ["updatedAt"]
+      }
+      telemetryEvents: { by_projectId: readonly ["projectId"] }
+      telemetryProjects: {
+        by_projectId: readonly ["projectId"]
+        by_lastSeenAt: readonly ["lastSeenAt"]
+        by_collectionCount: readonly ["collectionCount"]
+        by_globalCount: readonly ["globalCount"]
+        by_mediaCollectionCount: readonly ["mediaCollectionCount"]
+        by_blockCount: readonly ["blockCount"]
+        by_fieldCount: readonly ["fieldCount"]
+        by_hookCount: readonly ["hookCount"]
+        by_accessRuleCount: readonly ["accessRuleCount"]
       }
       session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] }
       account: { by_userId: readonly ["userId"] }

@@ -4,8 +4,6 @@
 - WP-5 publish alphas
 - Build the real www marketing site (spec 2026-09-01-www-content-spec; seed rewrite and both code-showcase pairings done — the three `/features` Split blocks remain)
 - 5. C — Versioning & drafts (spec 2026-08-23-versioning-drafts, 56 tasks, still `draft` — RE-SCOPE FIRST: it predates F and E). Calls F's write pipeline and reuses its lenient validation mode; must pass `changes` to `hasPermission` on draft writes; supplies the draft base layer E's overlay sits on (E needs no change — the overlay already applies to whatever document the consumer's query returned)
-- 6. D — Richtext field: wire the existing 3,219 lines in `richtext-plate`, add `richtext()` + the 2 missing core types, drop 4 `@ts-nocheck`
-- 7. G — Field input consistency pass: relationship field, loading states, media MIME filter, conditional fields
 - Build-time telemetry (spec 2026-10-26-build-time-telemetry)
 - www live-demo admin content (spec 2026-11-02-www-live-demo-admin-content)
 
@@ -28,7 +26,6 @@
 - Release mechanics before tagging: `changeset pre exit` (15 queued changesets), publish via pnpm, `scripts/verify-scaffold.mjs` green, publish T's release notes
 - Launch — run U's plan
 - Assessed-but-deferred features live in `.agent/docs/product/backlog.md`
-- F follow-up — spec 2026-09-18-lifecycle-hooks-validation step 8: write `scripts/verify-hooks-wiring.mjs`, add a `createVexMutations` assertion to `scripts/verify-scaffold.mjs`, and write `apps/docs/src/content/docs/guides/lifecycle-hooks.mdx` (apps/test + base-nextjs template wiring, and the marketing-site slug validator, are done)
 - Concurrent-edit conflict detection already assessed — see backlog.md § Concurrent-edit conflict-resolution UX
 - Polish follow-up (list view): `find`'s first-page count reads up to `countLimit + 1` (default 10001) full docs, which hits Convex's 8 MiB query read limit at ~800 B per doc. Documented in pagination.mdx; real fix tracked in backlog.md § Total-count cap for large collections
 - Polish follow-up (list view): `isQueryAffectingViewSwitch` (useListViewUrlState.ts ~450) compares raw URL params, not the effective state, so an external link with an explicit param equal to the target view's default dims once on view switch (P3)
@@ -61,3 +58,6 @@
 - 9. I — List-view overhaul: search, sort, column visibility, page size, saved views — reintroduces the config A deleted alongside the controls that consume it
 - 1. A — Data-table integrity & dead config: discord-readiness pulled the bulk-selection bar + README items forward; remainder (`pageSize` wiring, `defaultSort` → `_creationTime`, `vex_` table convention, `updatedAt` confirmation) folded into and shipped with I (`naming-conventions.md`, `2026-10-26-list-view-overhaul` Step 1)
 - 2. B — Public API surface: B1 un-exported the migrate stubs (discord-post-readiness step 2), B2 decided as ADR-016, B3 implemented in full (spec 2026-10-21-backend-neutral-query-args, 10 steps, `4d504e7`, ADR-015)
+- 6. D — Richtext field: wire the existing 3,219 lines in `richtext-plate`, add `richtext()` + the 2 missing core types, drop 4 `@ts-nocheck`
+- 7. G — Field input consistency pass: relationship field, loading states, media MIME filter, conditional fields
+- F follow-up — spec 2026-09-18-lifecycle-hooks-validation step 8: write `scripts/verify-hooks-wiring.mjs`, add a `createVexMutations` assertion to `scripts/verify-scaffold.mjs`, and write `apps/docs/src/content/docs/guides/lifecycle-hooks.mdx` (apps/test + base-nextjs template wiring, and the marketing-site slug validator, are done)

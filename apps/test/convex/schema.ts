@@ -28,9 +28,13 @@ import {
   fields,
   vex_views,
   testimonials,
+  telemetryEvents,
+  telemetryProjects,
 } from "./vex.schema";
 
 export default defineSchema({
+  telemetryEvents,
+  telemetryProjects,
   testimonials,
   vex_views,
   fields,

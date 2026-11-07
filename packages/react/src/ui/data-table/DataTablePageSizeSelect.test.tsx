@@ -44,7 +44,10 @@ describe("DataTablePageSizeSelect", () => {
       />,
     );
     await user.click(screen.getByRole("combobox"));
-    await user.click(screen.getByRole("option", { name: "50 per load" }));
+    // `findByRole`: the listbox opens one tick after the trigger click — under
+    // full-suite load it is still `hidden` when a sync query runs. Same race as
+    // `ListViewSearch.test.tsx`.
+    await user.click(await screen.findByRole("option", { name: "50 per load" }));
     expect(onPageSizeChange).toHaveBeenCalledWith(50);
   });
 });

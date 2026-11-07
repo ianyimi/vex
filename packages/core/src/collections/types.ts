@@ -198,7 +198,9 @@ export type VexViewState<TFieldSlug extends string = string> = {
    */
   searchFields?: readonly TFieldSlug[];
   /**
-   * Collection-wide: available page-size options in the pagination controls.
+   * Collection-wide: available page-size options in the pagination controls. Unset, the
+   * defaults plus this view's `pageSize` when it isn't one of them (`pageSize: 20` →
+   * `[10, 20, 25, 50, 100]`). `[]` (or one entry) hides the picker.
    * @default [10, 25, 50, 100]
    */
   pageSizeOptions?: number[];
@@ -254,7 +256,7 @@ export interface ResolvedDefaultView<TFieldSlug extends string = string> {
     searchField?: TFieldSlug;
     /** Always resolved. @default [] (search bar hidden) */
     searchFields: readonly TFieldSlug[];
-    /** Always resolved. @default [10, 25, 50, 100] */
+    /** Always resolved. @default [10, 25, 50, 100], plus a custom `pageSize` */
     pageSizeOptions: number[];
     /** Always resolved. @default 10000 */
     countLimit: number;

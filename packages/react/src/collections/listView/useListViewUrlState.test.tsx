@@ -1,6 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { parseAsString, useQueryStates } from "nuqs";
 import { withNuqsTestingAdapter } from "nuqs/adapters/testing";
+import { FrameworkComponentsContext } from "../../config/useFrameworkComponents";
 import { defineCollection, number, text, VEX_VIEW_SOURCES } from "@vexcms/core";
 import { useListViewUrlState, isQueryAffectingPatch, isQueryAffectingViewSwitch } from "./useListViewUrlState";
 import type { SavedListViewEntry } from "./savedListViews/useSavedListViews";
@@ -117,6 +119,45 @@ describe("useListViewUrlState", () => {
     const { result } = renderUrlState("?sort=rating.asc");
     act(() => result.current.setSort({ field: "_creationTime", order: "desc" }));
     expect(result.current.sort).toBeUndefined();
+  });
+});
+
+describe("useListViewUrlState — under a covering route (sign-in modal)", () => {
+  it("keeps the list's own filter/view/search while a covering route owns the URL, and reads the URL again once uncovered", async () => {
+    let isCovered = false;
+    const NuqsWrapper = withNuqsTestingAdapter({
+      searchParams: "?q=post&view=local:v1&filter=x",
+      hasMemory: true,
+    });
+    const { result, rerender } = renderHook(
+      () => ({
+        state: useListViewUrlState({ collection }),
+        // Stands in for the covering route swapping the URL to its own query.
+        setUrl: useQueryStates({ q: parseAsString, view: parseAsString, filter: parseAsString })[1],
+      }),
+      {
+        wrapper: ({ children }) => (
+          <FrameworkComponentsContext.Provider value={{ useIsRouteCovered: () => isCovered }}>
+            <NuqsWrapper>{children}</NuqsWrapper>
+          </FrameworkComponentsContext.Provider>
+        ),
+      },
+    );
+    const before = result.current.state;
+    expect(before.q).toBe("post");
+    expect(before.view).toBe("local:v1");
+
+    isCovered = true;
+    rerender();
+    await act(() => result.current.setUrl({ q: null, view: null, filter: null }));
+    expect(result.current.state.q).toBe("post");
+    expect(result.current.state.view).toBe("local:v1");
+    expect(result.current.state.filter).toEqual(before.filter);
+
+    isCovered = false;
+    rerender();
+    expect(result.current.state.q).toBeUndefined();
+    expect(result.current.state.view).toBeUndefined();
   });
 });
 

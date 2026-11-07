@@ -55,6 +55,22 @@ auth package's client-safe builder (e.g. `betterAuthCollections()` from
 vex generate
 ```
 
+### `vex telemetry`
+
+Manages anonymous build-time telemetry, which is on by default:
+
+```bash
+vex telemetry enable
+vex telemetry disable
+vex telemetry status [--json]
+```
+
+`status` shows whether telemetry is enabled, why, and where the settings file lives;
+`--json` prints the exact payload `vex dev` / `vex deploy` would send for the current
+project, without sending it. `DO_NOT_TRACK=1` or `VEX_TELEMETRY_DISABLED=1` also disable it,
+and it is always off in CI. A telemetry failure never fails a command. Every field sent is
+listed in the [Telemetry guide](https://docs.vexcms.dev/guides/telemetry/).
+
 ## What It Generates
 
 | Output | Path | Description |

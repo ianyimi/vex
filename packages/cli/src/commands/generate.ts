@@ -26,7 +26,7 @@ export async function generateCommand(props?: { cwd?: string }) {
   }
   logger.info(`Config found: ${configPath}`);
 
-  const config = await loadConfig(configPath);
+  const config = await loadConfig({ configPath, projectDir: cwd });
 
   const typesWritten = writeVexTypes({ config, configPath, cwd });
   if (typesWritten) {

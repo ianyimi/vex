@@ -2,8 +2,9 @@
 
 Rich text editor and renderer for [VEX CMS](https://github.com/ianyimi/vex), built on [Plate.js](https://platejs.org/) (Slate-based). Provides a full WYSIWYG editor for the admin panel and a server-safe static renderer for frontend display.
 
-> [!NOTE]
-> This package ships a working editor and renderer, but VexCMS has no `richtext` field type yet — there is no `richtext()` field factory to attach this editor to, and `@vexcms/core`'s `defineConfig` has no `editor` option to wire it into. Long prose is a multiline `text` field today. See the [roadmap](https://docs.vexcms.dev) for the `richtext` field. The docs below describe this package's own API, which is real and installable now; the "Editor Setup" section shows what wiring it into a collection is expected to look like once that field lands.
+Install `@vexcms/richtext-plate` alongside a `richtext()` field: register
+`plateEditor()` once as `defineConfig()`'s root `editor:` option, and every
+`richtext` field in the collection set uses it.
 
 ## Installation
 
@@ -23,14 +24,23 @@ The package has three entry points:
 
 ## Editor Setup
 
-`plateEditor()` builds the adapter object (`{ type: "plate", editorComponent, renderComponent }`) this package produces for a rich-text field editor. There is no `richtext` field yet, and `@vexcms/core`'s `defineConfig` has no `editor` option to consume it — this is what wiring it in is expected to look like once the field ships:
+`plateEditor()` builds the `VexEditorAdapter` (`{ type: "plate", editorComponent, renderComponent }`) this package produces for a rich-text field editor. Register it once, root-level, on the client config:
 
 ```typescript
+import { defineConfig, defineCollection, richtext } from "@vexcms/core"
 import { plateEditor } from "@vexcms/richtext-plate/editor"
 
-const editor = plateEditor()
-// Not yet consumable by `defineConfig` — no `richtext` field or `editor`
-// config option exists in `@vexcms/core` today.
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    body: richtext({ label: "Body", required: true, mediaCollectionSlug: "images" }),
+  },
+})
+
+export default defineConfig({
+  collections: [posts],
+  editor: plateEditor(),
+})
 ```
 
 ### Customizing Features
@@ -102,7 +112,7 @@ The renderer uses Plate's `PlateStatic` engine with `createStaticEditor()` — n
 
 - **Editor** is lazy-loaded (`React.lazy`) to minimize admin bundle size
 - **Renderer** uses a cached static component map for performance
-- **Adapter pattern** — `plateEditor()` returns a `{ type, editorComponent, renderComponent }` object shaped for a future editor-adapter contract; `@vexcms/core` does not yet export or consume that contract (`VexEditorAdapter`/`VexEditorComponentProps` are referenced in this package's source but not shipped by `@vexcms/core`), so it is not yet pluggable against other implementations (Tiptap, Lexical, etc.) via core
+- **Adapter pattern** — `plateEditor()` returns a `VexEditorAdapter` (`{ type, editorComponent, renderComponent }`), the same contract `@vexcms/core` exports and the admin panel's `richtext` Input consumes via `defineConfig()`'s `editor` option — pluggable against other implementations (Tiptap, Lexical, etc.) that implement the same contract
 
 ## Peer Dependencies
 

@@ -9,6 +9,8 @@ export * from "./headers";
 export * from "./images";
 export * from "./pages";
 export * from "./posts";
+export * from "./telemetryEvents";
+export * from "./telemetryProjects";
 export * from "./testimonials";
 export * from "./themes";
 export * from "./users";

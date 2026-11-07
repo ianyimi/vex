@@ -7,7 +7,7 @@ import { internalCollections } from "../collections/internal";
 import { validateAndMergeStorageConfig, VexStorageConfigError } from "../media";
 import { diffAuthCollections } from "./diffAuthCollections";
 import { DEFAULT_LIVE_PREVIEW_BREAKPOINTS } from "../livePreview";
-import { resolveComponentContributions, resolveComponentOverrides, SLOT_IDS } from "../components";
+import { resolveComponentOverrides, SLOT_IDS } from "../components";
 import { ADMIN_FIELDS, type DataFieldType } from "../fields";
 import {
   ClientUploadMap,
@@ -150,21 +150,18 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
             },
           ]),
         ),
+        // `blocks.itemActions`/`headerActions` and `array.itemActions` are passed through
+        // raw, same as `edit.*` below — `BlockActionsMenu`/array `Field.tsx` re-resolve them
+        // against the built-ins at render time (once per `placement`). Resolving them here
+        // via `resolveComponentContributions` would strip pure `{ id, hidden: true }`
+        // directives from the output (no matching built-in to hide at config time, since
+        // builtins aren't passed in), silently dropping a project's root-level hide.
         blocks: {
-          itemActions: resolveComponentContributions({
-            slotId: SLOT_IDS.blocks.itemActions,
-            contributions: config?.admin?.components?.blocks?.itemActions ?? [],
-          }),
-          headerActions: resolveComponentContributions({
-            slotId: SLOT_IDS.blocks.headerActions,
-            contributions: config?.admin?.components?.blocks?.headerActions ?? [],
-          }),
+          itemActions: config?.admin?.components?.blocks?.itemActions ?? [],
+          headerActions: config?.admin?.components?.blocks?.headerActions ?? [],
         },
         array: {
-          itemActions: resolveComponentContributions({
-            slotId: SLOT_IDS.array.itemActions,
-            contributions: config?.admin?.components?.array?.itemActions ?? [],
-          }),
+          itemActions: config?.admin?.components?.array?.itemActions ?? [],
         },
         edit: {
           header: {
@@ -289,6 +286,9 @@ export function defineServerConfig(props: {
     storage: {
       clientUploads: config.storage.clientUploads,
       adapters: server?.storage?.adapters ?? [],
+    },
+    telemetry: {
+      hideLogs: server?.telemetry?.hideLogs ?? false,
     },
   };
 }

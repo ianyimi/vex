@@ -19,6 +19,8 @@ import {
   type SavedListViewEntry,
   type ListViewStateSnapshot,
 } from "./savedListViews/useSavedListViews";
+import { useIsRouteCovered } from "../../config/useIsRouteCovered";
+import { useLastUncoveredValue } from "../../config/useLastUncoveredValue";
 
 /** Per-setter history override — every setter has its own default history-push behavior; pass `{ push: true }` to force a history entry (e.g. Enter in search) or `{ push: false }` to force a silent replace. */
 export interface ListViewUrlSetOptions {
@@ -259,7 +261,14 @@ export function useListViewUrlState<TFieldSlug extends string = string>(props: {
   // actually change the query — see both fields' own doc comments
   // (`UseListViewUrlStateReturn`) for the bug this split fixes.
   const [isPending, startTransition] = useTransition();
-  const [raw, setRaw] = useQueryStates(RAW_PARSERS, { startTransition });
+  const [liveRaw, setRaw] = useQueryStates(RAW_PARSERS, { startTransition });
+  // A covering route (the sign-in modal) owns the URL — keep reading the list's own query,
+  // or its filter/view/search drop and the wrong rows load behind the modal. Writes are
+  // dropped while covered too: one would land on the modal's URL, not the list's (Escape
+  // closing the modal also reaches the peek's global Escape handler; a search debounce
+  // can settle just after the modal opens).
+  const isRouteCovered = useIsRouteCovered();
+  const raw = useLastUncoveredValue(liveRaw);
   // Accumulates "was ANY patch written during the CURRENT pending transition
   // query-affecting" — set (never cleared mid-transition) by `writeParams` below, and
   // reset once the transition settles (same synchronous-during-render adjustment style
@@ -324,6 +333,7 @@ export function useListViewUrlState<TFieldSlug extends string = string>(props: {
       // setter's single-key patch can.
       isQueryAffecting: boolean = isQueryAffectingPatch(patch),
     ) => {
+      if (isRouteCovered) return;
       // Classify BEFORE `setRaw` starts the transition — `isQueryPending` (above) reads
       // this ref on the SAME render `isPending` first flips `true`, so the mutation must
       // happen synchronously in this event-handler call, not inside the transition.
@@ -349,7 +359,7 @@ export function useListViewUrlState<TFieldSlug extends string = string>(props: {
       }
       void setRaw(record, { history: push ? "push" : "replace" });
     },
-    [params, props.collection, setRaw],
+    [isRouteCovered, params, props.collection, setRaw],
   );
 
   const applyPatch = useCallback(

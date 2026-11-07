@@ -1,7 +1,7 @@
 "use client";
 // "use client" is injected by the tsup build banner for this entry (see
 // tsup.config.ts) so the emitted module carries the client boundary.
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { VexApiAuth } from "@vexcms/core";
 
 import { AdminLayout } from "@vexcms/react";
@@ -12,6 +12,8 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 import { useNextNavigationBlocker } from "./navigation/useNextNavigationBlocker";
 import { useNextNavigate } from "./navigation/useNextNavigate";
+import { useNextIsRouteCovered } from "./navigation/useNextIsRouteCovered";
+import { useNextSearchParams } from "./navigation/useNextSearchParams";
 import { useVexAdminAuthAdapter } from "./auth/VexAdminAuthAdapterContext";
 
 /**
@@ -51,7 +53,15 @@ export function NextAdminLayoutClient(props: {
   authPromise?: Promise<VexApiAuth>;
   sidebarOpen?: boolean;
 }) {
-  const pathname = usePathname();
+  const livePathname = usePathname();
+  const isRouteCovered = useNextIsRouteCovered();
+  // Under a covering route (the sign-in modal) `usePathname()` is the modal's — keep the
+  // last admin pathname so the sidebar/top nav keep their active collection behind it.
+  const [lastAdminPathname, setLastAdminPathname] = useState(livePathname);
+  if (!isRouteCovered && livePathname !== lastAdminPathname) {
+    setLastAdminPathname(livePathname);
+  }
+  const pathname = isRouteCovered ? lastAdminPathname : livePathname;
   const auth = useVexAdminAuthAdapter();
   // pathname: "/admin", "/admin/collections/posts[/<id>]", "/admin/globals[/<slug>]"
   // Split on "/" and read the segments after "admin". Collections report their
@@ -72,6 +82,8 @@ export function NextAdminLayoutClient(props: {
           Image: NextImage,
           navigationBlocker: { useBlocker: useNextNavigationBlocker },
           useNavigate: useNextNavigate,
+          useIsRouteCovered: useNextIsRouteCovered,
+          useSearchParams: useNextSearchParams,
           auth,
         }}
         sidebarOpen={props.sidebarOpen}

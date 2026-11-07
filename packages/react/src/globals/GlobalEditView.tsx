@@ -581,7 +581,7 @@ function GlobalEditForm(
                   <div
                     ref={formScroll.ref}
                     onScroll={formScroll.onScroll}
-                    className="vex-scroll-area relative h-full overflow-y-auto pt-4 pr-4 pb-6 [container-type:size] [container-name:form]"
+                    className="vex-scroll-area relative h-full overflow-y-auto pt-4 pr-4 pb-6 [container-type:size] [container-name:form] [--vex-form-sticky-top:-1rem]"
                   >
                     <FormCompactProvider>{formContent}</FormCompactProvider>
                   </div>
@@ -606,7 +606,7 @@ function GlobalEditForm(
             <div
               ref={formScroll.ref}
               onScroll={formScroll.onScroll}
-              className="vex-scroll-area relative -mx-6 min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-6 [container-type:size] [container-name:form]"
+              className="vex-scroll-area relative -mx-6 min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-6 [container-type:size] [container-name:form] [--vex-form-sticky-top:-1rem]"
             >
               <FormCompactProvider>{formContent}</FormCompactProvider>
             </div>

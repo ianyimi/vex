@@ -20,6 +20,13 @@ export { ctaBlock } from "./config"
  * `actions` has no variant field, so the renderer assigns by index — first
  * solid, the rest outline.
  */
+function resolveHref(action: NonNullable<CtaBlock["actions"]>[number]): string {
+  if (action.linkType?.[0] === "internal") {
+    return `/${action.internalPage?.[0] ?? ""}`;
+  }
+  return action.externalUrl ?? "#";
+}
+
 export default function CTABlock({ block }: BlockComponentProps) {
   const { actions, heading, subheading } = block as CtaBlock
   const items = actions ?? []
@@ -48,7 +55,7 @@ export default function CTABlock({ block }: BlockComponentProps) {
                   }),
                   "active:translate-y-px"
                 )}
-                href={action.href}
+                href={resolveHref(action)}
                 key={`${action.label}-${index}`}
               >
                 {action.label}

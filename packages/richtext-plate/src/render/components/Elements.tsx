@@ -1,17 +1,23 @@
 import React from "react";
-import type { SlateElementProps } from "platejs/static";
+import type { RenderStaticNodeWrapper, TListElement } from "platejs";
+import type { SlateElementProps, SlateRenderElementProps } from "platejs/static";
 import { SlateElement } from "platejs/static";
+import { isOrderedList } from "@platejs/list";
 
 /**
  * Server-safe static renderer for a paragraph node.
  *
  * @param props - The Slate element props for the paragraph node.
- * @returns The paragraph content wrapped in a `<p>` `SlateElement`.
+ * @returns The paragraph content wrapped in a `<p>` `SlateElement` — or a
+ *   `<div>` with the same styling for an indent-list item, whose children are
+ *   the `<ul>`/`<ol>` wrapper from `renderIndentListStatic` (a `<p>` cannot
+ *   contain a list; the browser would split it and break hydration).
  */
 export function ParagraphElementStatic(props: SlateElementProps) {
+  const Tag = props.element.listStyleType ? "div" : "p";
   return (
     <SlateElement {...props}>
-      <p style={{ margin: "4px 0", lineHeight: 1.7 }}>{props.children}</p>
+      <Tag style={{ margin: "4px 0", lineHeight: 1.7 }}>{props.children}</Tag>
     </SlateElement>
   );
 }
@@ -149,12 +155,51 @@ export function ListItemElementStatic(props: SlateElementProps) {
 }
 
 /**
+ * Renders one item of an indent list (a block carrying `listStyleType`, which
+ * is how the editor stores bulleted and numbered lists) inside its own
+ * `<ul>`/`<ol>` + `<li>`.
+ *
+ * @param props - The wrapped list block's render props; `element.listStyleType`
+ *   picks `<ol>` vs `<ul>` and `element.listStart` the ordered start number.
+ * @returns The block's content inside a one-item `<ul>`/`<ol>`.
+ */
+function IndentListStatic(props: SlateRenderElementProps) {
+  const { listStart, listStyleType } = props.element as TListElement;
+  const Tag = isOrderedList(props.element) ? "ol" : "ul";
+  return (
+    <Tag
+      style={{ listStyleType, margin: 0, padding: 0, position: "relative" }}
+      start={listStart}
+    >
+      <li>{props.children}</li>
+    </Tag>
+  );
+}
+
+/**
+ * `render.belowNodes` for `BaseListPlugin` in the static renderer: wraps
+ * every list block in {@link IndentListStatic}. Plate 53.3.13 moved this
+ * wrapper from `BaseListPlugin` to the React-only `ListPlugin`, so without it
+ * the static renderer prints list items as bare paragraphs. Markup matches
+ * the wrapper Plate 52's `BaseListPlugin` rendered.
+ *
+ * @param props - The wrapped block's render props.
+ * @returns The wrapper for a block with a `listStyleType`, else `undefined`.
+ */
+export const renderIndentListStatic: RenderStaticNodeWrapper = (props) => {
+  if (!props.element.listStyleType) return;
+  return (wrapped) => <IndentListStatic {...wrapped} />;
+};
+
+/**
  * Server-safe static renderer for a link node.
  *
  * @param props - The Slate element props for the link node; `element.url`
  *   and `element.target` set the anchor's `href`/`target`, and `target`
  *   of `"_blank"` adds `rel="noopener noreferrer"`.
- * @returns The link content wrapped in an `<a>` `SlateElement`.
+ * @returns A `SlateElement` rendered as the `<a>` itself. A wrapping
+ *   `SlateElement` would be a `<div>` inside the paragraph's `<p>` — invalid
+ *   HTML that breaks hydration and puts every link on its own line.
  */
 export function LinkElementStatic(props: SlateElementProps) {
   const element = props.element as {
@@ -164,18 +209,16 @@ export function LinkElementStatic(props: SlateElementProps) {
   const rel =
     element.target === "_blank" ? "noopener noreferrer" : undefined;
   return (
-    <SlateElement {...props}>
-      <a
-        href={element.url}
-        target={element.target}
-        rel={rel}
-        style={{
-          color: "#2563eb",
-          textDecoration: "underline",
-        }}
-      >
-        {props.children}
-      </a>
+    <SlateElement
+      {...props}
+      as="a"
+      attributes={{ ...props.attributes, href: element.url, target: element.target, rel }}
+      style={{
+        color: "#2563eb",
+        textDecoration: "underline",
+      }}
+    >
+      {props.children}
     </SlateElement>
   );
 }

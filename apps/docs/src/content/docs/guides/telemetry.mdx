@@ -1,0 +1,1176 @@
+---
+title: Telemetry
+description: What vex and create-vexcms send, why, and the exact payload shape.
+---
+
+VexCMS's CLI (`vex`) and scaffolder (`create-vexcms`) collect anonymous, aggregate usage data
+so 0.1.x development targets the field types, features and config shapes real projects
+actually use. Telemetry is **on by default** and never collects anything that identifies a
+company, a person, their content, or their infrastructure. This page lists every field ever
+sent, with a real example payload.
+
+Telemetry is a build/dev-time-only CLI concern. Nothing related to it runs in your Convex
+deployment or ships to your app's browser bundle.
+
+## When events are sent
+
+| Event | Command | Timing |
+|---|---|---|
+| `dev` | `vex dev` | Once per process. A successful run sends only after the first Convex push resolves — so a receiver hosted on the SAME deployment the push just hit isn't raced — awaited before exit in `--once` mode, fire-and-forget in watch mode. A `resolveConfig`/`loadConfig`/`generateSchema` failure sends immediately, before any push starts, and is awaited before the error is rethrown so the event goes out even though the process is about to exit. Not sent again on later file-watch reloads in the same process. |
+| `deploy` | `vex deploy` | Once per invocation, ok or failed, awaited (bounded to ~1.5s) before the process exits. |
+| `create` | `create-vexcms` | Once per invocation, ok or failed, awaited (bounded to ~1.5s) before the CLI exits. |
+
+Each event is one HTTP POST. There is no session concept and no batching.
+
+## The first-run notice
+
+The first time any of the three commands run on a machine, a one-time notice is printed to
+stderr: what is collected, a link to this page, and how to disable telemetry
+(`vex telemetry disable`, or `DO_NOT_TRACK=1`). It is never shown again on that machine (a
+timestamp is stored locally) and it never blocks or delays the command.
+
+## The per-run reminder
+
+Every later run that sends an event (not the first run on a machine, which shows the full
+notice above instead) prints one line to stderr:
+
+```
+[vex] VexCMS collects anonymous telemetry to help improve the project.
+[vex] Disable with "vex telemetry disable" or DO_NOT_TRACK=1: https://docs.vexcms.dev/guides/telemetry/
+```
+
+It's not printed when telemetry is disabled, in a CI environment, or in [debug
+mode](#debug-mode) — in every one of those cases nothing was actually sent, so there's
+nothing to remind about.
+
+### Silencing the reminder
+
+`telemetry.hideLogs` in `defineServerConfig`'s `server` config (default `false`) hides only
+this two-line per-run reminder:
+
+```ts title="vex.config.server.ts"
+export default defineServerConfig({
+  config,
+  server: {
+    telemetry: { hideLogs: true },
+  },
+});
+```
+
+There is **no** config option to disable telemetry itself — only to silence this log line.
+Opting out is always `vex telemetry disable`, `DO_NOT_TRACK=1`, or `VEX_TELEMETRY_DISABLED=1`
+(CI is detected automatically — see [Opting out](#opting-out) below). A config option
+couldn't cover those cases anyway: `vex.config.ts` hasn't loaded yet when a `resolveConfig`
+or `loadConfig` failure sends its event, and `create-vexcms` scaffolds a project before any
+config exists at all.
+
+## Field reference
+
+Every event shares this envelope (`TelemetryEvent`):
+
+| Field | Type | Description |
+|---|---|---|
+| `schemaVersion` | `number` | Payload schema version (currently `1`). Bumped, never silently changed, if the shape changes. |
+| `event` | `"dev" \| "deploy" \| "create"` | Which command sent the event. |
+| `machineId` | `string` | A random id generated once per machine on first run. Not derived from any hardware identifier. |
+| `projectId` | `string` | A per-machine, per-project anonymous id — see [Anonymous ids](#anonymous-ids). |
+| `sentAt` | `string` | ISO-8601 timestamp of when the event was sent. |
+| `environment` | `object` | Runtime environment — see [`environment`](#environment). |
+| `outcome` | `object` | Whether the run succeeded or failed, and where — see [`outcome`](#outcome). |
+| `config` | `object \| undefined` | Anonymized project config, present when a `vex.config.ts` was loaded — see [Config payload](#config-payload). |
+| `timings` | `object \| undefined` | Build timings, present on `dev` events — see [`timings`](#timings-dev-events-only). |
+| `create` | `object \| undefined` | Scaffold choices, present on `create` events — see [`create`](#create-create-events-only). |
+
+### `environment`
+
+| Field | Type | Description |
+|---|---|---|
+| `vexVersions` | `Record<string, string>` | Installed version of every `@vexcms/*` and `create-vexcms` package in the project's `package.json`, as written (e.g. `"^0.1.0"`). |
+| `nodeVersion` | `string` | `process.version`. |
+| `os` | `string` | `process.platform` (e.g. `"darwin"`, `"linux"`, `"win32"`). |
+| `arch` | `string` | `process.arch` (e.g. `"arm64"`, `"x64"`). |
+| `packageManager` | `"pnpm" \| "npm" \| "yarn" \| "bun" \| "unknown"` | Detected from the project's lockfile, falling back to `npm_config_user_agent`. |
+| `framework` | `"next" \| "tanstack" \| "unknown"` | Detected from the project's `next` / `@tanstack/react-start` dependency. |
+
+### `outcome`
+
+A coarse category only — enough to find which stage and kind of setup is failing, never a
+message, a stack trace, a file path, or a config value.
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | `"ok" \| "failed"` | Whether the run completed. |
+| `stage` | `"resolveConfig" \| "loadConfig" \| "generateSchema" \| "scaffold"` | Present only when `status` is `"failed"`. Which vex-owned pipeline stage the failure happened in. Convex push/deploy failures are never reported — only vex's own config-resolve, config-load, schema-generation, and scaffold stages are. |
+| `errorCode` | `"configError" \| "accessConfigError" \| "authConfigError" \| "componentConfigError" \| "storageConfigError" \| "unknown"` | Present only when `status` is `"failed"`. The caught error's allowlisted class name, never its message. |
+
+### `timings` (`dev` events only)
+
+| Field | Type | Description |
+|---|---|---|
+| `configLoadMs` | `number` | Time to load and parse `vex.config.ts` / `vex.config.server.ts`. |
+| `schemaGenMs` | `number` | Time to generate the Convex schema and types from the config. |
+| `schemaChanged` | `boolean` | Whether the generated schema differed from the previous run. |
+
+### `create` (`create` events only)
+
+| Field | Type | Description |
+|---|---|---|
+| `framework` | `string` | Target framework (e.g. `"next"`). |
+| `template` | `"base" \| "marketing"` | Which starter template was scaffolded. |
+| `bare` | `boolean` | Whether `--bare` was passed. |
+| `auth.emailPassword` | `boolean` | Whether email/password auth was selected. |
+| `auth.oauthProviderCount` | `number` | Count of OAuth providers selected — never which providers. |
+| `auth.orgs` | `boolean` | Whether organizations were enabled. |
+| `monorepo` | `boolean` | Whether `--monorepo` was passed. |
+| `initGit` | `boolean` | Whether a git repo was initialized. |
+| `installDependencies` | `boolean` | Whether dependencies were installed. |
+
+### Config payload
+
+When a `vex.config.ts` is present, `config` carries an **anonymized** snapshot of its shape,
+never its content. Every collection, global, media collection, block and field NAME is
+replaced by a generated **path** — never a real name — built from the grammar below.
+
+#### Path grammar
+
+| Component | Meaning |
+|---|---|
+| `c<n>` | A collection, 1-based in declaration order (`c1` is the first collection declared). |
+| `g<n>` | A global, 1-based in declaration order. |
+| `m<n>` | A media collection, 1-based in declaration order. |
+| `k<n>` | A block DEFINITION, 1-based by first appearance walking collections → globals → media depth-first. Two `blocks()` fields that reuse the same block type share one `k<n>` — see [Blocks](#blocks-anonymizedblock). |
+| `.f<n>` | A field, 1-based and local to its parent (the resource or block it's declared directly on). |
+| `.t<n>` | A tabs field's nth tab — fields inside that tab are `<tabsFieldPath>.t<n>.f<m>`. |
+| `.b<n>` | A `blocks()` field's nth listed block type (a placement, not a field) — only ever appears inside an `AnonymizedBlock.paths` entry, never as a `fields` entry itself. |
+| `.i` | An array field's single `items` row — no index, since every row shares one shape. Fields inside it are `<arrayFieldPath>.i.f<m>` (or just `<arrayFieldPath>.i` if the item is one field, not a group). |
+
+Worked example: in `c3.f4.b1`, collection 3's 4th field is a `blocks()` field, and `.b1` is
+the first block type listed in it — this exact string shows up inside that block
+definition's `paths` array, not as its own `fields` entry. In `k1.f2`, `k1` is a block
+DEFINITION — walked once, wherever it first appears — and `.f2` is that block's own 2nd
+field. In `c3.f5.i.f1`, collection 3's 5th field is an `array` field; `.i` is its one
+`items` row, and `.f1` is the first field inside that row (e.g. a `group`'s first field).
+
+#### Top level (`AnonymizedConfig`)
+
+| Field | Type | Description |
+|---|---|---|
+| `collectionCount` | `number` | Number of collections. |
+| `globalCount` | `number` | Number of globals. |
+| `mediaCollectionCount` | `number` | Number of media collections. |
+| `blockCount` | `number` | Number of block DEFINITIONS (`blocks.length`) — a block reused by several `blocks()` fields is counted once. |
+| `fieldCount` | `number` | Number of entries in `fields` (`fields.length`) — every field at every nesting depth, flat. |
+| `resources` | `AnonymizedResource[]` | One flat entry per collection, global, and media collection — see [Resources](#resources-anonymizedresource). |
+| `blocks` | `AnonymizedBlock[]` | One entry per block DEFINITION — see [Blocks](#blocks-anonymizedblock). |
+| `fields` | `AnonymizedField[]` | One flat entry per field across every resource and block, keyed by `path` — see [Fields](#fields-anonymizedfield). |
+| `features.drafts` | `boolean` | Whether any resource has drafts enabled. |
+| `features.livePreview` | `boolean` | Whether any resource has live preview enabled. |
+| `features.conditions` | `boolean` | Whether any field uses a conditional `admin.condition`. |
+| `features.slots` | `boolean` | Whether any slot fields are configured. |
+| `features.inputMasks` | `boolean` | Whether any field has an input mask. |
+| `features.localization` | `false` | Always `false` — `@vexcms/core` has no localization feature yet. Reserved so this shape doesn't change again the day core adds one. |
+| `features.auth` | `boolean` | Whether auth is configured. |
+| `features.authAdapter` | `"none" \| "betterAuth" \| "custom"` | Which auth adapter kind is configured. |
+| `features.access.enabled` | `boolean` | Whether an access-control config is present. |
+| `features.access.roleCount` | `number` | Number of declared roles. |
+| `features.access.ruleCount` | `number` | Total permission rules declared. |
+| `features.access.fieldPermissionRuleCount` | `number` | Rules scoped to individual fields. |
+| `features.access.queryConstraintRuleCount` | `number` | Rules expressed as a query constraint (`where`). |
+| `features.access.callbackRuleCount` | `number` | Rules expressed as a callback function. |
+| `features.access.customActionCount` | `number` | Declared custom actions. |
+| `features.access.customResourceCount` | `number` | Declared custom resources. |
+| `features.access.organizations` | `boolean` | Whether organizations are enabled. |
+| `features.hookCount` | `number` | Total lifecycle hooks declared across every resource. |
+| `storageAdapterKinds` | `StorageAdapterProtocol[]` | Distinct storage adapter kinds configured (e.g. `"convex-file-storage"`). |
+| `truncated` | `true \| undefined` | Present only when the serialized event exceeded the 512KB size cap and `resources`/`blocks`/`fields` were dropped to fit it — see [Size cap](#size-cap) below. |
+
+#### Resources (`AnonymizedResource`)
+
+One flat entry per collection, global, or media collection — fields are no longer nested
+here, they're flat entries in the top-level `fields` array keyed by this resource's `path`.
+
+| Field | Type | Description |
+|---|---|---|
+| `path` | `string` | Generated path (`c1`, `g1`, `m1`). |
+| `kind` | `"collection" \| "global" \| "media"` | Which resource kind this is. |
+| `drafts` | `boolean` | Whether drafts are enabled. |
+| `livePreview` | `boolean` | Whether live preview is enabled. |
+| `timestamps` | `boolean` | Whether `createdAt`/`updatedAt` timestamps are enabled. |
+| `indexCount` | `number \| undefined` | Number of declared indexes. Not present on globals. |
+| `hookCounts` | `Record<"beforeChange" \| "beforeDelete" \| "afterChange" \| "afterDelete", number>` | Count of declared lifecycle hooks of each kind (`0` or `1` each). |
+| `savedViewCount` | `number \| undefined` | Number of admin saved views configured. Not present on globals. |
+| `defaultSortIsCustom` | `boolean \| undefined` | Whether the default list sort differs from the built-in default. Not present on globals. |
+| `bulkDelete` | `boolean \| undefined` | Whether bulk delete is enabled in the admin list view. Not present on globals. |
+| `storageAdapterKind` | `StorageAdapterProtocol \| undefined` | Media collections only — the storage adapter kind in use. |
+
+#### Blocks (`AnonymizedBlock`)
+
+One entry per block DEFINITION, numbered by first appearance walking collections → globals →
+media depth-first. The same block type reused by several `blocks()` fields (even across
+different resources, or nested inside another block) is still exactly one definition — its
+own fields are walked once, as flat entries in `fields` under `${id}.fN`.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `string` | Generated id (`k1`, `k2`, …). |
+| `paths` | `string[]` | Always an array, even with one entry — every placement's generated path (e.g. `["c1.f3.b1"]`, or `["c1.f3.b2", "c5.f1.b1"]` for a block reused twice). |
+| `defaultCollapsed` | `boolean \| undefined` | Whether the block starts collapsed in the admin UI. |
+
+#### Fields (`AnonymizedField`)
+
+Every field reports its `type` and only allowlisted booleans, numbers and enum options for
+that type. Any string value a field can hold (defaults, labels, descriptions, regex
+patterns, URLs) is dropped entirely, except the three allowlisted booleans/enums below.
+
+| Field | Type | Description |
+|---|---|---|
+| `path` | `string` | Generated path (see [Path grammar](#path-grammar) above) — the field's full position, never its name. |
+| `type` | `AdminFieldType` | The field type (e.g. `"text"`, `"richText"`, `"relationship"`). |
+| `required` | `boolean \| undefined` | Whether the field is required. |
+| `hidden` | `boolean \| undefined` | Whether the field is hidden in the admin UI. |
+| `readOnly` | `boolean \| undefined` | Whether the field is read-only in the admin UI. |
+| `position` | `"main" \| "sidebar" \| undefined` | Admin layout position. |
+| `cellAlignment` | `Alignment \| undefined` | List-view cell alignment. |
+| `hasValidate` | `boolean \| undefined` | Whether a custom validator function is configured — never its logic. |
+| `hasIndex` | `boolean \| undefined` | Whether the field is indexed. |
+| `hasSearchIndex` | `boolean \| undefined` | Whether the field is part of a search index. |
+| `hasMask` | `boolean \| undefined` | Whether an input mask is configured — never its pattern. |
+| `min` | `number \| undefined` | Minimum value/length constraint. |
+| `max` | `number \| undefined` | Maximum value/length constraint. |
+| `step` | `number \| undefined` | Numeric step constraint. |
+| `rows` | `number \| undefined` | Textarea row count. |
+| `defaultValue` | `boolean \| undefined` | Whether a default value is configured (checkbox fields only) — never the value itself. |
+| `format` | `ColorFormat \| CommitTsFieldAdminFormat \| undefined` | Color field format, or a `commitTs` field's admin display format (e.g. `"relative"`). |
+| `themeColors` | `boolean \| undefined` | Whether a color field restricts to theme colors. |
+| `time.hidden` | `boolean \| undefined` | Date field: whether the time portion is hidden. |
+| `time.use12HourFormat` | `boolean \| undefined` | Date field: whether a 12-hour clock is used. |
+| `time.timePicker.hour` | `boolean \| undefined` | Date field: whether the hour picker is shown. |
+| `time.timePicker.minute` | `boolean \| undefined` | Date field: whether the minute picker is shown. |
+| `time.timePicker.second` | `boolean \| undefined` | Date field: whether the second picker is shown. |
+| `hasMany` | `boolean \| undefined` | Relationship/upload field: whether multiple targets are allowed. |
+| `optionCount` | `number \| undefined` | Select/radio field: number of configured options — never the option values. |
+| `display` | `SelectDisplay \| undefined` | Select field display mode. |
+| `searchable` | `boolean \| undefined` | Relationship field: whether target search is enabled. |
+| `target` | `string \| undefined` | Relationship/upload field: the resolved target resource's `path` (e.g. `c5`, `m1`) — never the real collection name. |
+| `hasAccept` | `boolean \| undefined` | Upload field: whether a file-type allowlist is configured — never the list itself. |
+| `hasMediaTarget` | `boolean \| undefined` | Upload field: whether a specific media collection target is set. |
+| `defaultCollapsed` | `boolean \| undefined` | Array/blocks/group/collapsible field: whether it starts collapsed. |
+| `tabCount` | `number \| undefined` | Tabs field: number of tabs. |
+| `hasCustomCell` | `boolean \| undefined` | Whether a custom list-view cell renderer is configured. |
+| `enableSorting` | `boolean \| undefined` | Whether the list view can sort by this field. |
+| `enableHiding` | `boolean \| undefined` | Whether this field's column can be hidden in the list view. |
+| `on` | `"create" \| "update" \| "publish" \| undefined` | `commitTs` field: which lifecycle event sets the timestamp. |
+
+Any config key not on this allowlist is silently dropped, not sent as-is.
+
+#### Size cap
+
+Every event is capped at 512KB serialized. If a project's anonymized config pushes the full
+event over that cap, `config.resources`, `config.blocks`, and `config.fields` are all emptied
+and `config.truncated` is set to `true` — every count (`collectionCount`, `fieldCount`, …)
+and `features` still reflect the real config, only the three arrays are dropped. If the event
+is still over the cap even with those arrays emptied (realistically only possible with an
+extreme `features`/count payload), it is not sent at all.
+
+#### Example payload
+
+Real output of `vex telemetry status --json` run from inside the `apps/test` fixture project
+(a config with 24 collections, 3 globals, 1 media collection, 20 block definitions and 586
+fields in total, covering every supported field type and every path-grammar component).
+`machineId` and `projectId` below have been replaced with all-zero placeholders of the same
+shape, and `@vexcms/telemetry` has been removed from `vexVersions`: it's an internal
+workspace dependency of this monorepo's test fixture, not something a real project installs
+— telemetry ships bundled inside `vex` and `create-vexcms`, it isn't a published package.
+`resources` is shown in full (28 small, flat entries). `blocks` and `fields` have been
+trimmed from the real 20 and 586 entries down to a representative handful — 4 block
+definitions (`k1`, `k2`, `k18`, `k19`) and the 19 field entries under them plus a few of
+collection `c1`'s and `c3`'s own fields — chosen to exercise every path-grammar component:
+a top-level field (`c3.f1`), a `tabs` field and its tab contents (`c1.f1`, `c1.f1.t1.f1`),
+a `row`'s nested fields (`c1.f1.t2.f1.f1`), a `blocks()` field and its referenced
+definitions (`c1.f1.t1.f4`, `c3.f2`, `k1`, `k2`), a block's own fields (`k1.f1`, `k1.f2`),
+an `array` field with a `group` item (`k2.f3`, `k2.f3.i`, `k2.f3.i.f1`), and a block
+DEFINITION nested inside another block's own `blocks()` field (`k19`, placed at
+`k18.f3.b1`). The top-level counts (`collectionCount`, `blockCount`, `fieldCount`, etc.) are
+the real, untrimmed totals for the fixture project.
+
+```json
+{
+  "schemaVersion": 1,
+  "event": "dev",
+  "machineId": "00000000-0000-0000-0000-000000000000",
+  "projectId": "0000000000000000000000000000000000000000000000000000000000000000",
+  "sentAt": "2026-11-06T02:57:15.058Z",
+  "environment": {
+    "vexVersions": {
+      "@vexcms/better-auth": "workspace:*",
+      "@vexcms/core": "workspace:*",
+      "@vexcms/file-storage-convex": "workspace:*",
+      "@vexcms/next": "workspace:*",
+      "@vexcms/react": "workspace:*",
+      "@vexcms/richtext-plate": "workspace:*",
+      "@vexcms/cli": "workspace:*"
+    },
+    "nodeVersion": "v24.9.0",
+    "os": "darwin",
+    "arch": "arm64",
+    "packageManager": "pnpm",
+    "framework": "next"
+  },
+  "outcome": {
+    "status": "ok"
+  },
+  "config": {
+    "collectionCount": 24,
+    "globalCount": 3,
+    "mediaCollectionCount": 1,
+    "blockCount": 20,
+    "fieldCount": 586,
+    "resources": [
+      {
+        "path": "c1",
+        "kind": "collection",
+        "drafts": true,
+        "livePreview": true,
+        "indexCount": 1,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c2",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c3",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c4",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c5",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c6",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c7",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c8",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c9",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c10",
+        "kind": "collection",
+        "drafts": true,
+        "livePreview": true,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c11",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": true,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c12",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 3,
+        "defaultSortIsCustom": true,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c13",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": false,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c14",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 9,
+        "defaultSortIsCustom": true,
+        "bulkDelete": false,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c15",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c16",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c17",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c18",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c19",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c20",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c21",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c22",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c23",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "c24",
+        "kind": "collection",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": false,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "g1",
+        "kind": "global",
+        "drafts": false,
+        "livePreview": false,
+        "timestamps": false,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "g2",
+        "kind": "global",
+        "drafts": false,
+        "livePreview": false,
+        "timestamps": false,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "g3",
+        "kind": "global",
+        "drafts": true,
+        "livePreview": false,
+        "timestamps": false,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        }
+      },
+      {
+        "path": "m1",
+        "kind": "media",
+        "drafts": false,
+        "livePreview": false,
+        "indexCount": 0,
+        "timestamps": true,
+        "savedViewCount": 0,
+        "defaultSortIsCustom": false,
+        "bulkDelete": true,
+        "hookCounts": {
+          "beforeChange": 0,
+          "beforeDelete": 0,
+          "afterChange": 0,
+          "afterDelete": 0
+        },
+        "storageAdapterKind": "presigned-url"
+      }
+    ],
+    "blocks": [
+      {
+        "id": "k1",
+        "paths": [
+          "c1.f1.t1.f4.b1"
+        ]
+      },
+      {
+        "id": "k2",
+        "paths": [
+          "c1.f1.t1.f4.b2"
+        ]
+      },
+      {
+        "id": "k18",
+        "paths": [
+          "c11.f21.b2"
+        ]
+      },
+      {
+        "id": "k19",
+        "paths": [
+          "k18.f3.b1"
+        ]
+      }
+    ],
+    "fields": [
+      {
+        "path": "c1.f1",
+        "type": "tabs",
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "tabCount": 3
+      },
+      {
+        "path": "c1.f1.t1.f1",
+        "type": "text",
+        "required": true,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "hasMask": false,
+        "hasSearchIndex": false
+      },
+      {
+        "path": "c1.f1.t1.f4",
+        "type": "blocks",
+        "required": false,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "defaultCollapsed": true,
+        "min": 1
+      },
+      {
+        "path": "c1.f1.t2.f1",
+        "type": "row",
+        "hidden": false,
+        "readOnly": false,
+        "position": "main"
+      },
+      {
+        "path": "c1.f1.t2.f1.f1",
+        "type": "text",
+        "required": false,
+        "hidden": false,
+        "readOnly": false,
+        "position": "sidebar",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "hasMask": false,
+        "hasSearchIndex": false
+      },
+      {
+        "path": "c3.f1",
+        "type": "text",
+        "required": true,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": true,
+        "enableSorting": false,
+        "enableHiding": true,
+        "hasMask": false,
+        "hasSearchIndex": false
+      },
+      {
+        "path": "c3.f2",
+        "type": "blocks",
+        "required": false,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "defaultCollapsed": false,
+        "max": 1
+      },
+      {
+        "path": "k1.f1",
+        "type": "select",
+        "required": false,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "hasMany": false,
+        "optionCount": 2,
+        "display": "dropdown",
+        "searchable": false
+      },
+      {
+        "path": "k1.f2",
+        "type": "text",
+        "required": false,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "hasMask": false,
+        "hasSearchIndex": false
+      },
+      {
+        "path": "k2.f1",
+        "type": "text",
+        "required": false,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "hasMask": false,
+        "hasSearchIndex": false
+      },
+      {
+        "path": "k2.f2",
+        "type": "text",
+        "required": false,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "hasMask": false,
+        "hasSearchIndex": false
+      },
+      {
+        "path": "k2.f3",
+        "type": "array",
+        "required": true,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true
+      },
+      {
+        "path": "k2.f3.i",
+        "type": "group",
+        "required": true,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "defaultCollapsed": false
+      },
+      {
+        "path": "k2.f3.i.f1",
+        "type": "text",
+        "required": true,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "hasMask": false,
+        "hasSearchIndex": false
+      },
+      {
+        "path": "k18.f1",
+        "type": "text",
+        "required": false,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "hasMask": false,
+        "hasSearchIndex": false
+      },
+      {
+        "path": "k18.f2",
+        "type": "tabs",
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "tabCount": 2
+      },
+      {
+        "path": "k18.f3",
+        "type": "blocks",
+        "required": false,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "defaultCollapsed": false
+      },
+      {
+        "path": "k19.f1",
+        "type": "text",
+        "required": false,
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "cellAlignment": "left",
+        "hasValidate": false,
+        "hasIndex": false,
+        "enableSorting": false,
+        "enableHiding": true,
+        "hasMask": false,
+        "hasSearchIndex": false
+      },
+      {
+        "path": "k19.f2",
+        "type": "collapsible",
+        "hidden": false,
+        "readOnly": false,
+        "position": "main",
+        "defaultCollapsed": true
+      }
+    ],
+    "features": {
+      "drafts": true,
+      "livePreview": true,
+      "conditions": true,
+      "slots": true,
+      "inputMasks": true,
+      "localization": false,
+      "auth": true,
+      "authAdapter": "betterAuth",
+      "access": {
+        "enabled": true,
+        "roleCount": 5,
+        "ruleCount": 102,
+        "fieldPermissionRuleCount": 0,
+        "queryConstraintRuleCount": 10,
+        "callbackRuleCount": 19,
+        "customActionCount": 2,
+        "customResourceCount": 2,
+        "organizations": false
+      },
+      "hookCount": 0
+    },
+    "storageAdapterKinds": [
+      "presigned-url"
+    ]
+  }
+}
+```
+
+Note this example has no `timings` key: `vex telemetry status --json` shows what the
+anonymized config payload would look like, not an actual `vex dev` run's measured timings, so
+`timings` is only ever present on a real `dev` event sent from a live `vex dev` process.
+
+## What is never sent
+
+- Collection, field, global or block **names**, or any other project-specific string (labels,
+  descriptions, defaults, regex patterns, URLs, option values, mask patterns).
+- Document or media **content** of any kind.
+- File system **paths** — only a one-way hash derived from the resolved project path (see
+  below), never the path itself.
+- Your **git remote**, repository URL, or any VCS metadata.
+- Your **IP address** — the ingest endpoint never reads or stores request headers used for
+  IP identification.
+- Environment variables, other than the telemetry control vars themselves, are never read or
+  sent.
+- Any **user identity**: name, email, account, or organization.
+- **Error messages, stack traces, or caught error details** of any kind — only the coarse
+  `outcome.stage`/`outcome.errorCode` categories above. Convex push/deploy failures are never
+  reported.
+
+## Anonymous ids
+
+Two ids appear in every payload, and neither can be reversed to a real name or path:
+
+- `machineId` — a random id (`crypto.randomUUID()`) generated once and stored in your local
+  settings file. It identifies "the same machine sent this," nothing more.
+- `projectId` — a SHA-256 hash of a per-machine random salt plus the resolved
+  (`realpath`-ed) absolute path of the project directory. It lets us tell "this is the same
+  project run twice" without the project path, salt, or machine id ever leaving your machine
+  in reversible form. A different machine (different salt) produces a different id for the
+  same project. Because the id is stable per project per machine, repeated runs of one
+  project from the same directory share a `projectId` by design — this is how repeat runs are
+  not double-counted, not a one-time nonce. It cannot be correlated across machines (different
+  salts) or back to a path or identity without access to your local settings file, which never
+  leaves your machine.
+
+## Retention and access
+
+Events are retained **indefinitely** in the vendor-owned Convex deployment that receives
+them. Only the VexCMS maintainers (the vendor) can read this data — it is never shared,
+sold, or made available to any other party.
+
+## Opting out
+
+Telemetry can be disabled per machine, per invocation, or automatically:
+
+| Method | Effect |
+|---|---|
+| `vex telemetry disable` | Stores `enabled: false` in the local settings file (`~/.config/vexcms/telemetry.json`, or under `$XDG_CONFIG_HOME` if set). Persists across runs. |
+| `vex telemetry enable` | Re-enables after a prior `disable`. |
+| `vex telemetry status [--json]` | Shows whether telemetry is enabled, why (reason), and the settings file path. With `--json`, prints the exact payload that would be sent for the current project, without sending it. |
+| `DO_NOT_TRACK=1` (or any truthy value other than `0`/`false`) | Disables telemetry for that invocation, regardless of stored settings. Takes precedence over everything else. |
+| `VEX_TELEMETRY_DISABLED=1` | Same effect as `DO_NOT_TRACK`, checked next. |
+| CI environments | Telemetry is off automatically when a CI environment is detected — no action needed. |
+
+Precedence, highest first: `DO_NOT_TRACK` → `VEX_TELEMETRY_DISABLED` → CI detection → the
+stored `enabled` setting → on by default. None of the environment-variable overrides can
+force telemetry *on* — they only ever turn it off.
+
+## Debug mode
+
+Set `VEX_TELEMETRY_DEBUG=1` to print the exact event payload that would be sent to stderr,
+as formatted JSON, instead of sending it over the network:
+
+```sh
+VEX_TELEMETRY_DEBUG=1 vex dev
+```
+
+This is also the quickest way to see precisely what a given project would report without
+waiting for `vex telemetry status --json` to finish a full config load.

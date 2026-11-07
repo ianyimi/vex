@@ -22,6 +22,13 @@ import {
   BaseTableCellHeaderPlugin,
 } from "@platejs/table";
 import { getStaticComponents } from "./staticComponents";
+import { renderIndentListStatic } from "./components/Elements";
+
+// Plate 53 dropped the `<ul>/<ol><li>` wrapper from `BaseListPlugin`; see
+// `renderIndentListStatic`.
+const StaticListPlugin = BaseListPlugin.configure({
+  render: { belowNodes: renderIndentListStatic },
+});
 
 /**
  * Server-safe static renderer for rich text content.
@@ -73,7 +80,7 @@ export function RichText(props: VexRenderComponentProps) {
       BaseCodeBlockPlugin,
       BaseCodeLinePlugin,
       BaseLinkPlugin,
-      BaseListPlugin,
+      StaticListPlugin,
       BaseImagePlugin,
       BaseTablePlugin,
       BaseTableRowPlugin,

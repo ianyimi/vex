@@ -1,5 +1,7 @@
 # @vexcms/better-auth
 
+## 0.1.0-alpha.30
+
 ## 0.1.0-alpha.29
 
 ## 0.1.0-alpha.28

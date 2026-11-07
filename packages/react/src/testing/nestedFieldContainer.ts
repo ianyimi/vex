@@ -425,12 +425,13 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
             expect(controls.length).toBeGreaterThan(0);
             controls.forEach((el) => {
               if (isDisclosureTrigger(el)) return;
-              // The per-block actions menu trigger (`BlockActionsMenu`) and the
-              // field-level "Copy all" button stay enabled under readOnly too —
-              // copying never mutates the field, so both must stay reachable;
-              // every mutating control is still gated individually.
+              // The per-block actions menu trigger (`BlockActionsMenu`), the
+              // field-level "Copy all" button, and "Collapse all"/"Expand all"
+              // stay enabled under readOnly too — copying and opening/closing
+              // items never mutate the field; every mutating control is still
+              // gated individually.
               if (el.getAttribute("aria-label")?.endsWith(" actions")) return;
-              if (el.textContent === "Copy all") return;
+              if (["Copy all", "Collapse all", "Expand all"].includes(el.textContent ?? "")) return;
               // Same Base UI "focusable-when-disabled" pattern as the `group`
               // branch above: both spellings of inert count.
               const inert =
