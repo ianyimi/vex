@@ -12,7 +12,10 @@ concurrency:
 
 jobs:
   axe:
-    name: axe
+    # Every Vercel project's deployment triggers this workflow, and the PR lists
+    # only the newest check per name, so a skipped vex-docs job named `axe` would
+    # hide the vex-www result (and would satisfy a required `axe` check).
+    name: "${{ github.event.deployment_status.environment == 'Preview – vex-www' && 'axe' || format('axe (skipped: {0})', github.event.deployment_status.environment) }}"
     if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www'
     runs-on: ubuntu-latest
     permissions:
@@ -46,7 +49,8 @@ jobs:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
   lighthouse:
-    name: lighthouse
+    # Named apart for non-www deployments; see the axe job.
+    name: "${{ github.event.deployment_status.environment == 'Preview – vex-www' && 'lighthouse' || format('lighthouse (skipped: {0})', github.event.deployment_status.environment) }}"
     if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www'
     runs-on: ubuntu-latest
     permissions:
