@@ -5945,7 +5945,7 @@ concurrency:
 jobs:
   axe:
     name: axe
-    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – www'
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -5979,7 +5979,7 @@ jobs:
 
   lighthouse:
     name: lighthouse
-    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – www'
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www'
     runs-on: ubuntu-latest
     permissions:
       contents: read
