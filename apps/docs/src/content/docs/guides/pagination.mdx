@@ -109,8 +109,9 @@ config rather than being repeated inline:
 ```tsx
 "use client";
 
+import { usePaginatedQuery } from "@vexcms/react";
+import { DataTable } from "@vexcms/react/admin";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable, usePaginatedQuery } from "@vexcms/react";
 import type { Post } from "~/vex.types";
 import { posts } from "~/vexcms/collections/posts";
 

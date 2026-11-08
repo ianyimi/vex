@@ -70,7 +70,7 @@ describe("RelationshipDocumentList", () => {
         onSelectionChange={vi.fn()}
       />,
     );
-    expect(screen.getByText("boom")).toBeInTheDocument();
+    expect(screen.getAllByText("boom").length).toBeGreaterThan(0);
   });
 
   it("renders 'No documents found' for an empty result set", () => {
@@ -84,7 +84,57 @@ describe("RelationshipDocumentList", () => {
         onSelectionChange={vi.fn()}
       />,
     );
-    expect(screen.getByText("No documents found")).toBeInTheDocument();
+    expect(screen.getAllByText("No documents found").length).toBeGreaterThan(0);
+  });
+  it("focuses the search input on mount via a ref effect, not the autoFocus attribute", () => {
+    usePaginatedSearchMock.mockReturnValue(baseResult());
+    render(
+      <RelationshipDocumentList
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={targetCollection}
+        selectedIds={[]}
+        drafts={false}
+        onSelectionChange={vi.fn()}
+      />,
+    );
+    const input = screen.getByPlaceholderText(`Search ${targetCollection.labels.plural}…`);
+    expect(input).not.toHaveAttribute("autofocus");
+    expect(input).toHaveFocus();
+  });
+
+  it("exposes an sr-only status region reporting the result count", () => {
+    usePaginatedSearchMock.mockReturnValue(
+      baseResult({ documents: [makeDoc("a", "Alpha")] }),
+    );
+    render(
+      <RelationshipDocumentList
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={targetCollection}
+        selectedIds={[]}
+        drafts={false}
+        onSelectionChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      `1 ${targetCollection.labels.plural.toLowerCase()} loaded`,
+    );
+  });
+
+  it("sets aria-pressed on the selected row", () => {
+    usePaginatedSearchMock.mockReturnValue(
+      baseResult({ documents: [makeDoc("a", "Alpha"), makeDoc("b", "Bravo")] }),
+    );
+    render(
+      <RelationshipDocumentList
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={targetCollection}
+        selectedIds={["a"]}
+        drafts={false}
+        onSelectionChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Alpha").closest("button")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Bravo").closest("button")).toHaveAttribute("aria-pressed", "false");
   });
 
   it("hasMany: clicking an unselected row adds it to the selection", async () => {

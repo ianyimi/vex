@@ -64,10 +64,11 @@ S closes both and adds a demo fallback for outages. P adds measurement (Web Anal
 Cross-spec decisions in `.agent/docs/product/launch-cross-spec-decisions.md` (2026-11-07) are binding here and add these dependencies:
 
 - **N is blocked** (steps 17–20) until all of these are done:
-  - quality-pass step 12 (`2026-11-06-quality-pass`)
+  - quality-pass steps 12 and 13 (`2026-11-06-quality-pass`; step 13 is the widened K conformance review)
   - M (`2026-10-26-build-time-telemetry`) committed
   - public-presence steps 10, 13 and 14 (`2026-11-06-public-presence`)
-  - launch-kit step 9 (`2026-11-06-launch-kit-final-review`)
+
+  Launch-kit step 9 is **not** required (amended 2026-11-07): its posts and the `launch-week` page are excluded from the templates by type (decision 17), and L step 18 checks the scaffold.
 
   That way the template exclusions run against the final www. Public-presence step 17 waits on step 19 here.
 - **`/privacy`** (step 13) runs after public-presence steps 1–2.
@@ -2541,10 +2542,11 @@ Verify: `pnpm --filter test typecheck && pnpm --filter test test` green. On the 
 ### Step 17 — N: Sync both templates
 `[agent]` **Blocked on:** all of these, so the exclusions run once, against the final www (cross-spec dependency edges):
 
-- quality-pass step 12
+- quality-pass steps 12 and 13
 - M committed
 - public-presence steps 10 (seed copy, footer), 13 (`/brand`) and 14 (www posts and the announcement)
-- launch-kit step 9 (launch-week posts and `/launch-week`)
+
+Launch-kit step 9 (launch-week posts and `/launch-week`) is not a dependency (amended 2026-11-07): both are excluded from the templates by type.
 
 Run the `template-sync` skill (`.omp/skills/template-sync/SKILL.md`) once for `base-nextjs` ← `apps/test` and once for `marketing-site` ← `apps/www`, per its own preflight (`harness doctor`, `harness state`) and its step 1 (load the app→template translation table in `2026-08-31-wp2-cli-templates/spec.md` before touching anything).
 
@@ -2628,7 +2630,7 @@ Verify: `node scripts/template-diff.mjs --app apps/www` and `--app apps/test` li
 - every non-empty line of `public-copy.md`, fed to `rg -F`
 
 ### Step 18 — N: Scaffold from packed tarballs
-`[agent]` **Blocked on:** step 17, and through it quality-pass step 12, M, public-presence steps 10, 13 and 14, and launch-kit step 9.
+`[agent]` **Blocked on:** step 17, and through it quality-pass steps 12 and 13, M, and public-presence steps 10, 13 and 14.
 
 Run the three scaffold gates in order. `verify-scaffold.mjs` requires every publishable package's `dist/` to be current (`pnpm --filter "@vexcms/*" --filter create-vexcms build` first — the script's own header says this precondition is "not performed here"); it packs tarballs and scaffolds both templates against them, not the workspace. `scaffold-smoke.mjs --bare` scaffolds the base template with no install/git; `scaffold-smoke.mjs` (no flag) does the full marketing scaffold. Neither smoke script needs the packed-tarball precondition — both load installer source directly via `jiti`.
 
@@ -2643,7 +2645,7 @@ Failure-handling rule (AP-020): a defect any of the three gates finds is fixed i
 Verify: `node scripts/verify-scaffold.mjs` exits 0; `node scripts/scaffold-smoke.mjs --bare` exits 0; `node scripts/scaffold-smoke.mjs` exits 0.
 
 ### Step 19 — N: Run-through per template on a fresh Convex deployment
-`[agent]` **Blocked on:** step 18, and through it quality-pass step 12, M, public-presence steps 10, 13 and 14, and launch-kit step 9. **Downstream:** public-presence step 17 (README quick start) waits for this step to pass (cross-spec dependency edges).
+`[agent]` **Blocked on:** step 18, and through it quality-pass steps 12 and 13, M, and public-presence steps 10, 13 and 14. **Downstream:** public-presence step 17 (README quick start) waits for this step to pass (cross-spec dependency edges).
 
 `[dev]` Create a fresh Convex project per template (two separate projects — scaffolds must not share a deployment). In each scaffold directory: start `vex dev` and `next dev` (the developer starts both; no agent starts a dev server, P-024).
 

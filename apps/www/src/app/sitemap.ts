@@ -28,6 +28,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   } catch {
     entries = []
   }
+  let postEntries: { createdAt: number; slug: string; updatedAt?: number }[] = []
+  try {
+    postEntries = await vex.query(api.posts.publishedSlugs, {})
+  } catch {
+    postEntries = []
+  }
 
   const pageEntries: MetadataRoute.Sitemap = entries
     .filter((entry) => entry.slug !== "home")
@@ -36,5 +42,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...(entry.updatedAt === undefined ? {} : { lastModified: new Date(entry.updatedAt) }),
     }))
 
-  return [{ lastModified: new Date(), url: baseUrl }, ...pageEntries]
+  const postSitemapEntries: MetadataRoute.Sitemap = postEntries.map((entry) => ({
+    url: `${baseUrl}/posts/${entry.slug}`,
+    ...(entry.updatedAt === undefined ? {} : { lastModified: new Date(entry.updatedAt) }),
+  }))
+
+  return [{ lastModified: new Date(), url: baseUrl }, ...pageEntries, ...postSitemapEntries]
 }

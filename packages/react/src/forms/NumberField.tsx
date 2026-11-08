@@ -47,7 +47,7 @@ export function NumberField(props: NumberFieldProps): ReactNode {
       step={props.step}
       min={props.min}
       max={props.max}
-      value={field.state.value ?? 0}
+      value={field.state.value ?? ""}
       onChange={(e) =>
         field.handleChange(
           e.target.value === "" ? (undefined as unknown as number) : Number(e.target.value),

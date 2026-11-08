@@ -1,0 +1,132 @@
+---
+title: Compare VexCMS
+description: How VexCMS's free tier compares to Payload, Sanity, and Strapi on content modeling, types, database, hosting, licence, and the admin panel.
+---
+
+This page compares what each product gives you without paying for a plan. Each competitor column
+carries the date it was checked; if a date looks stale, check the vendor's docs — feature sets
+move fast.
+
+Paid add-ons may come later, as separate packages, after the free roadmap. The core stays
+Apache-2.0, and nothing free becomes paid.
+
+## Free-tier capability table
+
+| Capability | VexCMS | Payload <sup>[checked 2026-11-06]</sup> | Sanity <sup>[checked 2026-11-06]</sup> | Strapi <sup>[checked 2026-11-06]</sup> |
+|---|---|---|---|---|
+| Content model | Code: `defineCollection()`/`defineGlobal()` in TypeScript, no UI schema builder[^1] | Code: TypeScript `payload.config.ts`[^p1] | Code: JS/TS `defineType`/`defineField`[^s1] | Both: UI Content-type Builder generates `schema.json`, also hand-editable in code[^st1] |
+| Generated types | `vex dev`/`vex generate` write the Convex schema, Zod validators, and TypeScript types from the same config — no separate CLI step[^2] | `payload generate:types` CLI → `payload-types.ts` + generic helpers[^p2] | `sanity typegen generate` → `sanity.types.ts` (schema + GROQ query types)[^s2] | `ts:generate-types` CLI command[^st2] |
+| Database | Convex only — no adapter, no choice[^3] | Bring-your-own: MongoDB, Postgres, or SQLite via adapter[^p3] | Proprietary hosted Content Lake, not self-hostable[^s3] | Bring-your-own SQL: Postgres, MySQL, MariaDB (SQLite for dev)[^st3] |
+| What you run in production | A Convex deployment (managed by Convex) plus your Next.js app — no database to provision yourself[^4] | A self-managed Node.js/Next.js server plus a database you provision and operate (MongoDB, Postgres, or SQLite)[^p4] | No server of your own: Studio is a static app you can host anywhere, but Content Lake requires an active (free or paid) Sanity account[^s4] | Either a self-managed Node.js server plus a SQL database, or Strapi Cloud (from $35/project/month)[^st4] |
+| Licence | Apache-2.0, the entire project[^5] | MIT, the entire core (admin panel included)[^p5] | Studio: MIT (confirmed via `gh api repos/sanity-io/sanity/license`). Content Lake: proprietary SaaS[^s5] | MIT core; code under `ee/` directories is proprietary Strapi Enterprise Edition[^st5] |
+| Pricing model | Free and open source; no SaaS tier[^6] | No SaaS pricing page; self-hosted OSS, Enterprise is sales-contact[^p6] | Free tier (20 seats, 2 datasets, 10k docs), paid from $15/seat/month (Growth)[^s6] | Community free/unlimited (MIT); paid CMS from $45/month (Growth), Cloud hosting from $35/project/month[^st6] |
+| Real-time admin | Every list view is a Convex subscription — two editors on one collection see each other's writes live[^7] | "Multi-Player Editing" listed Coming Soon under Enterprise, not shipped[^p7] | Real-time editing and multiplayer presence, on all plans including Free[^s7] | No real-time/presence feature found; an open, unimplemented feedback request exists for basic edit-locking[^st7] |
+| Live preview of unsaved edits | Streams the form's current (unsaved) values onto the real public route via `postMessage` + `BroadcastChannel`, no draft save required[^8] | Core OSS Live Preview (iframe, `postMessage`, real-time); the separate drag-and-drop "Visual Editor" is Coming Soon under Enterprise[^p8] | Live Preview and Visual Editing (click-to-edit Presentation tool), on all plans including Free[^s8] | Not on Community (free); available on Growth ($45/month) and Enterprise[^st8] |
+| Drafts + version history | One published row plus at most one draft row sharing its `_id`; every distinct content state recorded as an immutable `vex_versions` snapshot; restore and unpublish included[^9] | Core OSS Versions/Drafts system with version history[^p9] | Review Changes retention: 3 days (Free), 90 days (Growth), 365 days (Enterprise)[^s9] | Draft & Publish is core/free; Content History (version history UI) is Growth (14 days) or Enterprise (custom), not on Community[^st9] |
+| Scheduled publishing | After 0.1.0 (roadmap) | Core OSS — `versions.drafts.schedulePublish` on the base Versions config[^p10] | Growth plan ($15/seat/month) and up, not on Free[^s10] | "Releases" feature — not on Community, unlimited on Growth and Enterprise[^st10] |
+| Localization | After 0.1.0 (roadmap) | Core OSS, unlimited locales, field-level, with fallback and RTL[^p11] | Unlimited locales on all plans, no extra charge[^s11] | i18n plugin, free, 500+ preset locales, all plans (disabled by default)[^st11] |
+| Access control (document/field level, applied in the query) | `defineAccess()`: role → subject → check, enforced on the server; a `withIndex`/`where` check compiles directly into the Convex query itself, not a post-filter[^12] | Function-based access control (not fixed roles), Collection/Global/Field level, core OSS[^p12] | Fixed roles (2 on Free, 5 on Growth); custom roles and GROQ-filtered resources are Enterprise-only[^s12] | RBAC free/core: custom admin roles plus field/locale-level permission conditions[^st12] |
+| Hooks + server validation | `beforeChange`/`beforeDelete`/`afterChange`/`afterDelete` collection hooks, plus an async server-only field `validate()` that runs after the generated Zod schema and can read the database[^13] | Core OSS Collection/Global/Field hooks (`beforeChange`, `afterChange`, etc.)[^p13] | GROQ-powered webhooks plus serverless Functions, included on Free and Growth[^s13] | Lifecycle hooks (model-level) plus webhooks, selectable per entry event[^st13] |
+| Rich text | Plate.js, via `@vexcms/richtext-plate`, with inline images from the media library[^14] | Lexical, via `@payloadcms/richtext-lexical`[^p14] | Portable Text (structured JSON format)[^s14] | Legacy Markdown editor, or a block-based Blocks editor[^st14] |
+| Blocks/page building | `blocks()` field: ordered, typed arrays of named block shapes, with cross-document/cross-collection clipboard copy/paste[^15] | Core OSS "Blocks" field type[^p15] | Presentation tool/page-building, on all plans[^s15] | Dynamic Zones (ordered zones of reusable Components)[^st15] |
+| Media storage | Convex file storage ships as the default adapter; other backends plug in through the storage-adapter interface[^16] | Local disk by default, `disableLocalStorage` for CDN offload via official `@payloadcms/storage-*` adapters (S3, R2, Vercel Blob, Azure, GCS)[^p16] | Built-in asset pipeline (resize/crop/hotspot, CDN-delivered); 100GB on Free/Growth[^s16] | Media Library: Local by default, official S3 and Cloudinary providers, extensible for others[^st16] |
+| Admin extension | Experimental: per-field/per-type component overrides, plus additive action-menu contributions on `blocks()`/`array()` fields — the built-in UI is registered through the same mechanism[^17] | React component swapping via `admin.components.*`, plus Custom Views[^p17] | `studio.components`/`form.components`, middleware/`renderDefault` composition, `definePlugin`[^s17] | Plugin system plus admin-customization/extension APIs[^st17] |
+| Frameworks | Next.js (via `@vexcms/next`); a second framework (TanStack Start) is after 0.1.0 (roadmap) | Runs inside a Next.js app — admin panel is itself a generated Next.js app[^p19] | Frontend-agnostic: Studio deploys separately, content fetched via API/SDKs into any frontend[^s19] | Frontend-agnostic headless API, promoted alongside Next.js/Vercel deployment[^st19] |
+| APIs | Local API only: typed `get`/`find`/`search`/`create`/`update`/`remove`/`globals` functions called directly inside your own Convex functions — no separate REST/GraphQL hop[^18] | REST, GraphQL, and a Local API (in-process, no network hop), all generated from the same config[^p20] | GROQ (primary, with Vision playground and typegen) plus GraphQL (CLI-deployed) plus a Live Content API[^s20] | REST API (auto-generated CRUD per content-type) plus GraphQL API, both free[^st20] |
+| List views (search/filters/saved views) | Per-collection search, an AND/OR filter builder, column visibility/order/pinning/resizing, page size, and local + shared saved views (`admin.view`/`admin.views`), server-prerendered[^20] | Core "Query Presets" — save/share filters, columns, and sort orders for the List View, no plan-gating language found[^p21] | Structure Builder's Document List is live-updated and GROQ-filter-based, but filtering/grouping is developer-defined in code, not a saveable per-user UI filter[^s21] | Search plus combinable Filters, configurable per content-type by an admin; no per-user saved-views feature found[^st21] |
+
+## When to pick something else
+
+- **You need a database other than Convex.** VexCMS has no adapter layer — it runs on Convex only. Payload or Strapi let you bring MongoDB, Postgres, or MySQL.
+- **You need REST or GraphQL out of the box.** VexCMS exposes a typed Local API you call from your own Convex functions; it has no separate HTTP API surface. Payload, Sanity, and Strapi all ship a queryable HTTP API today.
+- **You need localization today.** It's on VexCMS's post-0.1.0 roadmap, not shipped. Payload, Sanity, and Strapi all ship it free, now.
+- **Your editors need to model content in a UI**, not read/review TypeScript. Strapi's Content-type Builder lets a non-developer define content types from the admin panel; VexCMS's model is code-only.
+- **You want a vendor-hosted SaaS**, with no server of your own to run. Sanity's Content Lake is hosted for you. VexCMS, Payload, and self-hosted Strapi all require you to run something yourself (for VexCMS, that's a Convex deployment plus your Next.js app).
+- **You need a mature plugin ecosystem.** Payload, Sanity, and Strapi each have years of community plugins and a form-builder plugin already available (Payload's is official: `@payloadcms/plugin-form-builder`). VexCMS's plugin system doesn't exist yet — it's the first item on the post-0.1.0 roadmap, and until then an extension point only covers admin component overrides and action contributions.
+- **You need a long-stable API.** VexCMS is at 0.1 — the config shape and the Local API can still change between minor versions. Payload (v3), Sanity (Studio v6) and Strapi (v5) are well past their first stable major.
+
+## Sources
+
+Fetched 2026-11-06. Re-checked and re-dated against `competitors.md` within 7 days of this page's
+publish date.
+
+[^1]: VexCMS docs — [Quickstart](/guides/quickstart/), [Access Control](/guides/access-control/)
+[^2]: VexCMS docs — [Roadmap](/roadmap/) ("Convex schema + type codegen")
+[^3]: VexCMS docs — [index](/)
+[^4]: VexCMS docs — [Quickstart](/guides/quickstart/)
+[^5]: `LICENSE` (Apache-2.0), repo root
+[^6]: `README.md` License section
+[^7]: VexCMS docs — [Roadmap](/roadmap/) ("Real-time admin panel")
+[^8]: VexCMS docs — [Live Preview](/guides/live-preview/)
+[^9]: VexCMS docs — [Versioning & Drafts](/guides/versioning-and-drafts/)
+[^12]: VexCMS docs — [Access Control (RBAC)](/guides/access-control/)
+[^13]: VexCMS docs — [Lifecycle hooks](/guides/lifecycle-hooks/)
+[^14]: VexCMS docs — [Roadmap](/roadmap/) (Plate.js via `@vexcms/richtext-plate`)
+[^15]: VexCMS docs — [`blocks` field](/fields/blocks/)
+[^16]: VexCMS docs — [Custom storage adapter](/guides/custom-storage-adapter/)
+[^17]: VexCMS docs — [Admin Customization](/guides/admin-customization/)
+[^18]: VexCMS docs — [Local API](/guides/local-api/)
+[^20]: VexCMS docs — [List views](/guides/list-views/)
+
+[^p1]: https://payloadcms.com/docs/getting-started/what-is-payload (fetched 2026-11-06)
+[^p2]: https://payloadcms.com/docs/typescript/overview (fetched 2026-11-06)
+[^p3]: https://payloadcms.com/docs/database/overview (fetched 2026-11-06)
+[^p4]: https://payloadcms.com/docs/getting-started/what-is-payload ; https://payloadcms.com/docs/database/overview (fetched 2026-11-06)
+[^p5]: https://raw.githubusercontent.com/payloadcms/payload/main/LICENSE.md (fetched 2026-11-06)
+[^p6]: https://payloadcms.com/pricing (404, attempted 2026-11-06); https://payloadcms.com/enterprise (fetched 2026-11-06)
+[^p7]: https://payloadcms.com/enterprise (fetched 2026-11-06)
+[^p8]: https://payloadcms.com/docs/live-preview/overview (fetched 2026-11-06)
+[^p9]: https://payloadcms.com/docs/versions/overview (fetched 2026-11-06)
+[^p10]: https://payloadcms.com/docs/versions/overview (fetched 2026-11-06)
+[^p11]: https://payloadcms.com/docs/configuration/localization (fetched 2026-11-06)
+[^p12]: https://payloadcms.com/docs/access-control/overview (fetched 2026-11-06)
+[^p13]: https://payloadcms.com/docs/typescript/overview (fetched 2026-11-06)
+[^p14]: https://payloadcms.com/docs/rich-text/overview (fetched 2026-11-06)
+[^p15]: https://payloadcms.com/docs/configuration/localization (fetched 2026-11-06)
+[^p16]: https://payloadcms.com/docs/upload/storage-adapters (fetched 2026-11-06)
+[^p17]: https://payloadcms.com/docs/upload/overview (fetched 2026-11-06)
+[^p19]: https://payloadcms.com/docs/getting-started/what-is-payload (fetched 2026-11-06)
+[^p20]: https://payloadcms.com/docs/getting-started/what-is-payload ; https://payloadcms.com/docs/local-api/overview (fetched 2026-11-06)
+[^p21]: https://payloadcms.com/docs/query-presets/overview (fetched 2026-11-06)
+
+[^s1]: https://www.sanity.io/docs/studio (fetched 2026-11-06)
+[^s2]: https://www.sanity.io/docs/apis-and-sdks/sanity-typegen (fetched 2026-11-06)
+[^s3]: https://www.sanity.io/docs/studio ; https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s4]: https://www.sanity.io/docs/studio ; https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s5]: `gh api repos/sanity-io/sanity/license` (fetched 2026-11-06)
+[^s6]: https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s7]: https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s8]: https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s9]: https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s10]: https://www.sanity.io/blog/scheduled-drafts ; https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s11]: https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s12]: https://www.sanity.io/docs/user-guides/roles ; https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s13]: https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s14]: https://www.sanity.io/docs/studio (fetched 2026-11-06)
+[^s15]: https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s16]: https://www.sanity.io/pricing (fetched 2026-11-06)
+[^s17]: https://www.sanity.io/docs/studio/intro-to-custom-studio-components (fetched 2026-11-06)
+[^s19]: https://www.sanity.io/docs/apis-and-sdks/sanity-typegen (fetched 2026-11-06)
+[^s20]: https://www.sanity.io/docs/content-lake/graphql ; https://www.sanity.io/docs/apis-and-sdks/sanity-typegen (fetched 2026-11-06)
+[^s21]: https://www.sanity.io/docs/studio/structure-builder-introduction (fetched 2026-11-06)
+
+[^st1]: https://docs.strapi.io/cms/backend-customization/models (fetched 2026-11-06)
+[^st2]: https://docs.strapi.io/cms/backend-customization/models (fetched 2026-11-06)
+[^st3]: https://strapi.io/pricing-cms (fetched 2026-11-06)
+[^st4]: https://strapi.io/pricing-cms ; https://strapi.io/pricing-cloud (fetched 2026-11-06)
+[^st5]: https://raw.githubusercontent.com/strapi/strapi/main/LICENSE (fetched 2026-11-06)
+[^st6]: https://strapi.io/pricing-cms ; https://strapi.io/pricing-cloud (fetched 2026-11-06)
+[^st7]: https://feedback.strapi.io/customization/p/content-editor-lock (fetched 2026-11-06)
+[^st8]: https://docs.strapi.io/cms/features/preview ; https://strapi.io/pricing-cms (fetched 2026-11-06)
+[^st9]: https://strapi.io/pricing-cms ; https://docs.strapi.io/cms/features/content-manager (fetched 2026-11-06)
+[^st10]: https://strapi.io/pricing-cms (fetched 2026-11-06)
+[^st11]: https://docs.strapi.io/cms/features/internationalization (fetched 2026-11-06)
+[^st12]: https://docs.strapi.io/cms/features/rbac (fetched 2026-11-06)
+[^st13]: https://docs.strapi.io/cms/backend-customization/models ; https://github.com/strapi/strapi/releases (fetched 2026-11-06)
+[^st14]: https://docs.strapi.io/cms/features/content-manager (fetched 2026-11-06)
+[^st15]: https://docs.strapi.io/cms/backend-customization/models ; https://strapi.io/pricing-cms (fetched 2026-11-06)
+[^st16]: https://docs.strapi.io/cms/features/media-library (fetched 2026-11-06)
+[^st17]: https://docs.strapi.io/cms/features/rbac (fetched 2026-11-06)
+[^st19]: https://strapi.io/pricing-cloud (fetched 2026-11-06)
+[^st20]: https://docs.strapi.io/cms/api/rest ; https://strapi.io/pricing-cms (fetched 2026-11-06)
+[^st21]: https://docs.strapi.io/cms/features/content-manager (fetched 2026-11-06)

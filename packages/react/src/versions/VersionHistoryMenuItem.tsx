@@ -7,7 +7,7 @@ import { useDocumentEditRuntime } from "../documents/DocumentEditRuntimeContext"
 import { useEditActionsMenuDialog } from "../documents/EditActionsMenuDialogContext";
 import { EditActionsMenuItem } from "../documents/EditActionsMenuItem";
 import { usePermission } from "../access";
-import { Icon } from "../ui";
+import { Icon } from "../ui/Icon";
 import { VersionHistoryDialogContent, type VersionHistoryTarget } from "./VersionHistoryPanel";
 
 /**

@@ -1,15 +1,3 @@
-"use client";
-
-// The package's client boundary, and the source counterpart of the
-// `"use client"` banner `tsup.config.ts` stamps on `dist/index.js`. Both must
-// exist: production resolves `dist` (banner), dev resolves this file directly
-// (see `workspaceSourceAliases` in each app's next.config.ts), and a server
-// component importing the barrel without a directive fails with "You're
-// importing a module that depends on useState into a React Server Component
-// module". Marking the barrel — rather than each of the ~90 modules below it —
-// reproduces the banner's semantics exactly: everything reachable from here
-// joins the client graph.
-
 import {
   // Field config functions that have HKT-bound component slots
   // (currently: relationship; others added when they gain custom component slots)
@@ -98,70 +86,19 @@ export type {
  * @module
  */
 
-// Framework adapter
-export { reactAdapter } from "./adapter";
+// Framework adapter types (the admin's `reactAdapter` value lives at
+// `@vexcms/react/admin`; the types are free and used by root config helpers)
 export type { ReactHKT, ReactAdapter } from "./adapter";
 
-// Field components
-export { TextFieldAdmin, TextFieldCell, EmailFieldAdmin, EmailFieldCell, TextareaFieldAdmin, TextareaFieldCell } from "./fields";
-export { JsonFieldAdmin, JsonFieldCell, UrlFieldAdmin, UrlFieldCell, NumberFieldAdmin, NumberFieldCell, CheckboxFieldAdmin, CheckboxFieldCell, SelectFieldAdmin, SelectFieldCell, DateFieldAdmin, DateFieldCell, ColorFieldAdmin, ColorFieldCell, ArrayFieldAdmin, ArrayFieldCell, BlocksFieldAdmin, BlocksFieldCell, GroupFieldAdmin, GroupFieldCell, RelationshipFieldAdmin, RelationshipFieldCell, UploadFieldAdmin, UploadFieldCell, RichTextFieldAdmin, RichTextFieldCell } from "./fields";
-
-// Admin extension points (slots) — experimental, S13
-export { SlotOutlet, SlotOverrideOutlet } from "./slots";
-export type { SlotOverrideProps } from "./slots";
 export { useVexPermissions } from "./access";
-export { useVexForm } from "./forms";
-export { VexDocumentProvider, useVexDocument } from "./documents";
-export type { VexDocumentState } from "./documents";
-export { SLOT_IDS, BUILTIN_CONTRIBUTION_IDS } from "@vexcms/core";
-export {
-  DocumentEditSlotOutlet,
-  DocumentEditRuntimeProvider,
-  useDocumentEditRuntime,
-  documentEditBuiltinContributions,
-  useEditActionsMenuDialog,
-  EditActionsMenuItem,
-} from "./documents";
-export type { DocumentEditRuntimeState, EditActionsMenuDialogState, EditActionsMenuItemProps } from "./documents";
-export type { EditSlotProps, EditSlotConfigInput } from "@vexcms/core";
-export type {
-  ComponentContributionInput,
-  ComponentOverrideInput,
-  SlotId,
-  SlotAccessContext,
-  SlotAccessPredicate,
-} from "@vexcms/core";
 
-// Form entry — re-exported from its own module so `@vexcms/react` users who
-// only need `useAppForm`/`AppForm` are not forced to a second import; the
-// app form's full surface is `@vexcms/react/form`.
-export { useAppForm, AppForm } from "./forms";
+// The app form's full surface — `useAppForm`/`AppForm` — is
+// `@vexcms/react/form` only: the root must not reach `dnd` through
+// `ArrayField`/`BlocksField`'s drag handles.
 export type { FieldControlProps, FieldComponentProps } from "@vexcms/core";
 
-export {
-  AdminLayout,
-  AdminNotFound,
-  AppSidebar,
-  AdminTopNav,
-  DashboardView,
-  CollectionsIndexView,
-  AdminCardSection,
-  AdminIndexEmptyState,
-  UnauthorizedView,
-} from "./admin";
-export type {
-  AdminUser,
-  AdminLayoutProps,
-  AdminNotFoundVariant,
-  AdminNotFoundProps,
-  AppSidebarProps,
-  AdminCardSectionProps,
-  AdminIndexEmptyStateProps,
-  UnauthorizedViewProps,
-} from "./admin";
-export { CollectionListView, CollectionEditView } from "./collections";
-export { MediaCollectionListView, MediaCollectionEditView } from "./media";
-export { GlobalEditView, GlobalsListView } from "./globals";
+export { UnauthorizedView } from "./admin/UnauthorizedView";
+export type { UnauthorizedViewProps } from "./admin/UnauthorizedView";
 
 // Context
 export {
@@ -175,14 +112,7 @@ export type { NavigationBlockerAdapter, FrameworkAuthAdapter } from "./config";
 export { useVexNavigate, COVERING_ROUTE_LINK_ATTRIBUTE } from "./config";
 export { useVexAuth, VexAuthProvider, useAuthTransition, AuthTransitionProvider, type AuthTransitionState } from "./auth";
 
-export {
-  useListViewContext,
-  ListViewContextProvider,
-  type ListViewContextState,
-} from "./collections/listView/ListViewContext";
-
 // Hooks
-export { ModalSurfaceProvider, useModalSurface } from "./modals";
 export { useCanAccessAdminPanel } from "./access";
 export {
   usePaginatedQuery,
@@ -193,10 +123,10 @@ export { usePermission } from "./access";
 
 // Utilities
 export { cn } from "./utils/cn";
-export { Icon } from "./ui/Icon";
+export { Icon, isIconName, IconNodeProvider } from "./ui/Icon";
 export { adminHref } from "./admin/adminHref";
 export type { AdminHrefTarget } from "./admin/adminHref";
-export type { IconProps, IconName } from "./ui/Icon";
+export type { IconProps, IconName, IconNodeMap } from "./ui/Icon";
 export { RenderBlocks } from "./fields/blocks/RenderBlocks";
 export type {
   BlockComponentProps,
@@ -205,12 +135,6 @@ export type {
   RenderBlocksProps,
 } from "./fields/blocks/RenderBlocks";
 
-// Live preview
-export {
-  LivePreviewPanel,
-  resolveLivePreviewUrl,
-} from "./livePreview/LivePreviewPanel";
-export type { LivePreviewFrameGeometry } from "./livePreview/LivePreviewPanel";
 export {
   LivePreviewProvider,
   useLivePreview,
@@ -221,15 +145,42 @@ export type {
   LivePreviewDocumentQueryResult,
   LivePreviewQueryResult,
 } from "./livePreview/LivePreviewContext";
-export {
-  useLivePreviewPanelMinSize,
-  useLivePreviewPanelState,
-} from "./livePreview/useLivePreviewPanelState";
 export { useLivePreviewServerUrl } from "./livePreview/useLivePreviewServerUrl";
 export { useLivePreviewSync } from "./livePreview/useLivePreviewSync";
 
-// shadcn UI primitives
-export * from "./ui";
+// shadcn UI primitives — explicit re-exports, skipping `data-table`, `dnd`,
+// `sidebar` and `resizable` (the admin's own primitives, `@vexcms/react/admin`)
+export * from "./ui/accordion";
+export * from "./ui/card";
+export * from "./ui/checkbox";
+export * from "./ui/radio-group";
+export * from "./ui/badge";
+export * from "./ui/dialog";
+export * from "./ui/datetime";
+export * from "./ui/dropdown-menu";
+export * from "./ui/input";
+export * from "./ui/label";
+export * from "./ui/sheet";
+export * from "./ui/button";
+export * from "./ui/table";
+export * from "./ui/select";
+export * from "./ui/VexLink";
+export * from "./ui/VexImage";
+export * from "./ui/tooltip";
+export * from "./ui/scroll-area";
+export * from "./ui/ScrollSection";
+export * from "./ui/skeleton";
+export * from "./ui/separator";
+export * from "./ui/popover";
+export * from "./ui/tabs";
+export * from "./ui/sonner";
+export * from "./ui/field";
+export * from "./ui/ActionsMenu";
+export * from "./ui/InputTag";
+export * from "./ui/InlineQueryError";
+export * from "./ui/QueryErrorBoundary";
+export * from "./ui/ThemeProvider";
+export * from "./ui/ThemeToggle";
 
 /**
  * Relationship field input type with the React component slot bound.
@@ -353,3 +304,4 @@ export function defineCollection<
     config,
   );
 }
+

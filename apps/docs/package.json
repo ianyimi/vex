@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@astrojs/starlight": "catalog:",
+    "@vercel/analytics": "catalog:",
     "astro": "catalog:",
     "sharp": "catalog:",
     "starlight-llms-txt": "catalog:"

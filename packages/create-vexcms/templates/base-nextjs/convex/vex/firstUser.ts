@@ -3,7 +3,8 @@ import { ConvexError } from "convex/values"
 import { TABLE_SLUG_USERS } from "~/db/constants"
 import { USER_ROLES } from "~/db/constants/auth"
 
-import { mutation, query } from "../_generated/server"
+import { query } from "../_generated/server"
+import { vexMutation as mutation } from "../vex"
 
 /**
  * Check whether the admin panel has been bootstrapped (at least one admin

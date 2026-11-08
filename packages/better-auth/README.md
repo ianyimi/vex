@@ -31,7 +31,7 @@ import type { BetterAuthSchemaInput } from "@vexcms/better-auth/client";
 export const authSchema = {
   user: {
     additionalFields: {
-      roles: { type: "string[]", defaultValue: ["user"], required: true },
+      roles: { type: "string[]", defaultValue: ["user"], required: true, input: false },
     },
   },
   plugins: {

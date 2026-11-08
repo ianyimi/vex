@@ -4,6 +4,8 @@ import importX from "eslint-plugin-import-x"
 import perfectionist from "eslint-plugin-perfectionist"
 import tseslint from "typescript-eslint"
 
+import { jsxA11yConfig } from "../../eslint.jsx-a11y.mjs"
+
 const compat = new FlatCompat({
   baseDirectory: import.meta.dirname,
 })
@@ -131,6 +133,7 @@ export default tseslint.config(
     },
     rules: convexRules,
   },
+  jsxA11yConfig,
   {
     languageOptions: {
       parserOptions: {
@@ -147,5 +150,9 @@ export default tseslint.config(
       // Workaround for ESLint flat config circular reference in diagnostics
       _internalSilentUse: true,
     },
+  },
+  {
+    extends: [tseslint.configs.disableTypeChecked],
+    files: ["**/*.test.ts", "**/*.test.tsx", "src/testing/**/*.ts"],
   }
 )

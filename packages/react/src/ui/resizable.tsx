@@ -21,6 +21,7 @@ const ResizablePanel = ResizablePrimitive.Panel;
 function ResizableHandle({
   withHandle,
   className,
+  "aria-label": ariaLabel = "Resize panels",
   ...props
 }: React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & {
   withHandle?: boolean;
@@ -36,10 +37,11 @@ function ResizableHandle({
       hitAreaMargins={{ coarse: 20, fine: 10 }}
       className={cn(
         "relative flex w-px shrink-0 items-center justify-center bg-border",
-        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        "focus-visible:focus-ring",
         "data-[panel-group-direction=vertical]:h-px data-[panel-group-direction=vertical]:w-full",
         className,
       )}
+      aria-label={ariaLabel}
       {...props}
     >
       {withHandle && (

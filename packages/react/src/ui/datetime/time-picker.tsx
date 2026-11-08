@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Simple Time Picker
  * Check out the live demo at https://shadcn-datetime-picker-pro.vercel.app/
@@ -5,7 +7,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import { cn } from "../../utils/cn";
 import { Clock, ChevronDownIcon, CheckIcon } from "lucide-react";
@@ -71,6 +73,7 @@ export function SimpleTimePicker({
     [use12HourFormat],
   );
   const [open, setOpen] = useState(false);
+  const popoverContentId = useId();
   const [ampm, setAmpm] = useState(
     format(value, "a") === "AM" ? AM_VALUE : PM_VALUE,
   );
@@ -300,6 +303,7 @@ export function SimpleTimePicker({
             {...props}
             role="combobox"
             aria-expanded={open}
+            aria-controls={popoverContentId}
             className={cn(
               "flex h-9 px-3 items-center justify-between cursor-pointer font-normal border border-input rounded-md text-sm shadow-sm",
               disabled && "opacity-50 cursor-not-allowed",
@@ -312,10 +316,10 @@ export function SimpleTimePicker({
           </div>
         )}
       />
-      <PopoverContent className="p-0 w-auto" side="top">
+      <PopoverContent id={popoverContentId} className="p-0 w-auto" side="top">
         <div className="flex flex-col gap-2 p-2">
           <div className="flex h-56 gap-1">
-            <ScrollArea className="h-full w-20">
+            <ScrollArea className="h-full w-20" aria-label="Hours">
               <div className="flex flex-col items-stretch pb-48">
                 {hours.map((v) => (
                   <div
@@ -333,7 +337,7 @@ export function SimpleTimePicker({
                 ))}
               </div>
             </ScrollArea>
-            <ScrollArea className="h-full w-20">
+            <ScrollArea className="h-full w-20" aria-label="Minutes">
               <div className="flex flex-col items-stretch pb-48">
                 {minutes.map((v) => (
                   <div
@@ -351,7 +355,7 @@ export function SimpleTimePicker({
                 ))}
               </div>
             </ScrollArea>
-            <ScrollArea className="h-full w-20">
+            <ScrollArea className="h-full w-20" aria-label="Seconds">
               <div className="flex flex-col items-stretch pb-48">
                 {seconds.map((v) => (
                   <div
@@ -370,7 +374,7 @@ export function SimpleTimePicker({
               </div>
             </ScrollArea>
             {use12HourFormat && (
-              <ScrollArea className="h-full w-20">
+              <ScrollArea className="h-full w-20" aria-label="AM/PM">
                 <div className="flex flex-col items-stretch">
                   {ampmOptions.map((v) => (
                     <TimeItem

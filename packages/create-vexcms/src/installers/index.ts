@@ -11,5 +11,5 @@ export {
   generateEnvTsRuntimeMapping,
   generateReadmeSection,
   generateCredentialsValue,
-} from './string-utils.js';
+} from './stringUtils.js';
 export { createInstaller } from './createInstaller.js';

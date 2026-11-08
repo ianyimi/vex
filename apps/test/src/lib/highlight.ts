@@ -18,6 +18,29 @@ export type CodeLanguage = (typeof CODE_LANGUAGES)[number]
 export const CODE_THEME = "tokyo-night"
 
 /**
+ * Tokyo Night's comment color (`#51597D`) is 3.00:1 against
+ * `--color-code-bg` (`oklch(11% 0 0)`) — below the 4.5:1 AA floor for normal
+ * text. Replaced with a lightened step along the same hue that clears 4.5:1
+ * (`#747a97`, 4.86:1), rather than swapping the whole theme over one token.
+ */
+export const CODE_COLOR_REPLACEMENTS: Record<string, string> = {
+  "#51597d": "#747a97",
+}
+
+/**
+ * Per-line tokenize budget, in milliseconds, for both highlighters.
+ *
+ * Shiki's default is 500 ms. The first `codeToHtml` call compiles grammar
+ * regexes lazily, and under load (a busy build worker, a slow phone, parallel
+ * test runs) that can take longer than 500 ms. Tokenizing then stops partway
+ * through a line and the unfinished state carries into the following lines, so
+ * everything after a `//` comment renders as comment. The limit still stops a
+ * runaway regex on authored code; it just stops cold-start compiles from
+ * tripping it.
+ */
+export const CODE_TOKENIZE_TIME_LIMIT_MS = 5_000
+
+/**
  * Narrows an authored `language` value to one shiki is loaded for.
  *
  * The field is a `select`, so the value is an array and can also be a stale
@@ -53,8 +76,10 @@ export async function highlightCode(props: {
 }): Promise<string> {
   const highlighter = await getHighlighter()
   const html = highlighter.codeToHtml(props.code, {
+    colorReplacements: CODE_COLOR_REPLACEMENTS,
     lang: props.language,
     theme: CODE_THEME,
+    tokenizeTimeLimit: CODE_TOKENIZE_TIME_LIMIT_MS,
   })
   // `codeToHtml` returns `<pre …><code>…</code></pre>`; keep the inner code
   // element's contents and let the pane own the scroll container.

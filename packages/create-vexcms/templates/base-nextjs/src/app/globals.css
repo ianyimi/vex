@@ -36,6 +36,11 @@
 @source "../../node_modules/@vexcms/next/dist/**/*.js";
 @source not "../../public";
 
+@utility focus-ring {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

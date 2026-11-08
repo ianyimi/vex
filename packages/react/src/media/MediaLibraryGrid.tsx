@@ -10,16 +10,17 @@ import {
 import {
   Button,
   Input,
-  Icon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "../ui";
+import { Icon } from "../ui/Icon";
 import { FilePreview } from "./FilePreview";
 import { usePaginatedSearch } from "../hooks";
 import { cn } from "../utils/cn";
+import { getVexErrorMessage } from "../utils/errors";
 
 /**
  * Props for the MediaLibraryGrid component.
@@ -105,7 +106,7 @@ export function MediaLibraryGrid({
     return acceptPatterns.length > 0 ? acceptPatterns : undefined;
   }, [selectedType, acceptPatterns]);
 
-  const { documents, isPending, hasMore, isLoadingMore, loadMore } =
+  const { documents, isPending, isError, error, hasMore, isLoadingMore, loadMore } =
     usePaginatedSearch<VexMediaDocument>({
       collection: targetCollectionConfig,
       query: search,
@@ -122,6 +123,16 @@ export function MediaLibraryGrid({
       onSelect([id]);
     }
   };
+
+  const statusText = isPending
+    ? "Loading media…"
+    : isError
+      ? getVexErrorMessage(error)
+      : documents.length === 0
+        ? search.length > 0
+          ? "No media files match your search"
+          : "No media files yet"
+        : `${documents.length} file${documents.length === 1 ? "" : "s"} loaded`;
 
   return (
     <>
@@ -161,8 +172,15 @@ export function MediaLibraryGrid({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      <div role="status" aria-live="polite" className="sr-only">
+        {statusText}
+      </div>
       <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden">
-        {documents.length === 0 ? (
+        {isError ? (
+          <p className="p-8 text-center text-xs text-destructive">
+            {getVexErrorMessage(error)}
+          </p>
+        ) : documents.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
             {isPending
               ? "Loading..."
@@ -218,6 +236,7 @@ function MediaDocumentPreview({
         "group relative flex flex-col gap-2 rounded-sm border border-border bg-card p-2 transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         isSelected && "border-2 border-primary",
       )}
+      aria-pressed={isSelected}
       onClick={() => handleItemClick(mediaDoc._id)}
     >
       <div className="relative w-full aspect-square overflow-hidden rounded-sm bg-muted">

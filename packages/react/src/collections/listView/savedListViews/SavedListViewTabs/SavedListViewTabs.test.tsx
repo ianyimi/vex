@@ -781,10 +781,13 @@ describe("SavedListViewTabs — single views trigger, no duplicate popover", () 
   // `@md/list` and up) and the active view's own name (visible below `@md/list`) — pure
   // CSS toggles which is shown, so BOTH are present in jsdom (which
   // applies no real CSS), making the button's own computed accessible NAME an
-  // unpredictable concatenation of both. Locate it by its distinguishing icon instead.
+  // unpredictable concatenation of both. `lucide-react/dynamic`'s `DynamicIcon` renders
+  // its generic `Icon` component, which carries only the shared "lucide" class — never
+  // a per-icon class like "lucide-chevrons-up-down" — so locate it by its distinguishing
+  // static label instead.
   function getViewsTrigger(container: HTMLElement): HTMLElement {
     const triggers = Array.from(container.querySelectorAll("button")).filter((b) =>
-      b.querySelector(".lucide-chevrons-up-down"),
+      Array.from(b.querySelectorAll("span")).some((s) => s.textContent === "All views"),
     );
     expect(triggers).toHaveLength(1);
     return triggers[0] as HTMLElement;

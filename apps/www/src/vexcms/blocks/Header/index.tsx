@@ -109,7 +109,7 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
           </Link>
 
           {items.length > 0 ? (
-            <nav className={cn("items-center gap-1", navClass)}>
+            <nav aria-label="Primary navigation" className={cn("items-center gap-1", navClass)}>
               {items.map((item) => {
                 const isCurrent = pathname === item.href
                 return (
@@ -173,7 +173,7 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
               </SheetTrigger>
               <SheetContent className="rounded-lg border-border bg-background" side="top">
                 <SheetTitle className="sr-only">Menu</SheetTitle>
-                <nav className="flex flex-col px-2 pt-2">
+                <nav aria-label="Primary navigation" className="flex flex-col px-2 pt-2">
                   {items.map((item) => (
                     <Link
                       aria-current={pathname === item.href ? "page" : undefined}

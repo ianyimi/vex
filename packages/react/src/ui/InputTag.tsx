@@ -1,6 +1,8 @@
+"use client";
+
 import { ComponentPropsWithRef } from "react";
 import { cn } from "../utils/cn";
-import { Button } from "./";
+import { Button } from "./button";
 
 /**
  * Small disabled-button-styled tag, used to label a value inline (e.g. the

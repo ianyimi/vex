@@ -22,11 +22,16 @@ import { useSession } from "~/auth/client"
  * `promoteFirstAdmin` is a Convex mutation, so concurrent signups cannot
  * both win — Convex serializes mutations, and the loser observes
  * `isBootstrapped` already true.
+ *
+ * `isBootstrapped` reads the whole `user` table (`ctx.db.query(...).collect()`),
+ * so every connected visitor re-runs it on every user insert. Signed-out
+ * visitors never promote anything, so the subscription only opens once a
+ * session exists.
  */
 export function FirstAdminBootstrap() {
-  const isBootstrapped = useQuery(api.vex.firstUser.isBootstrapped)
-  const promoteFirstAdmin = useMutation(api.vex.firstUser.promoteFirstAdmin)
   const { data: session } = useSession()
+  const isBootstrapped = useQuery(api.vex.firstUser.isBootstrapped, session?.user ? {} : "skip")
+  const promoteFirstAdmin = useMutation(api.vex.firstUser.promoteFirstAdmin)
   const router = useRouter()
   // A ref, not state: this is a run-once latch, and nothing renders from it.
   // Setting state inside the effect re-runs the effect to reach the same

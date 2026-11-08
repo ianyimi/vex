@@ -1,7 +1,8 @@
 "use client";
 
 import type { FieldControlProps } from "@vexcms/core";
-import type { ReactHKT, SlotOverrideProps } from "@vexcms/react";
+import type { ReactHKT } from "@vexcms/react";
+import type { SlotOverrideProps } from "@vexcms/react/admin";
 
 /**
  * Root-level per-type override for every `text` field (S1/S7/S8): trims

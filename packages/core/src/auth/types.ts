@@ -79,6 +79,23 @@ export interface VexAuthAdapter {
    * components to look up the current user collection.
    */
   readonly userCollection: CollectionSlug;
+
+  /**
+   * Field names on the user collection an end user can set directly
+   * through the auth provider's own public endpoints (sign-up,
+   * update-profile), as opposed to fields only server-trusted code can
+   * write.
+   *
+   * `defineServerConfig` throws `VexAuthConfigError` when
+   * `config.access.userRolesField` appears in this list for the
+   * collection named by `userCollection` — a role field an end user can
+   * set directly is a privilege-escalation path. Omitting this property
+   * (`undefined`) skips the check entirely; an adapter that cannot
+   * determine writability should leave it unset rather than guess.
+   *
+   * @see {@link assertRolesFieldNotClientWritable} for the check
+   */
+  readonly clientWritableUserFields?: readonly string[];
 }
 
 /**

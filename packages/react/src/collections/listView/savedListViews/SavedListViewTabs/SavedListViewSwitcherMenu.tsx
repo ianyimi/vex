@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { VEX_VIEW_SOURCES, type VexViewSource } from "@vexcms/core";
-import { Icon, ScrollSection } from "../../../../ui";
+import { ScrollSection, Icon } from "../../../../ui";
 import {
   Command,
   CommandEmpty,

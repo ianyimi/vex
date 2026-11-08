@@ -1,0 +1,298 @@
+{
+  "generated": "2026-11-08T09:15:31.039Z",
+  "baseURL": "http://localhost:3020",
+  "tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa"
+  ],
+  "results": [
+    {
+      "path": "/admin",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/account",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/account?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/apikey",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/apikey?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/articles",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/articles/mh7fcc876wnp3w0wtjwhbaerz58d8bz6",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/articles?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/case_studies",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/case_studies/mn75z1hnw72xbmysfa6vfv76498d82ha",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/case_studies?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/changelog",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/changelog?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/comments",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/comments?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/fields",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/fields/n97cg96vgvf1yrmamyjad3hag58h1e9c",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/fields?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/footers",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/footers?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/headers",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/headers?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/images",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/invitation",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/invitation?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/jwks",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/jwks?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/member",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/member?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/organization",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/organization?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/pages",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/pages?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/posts",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/posts/n179rryvq3d5wthhwq0b9q3g118htxkz",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/posts?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/session",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/session/jh7b4e656sgjaygcfmc2r0hnah8hv386",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/session?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/team",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/team?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/teamMember",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/teamMember?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/telemetryEvents",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/telemetryProjects",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/testimonials",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/testimonials/nh7erskf8bwbcqp7azvj4c8tk18hf2xc",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/testimonials?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/themes",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/themes?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/user",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/user?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/verification",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/collections/verification?createNew=true",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/globals/announcement",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/globals/nav",
+      "theme": "dark",
+      "violations": []
+    },
+    {
+      "path": "/admin/globals/siteSettings",
+      "theme": "dark",
+      "violations": []
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import type { BlockComponentProps } from "@vexcms/react"
 
-import { icons } from "lucide-react"
+import { Icon, isIconName } from "@vexcms/react"
 
 import type { FeaturesBlock } from "~/vex.types"
 
@@ -31,15 +31,15 @@ export default function FeaturesBlock({ block }: BlockComponentProps) {
 
         <div className="grid gap-px overflow-hidden rounded-md border border-border bg-border md:grid-cols-2 xl:grid-cols-3">
           {items.map((feature, index) => {
-            const Glyph = feature.icon ? icons[feature.icon as keyof typeof icons] : undefined
+            const iconName = feature.icon
             return (
               <div className="bg-background p-6" key={`${feature.title}-${index}`}>
                 {/* An unresolvable icon drops the frame entirely rather than
                     leaving an empty square; the title then starts the cell and
                     a mixed array still reads as intentional. */}
-                {Glyph ? (
+                {iconName && isIconName(iconName) ? (
                   <span className="mb-4 flex size-8 items-center justify-center rounded-sm border border-border">
-                    <Glyph className="size-4 text-primary" />
+                    <Icon name={iconName} className="size-4 text-primary" />
                   </span>
                 ) : null}
                 <h3 className="text-[17px] leading-[1.35] font-semibold tracking-[-0.01em] text-foreground xl:text-lg">

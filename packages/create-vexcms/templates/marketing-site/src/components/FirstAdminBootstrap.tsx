@@ -24,9 +24,9 @@ import { useSession } from "~/auth/client"
  * `isBootstrapped` already true.
  */
 export function FirstAdminBootstrap() {
-  const isBootstrapped = useQuery(api.vex.firstUser.isBootstrapped)
-  const promoteFirstAdmin = useMutation(api.vex.firstUser.promoteFirstAdmin)
   const { data: session } = useSession()
+  const isBootstrapped = useQuery(api.vex.firstUser.isBootstrapped, session?.user ? {} : "skip")
+  const promoteFirstAdmin = useMutation(api.vex.firstUser.promoteFirstAdmin)
   const router = useRouter()
   // A ref, not state: this is a run-once latch, and nothing renders from it.
   // Setting state inside the effect re-runs the effect to reach the same

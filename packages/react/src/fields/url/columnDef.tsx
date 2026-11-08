@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, TDocument, UrlField } from "@vexcms/core";
 import { UrlFieldCell } from "./Cell";

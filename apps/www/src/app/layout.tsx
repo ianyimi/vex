@@ -1,15 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import "./globals.css";
 
 import { Analytics } from "@vercel/analytics/next";
-import { LivePreviewProvider } from "@vexcms/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { LivePreviewProvider, Toaster } from "@vexcms/react";
 import { ThemeScript } from "@vexcms/react/server";
 import localFont from "next/font/local";
 
 import ClientProviders from "~/components/providers/client";
 import ServerProviders from "~/components/providers/server";
 import { ThemeLive } from "~/components/ThemeLive";
+import { SPEED_INSIGHTS_SAMPLE_RATE } from "~/lib/analytics";
 
 /**
  * Geist carries the whole type system — display through body — so weight is
@@ -59,6 +61,13 @@ export const metadata: Metadata = {
   title: "VexCMS",
 };
 
+export const viewport: Viewport = {
+  themeColor: [
+    { color: "#F2F2F2", media: "(prefers-color-scheme: light)" },
+    { color: "#080808", media: "(prefers-color-scheme: dark)" },
+  ],
+};
+
 export default function RootLayout({
   auth,
   children,
@@ -102,10 +111,12 @@ export default function RootLayout({
                   `/auth/[pathname]` dialog/full-screen card portals/paints over
                   whichever page (site or admin) triggered it. */}
               {auth}
+              <Toaster />
             </LivePreviewProvider>
           </ClientProviders>
         </ServerProviders>
         <Analytics />
+        <SpeedInsights sampleRate={SPEED_INSIGHTS_SAMPLE_RATE} />
       </body>
     </html>
   );

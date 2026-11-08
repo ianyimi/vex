@@ -1,7 +1,7 @@
 "use client";
 
 import type { EditSlotProps } from "@vexcms/core";
-import { useVexDocument } from "@vexcms/react";
+import { useVexDocument } from "@vexcms/react/admin";
 import type { ComponentType } from "react";
 
 interface SaveWithAnalyticsProps extends EditSlotProps {

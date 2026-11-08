@@ -24,6 +24,7 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
+    AUTH_PROXY_SECRET: process.env.AUTH_PROXY_SECRET,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     NEXT_PUBLIC_CONVEX_SITE_URL: process.env.NEXT_PUBLIC_CONVEX_SITE_URL,
     NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
@@ -35,6 +36,7 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
+    AUTH_PROXY_SECRET: z.string(),
     BETTER_AUTH_SECRET: z.string(),
     NODE_ENV: z.enum(["development", "test", "production"]),
   },

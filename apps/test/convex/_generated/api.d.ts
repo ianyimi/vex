@@ -16,6 +16,7 @@ import type * as auth_sessions from "../auth/sessions.js";
 import type * as footers from "../footers.js";
 import type * as headers from "../headers.js";
 import type * as http from "../http.js";
+import type * as images from "../images.js";
 import type * as pages from "../pages.js";
 import type * as posts from "../posts.js";
 import type * as seed from "../seed.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   footers: typeof footers;
   headers: typeof headers;
   http: typeof http;
+  images: typeof images;
   pages: typeof pages;
   posts: typeof posts;
   seed: typeof seed;

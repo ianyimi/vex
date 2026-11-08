@@ -1,3 +1,5 @@
+"use client";
+
 import { Button, Draggable, DragHandle, Droppable, Skeleton } from "../../ui";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -182,7 +184,12 @@ function UploadItemRow({
   return (
     <div className="flex items-center justify-between gap-2 rounded border-2 border-border px-2">
       <div className="flex min-w-0 flex-1 items-center gap-2 font-mono">
-        {showDragHandle && <DragHandle disabled={readOnly || Boolean(accessError)} />}
+        {showDragHandle && (
+          <DragHandle
+            disabled={readOnly || Boolean(accessError)}
+            aria-label={`Reorder ${mediaDoc?.filename ?? "item"}`}
+          />
+        )}
         {!mediaDoc ? (
           !accessError ? (
             <Skeleton className="h-12 w-12" />

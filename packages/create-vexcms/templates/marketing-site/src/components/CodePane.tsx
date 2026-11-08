@@ -79,13 +79,17 @@ export function CodePane({
       </div>
 
       <div
+        aria-label={filename ? `${filename} code` : "Code"}
         className={cn(
-          "min-w-0 flex-1 overflow-auto overscroll-x-contain bg-[--color-code-bg] p-4 xl:px-4 xl:py-[18px]",
+          "min-w-0 flex-1 overflow-auto overscroll-x-contain bg-(--color-code-bg) p-4 xl:px-4 xl:py-[18px]",
           "max-h-[420px] md:max-h-[560px]",
           bodyClassName
         )}
+        role="region"
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        tabIndex={0}
       >
-        <pre className="font-mono text-xs leading-[1.7] whitespace-pre text-[--color-code-fg] xl:text-[12.5px]">
+        <pre className="font-mono text-xs leading-[1.7] whitespace-pre text-(--color-code-fg) xl:text-[12.5px]">
           {/* Pre-highlighted on the server for anything the page fetched. A
               pane the server never saw (code being typed in live preview)
               renders as plain source until the lazy browser highlighter

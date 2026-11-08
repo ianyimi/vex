@@ -24,45 +24,45 @@ prompt_version: 1
 Why: the brief requires the checklist to come from the fetched sources, not memory. Every later finding cites a row here.
 Verify: `sources.md` covers all 31 A and 24 AA rows (including obsolete 4.1.1) plus 2.4.13, and each widget in `inventory.md` maps to an APG pattern in `sources.md`
 - [x] `sources.md`: WCAG 2.2 A/AA + 2.4.13 table, ARIA 1.2 + APG patterns, Nu checker, CWV + LHCI, MQ5 preferences, axe/jsx-a11y usage, security headers
-- [ ] `inventory.md`: every www route and every admin view. www routes: seeded pages via `[slug]` (including `/roadmap`, `/privacy`, `/brand`, `/accessibility`, `/launch-week`), home, `/posts/[slug]` (the announcement + the 4 launch-week posts), static `/tour`, auth modal + fallback, 404, `unauthorized`, plus the admin `error.tsx` boundary. Each `packages/react/src/ui` and `apps/www/src/components/ui` primitive is mapped to its APG pattern and underlying library (Base UI / cmdk / custom), plus the C–I surfaces new to this pass. Routes that don't exist yet are listed with their owning spec step
-- [ ] `inventory.md`: the existing `vitest-axe` coverage (`testing/fieldInputContract.ts`, `fieldCellContract.ts`) and the interactive components it doesn't reach
+- [x] `inventory.md`: every www route and every admin view. www routes: seeded pages via `[slug]` (including `/roadmap`, `/privacy`, `/brand`, `/accessibility`, `/launch-week`), home, `/posts/[slug]` (the announcement + the 4 launch-week posts), static `/tour`, auth modal + fallback, 404, `unauthorized`, plus the admin `error.tsx` boundary. Each `packages/react/src/ui` and `apps/www/src/components/ui` primitive is mapped to its APG pattern and underlying library (Base UI / cmdk / custom), plus the C–I surfaces new to this pass. Routes that don't exist yet are listed with their owning spec step
+- [x] `inventory.md`: the existing `vitest-axe` coverage (`testing/fieldInputContract.ts`, `fieldCellContract.ts`) and the interactive components it doesn't reach
 
 ## Step 2 — Audit tooling, non-blocking [agent]
 Why: tools before findings. Everything is installed reporting-only, so lint and CI stay green until step 10 flips the gates.
-Verify: `pnpm lint` passes with jsx-a11y warnings; `pnpm --filter www exec playwright test` against the running www on :3030 writes `audit/www-axe.json`; `pnpm --filter www exec lhci autorun` writes a report; `node scripts/validate-html.mjs <url>` prints the Nu results; `pnpm --filter www test` collects no `e2e/` file
-- [ ] `eslint-plugin-jsx-a11y` (6.10.x) in the root `eslint.config.mjs` via `flatConfigs.recommended`, scoped to `**/*.tsx`, every rule at `warn`
-- [ ] `apps/www`: `@playwright/test` + `@axe-core/playwright` (4.14.x). `playwright.config.ts` (`testMatch: "**/*.e2e.ts"`, so vitest's `src/**` + `convex/**` includes never collect them; `baseURL` from `QUALITY_BASE_URL`, default `http://localhost:3030`; the Vercel bypass header when set). `e2e/routes.ts` exports `QUALITY_ROUTES: { path, draft?: true }[]` from the inventory; posts and pages that are seeded as drafts carry `draft: true`. `e2e/axe.e2e.ts` runs AxeBuilder with the `wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa`/`wcag22aa` tags per route, in light + dark, and writes JSON. When `CI` is set it skips `draft` routes
-- [ ] `apps/www/e2e/widths.e2e.ts`: the DOM width matrix (overflowX, offscreen controls, culprits outside scroll regions) at every width, in the discord matrix's JSON shape, written to `audit/www-width-matrix.json`
-- [ ] `apps/test`: the same Playwright setup for the admin, signing in as a seeded test user. `e2e/adminAxe.e2e.ts` + `e2e/adminWidths.e2e.ts` → `audit/admin-*.json`. Local only
-- [ ] `apps/www/lighthouserc.cjs`: mobile preset, the non-draft pages from `e2e/routes.ts` (always including `/` and one `/posts/[slug]` once one is published), assertions at `warn`
-- [ ] Draft audit procedure in `spec.md`: publish the draft on the dev deployment, run the local suite with `CI` unset, record the result in `findings.md`, then unpublish. The flag is dropped in the same edit that publishes the document for real
-- [ ] `scripts/validate-html.mjs`: fetches the rendered HTML per route and runs `vnu-jar` (`--format json`) → `audit/*-nu.json`
-- [ ] Root `.gitignore`: Playwright and LHCI output directories
+Verify: `pnpm lint && env -u CI pnpm --filter www exec playwright test e2e/axe.e2e.ts && pnpm --filter www exec lhci collect --collect.numberOfRuns=1 --collect.url=http://localhost:3030/ && node scripts/validate-html.mjs http://localhost:3030/ && pnpm --filter www test` — lint passes with jsx-a11y warnings; the axe suite writes `audit/www-axe.json`; LHCI writes a report; Nu prints its results; vitest collects no `e2e/` file
+- [x] `eslint-plugin-jsx-a11y` (6.10.x) in the root `eslint.config.mjs` via `flatConfigs.recommended`, scoped to `**/*.tsx`, every rule at `warn`
+- [x] `apps/www`: `@playwright/test` + `@axe-core/playwright` (4.14.x). `playwright.config.ts` (`testMatch: "**/*.e2e.ts"`, so vitest's `src/**` + `convex/**` includes never collect them; `baseURL` from `QUALITY_BASE_URL`, default `http://localhost:3030`; the Vercel bypass header when set). `e2e/routes.ts` exports `QUALITY_ROUTES: { path, draft?: true }[]` from the inventory; posts and pages that are seeded as drafts carry `draft: true`. `e2e/axe.e2e.ts` runs AxeBuilder with the `wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa`/`wcag22aa` tags per route, in light + dark, and writes JSON. When `CI` is set it skips `draft` routes
+- [x] `apps/www/e2e/widths.e2e.ts`: the DOM width matrix (overflowX, offscreen controls, culprits outside scroll regions) at every width, in the discord matrix's JSON shape, written to `audit/www-width-matrix.json`
+- [x] `apps/test`: the same Playwright setup for the admin, signing in as a seeded test user. `e2e/adminAxe.e2e.ts` + `e2e/adminWidths.e2e.ts` → `audit/admin-*.json`. Local only
+- [x] `apps/www/lighthouserc.cjs`: mobile preset, the non-draft pages from `e2e/routes.ts` (always including `/` and one `/posts/[slug]` once one is published), assertions at `warn`
+- [x] Draft audit procedure in `spec.md`: publish the draft on the dev deployment, run the local suite with `CI` unset, record the result in `findings.md`, then unpublish. The flag is dropped in the same edit that publishes the document for real
+- [x] `scripts/validate-html.mjs`: fetches the rendered HTML per route and runs `vnu-jar` (`--format json`) → `audit/*-nu.json`
+- [x] Root `.gitignore`: Playwright and LHCI output directories
 
 ## Step 3 — Baseline run + findings ledger [agent]
 Why: one ledger of every failure, each tied to its criterion, before any fix lands. That makes fixes traceable and gives a measured scope.
 Verify: `findings.md` has one row per finding (id, surface, width/theme, criterion or APG pattern, tool, evidence, disposition `fix`/`backlog`) and none is undispositioned
-- [ ] Run axe, widths, Lighthouse and Nu against local www and the local admin; commit the `audit/*.json` output
-- [ ] Triage the jsx-a11y warnings into the ledger
-- [ ] Agent keyboard sweep with the `browser` tool (tab order, a visible focus ring, trap + return in every dialog/sheet/popover) over the inventory. Measure the focus indicator against 2.4.11 / 2.4.13; the current `ring-ring/50` utilities are suspect
-- [ ] Classify each row against the fix boundary; rows needing structural work are marked `backlog`
+- [x] Run axe, widths, Lighthouse and Nu against local www and the local admin; commit the `audit/*.json` output
+- [x] Triage the jsx-a11y warnings into the ledger
+- [x] Agent keyboard sweep with the `browser` tool (tab order, a visible focus ring, trap + return in every dialog/sheet/popover) over the inventory. Measure the focus indicator against 2.4.11 / 2.4.13; the current `ring-ring/50` utilities are suspect
+- [x] Classify each row against the fix boundary; rows needing structural work are marked `backlog`
 
 ## Step 4 — Document shell: skip link, landmarks, metadata, preferences [dev]
 Why: page-wide fixes that clear whole classes of axe/Nu rows across every route at once. They have to land before per-component work so later re-runs aren't noise.
 Verify: axe re-run shows the `bypass`/`landmark-*`/`region`/`document-title`/`html-*` rows cleared; Tab from the address bar reaches the skip link first at 375 and 1536; with `prefers-reduced-motion: reduce` emulated, motion primitives render static
-- [ ] Skip link + `id="main"` target in the www frontend layout and the admin layout (`packages/react` `AdminLayout`)
-- [ ] Landmarks: one `main`, labelled `nav`s, `header`/`footer` roles across www and the admin shell
-- [ ] www `layout.tsx`: a `viewport` export with `themeColor` for light/dark; per-page unique `<title>` via the existing `lib/metadata.ts`; the admin's per-view document titles
-- [ ] Focus appearance: one shared focus-visible treatment meeting 2.4.13 (≥ 2 CSS px perimeter, 3:1 contrast against both adjacent colors) in the `packages/react` theme tokens and www `globals.css`; replace the low-contrast `ring-*/50` variants
-- [ ] `prefers-reduced-motion` in `motion-primitives/` (`TextEffect`, `AnimatedGroup`, `reveal.module.css`) and in admin transitions; `forced-colors` focus/selection visibility
-- [ ] Re-run the step 2 tools; update the `findings.md` dispositions
+- [x] Skip link + `id="main"` target in the www frontend layout and the admin layout (`packages/react` `AdminLayout`)
+- [x] Landmarks: one `main`, labelled `nav`s, `header`/`footer` roles across www and the admin shell
+- [x] www `layout.tsx`: a `viewport` export with `themeColor` for light/dark; per-page unique `<title>` via the existing `lib/metadata.ts`; the admin's per-view document titles
+- [x] Focus appearance: one shared focus-visible treatment meeting 2.4.13 (≥ 2 CSS px perimeter, 3:1 contrast against both adjacent colors) in the `packages/react` theme tokens and www `globals.css`; replace the low-contrast `ring-*/50` variants
+- [x] `prefers-reduced-motion` in `motion-primitives/` (`TextEffect`, `AnimatedGroup`, `reveal.module.css`) and in admin transitions; `forced-colors` focus/selection visibility
+- [x] Re-run the step 2 tools; update the `findings.md` dispositions
 
 ## Step 5 — UI primitives against APG [dev]
 Why: every admin view and www block composes these, so fixing the primitive fixes every consumer. Colocated axe tests keep them fixed.
 Verify: `pnpm --filter @vexcms/react test -- ui` passes with a new `expectNoA11yViolations` + keyboard test per interactive primitive; the browser re-check of each APG keyboard model is recorded in `findings.md`
-- [ ] Per primitive in `packages/react/src/ui` (dialog, alert-dialog, sheet, dropdown-menu, select, popover, command/combobox, multi-select, tabs, accordion, checkbox, radio-group, tooltip, sidebar, pagination, data-table, resizable): roles/states/names and the keyboard model fixed within the boundary. A colocated `<name>.test.tsx` asserts no axe violations plus the APG keys that pattern requires
-- [ ] The same for `apps/www/src/components/ui` primitives that www actually renders
-- [ ] Icon-only buttons get accessible names; target size ≥ 24×24 CSS px (2.5.8) or the spacing exception
+- [x] Per primitive in `packages/react/src/ui` (dialog, alert-dialog, sheet, dropdown-menu, select, popover, command/combobox, multi-select, tabs, accordion, checkbox, radio-group, tooltip, sidebar, pagination, data-table, resizable): roles/states/names and the keyboard model fixed within the boundary. A colocated `<name>.test.tsx` asserts no axe violations plus the APG keys that pattern requires
+- [x] The same for `apps/www/src/components/ui` primitives that www actually renders
+- [x] Icon-only buttons get accessible names; target size ≥ 24×24 CSS px (2.5.8) or the spacing exception
 
 ## Step 6 — Admin views, fields, and the width matrix [dev]
 Why: the surfaces C–I added have never been audited, and the closeout leftovers live here. Depends on steps 4–5 so findings left at this point are view-specific.
@@ -76,13 +76,13 @@ Verify: `audit/admin-axe.json` has no violations; `audit/admin-width-matrix.json
 ## Step 7 — www pages, blocks, images, performance [dev]
 Why: the public surface a stranger sees first, and the one the Lighthouse budgets gate.
 Verify: `audit/www-axe.json` and `audit/www-nu.json` clean; `audit/www-width-matrix.json` clean at every width; the LHCI local run meets the budgets (a11y 100; perf/best-practices/SEO ≥ 90; LCP ≤ 2.5 s, CLS ≤ 0.1, TBT ≤ 200 ms; mobile)
-- [ ] Every block in `apps/www` renders valid, labelled markup (heading order, link purpose, lists, code panes)
-- [ ] Image `alt` end to end: upload field alt → media doc → rendered `<img>`; decorative images `alt=""`; `next/image` `sizes` on every responsive image
-- [ ] Font loading (preload, `display: swap` already set) and LCP image priority on the home page
-- [ ] Auth modal and fallback routes: dialog pattern, labelled form, error announcement (4.1.3)
-- [ ] `/posts/[slug]` (Plate static renderer, first richtext on www): heading order, list markup, image `alt`, code blocks; Lighthouse budgets met with the Plate bundle. Port the fixes to `apps/test`'s identical tree in step 12
-- [ ] `/tour` (static, `next/image` screenshots) and the admin `error.tsx` fallback: alt text, headings, focus on the retry link
-- [ ] Structural findings → `backlog.md`
+- [x] Every block in `apps/www` renders valid, labelled markup (heading order, link purpose, lists, code panes)
+- [x] Image `alt` end to end: upload field alt → media doc → rendered `<img>`; decorative images `alt=""`; `next/image` `sizes` on every responsive image
+- [x] Font loading (preload, `display: swap` already set) and LCP image priority on the home page
+- [x] Auth modal and fallback routes: dialog pattern, labelled form, error announcement (4.1.3)
+- [x] `/posts/[slug]` (Plate static renderer, first richtext on www): heading order, list markup, image `alt`, code blocks; Lighthouse budgets met with the Plate bundle. Port the fixes to `apps/test`'s identical tree in step 12
+- [x] `/tour` (static, `next/image` screenshots) and the admin `error.tsx` fallback: alt text, headings, focus on the retry link
+- [x] Structural findings → `backlog.md`
 
 ## Step 8 — Security, caching and preference headers on www [dev]
 Why: configuration coverage from the brief. It's static, so it ships with the build and is verified on the real Vercel preview, CDN included.
@@ -111,8 +111,8 @@ Verify: a PR touching www gets `quality / axe` and `quality / lighthouse` checks
 ## Step 11 — Accessibility statement [dev]
 Why: deliverable in the brief. It's written last among the www changes so its known-exceptions list is final. Runs after public-presence steps 1–2 (`public-copy.md` contact line, footer list, live `hello@vexcms.dev`).
 Verify: after `seed:reinit` on dev, `/accessibility` renders on :3030, the footer link sits at its `public-copy.md` § Footer position, and the page passes axe; the contact line matches `public-copy.md` byte for byte; the docs page builds
-- [ ] `apps/www/convex/seed.ts`: an `accessibility` page (conformance target WCAG 2.2 AA + 2.4.13, test date, methods, known exceptions from `backlog.md`, the contact line quoted from `public-copy.md`) plus its footer link at the § Footer position. Mirrors how every other www page is CMS-seeded, like launch-infra's `/privacy`
-- [ ] `apps/docs/src/content/docs/accessibility.md`: the same statement scoped to the admin panel and packages, with the same contact line
+- [x] `apps/www/convex/seed.ts`: an `accessibility` page (conformance target WCAG 2.2 AA + 2.4.13, test date, methods, known exceptions from `backlog.md`, the contact line quoted from `public-copy.md`) plus its footer link at the § Footer position. Mirrors how every other www page is CMS-seeded, like launch-infra's `/privacy`
+- [x] `apps/docs/src/content/docs/accessibility.md`: the same statement scoped to the admin panel and packages, with the same contact line
 
 ## Step 12 — Port www fixes to apps/test [dev]
 Why: `apps/test` stays an extended version of www (decision 2026-11-06), and N syncs the templates from both apps next.
@@ -130,5 +130,5 @@ Verify: the last `review-<n>.md` has no open violation or gap; `harness doctor` 
 ## Step 14 — Bookkeeping [agent]
 Why: plan and backlog stay the source of truth for what comes next (N).
 Verify: launch plan items 14 and J/V/K tasks ticked with evidence; `harness doctor` clean
-- [ ] `v0.1.0-launch-plan.md`: tick item 14 and the J, V and K task lists, with commit refs
-- [ ] `backlog.md`: every `backlog` row from `findings.md`, with its evidence
+- [x] `v0.1.0-launch-plan.md`: tick item 14 and the J, V and K task lists, with commit refs
+- [x] `backlog.md`: every `backlog` row from `findings.md`, with its evidence

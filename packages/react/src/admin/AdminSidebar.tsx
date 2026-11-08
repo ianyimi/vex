@@ -15,9 +15,9 @@ import {
   SidebarMenuItem,
   VexLink,
   ThemeToggle,
+  Icon,
 } from "../ui";
 import { AdminUser } from "./AdminLayout";
-import { Icon } from "../ui/Icon";
 import { Activity } from "react";
 import { usePermission } from "../access";
 
@@ -94,8 +94,10 @@ export function AppSidebar(props: AppSidebarProps) {
 
   return (
     <Sidebar
-      side={config.admin.sidebar.side}
+      aria-label="Admin navigation"
       collapsible={config.admin.sidebar.collapsible}
+      role="navigation"
+      side={config.admin.sidebar.side}
     >
       <SidebarHeader className="flex h-12 justify-center border-b">
         <div className="flex items-center justify-between">

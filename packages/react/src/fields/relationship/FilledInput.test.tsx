@@ -127,4 +127,12 @@ describe("RelationshipFilledState", () => {
     await screen.findByText("Alpha");
     expect(container.querySelectorAll(".cursor-grab").length).toBe(0);
   });
+
+  it("names each row's drag handle after its resolved document title (F-094)", async () => {
+    await renderFilled({ onReorder: vi.fn() });
+    await screen.findByText("Alpha");
+    await screen.findByText("Bravo");
+    expect(screen.getByLabelText("Reorder Alpha")).toBeInTheDocument();
+    expect(screen.getByLabelText("Reorder Bravo")).toBeInTheDocument();
+  });
 });
