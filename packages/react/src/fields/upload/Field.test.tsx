@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { useForm } from "@tanstack/react-form";
+import { Toaster } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { adminFieldToInputSchema, defineConfig, text } from "@vexcms/core";
 import type {
@@ -391,16 +392,15 @@ runFieldInputContractSuite({
         });
       });
 
-      // TODO: Un-skip once MediaUploadForm.tsx's onSubmit catch block gets a
-      // real accessible error indicator (its own `// TODO: Show error toast`)
-      // instead of `console.error` only — needs a UI component, not a
-      // one-line fix, tracked separately from this spec's 24 defects.
-      it.skip("[finding] recovers from a failed storage upload — the button un-sticks and the staged file survives for a retry, but nothing tells the user it failed", async () => {
+      it("[finding] recovers from a failed storage upload — the button un-sticks and the staged file survives for a retry, and the user is shown an error toast", async () => {
         generateUploadUrlMock.mockResolvedValue({ url: "https://storage.example/put/1" });
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: async () => ({}) }));
 
         render(
-          <Harness fieldDef={fixture.fieldDef} readOnly={false} initialValue={fixture.empty} />,
+          <>
+            <Harness fieldDef={fixture.fieldDef} readOnly={false} initialValue={fixture.empty} />
+            <Toaster />
+          </>,
         );
         const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
         fireEvent.change(fileInput, { target: { files: [makeFile("cover.png")] } });
@@ -416,11 +416,9 @@ runFieldInputContractSuite({
         expect(screen.getByText("cover.png")).toBeInTheDocument();
         expect(createMediaDocMock).not.toHaveBeenCalled();
 
-        // The catch block's only action is `console.error("Upload failed:", error)`
-        // — see its own `// TODO: Show error toast` — so there is no accessible
-        // indicator a user could notice. This asserts the reasonably-expected
-        // outcome (some accessible error indicator exists) and documents the gap.
-        expect(screen.queryByRole("alert")).not.toBeNull();
+        // The catch block shows a sonner error toast whose description is the
+        // readable error message for the failed upload.
+        expect(await screen.findByText("Upload failed for cover.png")).toBeInTheDocument();
       });
     });
   },
