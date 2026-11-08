@@ -65,7 +65,15 @@ jobs:
         run: node scripts/check-import-cost.mjs
 
       - name: Site Bundle Budget
+        # `next analyze` loads `apps/test/next.config.ts`, which validates the
+        # app env (`src/env.mjs`) before compiling, so it needs the same
+        # variables as the build above.
         run: node scripts/check-site-bundle.mjs --app apps/test
+        env:
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+          NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
 
       - name: Typecheck Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" typecheck
