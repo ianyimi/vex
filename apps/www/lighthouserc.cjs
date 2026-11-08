@@ -19,15 +19,13 @@ module.exports = {
       assertions: {
         "categories:accessibility": ["error", { minScore: 1 }],
         "categories:best-practices": ["error", { minScore: 0.9 }],
-        // Timing metrics (performance, LCP, TBT) are simulated from a trace taken
-        // on a shared GitHub runner, and they swing several-fold between runners
-        // for the same code. They warn at the real targets and show per route
-        // in the job summary; hard gating stays on the deterministic checks here
-        // (accessibility, best-practices, CLS, SEO) and on CI's Site Bundle
-        // Budget step (exact JS bytes per route). Today's site pages miss the
-        // timing targets on hydration cost: backlog.md § Hydration cost on site
-        // pages.
-        "categories:performance": ["warn", { minScore: 0.9 }],
+        // Performance and LCP gate at the real targets: at Lighthouse's default
+        // 4x they have passed on every CI run since the per-module split.
+        // TBT alone swings with the runner's CPU (143–371 ms across routes on
+        // one run, 8–77 ms on a fast Mac), so it warns and shows per route in
+        // the job summary; today's site pages miss it on hydration cost
+        // (backlog.md § Hydration cost on site pages).
+        "categories:performance": ["error", { minScore: 0.9 }],
         ...previewAssertions,
         // Every site page holds an open Convex WebSocket for live content, which
         // Chrome blocks from the back/forward cache ("pending browser support").
@@ -35,7 +33,7 @@ module.exports = {
         // backlog.md § Back/forward cache for live-data pages.
         "bf-cache": "warn",
         "cumulative-layout-shift": ["error", { maxNumericValue: 0.1 }],
-        "largest-contentful-paint": ["warn", { maxNumericValue: 2500 }],
+        "largest-contentful-paint": ["error", { maxNumericValue: 2500 }],
         "total-blocking-time": ["warn", { maxNumericValue: 200 }],
         // Next ships no browser source maps, and every page carries framework
         // chunks Lighthouse counts as unused. CI's Site Bundle Budget step

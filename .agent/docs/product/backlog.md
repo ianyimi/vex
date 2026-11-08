@@ -1475,17 +1475,17 @@ for getting the quality checks green, and `bf-cache` stays reported in CI meanwh
 
 ## Hydration cost on site pages
 
-**What.** Every `apps/www` site page misses Lighthouse's mobile timing targets
-(performance ≥ 0.9, TBT ≤ 200 ms) in CI. Most of the main-thread time is script evaluation
-in the React DOM / Next.js framework chunk (~770 ms on `/privacy` at a mid-tier-phone CPU
-slowdown), with the page's own client components next (~230 ms long task). That's the cost
-of hydrating the page, not CMS or admin code: the per-module split already keeps those off
-site pages. `/tour`'s LCP also misses 2500 ms in Lighthouse's simulation, because its
-screenshot downloads alongside the page's JavaScript.
+**What.** Every `apps/www` site page blocks the main thread longer than Lighthouse's mobile
+target (TBT ≤ 200 ms): 143–371 ms in CI at the default 4×, ~420–740 ms emulating a mid-tier
+phone on fixed hardware. Most of it is script evaluation in the React DOM / Next.js framework
+chunk (~770 ms on `/privacy` at the mid-tier slowdown), with the page's own client components
+next (~230 ms long task). That's the cost of hydrating the page, not CMS or admin code: the
+per-module split already keeps those off site pages. Performance (≥ 0.9) and LCP (≤ 2500 ms)
+pass in CI at 4× and are gated.
 
-**Why.** Real mid-tier phones see this blocking time. The `quality` workflow reports these
-as warnings (`apps/www/lighthouserc.cjs`; per-route table in the job summary) because
-they're too noisy on shared runners to gate. Evidence, 2026-11-08: calibrated local LHCI
+**Why.** Real mid-tier phones see this blocking time. The `quality` workflow reports TBT
+as a warning (`apps/www/lighthouserc.cjs`; per-route table in the job summary) because it
+is too noisy on shared runners to gate. Evidence, 2026-11-08: calibrated local LHCI
 runs (benchmarkIndex ~4000, 14.7×) measured TBT ~420–740 ms. Two calibrated CI runs
 (5.7× and 7.8×) measured `/features` TBT at 295 and 990 ms best-of-3, and `/` at 377 and
 976 ms. Uncalibrated 4× runs read 8–77 ms on a fast Mac and 200–480 ms on GitHub runners,

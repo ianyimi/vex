@@ -12,12 +12,8 @@ const { join } = require("node:path");
 
 const resultsDir = join(__dirname, "..", ".lighthouseci");
 
-// The simulated timing budgets in lighthouserc.cjs, which warn instead of fail.
-const TIMING_AUDITS = new Set([
-  "categories.performance",
-  "largest-contentful-paint",
-  "total-blocking-time",
-]);
+// The timing budget lighthouserc.cjs reports as a warning instead of failing.
+const TIMING_AUDITS = new Set(["total-blocking-time"]);
 
 /**
  * Formats the spread of one metric across runs as `best` or `best–worst`.
