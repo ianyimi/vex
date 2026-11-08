@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import { ADMIN_FIELDS, CollectionConfig, type NumberField, type TDocument } from "@vexcms/core";
 import { NumberFieldCell } from "./Cell";

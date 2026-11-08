@@ -40,7 +40,7 @@ const THEME_PRESETS = [
       cardForeground: "oklch(13.7% 0 0)",
       popover: "oklch(100% 0 0)",
       popoverForeground: "oklch(13.7% 0 0)",
-      primary: "oklch(60.5% 0.175 42)",
+      primary: "oklch(54% 0.175 42)",
       primaryForeground: "oklch(100% 0 0)",
       secondary: "oklch(98% 0 0)",
       secondaryForeground: "oklch(13.7% 0 0)",
@@ -48,7 +48,7 @@ const THEME_PRESETS = [
       mutedForeground: "oklch(50.5% 0 0)",
       accent: "oklch(96% 0.025 42)",
       accentForeground: "oklch(52% 0.180 40)",
-      destructive: "oklch(57.7% 0.198 27)",
+      destructive: "oklch(54% 0.198 27)",
       destructiveForeground: "oklch(98% 0 0)",
       border: "oklch(85% 0 0)",
       input: "oklch(54.6% 0 0)",
@@ -641,7 +641,7 @@ export const init = internalMutation({
                 value: "8",
                 label: "published packages",
                 description:
-                  "core, react, next, cli, better-auth, file-storage-convex, richtext-plate, create-vexcms",
+                  "core, react, next, cli, better-auth, file-storage-convex, create-vexcms",
               },
               {
                 value: "0",
@@ -708,15 +708,15 @@ export const init = internalMutation({
             id: "home-code-showcase",
             heading: "Write the collection. Get the database.",
             subheading:
-              "A blog's Posts collection on the left, hand-written once. On the right, the Convex schema vex dev emits from it — validators, ids, and indexes included, never edited by hand.",
+              "A blog's Articles collection on the left, hand-written once. On the right, the Convex schema vex dev emits from it — validators, ids, and indexes included, never edited by hand.",
             panes: [
               {
                 label: "You write",
-                filename: "src/vexcms/collections/posts.ts",
+                filename: "src/vexcms/collections/articles.ts",
                 language: ["ts"],
                 authored: ["authored"],
-                code: `export const posts = defineCollection({
-  slug: "posts",
+                code: `export const articles = defineCollection({
+  slug: "articles",
   admin: { useAsTitle: "title", icon: "Newspaper" },
   fields: {
     title: text({ label: "Title", required: true }),
@@ -735,7 +735,7 @@ export const init = internalMutation({
       },
     }),
   },
-  labels: { singular: "Post", plural: "Posts" },
+  labels: { singular: "Article", plural: "Articles" },
 })`,
               },
               {
@@ -749,7 +749,7 @@ export const init = internalMutation({
 import { defineTable } from "convex/server"
 import { v } from "convex/values"
 
-export const posts = defineTable({
+export const articles = defineTable({
   title: v.string(),
   slug: v.string(),
   excerpt: v.optional(v.string()),
@@ -954,7 +954,7 @@ export const posts = defineTable({
               {
                 question: "What does it cost?",
                 answer:
-                  "Nothing. VexCMS is Apache-2.0 licensed. You pay for your Convex usage, which has a free tier.",
+                  "Nothing. The framework itself is free under Apache-2.0. You pay for your Convex usage, which has a free tier.",
               },
             ],
           },

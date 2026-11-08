@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server"
 
 import { httpAction } from "./_generated/server"
 import { createAuth } from "./auth"
+import { limitAuthRequest } from "./auth/rateLimits"
 
 const http = httpRouter()
 
@@ -19,6 +20,11 @@ const authRequestHandler = httpAction(async (ctx, request) => {
     _warn(...args)
   }
   try {
+    const limited = await limitAuthRequest({ ctx, request })
+    if (limited) {
+      return limited
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const auth = createAuth(ctx)
     return await auth.handler(request)

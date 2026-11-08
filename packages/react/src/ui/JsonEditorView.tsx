@@ -176,7 +176,7 @@ export function JsonEditorView({
     <div
       ref={hostRef}
       className={cn(
-        "overflow-hidden rounded-sm border border-input bg-card shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
+        "overflow-hidden rounded-sm border border-input bg-card shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:focus-ring",
         invalid && "border-destructive ring-3 ring-destructive/20",
         readOnly && "opacity-80",
       )}

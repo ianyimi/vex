@@ -1,0 +1,6685 @@
+{
+  "generated": "2026-11-08T06:32:53.606Z",
+  "method": "document.documentElement.scrollWidth vs clientWidth for overflowX; each visible, text-bearing or interactive leaf element overflowing the viewport and not inside a horizontally-scrollable ancestor counts toward culpritsOutsideScrollRegions, with its trimmed text and left/right bounds recorded in offscreenControls.",
+  "routes": [
+    "/admin",
+    "/admin/collections/account",
+    "/admin/collections/account/j578vtcsr4nwwvnpr4yd3dhetn8hhf53",
+    "/admin/collections/account?createNew=true",
+    "/admin/collections/apikey",
+    "/admin/collections/apikey?createNew=true",
+    "/admin/collections/articles",
+    "/admin/collections/articles/mh7fcc876wnp3w0wtjwhbaerz58d8bz6",
+    "/admin/collections/articles?createNew=true",
+    "/admin/collections/case_studies",
+    "/admin/collections/case_studies/mn75z1hnw72xbmysfa6vfv76498d82ha",
+    "/admin/collections/case_studies?createNew=true",
+    "/admin/collections/changelog",
+    "/admin/collections/changelog/ms79pmfnj6emxzgvc63hdmhtcd8d9yvx",
+    "/admin/collections/changelog?createNew=true",
+    "/admin/collections/comments",
+    "/admin/collections/comments/mx7ex0rwypbj5axe4mtp27g07h8d9gk7",
+    "/admin/collections/comments?createNew=true",
+    "/admin/collections/fields",
+    "/admin/collections/fields/n97cg96vgvf1yrmamyjad3hag58h1e9c",
+    "/admin/collections/fields?createNew=true",
+    "/admin/collections/footers",
+    "/admin/collections/footers/jx7dxhvec738x5ym3qbh884rk18hfp64",
+    "/admin/collections/footers?createNew=true",
+    "/admin/collections/headers",
+    "/admin/collections/headers/k179w72fsranpyg1zfb0mj7svx8g7xtr",
+    "/admin/collections/headers?createNew=true",
+    "/admin/collections/images",
+    "/admin/collections/invitation",
+    "/admin/collections/invitation?createNew=true",
+    "/admin/collections/jwks",
+    "/admin/collections/jwks/k5718ghq0y8j4b39pdt599pgy186wrhe",
+    "/admin/collections/jwks?createNew=true",
+    "/admin/collections/member",
+    "/admin/collections/member?createNew=true",
+    "/admin/collections/organization",
+    "/admin/collections/organization?createNew=true",
+    "/admin/collections/pages",
+    "/admin/collections/pages/jd73a58sxytnchx41xgf88bgb18hvrt4",
+    "/admin/collections/pages?createNew=true",
+    "/admin/collections/posts",
+    "/admin/collections/posts/n179rryvq3d5wthhwq0b9q3g118htxkz",
+    "/admin/collections/posts?createNew=true",
+    "/admin/collections/session",
+    "/admin/collections/session/jh72jcv7nybt99wmqxd6ek287h8hv239",
+    "/admin/collections/session?createNew=true",
+    "/admin/collections/team",
+    "/admin/collections/team?createNew=true",
+    "/admin/collections/teamMember",
+    "/admin/collections/teamMember?createNew=true",
+    "/admin/collections/telemetryEvents",
+    "/admin/collections/telemetryEvents/nn7ar8kw1aqv7ez16yexks238n8hvn53",
+    "/admin/collections/telemetryProjects",
+    "/admin/collections/telemetryProjects/ns79ptp0xf9fvk4wmkkd2yr36s8hpqgc",
+    "/admin/collections/testimonials",
+    "/admin/collections/testimonials/nh7erskf8bwbcqp7azvj4c8tk18hf2xc",
+    "/admin/collections/testimonials?createNew=true",
+    "/admin/collections/themes",
+    "/admin/collections/themes/k97et4yp7krngmdm05a6kvm1q58hf5ms",
+    "/admin/collections/themes?createNew=true",
+    "/admin/collections/user",
+    "/admin/collections/user/jn76gyxk6b3zj0s0e16bxavbw58hjtaz",
+    "/admin/collections/user?createNew=true",
+    "/admin/collections/verification",
+    "/admin/collections/verification?createNew=true",
+    "/admin/globals/announcement",
+    "/admin/globals/nav",
+    "/admin/globals/siteSettings"
+  ],
+  "widths": [
+    375,
+    390,
+    640,
+    767,
+    768,
+    769,
+    1024,
+    1280,
+    1536
+  ],
+  "results": {
+    "/admin": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/account": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/account/j578vtcsr4nwwvnpr4yd3dhetn8hhf53": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/account?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/apikey": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/apikey?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/articles": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/articles/mh7fcc876wnp3w0wtjwhbaerz58d8bz6": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/articles?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/case_studies": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/case_studies/mn75z1hnw72xbmysfa6vfv76498d82ha": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/case_studies?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/changelog": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/changelog/ms79pmfnj6emxzgvc63hdmhtcd8d9yvx": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/changelog?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/comments": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/comments/mx7ex0rwypbj5axe4mtp27g07h8d9gk7": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/comments?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/fields": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/fields/n97cg96vgvf1yrmamyjad3hag58h1e9c": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/fields?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/footers": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/footers/jx7dxhvec738x5ym3qbh884rk18hfp64": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/footers?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/headers": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/headers/k179w72fsranpyg1zfb0mj7svx8g7xtr": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/headers?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/images": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/invitation": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/invitation?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/jwks": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/jwks/k5718ghq0y8j4b39pdt599pgy186wrhe": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/jwks?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/member": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/member?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/organization": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/organization?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/pages": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/pages/jd73a58sxytnchx41xgf88bgb18hvrt4": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/pages?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/posts": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/posts/n179rryvq3d5wthhwq0b9q3g118htxkz": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/posts?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/session": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/session/jh72jcv7nybt99wmqxd6ek287h8hv239": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/session?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/team": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/team?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/teamMember": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/teamMember?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/telemetryEvents": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/telemetryProjects": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/telemetryProjects/ns79ptp0xf9fvk4wmkkd2yr36s8hpqgc": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/testimonials": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/testimonials/nh7erskf8bwbcqp7azvj4c8tk18hf2xc": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/testimonials?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/themes": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/themes/k97et4yp7krngmdm05a6kvm1q58hf5ms": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/themes?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/user": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/user/jn76gyxk6b3zj0s0e16bxavbw58hjtaz": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/user?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/verification": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/verification?createNew=true": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/globals/announcement": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/globals/nav": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/globals/siteSettings": {
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    },
+    "/admin/collections/telemetryEvents/nn7ar8kw1aqv7ez16yexks238n8hvn53": {
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 777,
+            "r": 890
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1000,
+            "r": 1001
+          }
+        ]
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 778,
+            "r": 891
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1001,
+            "r": 1002
+          }
+        ]
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1033,
+            "r": 1146
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1256,
+            "r": 1257
+          }
+        ]
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1289,
+            "r": 1402
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1512,
+            "r": 1513
+          }
+        ]
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 2,
+        "offscreenControls": [
+          {
+            "t": "VexCMS Admin",
+            "l": 1545,
+            "r": 1658
+          },
+          {
+            "t": "Toggle theme",
+            "l": 1768,
+            "r": 1769
+          }
+        ]
+      }
+    }
+  },
+  "findings": [],
+  "fixes": []
+}

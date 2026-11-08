@@ -10,11 +10,10 @@ import {
   type VexDocument,
   VexAccessError,
 } from "@vexcms/core";
-import { Button, Draggable, DragHandle, Droppable, Skeleton } from "../../ui";
+import { Button, Draggable, DragHandle, Droppable, Skeleton, Icon } from "../../ui";
 import { get } from "../../client";
 import { resolveRelationshipPreview } from "./preview";
 import { formatDateFieldValue } from "../date/utils";
-import { Icon } from "../../ui/Icon";
 
 /**
  * Resolved `time` config matching `updatedAt`'s injected definition
@@ -193,7 +192,14 @@ function RelationshipItemRow({
   return (
     <div className="flex items-center justify-between rounded border-2 border-border px-2">
       <div className="flex w-full items-center gap-2 font-mono">
-        {showDragHandle && <DragHandle disabled={readOnly || Boolean(accessError)} />}
+        {showDragHandle && (
+          <DragHandle
+            disabled={readOnly || Boolean(accessError)}
+            aria-label={`Reorder ${
+              document ? ((document as Record<string, unknown>)[targetCollection.admin.useAsTitle] as string | undefined) ?? document._id : "item"
+            }`}
+          />
+        )}
         {!document ? (
           !accessError ? (
             <Skeleton className="h-10 w-10" />

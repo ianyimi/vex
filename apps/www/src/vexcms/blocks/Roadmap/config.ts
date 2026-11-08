@@ -133,12 +133,6 @@ export const roadmapBlock = defineBlock({
           description: "Invite users, assign roles, and issue scoped read-only API tokens for external integrations.",
           status: "planned",
         },
-        {
-          feature: "React Package Testing Suite",
-          description:
-            "Exportable Vitest suite from @vexcms/react for testing custom field components and admin extensions in consumer projects.",
-          status: "planned",
-        },
       ],
     }),
   },

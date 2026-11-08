@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Props for {@link AdminIndexEmptyState}.
  */

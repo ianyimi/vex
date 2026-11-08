@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/react",
-  "version": "0.1.0-alpha.30",
+  "version": "0.1.0-alpha.31",
   "description": "React admin components and hooks for VexCMS",
   "keywords": [
     "cms",
@@ -19,8 +19,8 @@
     "directory": "packages/react"
   },
   "sideEffects": [
-    "./dist/chunk-*.js",
-    "./src/adapter.ts"
+    "./src/adapter.ts",
+    "./dist/adapter.js"
   ],
   "type": "module",
   "exports": {
@@ -36,8 +36,13 @@
     },
     "./form": {
       "source": "./src/forms/index.ts",
-      "types": "./dist/form/index.d.ts",
-      "import": "./dist/form/index.js"
+      "types": "./dist/forms/index.d.ts",
+      "import": "./dist/forms/index.js"
+    },
+    "./admin": {
+      "source": "./src/adminEntry.ts",
+      "types": "./dist/adminEntry.d.ts",
+      "import": "./dist/adminEntry.js"
     },
     "./server": {
       "source": "./src/server/index.ts",

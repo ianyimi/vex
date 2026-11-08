@@ -64,7 +64,7 @@ export function ScrollSection(props: ScrollSectionProps) {
 
   const body =
     collapsible && collapsed ? null : (
-      <ScrollArea style={{ height, maxHeight }} className={cn("min-h-0", className)} {...divProps}>
+      <ScrollArea style={{ height, maxHeight }} className={cn("min-h-0", className)} aria-label={title} {...divProps}>
         {children}
       </ScrollArea>
     );

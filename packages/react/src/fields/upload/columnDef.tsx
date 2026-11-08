@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, MediaCollectionConfig, TDocument, UploadField } from "@vexcms/core";
 import { UploadFieldCell } from "./Cell";

@@ -1,0 +1,42 @@
+diff --git a/dist/index.js b/dist/index.js
+index 135cbff..4331d89 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -5853,6 +5853,7 @@ function PasswordInput({
+       /* @__PURE__ */ jsx53(
+         Button,
+         {
++          "aria-label": isVisible ? "Hide password" : "Show password",
+           className: "!bg-transparent absolute top-0 right-0",
+           disabled,
+           size: "icon",
+@@ -10586,22 +10587,19 @@ function AuthView({
+         children: [
+           view === "SIGN_IN" || view === "MAGIC_LINK" || view === "EMAIL_OTP" ? localization.DONT_HAVE_AN_ACCOUNT : view === "SIGN_UP" ? localization.ALREADY_HAVE_AN_ACCOUNT : /* @__PURE__ */ jsx86(ArrowLeftIcon, { className: "size-3" }),
+           view === "SIGN_IN" || view === "MAGIC_LINK" || view === "EMAIL_OTP" || view === "SIGN_UP" ? /* @__PURE__ */ jsx86(
+-            Link,
++            Button,
+             {
++              asChild: true,
++              variant: "link",
++              size: "sm",
+               className: cn(
+-                "text-foreground underline",
++                "px-0 text-foreground underline",
+                 classNames == null ? void 0 : classNames.footerLink
+               ),
+-              href: `${basePath}/${viewPaths[view === "SIGN_IN" || view === "MAGIC_LINK" || view === "EMAIL_OTP" ? "SIGN_UP" : "SIGN_IN"]}${isHydrated ? window.location.search : ""}`,
+               children: /* @__PURE__ */ jsx86(
+-                Button,
++                Link,
+                 {
+-                  variant: "link",
+-                  size: "sm",
+-                  className: cn(
+-                    "px-0 text-foreground underline",
+-                    classNames == null ? void 0 : classNames.footerLink
+-                  ),
++                  href: `${basePath}/${viewPaths[view === "SIGN_IN" || view === "MAGIC_LINK" || view === "EMAIL_OTP" ? "SIGN_UP" : "SIGN_IN"]}${isHydrated ? window.location.search : ""}`,
+                   children: view === "SIGN_IN" || view === "MAGIC_LINK" || view === "EMAIL_OTP" ? localization.SIGN_UP : localization.SIGN_IN
+                 }
+               )

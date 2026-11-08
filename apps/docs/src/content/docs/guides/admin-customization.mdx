@@ -384,8 +384,7 @@ menu entries read identically to the built-ins (icon + label, disabled/
 destructive states):
 
 ```tsx
-import { EditActionsMenuItem } from "@vexcms/react"
-import { useVexDocument } from "@vexcms/react"
+import { EditActionsMenuItem, useVexDocument } from "@vexcms/react/admin"
 
 function ExportCsvMenuItem() {
   const document = useVexDocument()
@@ -416,7 +415,7 @@ menu's host instead — rendered by `DocumentEditActionsMenu` itself, as a
 sibling of the dropdown, so it survives the dropdown closing:
 
 ```tsx
-import { EditActionsMenuItem, useEditActionsMenuDialog } from "@vexcms/react"
+import { EditActionsMenuItem, useEditActionsMenuDialog } from "@vexcms/react/admin"
 
 function ArchiveMenuItem() {
   const dialog = useEditActionsMenuDialog()
@@ -473,7 +472,7 @@ Built-in and third-party edit-view contributions read document-level state
 through `useVexDocument()` (`@vexcms/react`), not through form state:
 
 ```tsx
-import { useVexDocument } from "@vexcms/react"
+import { useVexDocument } from "@vexcms/react/admin"
 
 function PublishedSince() {
   const document = useVexDocument()

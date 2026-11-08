@@ -8,7 +8,6 @@ import type { HeroBlock } from "~/vex.types"
 
 import { Container } from "~/components/Container"
 import { InstallCommand } from "~/components/InstallCommand"
-import { AnimatedItem } from "~/components/motion-primitives/AnimatedGroup"
 import { TextEffect } from "~/components/motion-primitives/TextEffect"
 
 export { heroBlock } from "./config"
@@ -58,14 +57,9 @@ export default function HeroBlock({ block }: BlockComponentProps) {
           </TextEffect>
 
           {subheading ? (
-            <TextEffect
-              as="p"
-              className="mt-4 max-w-[64ch] text-[17px] leading-[1.6] text-pretty text-muted-foreground md:text-lg xl:text-[19px]"
-              delay={0.1}
-              per="line"
-            >
+            <p className="mt-4 max-w-[64ch] text-[17px] leading-[1.6] text-pretty text-muted-foreground md:text-lg xl:text-[19px]">
               {subheading}
-            </TextEffect>
+            </p>
           ) : null}
 
           {hasPrimary || hasSecondary ? (
@@ -112,23 +106,21 @@ export default function HeroBlock({ block }: BlockComponentProps) {
 
       <Container className="flex flex-col items-center text-center">
         {badgeText ? (
-          <AnimatedItem>
-            {badgeLink ? (
-              <Link
-                className="group inline-flex items-center gap-2 rounded-4xl border border-border bg-card py-[5px] pr-[6px] pl-3 text-[13px] font-medium text-muted-foreground transition-colors duration-[180ms] ease-[var(--ease-emphasized)] hover:border-primary/40"
-                href={badgeLink}
-              >
-                {badgeText}
-                <span className="flex size-5 items-center justify-center rounded-4xl bg-primary/14 text-primary transition-colors duration-[180ms] group-hover:bg-primary/22">
-                  <ArrowRight className="size-3" />
-                </span>
-              </Link>
-            ) : (
-              <span className="inline-flex items-center rounded-4xl border border-border bg-card px-3 py-[5px] text-[13px] font-medium text-muted-foreground">
-                {badgeText}
+          badgeLink ? (
+            <Link
+              className="group inline-flex items-center gap-2 rounded-4xl border border-border bg-card py-[5px] pr-[6px] pl-3 text-[13px] font-medium text-muted-foreground transition-colors duration-[180ms] ease-[var(--ease-emphasized)] hover:border-primary/40"
+              href={badgeLink}
+            >
+              {badgeText}
+              <span className="flex size-5 items-center justify-center rounded-4xl bg-primary/14 text-primary transition-colors duration-[180ms] group-hover:bg-primary/22">
+                <ArrowRight className="size-3" />
               </span>
-            )}
-          </AnimatedItem>
+            </Link>
+          ) : (
+            <span className="inline-flex items-center rounded-4xl border border-border bg-card px-3 py-[5px] text-[13px] font-medium text-muted-foreground">
+              {badgeText}
+            </span>
+          )
         ) : null}
 
         <TextEffect
@@ -145,15 +137,13 @@ export default function HeroBlock({ block }: BlockComponentProps) {
         </TextEffect>
 
         {subheading ? (
-          <AnimatedItem className="mt-7" delay={0.28}>
-            <p className="max-w-[60ch] text-[17px] leading-[1.6] text-pretty text-muted-foreground md:text-lg xl:text-[19px]">
-              {subheading}
-            </p>
-          </AnimatedItem>
+          <p className="mt-7 max-w-[60ch] text-[17px] leading-[1.6] text-pretty text-muted-foreground md:text-lg xl:text-[19px]">
+            {subheading}
+          </p>
         ) : null}
 
         {hasPrimary || hasSecondary ? (
-          <AnimatedItem className="mt-10 w-full" delay={0.38}>
+          <div className="mt-10 w-full">
             <div className="mx-auto flex w-full max-w-[320px] flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
               {hasPrimary ? (
                 <Link
@@ -175,13 +165,13 @@ export default function HeroBlock({ block }: BlockComponentProps) {
                 </Link>
               ) : null}
             </div>
-          </AnimatedItem>
+          </div>
         ) : null}
 
         {installCommand ? (
-          <AnimatedItem className="mt-7 flex w-full justify-center" delay={0.46}>
+          <div className="mt-7 flex w-full justify-center">
             <InstallCommand command={installCommand} />
-          </AnimatedItem>
+          </div>
         ) : null}
       </Container>
     </section>

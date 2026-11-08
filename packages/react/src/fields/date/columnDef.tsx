@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, TDocument } from "@vexcms/core";
 import type { DateField } from "@vexcms/core";

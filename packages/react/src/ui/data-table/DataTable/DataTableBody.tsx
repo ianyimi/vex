@@ -161,7 +161,7 @@ export function DataTableBody<TData extends { _id: string }>({
                   >
                     {isSelectColumn ? (
                       <div className={SELECTION_CHECKBOX_WRAPPER_CLASS}>
-                        <Checkbox disabled />
+                        <Checkbox disabled aria-label="Select row" />
                       </div>
                     ) : isActionsColumn ? (
                       <div className="flex items-center justify-center" data-slot="row-actions">

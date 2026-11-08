@@ -84,4 +84,10 @@ describe("ArrayField", () => {
     expect(label.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(description.compareDocumentPosition(firstItem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it("names each item's drag handle by its item label and 1-based position (F-094)", () => {
+    render(<Harness initialValue={["a", "b"]} />);
+    expect(screen.getByLabelText("Reorder Tag 1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Reorder Tag 2")).toBeInTheDocument();
+  });
 });

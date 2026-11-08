@@ -32,6 +32,8 @@ type DateTimeInputProps = {
   timezone?: string;
   hideCalendarIcon?: boolean;
   onCalendarClick?: () => void;
+  /** Accessible name for the segmented date/time text field. */
+  ariaLabel?: string;
 };
 
 // https://date-fns.org/v4.1.0/docs/format
@@ -362,6 +364,7 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>(
         <input
           ref={mergeRefs(inputRef)}
           className="font-mono flex-grow min-w-0 bg-transparent py-1 pe-2 text-sm focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label={options.ariaLabel ?? "Date and time"}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onClick={onClick}

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { useStore } from "@tanstack/react-form";
 import { useFieldContext, useFormContext } from "./formContext";
 import { FormFieldLayout, fieldDescribedBy, isFieldShowingError } from "./FormFieldLayout";
@@ -49,6 +49,7 @@ export function SelectField(props: SelectFieldProps): ReactNode {
   const isOnModalSurface = useModalSurface();
   const invalid = isFieldShowingError({ field, submissionAttempts });
   const describedBy = fieldDescribedBy({ id: field.name, hasDescription: Boolean(props.description), showError: invalid });
+  const idPrefix = useId();
 
   function handleToggle(value: string) {
     const current = field.state.value ?? [];
@@ -90,7 +91,7 @@ export function SelectField(props: SelectFieldProps): ReactNode {
   if (props.display === "radio") {
     const inlineLabel = (
       <span
-        id={`${field.name}-label`}
+        id={`${idPrefix}-label`}
         className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
       >
         {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
@@ -101,13 +102,14 @@ export function SelectField(props: SelectFieldProps): ReactNode {
     const control = props.hasMany ? (
       <div
         role="group"
-        aria-labelledby={`${field.name}-label`}
+        aria-labelledby={`${idPrefix}-label`}
         aria-disabled={props.readOnly}
         className="flex flex-col gap-2"
       >
         {props.options.map((option, optionIndex) => (
-          <label key={`${field.name}-option-${optionIndex}`} className="flex items-center gap-2 text-sm">
+          <label key={`${idPrefix}-option-${optionIndex}`} htmlFor={`${idPrefix}-option-${optionIndex}`} className="flex items-center gap-2 text-sm">
             <Checkbox
+              id={`${idPrefix}-option-${optionIndex}`}
               checked={(field.state.value ?? []).includes(option.value)}
               disabled={props.readOnly}
               onCheckedChange={() => handleToggle(option.value)}
@@ -122,7 +124,7 @@ export function SelectField(props: SelectFieldProps): ReactNode {
       </div>
     ) : (
       <RadioGroup
-        aria-labelledby={`${field.name}-label`}
+        aria-labelledby={`${idPrefix}-label`}
         disabled={props.readOnly}
         value={(field.state.value ?? [])[0]}
         onValueChange={(value) => field.handleChange([value as string])}
@@ -130,8 +132,9 @@ export function SelectField(props: SelectFieldProps): ReactNode {
         className="gap-2"
       >
         {props.options.map((option, optionIndex) => (
-          <label key={`${field.name}-option-${optionIndex}`} className="flex items-center gap-2 text-sm">
+          <label key={`${idPrefix}-option-${optionIndex}`} htmlFor={`${idPrefix}-option-${optionIndex}`} className="flex items-center gap-2 text-sm">
             <RadioGroupItem
+              id={`${idPrefix}-option-${optionIndex}`}
               value={option.value}
               aria-invalid={invalid}
               aria-describedby={describedBy}

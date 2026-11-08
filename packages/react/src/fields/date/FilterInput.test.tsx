@@ -20,4 +20,9 @@ describe("DateFilterInput", () => {
     render(<DateFilterInput field={fieldDef} value={undefined} op="gte" onChange={vi.fn()} disabled />);
     expect(screen.getByRole("combobox")).toHaveAttribute("aria-disabled", "true");
   });
+
+  it("exposes the field's label as the trigger's accessible name", () => {
+    render(<DateFilterInput field={fieldDef} value={undefined} op="gte" onChange={vi.fn()} />);
+    expect(screen.getByRole("combobox", { name: "Published" })).toBeInTheDocument();
+  });
 });

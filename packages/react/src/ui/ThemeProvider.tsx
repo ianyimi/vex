@@ -3,11 +3,11 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useState,
   type ComponentPropsWithRef,
   type ReactNode,
 } from "react";
+import { useIsomorphicLayoutEffect } from "./datetime/input";
 
 /**
  * Theme mode: light, dark, or system (respects `prefers-color-scheme`).
@@ -88,6 +88,15 @@ function writeStoredTheme(storageKey: string, theme: Theme): void {
  *
  * **Does NOT depend on `next-themes`** — works in any React framework.
  *
+ * Both effects are layout effects, not passive ones: a route the framework
+ * renders entirely client-side (e.g. a thrown `notFound()` under `next dev`,
+ * where the initial document is a minimal error shell and the real tree
+ * streams in afterward) never ran `ThemeScript`'s inline script — a `<script>`
+ * element React itself renders is never executed — so there is no
+ * server-applied `.dark` class to agree or disagree with. A passive effect's
+ * class write would still land one full post-paint tick late in that case; a
+ * layout effect's write is part of the same pre-paint commit.
+ *
  * @param props - Component props.
  * @param props.children - Child elements.
  * @param props.defaultTheme - Initial theme (default: `"system"`).
@@ -116,14 +125,14 @@ export function ThemeProvider({
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
 
   // Load the persisted theme on mount, if it is readable at all.
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const stored = readStoredTheme(storageKey);
     if (stored) {
       setThemeState(stored);
     }
   }, [storageKey]);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const html = document.documentElement;
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 

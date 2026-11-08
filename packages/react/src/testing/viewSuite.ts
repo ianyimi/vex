@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, waitFor, within } from "@testing-library/react";
 import { convexTest } from "convex-test";
 import {
+  buildGetArgs,
   buildListViewFindQueryArgs,
   defineAccess,
   defineCollection,
@@ -1901,6 +1902,12 @@ function describeAdminSidebar(options: { access?: VexAccessConfig }): void {
         }
       },
     });
+    it("exposes the sidebar as a labelled navigation landmark", () => {
+      const utils = renderWithVexProviders(mount());
+      const nav = utils.container.querySelector('[data-slot="sidebar-container"]');
+      expect(nav).toHaveAttribute("role", "navigation");
+      expect(nav).toHaveAttribute("aria-label", "Admin navigation");
+    });
   });
 }
 
@@ -1991,6 +1998,19 @@ function describeAdminLayout(options: { access?: VexAccessConfig }): void {
       expect(postsLink).toHaveAttribute("data-active");
       expect(imagesLink).not.toHaveAttribute("data-active");
     });
+
+    it("renders a skip link targeting the main landmark", () => {
+      const utils = renderView(
+        createElement(AdminLayout, {
+          activeSlug: "posts",
+          children: createElement("div", null, "content"),
+        }),
+        { convex: t },
+      );
+      const skipLink = utils.container.querySelector('a[href="#main"]');
+      expect(skipLink).not.toBeNull();
+      expect(utils.container.querySelector("main#main")).not.toBeNull();
+    });
   });
 }
 
@@ -2031,6 +2051,18 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
       expect(utils.getByText("Posts")).toBeInTheDocument();
       expect(utils.container.querySelector('a[href="/admin"]')).not.toBeNull();
       expect(utils.container.querySelector('a[href="/admin/collections/posts"]')).not.toBeNull();
+      expect(document.title).toBe("Posts · Admin");
+    });
+
+    it("gives the breadcrumb trail its own min-w-0 horizontal scroll region, never the page", () => {
+      const utils = renderView(
+        withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        { convex: t, access: options.access },
+      );
+      const crumbsEl = utils.getByText("Home").closest("a")?.parentElement;
+      expect(crumbsEl).not.toBeNull();
+      expect(crumbsEl).toHaveClass("min-w-0");
+      expect(crumbsEl).toHaveClass("overflow-x-auto");
     });
 
     it('resolves a globals route through the "skip" sentinel with no document fetch', () => {
@@ -2105,9 +2137,40 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
       // document, which it structurally cannot — the whole reason this moved to
       // `NextAdminPage`).
       await waitFor(() => expect(utils.getByText("My Post Title")).toBeInTheDocument());
+      expect(document.title).toBe("My Post Title · Admin");
       expect(
         utils.container.querySelector(`a[href="/admin/collections/posts/${id}"]`),
       ).not.toBeNull();
+    });
+
+    it("sets document.title to the document's own title, not the collection label, when the doc query resolves from a warm cache (non-suspending path)", async () => {
+      const titledPosts = defineCollection({
+        slug: "posts",
+        fields: { status: text({ index: "by_status" }), title: text({ required: false }) },
+        admin: { useAsTitle: "title" },
+      });
+      const titledConfig = defineConfig({
+        collections: [titledPosts],
+        mediaCollections: testClientConfig.mediaCollections,
+        globals: testClientConfig.globals,
+      });
+      const id = await t.run((ctx) => ctx.db.insert("documents", { status: "b", title: "My Post Title" }));
+      const doc = await t.run((ctx) => ctx.db.get(id));
+      const getArgs = buildGetArgs({ id, collection: titledPosts });
+      const utils = renderView(
+        withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts", activeDocID: id })),
+        {
+          convex: t,
+          config: titledConfig,
+          access: options.access,
+          seedQueryData: [
+            { queryKey: ["convexQuery", getFunctionName(vexConvexApi.get), getArgs], data: doc },
+          ],
+        },
+      );
+      expect(utils.getByText("My Post Title")).toBeInTheDocument();
+      await waitFor(() => expect(document.title).toBe("My Post Title · Admin"));
+      expect(document.title).not.toBe("Posts · Admin");
     });
 
     /**

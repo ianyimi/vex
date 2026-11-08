@@ -47,6 +47,32 @@ describe("SelectField: radio display", () => {
     await user.click(hiddenInputs[publishedIndex]!);
     expect(screen.getByTestId("value-probe")).toHaveTextContent('["published"]');
   });
+  it("associates each radio/checkbox option with its label via id/htmlFor, not nesting alone", () => {
+    const { container } = render(<RadioHarness initialValue={[]} />);
+    const inputs = container.querySelectorAll<HTMLInputElement>('input[type="radio"]');
+    expect(inputs).toHaveLength(2);
+    for (const input of inputs) {
+      expect(input.id).toBeTruthy();
+      const label = container.querySelector(`label[for="${input.id}"]`);
+      expect(label).not.toBeNull();
+      expect(input.closest("label")).toBe(label);
+    }
+    expect(inputs[0]?.closest("label")).toHaveTextContent("Draft");
+    expect(inputs[1]?.closest("label")).toHaveTextContent("Published");
+  });
+
+  it("never collides option ids between two concurrently rendered instances of the same field name (edit view + peek)", () => {
+    const { container } = render(
+      <>
+        <RadioHarness initialValue={[]} />
+        <RadioHarness initialValue={[]} />
+      </>,
+    );
+    const inputs = container.querySelectorAll<HTMLInputElement>('input[type="radio"]');
+    expect(inputs).toHaveLength(4);
+    const ids = Array.from(inputs).map((input) => input.id);
+    expect(new Set(ids).size).toBe(4);
+  });
 
   it("renders checkboxes instead of radios when hasMany is true", () => {
     render(<RadioHarness initialValue={[]} hasMany />);

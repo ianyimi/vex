@@ -3,6 +3,7 @@ import { vexStaticParams } from "@vexcms/next/seo"
 import { notFound } from "next/navigation"
 
 import { highlightPageBlocks } from "~/lib/highlight"
+import { resolveDocumentIconNodes } from "~/lib/iconNodes"
 import { generatePageMetadata } from "~/lib/metadata"
 import { vex } from "~/lib/vex"
 
@@ -61,9 +62,12 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
     notFound()
   }
 
-  const codeHighlights = await highlightPageBlocks(initialData[0]?.blocks)
+  const [codeHighlights, iconNodes] = await Promise.all([
+    highlightPageBlocks(initialData[0]?.blocks),
+    resolveDocumentIconNodes({ documents: initialData }),
+  ])
 
   return (
-    <PageContent codeHighlights={codeHighlights} initialData={initialData} slug={normalized} />
+    <PageContent codeHighlights={codeHighlights} iconNodes={iconNodes} initialData={initialData} slug={normalized} />
   )
 }

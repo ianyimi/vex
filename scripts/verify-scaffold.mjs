@@ -428,9 +428,9 @@ function printSummary(results) {
  * The console message, not the exit code, tells a human which branch fired.
  *
  * @param {{ publishables: Array<{ dir: string, name: string }>, cliEntry: string }} params
- * @returns {number} always 1 \u2014 see above
+ * @returns {Promise<number>} always 1 \u2014 see above
  */
-function runNegativeSelfTest({ publishables, cliEntry }) {
+async function runNegativeSelfTest({ publishables, cliEntry }) {
   console.log(
     "Negative self-test: pack normally, then corrupt the @vexcms/core override to point\n" +
       "at a tarball that does not exist. `pnpm install` MUST fail \u2014 that failure is what\n" +
@@ -447,7 +447,7 @@ function runNegativeSelfTest({ publishables, cliEntry }) {
     }
     tarballs.set("@vexcms/core", path.join(packRoot, "core", "does-not-exist-0.0.0.tgz"));
 
-    const { steps } = runTemplate({
+    const { steps } = await runTemplate({
       key: "negative-check",
       label: "negative self-test (--bare, broken @vexcms/core override)",
       bare: true,
@@ -581,7 +581,7 @@ async function main() {
   const cliEntry = path.join(root, "packages/create-vexcms/dist/index.js");
 
   if (negative) {
-    process.exit(runNegativeSelfTest({ publishables, cliEntry }));
+    process.exit(await runNegativeSelfTest({ publishables, cliEntry }));
   }
 
   if (negativeRoutes) {

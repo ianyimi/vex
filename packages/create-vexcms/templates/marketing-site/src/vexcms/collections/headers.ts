@@ -8,9 +8,6 @@ export const headers = defineCollection({
   admin: {
     useAsTitle: "name",
     icon: "PanelTop",
-    livePreview: {
-      url: "/",
-    },
   },
   fields: {
     name: text({

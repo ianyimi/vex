@@ -52,9 +52,12 @@ export default function StatsBlock({ block }: BlockComponentProps) {
               )}
               key={`${stat.label}-${index}`}
             >
+              <dt className="order-2 mt-3.5 text-[15px] font-semibold text-foreground">
+                {stat.label}
+              </dt>
               <dd
                 className={cn(
-                  "font-extrabold tracking-[-0.04em] tabular-nums text-foreground",
+                  "order-1 font-extrabold tracking-[-0.04em] tabular-nums text-foreground",
                   stat.value.length > LONG_VALUE_CHARS
                     ? "text-3xl md:text-4xl"
                     : "text-[40px] leading-none md:text-5xl xl:text-[56px]"
@@ -62,11 +65,10 @@ export default function StatsBlock({ block }: BlockComponentProps) {
               >
                 {stat.value}
               </dd>
-              <dt className="mt-3.5 text-[15px] font-semibold text-foreground">{stat.label}</dt>
               {stat.description ? (
-                <p className="mt-2 max-w-[30ch] text-[13.5px] leading-[1.55] text-muted-foreground">
+                <dd className="order-3 mt-2 max-w-[30ch] text-[13.5px] leading-[1.55] text-muted-foreground">
                   {stat.description}
-                </p>
+                </dd>
               ) : null}
             </div>
           ))}

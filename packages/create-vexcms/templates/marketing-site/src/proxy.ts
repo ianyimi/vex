@@ -11,12 +11,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_PREFIX } from "~/db/constants";
 
 /**
- * Paths the proxy must never gate, because they are where it sends people.
- * Guarding them turns a Convex outage into an infinite redirect loop.
- */
-const ALWAYS_ALLOWED: Record<string, true> = { "/": true, "/unauthorized": true };
-
-/**
  * Public-route pass for this app — the only gate left in `proxy.ts`:
  * the admin panel's session gate used to
  * live here too (`guardAdminRequest`), but it imported `~/vex.config` — a
@@ -47,10 +41,6 @@ const ALWAYS_ALLOWED: Record<string, true> = { "/": true, "/unauthorized": true 
  * @returns `NextResponse.next()`, optionally carrying the live-preview cookie.
  */
 export async function proxy(request: NextRequest) {
-  if (ALWAYS_ALLOWED[request.nextUrl.pathname]) {
-    return NextResponse.next();
-  }
-
   if (request.nextUrl.searchParams.get(LIVE_PREVIEW_QUERY_PARAM) !== "1") {
     return NextResponse.next();
   }

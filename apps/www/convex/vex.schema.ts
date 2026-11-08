@@ -204,6 +204,31 @@ export const pages = defineTable({
   .index("by_status", ["vex_status"])
   .index("by_published", ["vex_publishedId"])
 
+export const posts = defineTable({
+  title: v.string(),
+  slug: v.string(),
+  excerpt: v.optional(v.string()),
+  body: v.optional(v.array(v.any())),
+  ogImage: v.optional(v.array(v.id("images"))),
+  updatedAt: v.optional(v.commitTs()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  vex_publishedAt: v.optional(v.number()),
+  vex_publishedId: v.optional(v.id("posts")),
+  vex_activeVersion: v.optional(v.number()),
+})
+  .index("by_slug", ["slug"])
+  .index("by_updatedAt", ["updatedAt"])
+  .index("by_status", ["vex_status"])
+  .index("by_published", ["vex_publishedId"])
+  .searchIndex("search_posts_title", {
+    searchField: "title",
+    filterFields: [],
+  })
+  .searchIndex("search_posts_slug", {
+    searchField: "slug",
+    filterFields: [],
+  })
+
 export const headers = defineTable({
   name: v.string(),
   content: v.optional(
@@ -366,6 +391,7 @@ export const testimonials = defineTable({
   internalScore: v.optional(v.number()),
   updatedAt: v.optional(v.commitTs()),
 })
+  .index("by_rating", ["rating"])
   .index("by_source", ["source"])
   .index("by_contributorId", ["contributorId"])
   .index("by_avatar", ["avatar"])

@@ -36,6 +36,7 @@
 # env files
 /**/.env
 /**/.env.*
+!/**/.env.example
 
 # vercel
 /**/.vercel
@@ -51,3 +52,9 @@
 .agent/dependencies/*
 .omp/
 # <<< harness <<<
+
+# playwright / lighthouse
+/**/test-results
+/**/playwright-report
+/**/.lighthouseci
+/**/e2e/.auth

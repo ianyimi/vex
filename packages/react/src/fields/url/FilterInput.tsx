@@ -1,3 +1,5 @@
+"use client";
+
 import type { FilterInputProps, UrlField } from "@vexcms/core";
 import { Input } from "../../ui";
 
@@ -15,6 +17,7 @@ export function UrlFilterInput(props: FilterInputProps<UrlField>) {
   return (
     <Input
       className="w-full min-w-0"
+      aria-label={props.field.label || "Filter value"}
       value={String(props.value ?? "")}
       onChange={(e) => props.onChange(e.target.value)}
       disabled={props.disabled}

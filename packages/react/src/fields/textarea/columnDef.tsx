@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, TDocument, TextareaField } from "@vexcms/core";
 import { TextareaFieldCell } from "./Cell";

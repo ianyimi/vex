@@ -60,6 +60,34 @@ revalidate route has to change to add them later, so waiting costs nothing.
 
 ---
 
+## Lazy config-referenced components
+
+**What.** Defer loading a component that a `vex.config.ts` references by identity — for
+example `www`'s config naming `TextFieldAdmin` directly as a field override — until the page
+that needs it actually renders, instead of pulling it in through the client config bundle
+every page loads via `ClientProviders`/`VexConfigProvider`.
+
+**Why.** `VexConfigProvider` mounts once at the app root (see the framework-adapters guide's
+"Wiring it into an app"), so a client `vex.config.ts` that imports an admin component by
+reference — `www`'s config imports `TextFieldAdmin` from `@vexcms/react/admin` to override a
+field's admin render — ships that component's whole module graph to every page the config is
+read on, public pages included, the same way any other root-level import does.
+
+**Lift.** Unassessed. Needs a design for how a config can name a component lazily (a dynamic
+`import()` thunk instead of a direct reference, most likely) without breaking the config's own
+type-checking of field overrides, or how `defineConfig`/the admin's own consumption of the
+config would resolve a lazy reference before rendering.
+
+**Why deferred.** Ratified out of scope during the tree-shakeable-package interview
+(2026-11-08): the measured cost today is small — `TextFieldAdmin` is one field override in
+one config, not the panel's full surface — and the site bundle gate (`scripts/
+check-site-bundle.mjs`, same spec, Step 8) already catches it growing past budget on any
+route, so nothing regresses silently while this waits for its own design pass.
+
+**Detail.** `.agent/docs/specs/2026-11-08-tree-shakeable-react-package/spec.md`, Step 8.
+
+---
+
 ## Server-side revalidation dispatch (no admin panel open)
 
 **What.** Purge cached paths for writes that never pass through the admin
@@ -1253,3 +1281,224 @@ anonymity holds, but it is outside the telemetry spec's scope.
 **Blocks.** Nothing.
 
 **Why deferred.** Developer decision (2026-11-05): a core change outside the telemetry spec.
+
+---
+
+## Richtext editor keyboard parity (image select/resize, table-size picker)
+
+**What.** Three `@vexcms/richtext-plate` editor interactions are pointer-only: selecting an
+inline image (`EditorElements.tsx` `handleSelect` keeps local `useState` instead of Slate's
+`useSelected()`/`useFocused()`, so arrowing onto the image void never reveals its align/resize
+controls), resizing it (three `<div onMouseDown>` width/height/aspect handles with no keyboard
+equivalent), and picking table dimensions (the `Toolbar.tsx` table-size grid uses
+`onMouseEnter`/`onMouseDown` only).
+
+**Why.** WCAG 2.2 2.1.1 Keyboard and 2.5.7 Dragging Movements (AA): an editor using only a
+keyboard can't resize images or insert a table of a chosen size. Evidence: quality-pass
+`findings.md` F-007, F-041, F-042 (jsx-a11y `click-events-have-key-events` /
+`no-static-element-interactions`, confirmed by reading the handlers).
+
+**Lift.** Medium: drive image selection from Slate selection state, add arrow-key step resize
+on a selected image (plus numeric width/height inputs as the single-pointer alternative), and
+give the table-size picker an APG Grid keyboard model (arrows move, Enter inserts).
+
+**Blocks.** Nothing.
+
+**Why deferred.** Beyond the quality pass's fix boundary (≤ ~30 lines, no structural change);
+each needs its own interaction design.
+
+## LLC billing stack for paid tiers (ENT-0 prerequisite)
+
+**What.** The corporate billing layer for Pro / Agency / Enterprise sign-ups: Stripe (or
+equivalent) on the LLC (the existing uifoundry.dev entity, reused for VexCMS), a
+`billing@vexcms.dev` mailbox (Google Workspace secondary domain on the LLC's existing
+Workspace — never a primary-domain rename), terms of sale, and invoices issued by the LLC.
+
+**Why we want it.** Paid-tier revenue must flow through the corporate entity for tax
+control (developer decision, 2026-11-07). The donation stream stays separate and personal
+forever: GitHub Sponsors on `ianyimi` and Buy Me a Coffee stay personal; Sponsors profiles
+are non-transferable, which is acceptable only because donations never need to move.
+Buttondown (release emails, registered as `vexcms`) is subscriber data, not money, and is
+transferable whenever needed.
+
+**Lift.** Unassessed; standard SaaS billing setup plus legal copy.
+
+**Blocks.** The first paid signup. Nothing in the 0.1.0 launch track.
+
+**Why deferred.** Post-launch: business-tier design is ENT-0 (`post-v0.1.0-plan.md`), and no
+paid product exists at 0.1.0. Fold this into the ENT-0 spec's scope so the entity layer
+exists before the first paid customer.
+
+**Detail.** 2026-11-07 session discussion (launch coordination); `post-v0.1.0-plan.md` § ENT-0.
+
+---
+
+## `@daveyplate/better-auth-ui` unlabelled controls and invalid nesting
+
+**What.** Three defects on `/auth/sign-in`/`/auth/sign-up`, all rendered entirely inside
+`node_modules/@daveyplate/better-auth-ui`'s own bundled components. **Two are now fixed**
+via `patches/@daveyplate__better-auth-ui@3.4.0.patch` (registered in root `package.json`
+`pnpm.patchedDependencies`): the password-visibility toggle's icon-only `<button>` now
+carries `aria-label` (F-071), and the footer link's `<a href="..."><button>...</button></a>`
+nesting (Nu: "the element `button` must not appear as a descendant of the `a` element") is
+now `<Button asChild><Link>...</Link></Button>`, the standard Radix `Slot` pattern (F-072,
+button-in-link half). **What remains**: `/auth/sign-up` still emits a `<style>` element after
+other body content with an IE/Edge-only `::-ms-reveal`/`::-ms-clear` rule outside an `@scope`
+block (Nu: 2 errors, confirmed on both `apps/www/audit/www-nu.json` and
+`apps/test/audit/test-nu.json`) — repositioning an inline `<style>` tag inside the vendored
+bundle is a larger change than this patch or the quality-pass fix boundary covers.
+
+**Why.** HTML content-model validity (Nu) for the remaining `<style>` placement; the WCAG
+4.1.2 name and nested-interactive defects above are resolved.
+
+**Lift.** Unassessed. The style tag is emitted by the same vendored `dist/index.js` already
+patched once — a second, narrower patch hunk repositioning it is plausible, but risks
+fighting the library's own build output on every version bump; filing upstream is the
+alternative.
+
+**Why deferred.** Outside the quality pass's fix boundary (a markup change inside a
+third-party bundle, not an in-repo file). The two higher-severity defects were worth a
+patch; this validity-only one is deferred pending an upstream fix or a dedicated follow-up
+patch.
+
+**Detail.** `findings.md` F-071, F-072 (`2026-11-06-quality-pass`); the fixed portions
+verified via `patches/@daveyplate__better-auth-ui@3.4.0.patch` + root `package.json`
+`patchedDependencies`; the remaining Nu errors in `apps/www/audit/www-nu.json` and
+`apps/test/audit/test-nu.json`.
+
+---
+
+## Cap heading levels offered by the richtext toolbar
+
+**What.** `packages/richtext-plate`'s `getStaticComponents()` (`render/staticComponents.ts`)
+registers the same `HeadingElementStatic` for `h1` through `h6` uniformly, and the editor-side
+toolbar offers the same range. Every page that embeds a richtext field under its own
+page-level `<h1>` — `/posts/[slug]`'s `PostContent.tsx`: `<h1>{post.title}</h1>` then
+`<RichText content={post.body} />` — lets an editor pick "Heading 1" inside the body and
+duplicate that `<h1>`.
+
+**Why.** Two `<h1>`s on one page fails WCAG 1.3.1/2.4.6 heading-structure expectations and
+confuses screen-reader users navigating by heading.
+
+**Lift.** Unassessed. The toolbar's option set lives in the shared editor package, consumed
+by every richtext field in every app (admin page bodies, posts, any future user collection)
+— capping it globally could be wrong for a field with no page-level heading of its own.
+
+**Why deferred.** Needs a design decision (global cap vs. a per-field
+`editor.headingLevels` option) rather than a markup fix; out of the quality-pass fix
+boundary (classes/attributes/markup only).
+
+**Detail.** `packages/richtext-plate/src/render/staticComponents.ts`;
+`apps/www/src/app/(frontend)/(site)/posts/[slug]/PostContent.tsx`.
+
+---
+
+## Sidebar rail tooltips on keyboard focus (`collapsible="icon"`)
+
+**What.** `SidebarMenuButton`'s `tooltip` shows its label on hover only; keyboard focus never
+opens it. The tooltip only renders when the sidebar is collapsed to the icon rail
+(`collapsible="icon"`), which no shipped app config uses (the admin default is `"offcanvas"`).
+
+**Why.** WCAG 2.2 1.4.13 Content on Hover or Focus and 2.4.6: a sighted keyboard user on an
+icon rail sees icons without their labels. Screen readers are unaffected (the link keeps its
+name). Evidence: quality-pass `findings.md` F-099 (keyboard sweep, 2026-11-08).
+
+**Lift.** Small once a config uses the icon rail: open the Base UI tooltip on focus-visible in
+`packages/react/src/ui/sidebar.tsx` and add a keyboard test against `collapsible="icon"`.
+
+**Blocks.** Nothing.
+
+**Why deferred.** Not reproducible in any shipped configuration, so it can't be verified live
+within the quality pass.
+
+---
+
+## Data-table row checkboxes named by the row's title
+
+**What.** Each data-table row's selection checkbox is named "Select row <_id>"
+(`packages/react/src/ui/data-table/DataTable/index.tsx`). A screen-reader user moving through
+checkboxes hears raw document ids instead of the row's title.
+
+**Why.** WCAG 2.2 2.4.6 Headings and Labels / 4.1.2: the name is valid but not meaningful.
+Evidence: quality-pass `findings.md` F-116 (polish review, 2026-11-08).
+
+**Lift.** Small: an optional `getRowLabel?: (row) => string` on `DataTableProps`, passed by
+`CollectionListView` from the collection's `useAsTitle` field, falling back to `_id`.
+
+**Blocks.** Nothing.
+
+**Why deferred.** A new public prop on `DataTable` — outside the quality pass's fix boundary
+(no public API change).
+
+---
+
+## `apps/test` Convex test harness
+
+**What.** `apps/test` has no `convex-test` harness and its `vitest.config.ts` lacks the
+`@convex` alias `apps/www` has, so nothing there that imports Convex-generated types can be
+unit-tested (e.g. the ported `convex/images.ts` `getById` and `components/MediaImage.tsx`).
+
+**Why.** The two apps are meant to stay in step; `apps/www` covers these with
+`convex/images.test.ts` and `components/MediaImage.test.tsx`, `apps/test` can't. Evidence:
+quality-pass polish fixes (2026-11-08), `findings.md` F-120/F-121.
+
+**Lift.** Small: mirror `apps/www/src/testing/createConvexTest.ts`, the `convex` vitest
+project and the `@convex` alias, then copy the two test files.
+
+**Blocks.** Nothing.
+
+**Why deferred.** Test infrastructure in `apps/test`, outside the polish slice.
+
+---
+
+## Back/forward cache for live-data pages
+
+**What.** Every `apps/www` site page keeps the Convex client's WebSocket open for live
+content, and Chrome won't put a page with an open WebSocket in the back/forward cache
+(Lighthouse `bf-cache`: "Pages with WebSocket can't enter back/forward cache", failure type
+"Pending browser support"). Back/forward navigation reloads the page instead of restoring it.
+
+**Why.** Instant back/forward is a large perceived-speed win on a marketing site, and
+Lighthouse reports it on every audited URL. Evidence: PR #69 Lighthouse runs (2026-11-08);
+`apps/www/lighthouserc.cjs` holds `bf-cache` at `warn` until this lands.
+
+**Lift.** Small to medium. Close the Convex client (or pause its socket) on `pagehide`, reopen
+on `pageshow` when `event.persisted`, and re-subscribe active queries. Needs a check that
+react-query caches and live-preview overlays survive the restore. Mirror into `apps/test` and
+the `base-nextjs` provider.
+
+**Blocks.** Nothing; `ConvexReactClient` exposes `close()`, and a new client per restore
+fits `getClients()` in `components/providers/convex.tsx`.
+
+**Why deferred.** It's a behaviour change in the shared Convex provider. It's out of scope
+for getting the quality checks green, and `bf-cache` stays reported in CI meanwhile.
+
+## Hydration cost on site pages
+
+**What.** Every `apps/www` site page blocks the main thread longer than Lighthouse's mobile
+target (TBT ≤ 200 ms): 143–371 ms in CI at the default 4×, ~420–740 ms emulating a mid-tier
+phone on fixed hardware. Most of it is script evaluation in the React DOM / Next.js framework
+chunk (~770 ms on `/privacy` at the mid-tier slowdown), with the page's own client components
+next (~230 ms long task). That's the cost of hydrating the page, not CMS or admin code: the
+per-module split already keeps those off site pages. Performance (≥ 0.9) and LCP (≤ 2500 ms)
+pass in CI at 4× and are gated.
+
+**Why.** Real mid-tier phones see this blocking time. The `quality` workflow reports TBT
+as a warning (`apps/www/lighthouserc.cjs`; per-route table in the job summary) because it
+is too noisy on shared runners to gate. Evidence, 2026-11-08: calibrated local LHCI
+runs (benchmarkIndex ~4000, 14.7×) measured TBT ~420–740 ms. Two calibrated CI runs
+(5.7× and 7.8×) measured `/features` TBT at 295 and 990 ms best-of-3, and `/` at 377 and
+976 ms. Uncalibrated 4× runs read 8–77 ms on a fast Mac and 200–480 ms on GitHub runners,
+which is why the problem stayed hidden.
+
+**Lift.** Large; needs a spec. Shrink what hydrates on each page: render blocks and layout
+chrome as server components, keep client islands to what is actually interactive (the hero
+heading animation, theme toggle, session button, live preview), and check what the Convex
+provider and `motion` add to the shared chunk. Mirror into `apps/test` and
+`templates/marketing-site`. Measure with fixed-hardware runs (local, calibrated) rather than
+single CI runs.
+
+**Blocks.** Nothing.
+
+**Why deferred.** It's a design change across every block and the site layout, separate
+from making the gate measure honestly.

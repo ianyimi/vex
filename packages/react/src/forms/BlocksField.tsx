@@ -18,6 +18,7 @@ import { useCompactForm } from "./FormCompactContext";
 import { useFieldErrorCount, useFailedSubmitAttempt } from "./useFieldErrorCount";
 import { ActionsMenu, HeaderAction, type ActionPlacement } from "../ui/ActionsMenu";
 import { Droppable, Draggable, DragHandle } from "../ui/dnd";
+import { useAriaControlsCleanup } from "../hooks/useAriaControlsCleanup";
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 import { Accordion, AccordionItem, AccordionContent, AccordionTriggerChevron } from "../ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
@@ -109,6 +110,7 @@ function BlockPickerDialog<TBlock extends GenericBlockItem>(props: {
   onConfirm: (blockTypes: BlockTypeOption<TBlock>[]) => void;
 }): ReactNode {
   const [search, setSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const filtered = props.blockTypes.filter(
     (blockType) =>
@@ -144,18 +146,18 @@ function BlockPickerDialog<TBlock extends GenericBlockItem>(props: {
         props.onOpenChange(open);
       }}
     >
-      <DialogContent className="w-full max-w-sm p-0">
+      <DialogContent className="w-full max-w-sm p-0" initialFocus={searchRef}>
         <DialogHeader className="p-4 pb-2">
           <DialogTitle>Add block</DialogTitle>
           <DialogDescription>Select one or more blocks</DialogDescription>
         </DialogHeader>
         <div className="px-4 pb-2">
           <Input
+            ref={searchRef}
             iconLeft={{ name: "Search" }}
             placeholder="Search blocks…"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            autoFocus
           />
         </div>
         <div className="max-h-72 overflow-y-auto px-2 pb-3">
@@ -231,6 +233,7 @@ function BlocksFieldItem<TBlock extends GenericBlockItem>(props: {
   onOpen: () => void;
 }): ReactNode {
   const triggerRef = useRef<HTMLButtonElement>(null);
+  useAriaControlsCleanup(triggerRef);
   const errorCount = useFieldErrorCount({ names: [`${props.name}[${props.index}]`] });
   const failedSubmitAttempt = useFailedSubmitAttempt();
   useEffect(() => {
@@ -248,11 +251,11 @@ function BlocksFieldItem<TBlock extends GenericBlockItem>(props: {
         )}
       >
         <AccordionPrimitive.Header className="flex items-center gap-2 bg-muted/40 px-3 py-2">
-          <DragHandle disabled={props.readOnly} />
+          <DragHandle disabled={props.readOnly} aria-label={`Reorder ${props.blockType.label} ${props.index + 1}`} />
           <AccordionPrimitive.Trigger
             ref={triggerRef}
             data-slot="accordion-trigger"
-            className="peer/accordion-trigger flex min-w-0 flex-1 items-center gap-2 rounded-md border border-transparent outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+            className="peer/accordion-trigger flex shrink-0 items-center gap-2 rounded-md border border-transparent outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:pointer-events-none aria-disabled:opacity-50"
           >
             <span className="w-4 shrink-0 text-center font-mono text-xs text-muted-foreground tabular-nums">
               {props.index + 1}
@@ -263,18 +266,18 @@ function BlocksFieldItem<TBlock extends GenericBlockItem>(props: {
               </span>
             </div>
             {!props.isOpen && errorCount > 0 && <CircleAlert className="size-3.5 shrink-0 text-destructive" />}
-            <div className="min-w-0 flex-1">
-              <Input
-                type="text"
-                value={props.block.blockName ?? ""}
-                onChange={(e) => props.onUpdateBlockName(e.target.value)}
-                disabled={props.readOnly}
-                placeholder={props.blockType.label}
-                className="w-full truncate border-none bg-transparent p-0 text-sm font-medium outline-none placeholder:text-muted-foreground focus:ring-0 disabled:opacity-50"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
           </AccordionPrimitive.Trigger>
+          <div className="min-w-0 flex-1">
+            <Input
+              type="text"
+              value={props.block.blockName ?? ""}
+              onChange={(e) => props.onUpdateBlockName(e.target.value)}
+              disabled={props.readOnly}
+              placeholder={props.blockType.label}
+              aria-label={`${props.blockType.label} block name`}
+              className="w-full truncate border-none bg-transparent p-0 text-sm font-medium outline-none placeholder:text-muted-foreground focus:ring-0 disabled:opacity-50"
+            />
+          </div>
           {props.itemActionsNode}
           <AccordionTriggerChevron triggerRef={triggerRef} />
         </AccordionPrimitive.Header>

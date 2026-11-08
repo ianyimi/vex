@@ -1,6 +1,6 @@
 import React, { type CSSProperties } from "react"
 
-import { cn } from "@vexcms/react"
+import { cn } from "~/lib/utils"
 
 import styles from "./reveal.module.css"
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { MediaCollectionConfig, UploadField } from "@vexcms/core";
-import { Button, Dialog, DialogContent, Icon, Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui";
+import { Button, Dialog, DialogContent, Tabs, TabsContent, TabsList, TabsTrigger, Icon } from "../../ui";
 import { MediaLibraryGrid } from "../../media/MediaLibraryGrid";
 import { MediaUploadForm } from "../../media/MediaUploadForm";
 

@@ -1,8 +1,9 @@
+"use client";
+
 import { type VexMediaDocument } from "@vexcms/core";
-import { Icon } from "../ui/Icon";
 import { type ComponentPropsWithRef } from "react";
 import { cn } from "../utils/cn";
-import { VexImage } from "../ui";
+import { VexImage, Icon } from "../ui";
 
 /**
  * Props for the FilePreview component.

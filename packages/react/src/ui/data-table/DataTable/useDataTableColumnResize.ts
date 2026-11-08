@@ -1,5 +1,8 @@
+"use client";
+
 import { columnEntryField, type ColumnEntry } from "@vexcms/core";
 import {
+  useEffect,
   useRef,
   useState,
   type KeyboardEvent,
@@ -29,10 +32,47 @@ const DEFAULT_COLUMN_WIDTH_PX = 192;
  * The floor a column can be dragged/arrow-keyed down to — narrow enough for a short label plus its sort/resize
  * affordances to stay legible, never zero or negative.
  */
-const MIN_COLUMN_WIDTH_PX = 60;
+export const MIN_COLUMN_WIDTH_PX = 60;
+
+/**
+ * Share of the table container's visible width a single column may grow to,
+ * so a widened column never pushes every other column fully out of view.
+ */
+export const MAX_COLUMN_WIDTH_RATIO = 0.9;
+
+/**
+ * The maximum used before the container has been measured (server render and
+ * first paint): 90% of a 1067px-wide table, a typical admin list on a 1280px
+ * screen with the sidebar open.
+ */
+export const DEFAULT_MAX_COLUMN_WIDTH_PX = 960;
 
 /** Pixels a single `ArrowLeft`/`ArrowRight` keypress on a resize handle adjusts width by — matches the drag gesture's own granularity, a comfortable, visibly-incremental jump without requiring many presses to reach a useful width. */
 const RESIZE_STEP_PX = 12;
+
+/**
+ * The widest a column may be resized to for a given table container width.
+ *
+ * @param props - Input props.
+ * @param props.containerWidth - The table container's visible width in CSS px.
+ * @returns {@link MAX_COLUMN_WIDTH_RATIO} of the container width, rounded down,
+ *   never below {@link MIN_COLUMN_WIDTH_PX}.
+ */
+export function resolveMaxColumnWidth(props: { containerWidth: number }): number {
+  return Math.max(MIN_COLUMN_WIDTH_PX, Math.floor(props.containerWidth * MAX_COLUMN_WIDTH_RATIO));
+}
+
+/**
+ * Clamps a requested column width into `[MIN_COLUMN_WIDTH_PX, maxWidth]`.
+ *
+ * @param props - Input props.
+ * @param props.width - The requested width in CSS px.
+ * @param props.maxWidth - The current maximum from {@link resolveMaxColumnWidth}.
+ * @returns The rounded, clamped width.
+ */
+export function clampColumnWidth(props: { width: number; maxWidth: number }): number {
+  return Math.min(props.maxWidth, Math.max(MIN_COLUMN_WIDTH_PX, Math.round(props.width)));
+}
 
 /**
  * Replaces ONE field's `width` override in a {@link ColumnEntry} array,
@@ -81,13 +121,17 @@ export interface UseDataTableColumnResizeResult {
     startWidth: number,
     invert: boolean,
   ) => (event: ReactMouseEvent<HTMLDivElement> | ReactTouchEvent<HTMLDivElement>) => void;
-  /** A focused resize handle's `ArrowLeft`/`ArrowRight` — a discrete, one-keypress commit (no live-drag intermediate state needed, unlike the pointer gesture). `invert` mirrors {@link startResize}'s own — a pinned-right column's `ArrowLeft` grows, `ArrowRight` shrinks. */
+  /** A focused resize handle's keys, per the APG window splitter: `ArrowLeft`/`ArrowRight` step by 12px, `Home`/`End` jump to the minimum/maximum. A discrete, one-keypress commit (no live-drag intermediate state needed, unlike the pointer gesture). `invert` mirrors {@link startResize}'s own — a pinned-right column's `ArrowLeft` grows, `ArrowRight` shrinks. */
   handleResizeKeyDown: (
     fieldId: string,
     currentWidth: number,
     invert: boolean,
     event: KeyboardEvent<HTMLDivElement>,
   ) => void;
+  /** The narrowest a column can be resized to ({@link MIN_COLUMN_WIDTH_PX}); a resize handle's `aria-valuemin`. */
+  minColumnWidth: number;
+  /** The widest a column can be resized to: {@link resolveMaxColumnWidth} of the measured table container, re-measured whenever it resizes ({@link DEFAULT_MAX_COLUMN_WIDTH_PX} before the first measurement); a resize handle's `aria-valuemax`. */
+  maxColumnWidth: number;
 }
 
 /**
@@ -130,6 +174,20 @@ export function useDataTableColumnResize(
   // of that one column into looking like a single continuous line.
   const [hoveredDividerFieldId, setHoveredDividerFieldId] = useState<string | null>(null);
   const activeDividerFieldId = liveDrag?.fieldId ?? hoveredDividerFieldId;
+  const [maxColumnWidth, setMaxColumnWidth] = useState(DEFAULT_MAX_COLUMN_WIDTH_PX);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const measure = () => {
+      if (container.clientWidth === 0) return;
+      setMaxColumnWidth(resolveMaxColumnWidth({ containerWidth: container.clientWidth }));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [containerRef]);
 
   function commitResize(fieldId: string, width: number): void {
     if (columnEntries === undefined || !onColumnEntriesChange) return;
@@ -147,7 +205,7 @@ export function useDataTableColumnResize(
         const clientX = "touches" in moveEvent ? moveEvent.touches[0]!.clientX : (moveEvent as MouseEvent).clientX;
         const rawDelta = clientX - startX;
         const delta = invert ? -rawDelta : rawDelta;
-        const nextWidth = Math.max(MIN_COLUMN_WIDTH_PX, Math.round(startWidth + delta));
+        const nextWidth = clampColumnWidth({ width: startWidth + delta, maxWidth: maxColumnWidth });
         const next = { fieldId, width: nextWidth };
         liveDragRef.current = next;
         setLiveDrag(next);
@@ -181,11 +239,19 @@ export function useDataTableColumnResize(
     invert: boolean,
     event: KeyboardEvent<HTMLDivElement>,
   ): void {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    let nextWidth: number;
+    if (event.key === "Home") {
+      nextWidth = MIN_COLUMN_WIDTH_PX;
+    } else if (event.key === "End") {
+      nextWidth = maxColumnWidth;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      const rawDelta = event.key === "ArrowRight" ? RESIZE_STEP_PX : -RESIZE_STEP_PX;
+      const delta = invert ? -rawDelta : rawDelta;
+      nextWidth = clampColumnWidth({ width: currentWidth + delta, maxWidth: maxColumnWidth });
+    } else {
+      return;
+    }
     event.preventDefault();
-    const rawDelta = event.key === "ArrowRight" ? RESIZE_STEP_PX : -RESIZE_STEP_PX;
-    const delta = invert ? -rawDelta : rawDelta;
-    const nextWidth = Math.max(MIN_COLUMN_WIDTH_PX, Math.round(currentWidth) + delta);
     commitResize(fieldId, nextWidth);
   }
 
@@ -196,5 +262,7 @@ export function useDataTableColumnResize(
     liveWidth,
     startResize,
     handleResizeKeyDown,
+    minColumnWidth: MIN_COLUMN_WIDTH_PX,
+    maxColumnWidth,
   };
 }

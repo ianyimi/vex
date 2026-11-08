@@ -6,12 +6,12 @@ import {
   Button,
   Dialog,
   DialogContent,
-  Icon,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "../../ui";
+import { Icon } from "../../ui/Icon";
 import { RelationshipDocumentList } from "./RelationshipDocumentList";
 import { ListViewCreateDocumentForm } from "../../collections/listView/create/ListViewCreateDocumentForm";
 

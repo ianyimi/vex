@@ -18,9 +18,11 @@ import {
   testimonials,
   products,
   leads,
+  posts,
 } from "./vex.schema"
 
 export default defineSchema({
+  posts,
   testimonials,
   products,
   leads,

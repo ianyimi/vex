@@ -421,7 +421,14 @@ export function vexServerApi<DataModel extends GenericDataModel>(options: {
         ...(await inject(rest.ctx, access?.bypass)),
       } as never);
     },
-    publishedSlugs: (args) => publishedSlugs(args),
+    publishedSlugs: async (args) => {
+      const { access, ...rest } = args;
+      return await publishedSlugs({
+        access,
+        ...rest,
+        ...(await inject(rest.ctx, access?.bypass)),
+      } as never);
+    },
     globals: {
       get: async (args) => {
         const { access, ...rest } = args;

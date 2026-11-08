@@ -20,4 +20,24 @@ applies_to: ["packages/*/tsup.config.ts", "packages/*/package.json"]
 - Exports fields are locked down — no accidental deep imports; every entry maps
   source/types/import explicitly.
 
-- **One bundle graph per package when entries share stateful modules.** `@vexcms/react` builds `.` and `./testing` from a SINGLE config with `splitting: true`, deliberately overriding the array-of-configs guidance above: two invocations cannot share a chunk, so a module-scope `createContext` gets evaluated twice and a consumer mounting components from one entry cannot see providers from the other. See ADR-009.
+- **Per-module dist, not a shared chunk.** `@vexcms/react` and `@vexcms/core` build with
+  `entry: listModuleEntries({ srcDir: "src" })` (`scripts/preserveModulesPlugin.mjs`),
+  `bundle: true`, `splitting: false` — one `.js` output per source module, relative imports
+  rewritten to the sibling output path, so a consumer's bundler can shake unused modules out
+  of a client import. A module reached by more than one entry (`@vexcms/react`'s `.` and
+  `./testing` both reach `components/form/AppFormContext.ts`'s module-scope `createContext`)
+  still compiles to exactly one output file and both entries resolve it by relative import —
+  the single-instance guarantee ADR-009 got from a shared `splitting: true` chunk, kept
+  without a chunk. See ADR-017 (supersedes ADR-009).
+- **`"use client"` is per module, not a barrel banner.** Every client module (`.tsx` outside
+  a package's `server/**`, `use*.ts` hooks, anything calling `createContext`) carries its own
+  directive; the root barrel carries none. A Server Component importing one symbol from the
+  barrel then only reaches that symbol's own module graph as a client reference, not every
+  client module the barrel could statically reach.
+- **The root export surface is the reach a Server Component pays for.** Next registers every
+  `"use client"` module reachable through a barrel a server component imports as a client
+  reference — regardless of `optimizePackageImports`, a pure re-export barrel, or
+  `sideEffects` — so the root of a package with both public and internal surfaces (like
+  `@vexcms/react`'s admin panel) must export ONLY what a consumer's own code touches. Internal
+  surfaces move to a separate named entry (`./admin`); there are no deep imports into `dist/`.
+  See ADR-017.

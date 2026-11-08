@@ -2,9 +2,9 @@
 
 import { AuthView } from "@daveyplate/better-auth-ui";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Activity } from "react";
 
 import { Dialog, DialogContent, DialogTitle } from "~/components/ui/dialog";
+import { resolveAuthPageTitle } from "~/lib/authPageTitle";
 
 export default function AuthCard({ pathname }: { pathname: string }) {
   const router = useRouter();
@@ -40,14 +40,11 @@ export default function AuthCard({ pathname }: { pathname: string }) {
       }}
       open
     >
-      <Activity mode="hidden">
-        <DialogTitle />
-      </Activity>
       <DialogContent
         aria-describedby={undefined}
         className="grid place-items-center bg-transparent shadow-none ring-transparent"
-        showCloseButton={false}
       >
+        <DialogTitle className="sr-only">{resolveAuthPageTitle(pathname)}</DialogTitle>
         <AuthView path={pathname} />
       </DialogContent>
     </Dialog>
