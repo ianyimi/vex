@@ -1,0 +1,13 @@
+# vex
+
+> Type-safe headless CMS built on Convex, with a real-time admin panel, end-to-end type inference, auth, ABAC — no separate backend to run.
+
+## Core Resources
+
+- [GitHub Repository](https://github.com/ianyimi/vex): Source code, documentation, and issue tracker.
+- [Website](https://vexcms.dev): Official website and documentation.
+
+## AI Agent & LLM Indexing
+
+- Structured following the standard /llms.txt specification for AI search engines and coding assistants.
+- Validated via [AccessGuard AI-Readiness Suite](https://ronanchnlps-bit.github.io/).
