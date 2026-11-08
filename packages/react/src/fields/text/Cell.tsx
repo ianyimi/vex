@@ -26,6 +26,8 @@ export function TextFieldCell<TData extends TDocument = TDocument>(
   const config = useVexConfig();
   if (props.value === undefined || props.value === null || props.value === "") return <span>—</span>;
   if (props.isTitleField) {
+    // The touch-target box is an inner span, so VexLink keeps its framework Link,
+    // classes, and ref. Clicks on the span's extra height bubble up to the anchor.
     return (
       <VexLink
         href={adminHref(
@@ -33,8 +35,10 @@ export function TextFieldCell<TData extends TDocument = TDocument>(
           config.basePath,
         )}
       >
-        <span className="font-bold" title={props.value}>
-          {props.value.length > 77 ? `${props.value.slice(0, 77)}...` : props.value}
+        <span className="-my-3.5 inline-flex min-h-11 items-center">
+          <span className="font-bold" title={props.value}>
+            {props.value.length > 77 ? `${props.value.slice(0, 77)}...` : props.value}
+          </span>
         </span>
       </VexLink>
     );

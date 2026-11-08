@@ -31,6 +31,30 @@ runFieldCellContractSuite({
       });
     });
 
+    describe("text: title link touch target", () => {
+      it("gives the title link a 44px-tall tap area without changing row height", () => {
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value: options.fixture.valid });
+        const { container } = render(
+          withCellConfig(
+            <TextFieldCell
+              value={options.fixture.valid}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={true}
+              collection={collection}
+            />,
+          ),
+        );
+        expect(container.innerHTML).toContain("min-h-11");
+        const target = container.querySelector("a .min-h-11");
+        expect(target).not.toBeNull();
+        expect(target?.className).toContain("-my-3.5");
+        expect(target?.className).toContain("inline-flex");
+        expect(target?.textContent).toContain(options.fixture.valid.slice(0, 20));
+      });
+    });
+
     describe("text: non-title rendering", () => {
       it("renders the plain value with no link when isTitleField is false", () => {
         const row = makeCellRow<TDocument>({ fieldKey: "field", value: options.fixture.valid });
