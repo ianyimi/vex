@@ -1472,3 +1472,29 @@ fits `getClients()` in `components/providers/convex.tsx`.
 
 **Why deferred.** It's a behaviour change in the shared Convex provider. It's out of scope
 for getting the quality checks green, and `bf-cache` stays reported in CI meanwhile.
+
+## Hydration cost on site pages
+
+**What.** With Lighthouse's CPU throttling calibrated to a mid-tier phone, every `apps/www`
+site page blocks the main thread for ~420–740 ms and scores 0.82–0.90 on performance. Most
+of it is script evaluation in the React DOM / Next.js framework chunk (~770 ms on
+`/privacy`), with the page's own client components next (~230 ms long task). That's the
+cost of hydrating the page, not CMS or admin code: the per-module split already keeps those
+off site pages.
+
+**Why.** Real mid-tier phones see this blocking time. The `quality` workflow only passes
+because `apps/www/lighthouserc.cjs` budgets today's level (performance ≥ 0.8, TBT ≤ 900 ms)
+instead of the 0.9 / 200 ms targets. Evidence: calibrated local LHCI runs, 2026-11-08
+(benchmarkIndex ~4000, `cpuSlowdownMultiplier` 14.7). Uncalibrated 4× runs read 8–77 ms on a
+fast Mac and 200–480 ms on GitHub runners, which is why the problem stayed hidden.
+
+**Lift.** Large; needs a spec. Shrink what hydrates on each page: render blocks and layout
+chrome as server components, keep client islands to what is actually interactive (the hero
+heading animation, theme toggle, session button, live preview), and check what the Convex
+provider and `motion` add to the shared chunk. Mirror into `apps/test` and
+`templates/marketing-site`. Tighten the two budgets as each step lands.
+
+**Blocks.** Nothing.
+
+**Why deferred.** It's a design change across every block and the site layout, separate
+from making the gate measure honestly.
