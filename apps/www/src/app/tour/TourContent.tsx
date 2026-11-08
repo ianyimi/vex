@@ -51,8 +51,9 @@ export function TourContent() {
               <Image
                 alt={shot.alt}
                 className="h-auto w-full rounded-lg border"
+                fetchPriority={index < 2 ? "high" : undefined}
                 height={800}
-                priority={index === 0}
+                preload={index < 2}
                 sizes="(min-width: 640px) 50vw, 100vw"
                 src={shot.src}
                 width={1280}
