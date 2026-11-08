@@ -48,6 +48,15 @@ jobs:
           QUALITY_BASE_URL: ${{ github.event.deployment_status.target_url }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
+      - name: Upload axe results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: axe-results
+          path: apps/www/audit/www-axe.json
+          if-no-files-found: warn
+          retention-days: 14
+
   lighthouse:
     # Named apart for non-www deployments; see the axe job.
     name: "${{ github.event.deployment_status.environment == 'Preview – vex-www' && 'lighthouse' || format('lighthouse (skipped: {0})', github.event.deployment_status.environment) }}"
@@ -82,3 +91,17 @@ jobs:
           CI: "1"
           QUALITY_BASE_URL: ${{ github.event.deployment_status.target_url }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+      - name: Summarize Lighthouse results
+        if: always()
+        run: pnpm --filter www exec node e2e/lighthouseSummary.cjs
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lighthouse-reports
+          path: apps/www/.lighthouseci/
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 14

@@ -1483,10 +1483,10 @@ cost of hydrating the page, not CMS or admin code: the per-module split already 
 off site pages.
 
 **Why.** Real mid-tier phones see this blocking time. The `quality` workflow only passes
-because `apps/www/lighthouserc.cjs` budgets today's level (performance ≥ 0.75, TBT ≤ 1100 ms)
+because `apps/www/lighthouserc.cjs` budgets today's level (performance ≥ 0.75, TBT ≤ 1500 ms)
 instead of the 0.9 / 200 ms targets. Evidence: calibrated local LHCI runs, 2026-11-08
-(benchmarkIndex ~4000, `cpuSlowdownMultiplier` 14.7), and the first calibrated CI run
-(benchmarkIndex 2355, 7.5×), where `/` measured TBT 929–1362 ms and performance 0.75–0.79.
+(benchmarkIndex ~4000, `cpuSlowdownMultiplier` 14.7), and the first two calibrated CI runs
+(benchmarkIndex 2355–2458, 7.5–8×), where `/` measured TBT 929–1362 ms and performance 0.75–0.79.
 Uncalibrated 4× runs read 8–77 ms on a fast Mac and 200–480 ms on GitHub runners, which is
 why the problem stayed hidden.
 
