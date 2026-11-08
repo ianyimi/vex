@@ -1,3 +1,5 @@
+"use client";
+
 import type { DateField, FilterInputProps } from "@vexcms/core";
 import { DateTimePicker } from "../../ui/datetime/date-picker";
 

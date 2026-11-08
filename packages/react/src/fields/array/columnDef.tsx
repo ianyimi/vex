@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, TDocument, ArrayField, ArrayType } from "@vexcms/core";
 import { ArrayFieldCell } from "./Cell";

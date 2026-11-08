@@ -2,9 +2,10 @@
 
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
-import { RenderBlocks, useLivePreviewQuery } from "@vexcms/react"
+import { IconNodeProvider, RenderBlocks, useLivePreviewQuery } from "@vexcms/react"
 
 import type { CodeHighlightMap } from "~/lib/highlight"
+import type { IconNodeMap } from "@vexcms/react"
 import type { Page } from "~/vex.types"
 
 import { CodeHighlightProvider } from "~/context/CodeHighlightContext"
@@ -19,6 +20,11 @@ export interface PageContentProps {
    * this client boundary can await shiki.
    */
   codeHighlights?: CodeHighlightMap
+  /**
+   * Server-resolved icon nodes for `initialData`, built by
+   * `resolveDocumentIconNodes`.
+   */
+  iconNodes?: IconNodeMap
   /**
    * Server-fetched `pages.getBySlug` result, hydrated as the query's initial data.
    * Always the published copy — `useSitePreviewMode` cannot resolve until after mount
@@ -42,7 +48,7 @@ export interface PageContentProps {
  * `[0]` narrowing itself and overlays any unsaved editor values for this document on
  * top of whichever base layer ran.
  */
-export function PageContent({ codeHighlights, slug, initialData }: PageContentProps) {
+export function PageContent({ codeHighlights, iconNodes, slug, initialData }: PageContentProps) {
   const normalizedSlug = slug && slug.length > 0 ? slug : "home"
   const previewModeActive = useSitePreviewMode()
 
@@ -61,12 +67,14 @@ export function PageContent({ codeHighlights, slug, initialData }: PageContentPr
   }
 
   return (
-    <CodeHighlightProvider highlights={codeHighlights ?? {}}>
-      <RenderBlocks
-        blocks={page.blocks}
-        components={blockComponents}
-      />
-    </CodeHighlightProvider>
+    <IconNodeProvider nodes={iconNodes ?? {}}>
+      <CodeHighlightProvider highlights={codeHighlights ?? {}}>
+        <RenderBlocks
+          blocks={page.blocks}
+          components={blockComponents}
+        />
+      </CodeHighlightProvider>
+    </IconNodeProvider>
   )
 }
 

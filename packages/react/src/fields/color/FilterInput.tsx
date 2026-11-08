@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColorField, FilterInputProps } from "@vexcms/core";
 import { Input } from "../../ui";
 

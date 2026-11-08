@@ -1,3 +1,5 @@
+"use client";
+
 import type { FilterInputProps, SelectField } from "@vexcms/core";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui";
 

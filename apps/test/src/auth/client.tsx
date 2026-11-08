@@ -2,10 +2,8 @@ import type { ReactNode } from "react"
 
 import { apiKeyClient } from "@better-auth/api-key/client"
 import { convexClient } from "@convex-dev/better-auth/client/plugins"
-import { AuthUIProvider } from "@daveyplate/better-auth-ui"
 import { adminClient, anonymousClient, organizationClient } from "better-auth/client/plugins"
 import { createAuthClient } from "better-auth/react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import { useAuthTransition } from "@vexcms/react"
@@ -40,14 +38,9 @@ export const { signIn, signOut, useSession } = authClient
 authClient.$store.listen("$sessionSignal", () => {})
 
 /**
- * Provides Better Auth session state and UI components to the Next.js app.
+ * Provides Better Auth session state to the Next.js app.
  *
- * Wraps children with `AuthUIProvider` from `@daveyplate/better-auth-ui`, wiring
- * in the `authClient`, credential-based sign-in, Next.js `<Link>`, and router
- * navigation. On every session change the Next.js router refreshes to update
- * server-side session data.
- *
- * Also mounts `VexAdminAuthAdapterProvider` (`@vexcms/next/auth`) so
+ * Mounts `VexAdminAuthAdapterProvider` (`@vexcms/next/auth`) so
  * `AdminTopNav`'s sign-in/out control has a `signInHref`/`signOut` to call —
  * this provider wraps the WHOLE app (root `layout.tsx`), so it reaches the
  * admin tree under `/admin` the same as every other route. `signOut` mirrors
@@ -75,43 +68,32 @@ export default function BetterAuthClientProvider({ children }: { children: React
   // component, same as `~/components/providers/client.tsx`'s nesting order.
   const { beginTransition } = useAuthTransition()
   return (
-    <AuthUIProvider
-      authClient={authClient}
-      credentials={true}
-      Link={Link}
-      navigate={router.push}
-      onSessionChange={() => {
-        router.refresh()
+    <VexAdminAuthAdapterProvider
+      value={{
+        // `modal=1` is the signal `app/@auth/(.)auth/[pathname]/view.tsx`
+        // uses to tell this deliberate "Sign in" click apart from a server
+        // GUARD redirect (middleware, or `/admin`'s own `redirect(...)`)
+        // that also carries `redirectTo` — both would otherwise collapse
+        // onto the same `isGuardRedirect` branch and render the full-screen
+        // card instead of the dialog `AdminTopNav`'s control expects.
+        signInHref: (redirectTo) =>
+          `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}&modal=1`,
+        signOut: () => {
+          // Set BEFORE the network call starts, not after it resolves — the
+          // one case the identity is known with zero ambiguity ahead of
+          // time (always `null`), so list hooks start ignoring stale pages
+          // as early as possible (`@vexcms/react`'s `useAuthTransition`).
+          // `useBeginAuthTransitionOnSessionChange` (`~/components/providers/convex.tsx`)
+          // also reactively catches this once `authClient.useSession()`
+          // updates, so this call is a latency optimization, not the only path.
+          beginTransition(null)
+          return signOut()
+            .then(() => router.refresh())
+            .catch(() => router.refresh())
+        },
       }}
-      replace={router.replace}
     >
-      <VexAdminAuthAdapterProvider
-        value={{
-          // `modal=1` is the signal `app/@auth/(.)auth/[pathname]/view.tsx`
-          // uses to tell this deliberate "Sign in" click apart from a server
-          // GUARD redirect (middleware, or `/admin`'s own `redirect(...)`)
-          // that also carries `redirectTo` — both would otherwise collapse
-          // onto the same `isGuardRedirect` branch and render the full-screen
-          // card instead of the dialog `AdminTopNav`'s control expects.
-          signInHref: (redirectTo) =>
-            `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}&modal=1`,
-          signOut: () => {
-            // Set BEFORE the network call starts, not after it resolves — the
-            // one case the identity is known with zero ambiguity ahead of
-            // time (always `null`), so list hooks start ignoring stale pages
-            // as early as possible (`@vexcms/react`'s `useAuthTransition`).
-            // `useBeginAuthTransitionOnSessionChange` (`~/components/providers/convex.tsx`)
-            // also reactively catches this once `authClient.useSession()`
-            // updates, so this call is a latency optimization, not the only path.
-            beginTransition(null)
-            return signOut()
-              .then(() => router.refresh())
-              .catch(() => router.refresh())
-          },
-        }}
-      >
-        {children}
-      </VexAdminAuthAdapterProvider>
-    </AuthUIProvider>
+      {children}
+    </VexAdminAuthAdapterProvider>
   )
 }

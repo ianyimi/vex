@@ -1,3 +1,5 @@
+"use client";
+
 import type { FilterInputProps, TextField } from "@vexcms/core";
 import { Input } from "../../ui";
 

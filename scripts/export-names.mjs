@@ -20,7 +20,9 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+
+import { build as esbuild } from "esbuild";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -44,7 +46,10 @@ const PACKAGES = [
     dir: path.join(rootDir, "packages/react"),
     entries: {
       ".": "./dist/index.js",
+      "./admin": "./dist/adminEntry.js",
       "./client": "./dist/client/index.js",
+      "./form": "./dist/forms/index.js",
+      "./server": "./dist/server/index.js",
       "./testing": "./dist/testing/index.js",
     },
   },
@@ -59,20 +64,11 @@ function build() {
 }
 
 async function collectExportNames() {
-  // `@vexcms/react`'s `./testing` entry has side-effect imports that assume
-  // a vitest test run: `@testing-library/jest-dom` calls `expect.extend(...)`
-  // on vitest's `expect` global, and the shared harness touches DOM globals
-  // (`Element`, `document`, …) a jsdom test environment normally provides.
-  // Set both up the same way vitest's own jsdom environment does before
-  // importing this entry from plain node.
-  if (typeof globalThis.expect === "undefined") {
-    const { expect } = await import("vitest");
-    globalThis.expect = expect;
-  }
-  if (typeof globalThis.document === "undefined") {
-    const { builtinEnvironments } = await import("vitest/runtime");
-    await builtinEnvironments.jsdom.setup(globalThis, {});
-  }
+  // Export names are read statically from an esbuild metafile rather than by
+  // importing each entry: `@vexcms/react`'s `./testing` entry imports vitest
+  // and jsdom at module scope, and vitest refuses to load outside a test run.
+  // Bundling resolves the package's own `export *` re-export chains; every
+  // third-party import stays external and is never executed.
   const result = {};
   for (const pkg of PACKAGES) {
     result[pkg.name] = {};
@@ -81,8 +77,18 @@ async function collectExportNames() {
       if (!fs.existsSync(absPath)) {
         throw new Error(`${pkg.name}${entry === "." ? "" : entry}: built file not found at ${absPath}`);
       }
-      const mod = await import(pathToFileURL(absPath).href);
-      result[pkg.name][entry] = Object.keys(mod).sort();
+      const { metafile } = await esbuild({
+        entryPoints: [absPath],
+        bundle: true,
+        format: "esm",
+        packages: "external",
+        metafile: true,
+        write: false,
+        outdir: "out",
+        logLevel: "silent",
+      });
+      const [output] = Object.values(metafile.outputs).filter((candidate) => candidate.entryPoint);
+      result[pkg.name][entry] = [...output.exports].sort();
     }
   }
   return result;

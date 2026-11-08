@@ -38,7 +38,16 @@ describe("DropdownMenu", () => {
   it("moves roving focus with ArrowDown/ArrowUp and wraps", async () => {
     const user = userEvent.setup();
     renderMenu();
+    const menu = await screen.findByRole("menu");
     const items = await screen.findAllByRole("menuitem");
+    // Base UI's initial-focus effect defers the actual `.focus()` call to a
+    // `requestAnimationFrame` (floating-ui-react's `enqueueFocus`), which
+    // lands after `findAllByRole` resolves. Dispatching ArrowDown before it
+    // fires sends the key to `document.body` instead of the popup, so its
+    // roving-focus keydown handler never sees it. Wait for the popup itself
+    // to be the real focus target — what that effect focuses first, since no
+    // item has a roving tabIndex of 0 yet — before sending keys.
+    await waitFor(() => expect(menu).toHaveFocus());
     await user.keyboard("{ArrowDown}");
     expect(items[0]).toHaveFocus();
     await user.keyboard("{ArrowDown}");
@@ -58,7 +67,12 @@ describe("DropdownMenu", () => {
         </DropdownMenuContent>
       </DropdownMenu>,
     );
+    const menu = await screen.findByRole("menu");
     await screen.findByRole("menuitem", { name: "Rename" });
+    // See the identical wait in "moves roving focus" above: without it,
+    // ArrowDown races the popup's deferred initial focus and can land on
+    // `document.body`, so Enter never reaches the item.
+    await waitFor(() => expect(menu).toHaveFocus());
     await user.keyboard("{ArrowDown}{Enter}");
     expect(onSelect).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());

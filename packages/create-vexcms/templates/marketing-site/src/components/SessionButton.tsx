@@ -1,7 +1,7 @@
 "use client"
 
-import { buttonVariants, cn, Icon } from "@vexcms/react"
-import { LogIn } from "lucide-react"
+import { buttonVariants, cn } from "@vexcms/react"
+import { LogIn, LogOut, LoaderCircle } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useSyncExternalStore } from "react"
@@ -21,9 +21,9 @@ import { Button } from "./ui/button"
  *
  * "Sign in" is a plain link to `/auth/sign-in`. From a client navigation the
  * `@auth` intercepting route renders the form in a dialog over the current
- * page, and `AuthUIProvider.onSessionChange` refreshes the tree once the
- * session lands, so there is no `redirectTo` — that query switches the route
- * to its full-page guard mode.
+ * page, wrapped in `AuthViewProvider`, whose `onSessionChange` refreshes the
+ * tree once the session lands — so there is no `redirectTo` on this link,
+ * that query switches the route to its full-page guard mode.
  *
  * `router.refresh()` after `signOut()` is required, not cosmetic:
  * `AuthServerProvider` resolves the user in a server component, so a
@@ -103,11 +103,11 @@ export function SessionButton({
       type="button"
       variant="ghost"
     >
-      <Icon
-        className={cn(isSigningOut && "animate-spin")}
-        name={isSigningOut ? "LoaderCircle" : "LogOut"}
-        size={14}
-      />
+      {isSigningOut ? (
+        <LoaderCircle className="animate-spin" size={14} />
+      ) : (
+        <LogOut size={14} />
+      )}
       Sign out
     </Button>
   )

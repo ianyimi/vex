@@ -28,6 +28,7 @@
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
+    "esbuild": "catalog:",
     "eslint": "catalog:",
     "eslint-plugin-jsdoc": "catalog:",
     "eslint-plugin-jsx-a11y": "catalog:",

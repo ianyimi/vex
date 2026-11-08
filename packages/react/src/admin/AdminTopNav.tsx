@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState, type ReactNode, type RefAttributes } from "react";
-import { Button, Icon, Skeleton, SidebarTrigger, VexLink } from "../ui";
+import { Button, Skeleton, SidebarTrigger, VexLink, Icon } from "../ui";
 import { ChevronLeft, ChevronRight, LucideProps } from "lucide-react";
 import {
   IconName,

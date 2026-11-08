@@ -1,3 +1,5 @@
+"use client";
+
 import { TDocument, type CellComponentProps, type EmailField } from "@vexcms/core";
 import { VexLink } from "../../ui";
 import { adminHref } from "../../admin/adminHref";

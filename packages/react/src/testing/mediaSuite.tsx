@@ -116,12 +116,28 @@ function makeMockMediaCollection(): MediaCollectionConfig {
  * @returns Nothing; registers `describe`/`it` blocks as a side effect.
  */
 function describeFilePreview() {
+  // `FilePreview`'s icons render through the lazy root `Icon` (`lucide-react/dynamic`'s
+  // `DynamicIcon`), which renders lucide-react's bare `Icon` component directly from an
+  // `iconNode` — unlike a statically-imported icon (`createLucideIcon`), it never gets a
+  // `lucide-{name}` class, only the generic `lucide` one. Assertions below identify which
+  // icon rendered by its first `<path>`'s `d`, lucide-react's own per-icon shape data.
+  const FILE_ICON_FIRST_PATH_D =
+    "M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z";
+  const LOADER_ICON_FIRST_PATH_D = "M12 2v4";
+  const VIDEO_ICON_FIRST_PATH_D = "m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5";
+  const AUDIO_WAVEFORM_ICON_FIRST_PATH_D =
+    "M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2";
+
   describe("FilePreview", () => {
-    it("renders a loading spinner icon when isPending is true, before any mime branch is reached", () => {
+    it("renders a loading spinner icon when isPending is true, before any mime branch is reached", async () => {
       const { container } = renderWithVexProviders(
         <FilePreview mediaDoc={makeMediaDoc({ mimeType: "image/png" })} isPending />,
       );
-      expect(container.querySelector(".lucide-loader")).not.toBeNull();
+      await waitFor(() =>
+        expect(container.querySelector("svg.lucide.animate-spin path")?.getAttribute("d")).toBe(
+          LOADER_ICON_FIRST_PATH_D,
+        ),
+      );
       expect(container.querySelector("img")).toBeNull();
     });
 
@@ -172,44 +188,58 @@ function describeFilePreview() {
       expect(img).toHaveClass("object-contain");
     });
 
-    it("shows the file icon (no <img>) for an svg with no src yet", () => {
+    it("shows the file icon (no <img>) for an svg with no src yet", async () => {
       const mediaDoc = makeMediaDoc({ mimeType: "image/svg+xml", src: "" });
       const { container } = renderWithVexProviders(<FilePreview mediaDoc={mediaDoc} />);
       expect(container.querySelector("img")).toBeNull();
-      expect(container.querySelector(".lucide-file")).not.toBeNull();
+      await waitFor(() =>
+        expect(container.querySelector("svg.lucide path")?.getAttribute("d")).toBe(FILE_ICON_FIRST_PATH_D),
+      );
     });
 
-    it("shows the video icon for a video mime type", () => {
+    it("shows the video icon for a video mime type", async () => {
       const mediaDoc = makeMediaDoc({ mimeType: "video/mp4" });
       const { container } = renderWithVexProviders(<FilePreview mediaDoc={mediaDoc} />);
-      expect(container.querySelector(".lucide-video")).not.toBeNull();
+      await waitFor(() =>
+        expect(container.querySelector("svg.lucide path")?.getAttribute("d")).toBe(VIDEO_ICON_FIRST_PATH_D),
+      );
       expect(container.querySelector("img")).toBeNull();
     });
 
-    it("shows the waveform icon for an audio mime type", () => {
+    it("shows the waveform icon for an audio mime type", async () => {
       const mediaDoc = makeMediaDoc({ mimeType: "audio/mpeg" });
       const { container } = renderWithVexProviders(<FilePreview mediaDoc={mediaDoc} />);
-      expect(container.querySelector(".lucide-audio-waveform")).not.toBeNull();
+      await waitFor(() =>
+        expect(container.querySelector("svg.lucide path")?.getAttribute("d")).toBe(
+          AUDIO_WAVEFORM_ICON_FIRST_PATH_D,
+        ),
+      );
     });
 
-    it("falls back to the generic file icon for an unrecognised/document mime type", () => {
+    it("falls back to the generic file icon for an unrecognised/document mime type", async () => {
       const mediaDoc = makeMediaDoc({ mimeType: "application/pdf" });
       const { container } = renderWithVexProviders(<FilePreview mediaDoc={mediaDoc} />);
-      expect(container.querySelector(".lucide-file")).not.toBeNull();
+      await waitFor(() =>
+        expect(container.querySelector("svg.lucide path")?.getAttribute("d")).toBe(FILE_ICON_FIRST_PATH_D),
+      );
     });
 
-    it("falls back to the generic file icon for an image mime type with no src yet, even before any load error", () => {
+    it("falls back to the generic file icon for an image mime type with no src yet, even before any load error", async () => {
       const mediaDoc = makeMediaDoc({ mimeType: "image/png", src: "" });
       const { container } = renderWithVexProviders(<FilePreview mediaDoc={mediaDoc} />);
       expect(container.querySelector("img")).toBeNull();
-      expect(container.querySelector(".lucide-file")).not.toBeNull();
+      await waitFor(() =>
+        expect(container.querySelector("svg.lucide path")?.getAttribute("d")).toBe(FILE_ICON_FIRST_PATH_D),
+      );
     });
 
-    it("falls back to the generic file icon for an unknown/absent mime type (empty string)", () => {
+    it("falls back to the generic file icon for an unknown/absent mime type (empty string)", async () => {
       const mediaDoc = makeMediaDoc({ mimeType: "" });
       const { container } = renderWithVexProviders(<FilePreview mediaDoc={mediaDoc} />);
       expect(container.querySelector("img")).toBeNull();
-      expect(container.querySelector(".lucide-file")).not.toBeNull();
+      await waitFor(() =>
+        expect(container.querySelector("svg.lucide path")?.getAttribute("d")).toBe(FILE_ICON_FIRST_PATH_D),
+      );
     });
 
     it("applies a fixed pixel size and custom radius when size is provided", () => {

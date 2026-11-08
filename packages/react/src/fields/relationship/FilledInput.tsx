@@ -10,11 +10,10 @@ import {
   type VexDocument,
   VexAccessError,
 } from "@vexcms/core";
-import { Button, Draggable, DragHandle, Droppable, Skeleton } from "../../ui";
+import { Button, Draggable, DragHandle, Droppable, Skeleton, Icon } from "../../ui";
 import { get } from "../../client";
 import { resolveRelationshipPreview } from "./preview";
 import { formatDateFieldValue } from "../date/utils";
-import { Icon } from "../../ui/Icon";
 
 /**
  * Resolved `time` config matching `updatedAt`'s injected definition

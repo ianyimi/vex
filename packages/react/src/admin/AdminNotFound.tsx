@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "../ui/button";
 import { VexLink } from "../ui/VexLink";
 import { Icon } from "../ui/Icon";

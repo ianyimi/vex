@@ -3,6 +3,7 @@
 import { AuthView } from "@daveyplate/better-auth-ui";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import AuthViewProvider from "~/auth/AuthViewProvider";
 import { Dialog, DialogContent, DialogTitle } from "~/components/ui/dialog";
 import { resolveAuthPageTitle } from "~/lib/authPageTitle";
 
@@ -20,9 +21,11 @@ export default function AuthCard({ pathname }: { pathname: string }) {
   const isGuardRedirect = searchParams.has("redirectTo") && !searchParams.has("modal");
   if (isGuardRedirect) {
     return (
-      <main className="absolute inset-0 grid place-items-center">
-        <AuthView path={pathname} />
-      </main>
+      <AuthViewProvider>
+        <main className="absolute inset-0 grid place-items-center">
+          <AuthView path={pathname} />
+        </main>
+      </AuthViewProvider>
     );
   }
   // No in-flow wrapper here on purpose. The Dialog portals into <body>, so a
@@ -32,21 +35,23 @@ export default function AuthCard({ pathname }: { pathname: string }) {
   // that empty element into view — i.e. jump the page to the bottom behind
   // the modal. With only a portal rendered there is no node to target.
   return (
-    <Dialog
-      onOpenChange={(open) => {
-        if (!open) {
-          router.back();
-        }
-      }}
-      open
-    >
-      <DialogContent
-        aria-describedby={undefined}
-        className="grid place-items-center bg-transparent shadow-none ring-transparent"
+    <AuthViewProvider>
+      <Dialog
+        onOpenChange={(open) => {
+          if (!open) {
+            router.back();
+          }
+        }}
+        open
       >
-        <DialogTitle className="sr-only">{resolveAuthPageTitle(pathname)}</DialogTitle>
-        <AuthView path={pathname} />
-      </DialogContent>
-    </Dialog>
+        <DialogContent
+          aria-describedby={undefined}
+          className="grid place-items-center bg-transparent shadow-none ring-transparent"
+        >
+          <DialogTitle className="sr-only">{resolveAuthPageTitle(pathname)}</DialogTitle>
+          <AuthView path={pathname} />
+        </DialogContent>
+      </Dialog>
+    </AuthViewProvider>
   );
 }

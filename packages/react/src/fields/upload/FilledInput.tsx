@@ -1,3 +1,5 @@
+"use client";
+
 import { Button, Draggable, DragHandle, Droppable, Skeleton } from "../../ui";
 import { useQuery } from "@tanstack/react-query";
 import {

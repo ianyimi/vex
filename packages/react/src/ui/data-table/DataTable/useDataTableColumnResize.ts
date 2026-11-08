@@ -1,3 +1,5 @@
+"use client";
+
 import { columnEntryField, type ColumnEntry } from "@vexcms/core";
 import {
   useEffect,

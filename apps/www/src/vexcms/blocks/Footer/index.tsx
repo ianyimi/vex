@@ -1,7 +1,6 @@
 import type { BlockComponentProps } from "@vexcms/react"
 
-import { buttonVariants, cn } from "@vexcms/react"
-import { icons } from "lucide-react"
+import { buttonVariants, cn, Icon, isIconName } from "@vexcms/react"
 import Link from "next/link"
 
 import type { FooterBlock } from "~/vex.types"
@@ -76,13 +75,13 @@ export default function FooterBlockRenderer({ block }: BlockComponentProps) {
               {socials.map((social) => {
                 // An unresolvable lucide name must not render an empty square —
                 // fall back to the platform name as a text link.
-                const Glyph = social.icon ? icons[social.icon as keyof typeof icons] : undefined
+                const iconName = social.icon && isIconName(social.icon) ? social.icon : undefined
                 return (
                   <li key={`${social.platform}-${social.href}`}>
                     <Link
                       aria-label={social.platform}
                       className={cn(
-                        Glyph
+                        iconName
                           ? cn(
                               buttonVariants({ size: "icon-sm", variant: "ghost" }),
                               "border border-border"
@@ -94,7 +93,7 @@ export default function FooterBlockRenderer({ block }: BlockComponentProps) {
                       rel="noreferrer"
                       target="_blank"
                     >
-                      {Glyph ? <Glyph className="size-4" /> : social.platform}
+                      {iconName ? <Icon className="size-4" name={iconName} /> : social.platform}
                     </Link>
                   </li>
                 )

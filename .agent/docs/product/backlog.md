@@ -60,6 +60,34 @@ revalidate route has to change to add them later, so waiting costs nothing.
 
 ---
 
+## Lazy config-referenced components
+
+**What.** Defer loading a component that a `vex.config.ts` references by identity — for
+example `www`'s config naming `TextFieldAdmin` directly as a field override — until the page
+that needs it actually renders, instead of pulling it in through the client config bundle
+every page loads via `ClientProviders`/`VexConfigProvider`.
+
+**Why.** `VexConfigProvider` mounts once at the app root (see the framework-adapters guide's
+"Wiring it into an app"), so a client `vex.config.ts` that imports an admin component by
+reference — `www`'s config imports `TextFieldAdmin` from `@vexcms/react/admin` to override a
+field's admin render — ships that component's whole module graph to every page the config is
+read on, public pages included, the same way any other root-level import does.
+
+**Lift.** Unassessed. Needs a design for how a config can name a component lazily (a dynamic
+`import()` thunk instead of a direct reference, most likely) without breaking the config's own
+type-checking of field overrides, or how `defineConfig`/the admin's own consumption of the
+config would resolve a lazy reference before rendering.
+
+**Why deferred.** Ratified out of scope during the tree-shakeable-package interview
+(2026-11-08): the measured cost today is small — `TextFieldAdmin` is one field override in
+one config, not the panel's full surface — and the site bundle gate (`scripts/
+check-site-bundle.mjs`, same spec, Step 8) already catches it growing past budget on any
+route, so nothing regresses silently while this waits for its own design pass.
+
+**Detail.** `.agent/docs/specs/2026-11-08-tree-shakeable-react-package/spec.md`, Step 8.
+
+---
+
 ## Server-side revalidation dispatch (no admin panel open)
 
 **What.** Purge cached paths for writes that never pass through the admin

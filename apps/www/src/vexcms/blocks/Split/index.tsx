@@ -1,7 +1,6 @@
 import type { BlockComponentProps } from "@vexcms/react"
 
-import { cn } from "@vexcms/react"
-import { icons } from "lucide-react"
+import { cn, Icon, isIconName } from "@vexcms/react"
 
 import type { SplitBlock } from "~/vex.types"
 
@@ -55,12 +54,12 @@ export default function SplitBlock({ block }: BlockComponentProps) {
         )}
       >
         {items.map((bullet, index) => {
-          const Glyph = bullet.icon ? icons[bullet.icon as keyof typeof icons] : undefined
+          const iconName = bullet.icon && isIconName(bullet.icon) ? bullet.icon : undefined
           return (
             <li className="flex items-start gap-3" key={`${bullet.text}-${index}`}>
               <span className="mt-[3px] flex size-4 shrink-0 items-center justify-center">
-                {Glyph ? (
-                  <Glyph className="size-4 text-primary" />
+                {iconName ? (
+                  <Icon className="size-4 text-primary" name={iconName} />
                 ) : (
                   // Keeps the 16px indent so mixed arrays stay aligned.
                   <span className="size-1 rounded-4xl bg-primary" />
@@ -106,15 +105,15 @@ export default function SplitBlock({ block }: BlockComponentProps) {
               {textColumn}
               <ul className="flex list-none flex-col border-border xl:border-l xl:pl-7">
                 {items.map((bullet, index) => {
-                  const Glyph = bullet.icon ? icons[bullet.icon as keyof typeof icons] : undefined
+                  const iconName = bullet.icon && isIconName(bullet.icon) ? bullet.icon : undefined
                   return (
                     <li
                       className="flex items-start gap-3 border-b border-border py-3 last:border-b-0"
                       key={`divided-${bullet.text}-${index}`}
                     >
                       <span className="mt-[3px] flex size-4 shrink-0 items-center justify-center">
-                        {Glyph ? (
-                          <Glyph className="size-4 text-primary" />
+                        {iconName ? (
+                          <Icon className="size-4 text-primary" name={iconName} />
                         ) : (
                           <span className="size-1 rounded-4xl bg-primary" />
                         )}

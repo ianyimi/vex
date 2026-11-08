@@ -1,3 +1,5 @@
+"use client";
+
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react";
 
 import { cn } from "../utils/cn";

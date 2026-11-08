@@ -15,9 +15,9 @@ import {
   SidebarMenuItem,
   VexLink,
   ThemeToggle,
+  Icon,
 } from "../ui";
 import { AdminUser } from "./AdminLayout";
-import { Icon } from "../ui/Icon";
 import { Activity } from "react";
 import { usePermission } from "../access";
 

@@ -10,13 +10,13 @@ import {
 import {
   Button,
   Input,
-  Icon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "../ui";
+import { Icon } from "../ui/Icon";
 import { FilePreview } from "./FilePreview";
 import { usePaginatedSearch } from "../hooks";
 import { cn } from "../utils/cn";

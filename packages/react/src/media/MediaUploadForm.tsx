@@ -7,7 +7,7 @@ import { useConvexMutation } from "@convex-dev/react-query";
 import { useVexMutation } from "../hooks";
 import { vexConvexApi, formatBytes, formatMimeType } from "@vexcms/core";
 import type { AdminDataField, MediaCollectionConfig, UploadField } from "@vexcms/core";
-import { Button, Icon, Input, Label } from "../ui";
+import { Button, Input, Label, Icon } from "../ui";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { AppForm } from "../forms";
 

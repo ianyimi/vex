@@ -285,7 +285,7 @@ the active view's hidden-filter summary, the peek opener, and more) comes from
 `useListViewContext()`, exported from `@vexcms/react`:
 
 ```ts
-import { useListViewContext } from "@vexcms/react";
+import { useListViewContext } from "@vexcms/react/admin";
 
 const {
   collection,        // the resolved CollectionConfig
@@ -314,7 +314,7 @@ that opens the edit view for its row, reading both together:
 
 ```tsx
 import type { TDocument } from "@vexcms/core";
-import { useListViewContext } from "@vexcms/react";
+import { useListViewContext } from "@vexcms/react/admin";
 
 function ExportRowAction(props: { docs: TDocument[] }) {
   const { collection } = useListViewContext();

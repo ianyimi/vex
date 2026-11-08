@@ -1,7 +1,8 @@
 "use client";
 
 import { toast } from "sonner";
-import { useVexDocument, EditActionsMenuItem, Icon } from "@vexcms/react";
+import { Icon } from "@vexcms/react";
+import { useVexDocument, EditActionsMenuItem } from "@vexcms/react/admin";
 
 /**
  * Root-level `edit.actionsMenu` item, dogfooding `admin.components.edit.actionsMenu.items` —

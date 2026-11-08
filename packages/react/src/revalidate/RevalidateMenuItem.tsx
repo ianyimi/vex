@@ -12,7 +12,7 @@ import { usePermission } from "../access";
 import { useVexDocument } from "../documents/VexDocumentContext";
 import { EditActionsMenuItem } from "../documents/EditActionsMenuItem";
 import { getVexErrorMessage } from "../utils/errors";
-import { Icon } from "../ui";
+import { Icon } from "../ui/Icon";
 import { useVexRevalidate } from "./useVexRevalidate";
 
 /**

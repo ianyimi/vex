@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import { CollectionConfig, type CommitTsField, type TDocument } from "@vexcms/core";
 import { CommitTsFieldCell } from "./Cell";

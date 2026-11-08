@@ -1,7 +1,6 @@
 import type { BlockComponentProps } from "@vexcms/react"
 
-import { cn } from "@vexcms/react"
-import { icons } from "lucide-react"
+import { cn, Icon, isIconName } from "@vexcms/react"
 
 import type { HowItWorksBlock } from "~/vex.types"
 
@@ -40,7 +39,7 @@ export default function HowItWorksBlockRenderer({ block }: BlockComponentProps) 
           )}
         >
           {items.map((step, index) => {
-            const Glyph = step.icon ? icons[step.icon as keyof typeof icons] : undefined
+            const iconName = step.icon
             return (
               <li
                 className="border-t border-border pt-4 xl:border-t-0 xl:pt-0"
@@ -56,8 +55,8 @@ export default function HowItWorksBlockRenderer({ block }: BlockComponentProps) 
                       sequence, and is why the icon sits right, not left. The
                       last one is kept: it points at the CTA below. */}
                   <span aria-hidden className="h-px flex-1 bg-border" />
-                  {Glyph ? (
-                    <Glyph className="size-3.5 shrink-0 self-center text-muted-foreground/70" />
+                  {iconName && isIconName(iconName) ? (
+                    <Icon name={iconName} className="size-3.5 shrink-0 self-center text-muted-foreground/70" />
                   ) : null}
                 </div>
 

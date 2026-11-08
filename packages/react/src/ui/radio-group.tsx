@@ -1,3 +1,5 @@
+"use client";
+
 import { Radio as RadioPrimitive, RadioGroup as RadioGroupPrimitive } from "@base-ui/react";
 
 import { cn } from "../utils/cn";
