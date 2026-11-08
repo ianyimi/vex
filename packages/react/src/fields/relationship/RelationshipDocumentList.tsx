@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import type {
   CollectionConfig,
@@ -51,6 +51,11 @@ export function RelationshipDocumentList({
 }: RelationshipDocumentListProps) {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 200);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    searchRef.current?.focus();
+  }, []);
 
   const {
     documents,
@@ -83,17 +88,29 @@ export function RelationshipDocumentList({
     }
   }
 
+  const statusText = isPending
+    ? "Loading…"
+    : isError
+      ? getVexErrorMessage(error)
+      : documents.length === 0
+        ? "No documents found"
+        : `${documents.length} ${targetLabel.toLowerCase()} loaded`;
+
   return (
     <div className="flex flex-col gap-2">
       <div className="border-b border-border p-2">
         <Input
+          ref={searchRef}
           type="text"
           placeholder={`Search ${targetLabel}…`}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           isPending={isPending}
-          autoFocus
         />
+      </div>
+
+      <div role="status" aria-live="polite" className="sr-only">
+        {statusText}
       </div>
 
       {isPending ? (
@@ -122,6 +139,7 @@ export function RelationshipDocumentList({
                 type="button"
                 onClick={() => toggle(docId)}
                 disabled={disabled}
+                aria-pressed={isSelected}
                 className={`${isSelected ? "bg-accent text-accent-foreground" : ""} flex w-full items-center
                     gap-2 rounded px-3 py-1.5 text-left text-[13px] hover:bg-accent hover:text-accent-foreground
                   disabled:cursor-not-allowed disabled:opacity-50`}

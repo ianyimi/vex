@@ -36,7 +36,7 @@ for (const target of targets) {
   const cwd = path.resolve(target);
   try {
     const configPath = resolveConfigPath(cwd);
-    const config = await loadConfig(configPath);
+    const config = await loadConfig({ configPath, projectDir: cwd });
     // `pushSchema` is stubbed: there is no deployment behind a template, and a
     // push is not what regeneration means here.
     const result = await generateAndWrite(config, cwd, configPath, {

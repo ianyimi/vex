@@ -1,5 +1,62 @@
 # create-vexcms
 
+## 0.1.0-alpha.31
+
+### Patch Changes
+
+- 910f2e7: Accessibility pass on the admin panel against WCAG 2.2 AA and the WAI-ARIA APG patterns.
+  Sidebar actions, multi-select chips, pagination, date/time pickers, resizable panels and
+  data-table labels expose correct names, roles and keyboard support; data-table column
+  resize is keyboard-operable (arrows, Home/End) and capped at 90% of the table container.
+  Array fields, timestamps, media and relationship inputs, and the richtext toolbar gain
+  accessible names and status regions; dialogs set initial focus; `ThemeProvider` applies
+  the stored theme before paint in client-only renders.
+
+  Both `create-vexcms` templates are re-synced from the reference apps: production-only CSP
+  and security headers, root `not-found` pages, drafts and live preview on the
+  marketing-site `pages` collection, and a session button in the site header.
+
+- 910f2e7: Scaffolded `user.additionalFields.roles` now carries `input: false`. Without it, Better
+  Auth 1.6.23 writes any `roles` value a caller sends on `/sign-up/email` or `/update-user`
+  straight onto the user row — `additionalFields` only sets a _default_, not a block on
+  caller-supplied input. A visitor who knows the field name can `POST` `{ "roles": ["admin"] }`
+  during sign-up and become an admin on first request, no further exploit needed.
+
+  Existing projects: add `input: false` next to `roles` in `src/auth/schema.ts` (or wherever
+  your scaffold's `authSchema.user.additionalFields` lives) and redeploy. Any other
+  `additionalFields` entry the server sets itself — never one a sign-up or profile-update
+  form should carry — needs the same flag.
+
+- The marketing-site template's browser code highlighter (`highlightCodeInBrowser`, used
+  when live content misses the server-built highlight map) now applies the same
+  `CODE_COLOR_REPLACEMENTS` as the server. Before, those panes shipped Tokyo Night's raw
+  comment colour `#51597D`, which is 3.00:1 on `--color-code-bg` and fails WCAG AA.
+
+- The marketing-site template's header `SessionButton` no longer breaks hydration. Better
+  Auth's `useSession()` is an external store, so when the session request settled before
+  React hydrated, the first client render produced a "Sign in" link where the server had
+  rendered the pending button. React then threw error #418 and client-rendered the whole
+  page, which delayed LCP. The button now renders its pending state until hydration
+  finishes.
+
+- The scaffolded browser auth client (`src/auth/client.tsx`) now calls `/api/auth` on
+  `window.location.origin` instead of `NEXT_PUBLIC_SITE_URL`. On a Vercel preview the
+  deployment URL differs from the configured site URL, and the CSP's `connect-src 'self'`
+  blocked the session request. Server renders still use `NEXT_PUBLIC_SITE_URL`.
+
+- Both template highlighters (marketing-site `highlight.ts` / `highlightClient.ts`) share
+  a 5 s per-line `tokenizeTimeLimit` instead of Shiki's 500 ms default. A cold first
+  highlight under load could stop partway through a line, and everything after a `//`
+  comment then rendered as comment.
+
+- The marketing-site CTA block renders actions that point at a file (`/brand/logo.svg`)
+  as plain anchors. `next/link` prefetched them as routes (`?_rsc=…`) and logged a 404
+  for each one.
+
+- The scaffolded client providers set Zod to `jitless` in the browser (`src/lib/zodJitless.ts`).
+  Zod 4's `new Function` probe on the first form parse was blocked by the production CSP and
+  logged a CSP violation on every auth page.
+
 ## 0.1.0-alpha.30
 
 ### Patch Changes

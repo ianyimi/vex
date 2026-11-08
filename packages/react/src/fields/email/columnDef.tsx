@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, TDocument, EmailField } from "@vexcms/core";
 import { EmailFieldCell } from "./Cell";

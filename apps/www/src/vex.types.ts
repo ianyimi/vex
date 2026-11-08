@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 
 import type { DataModel, Id } from "@convex/_generated/dataModel"
-import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"
+import type { VexDocument, VexDocumentGlobal, RichTextDocument } from "@vexcms/core"
 
 export interface UserDocument extends VexDocument {
   _id: Id<"user">
@@ -202,6 +202,23 @@ export interface PagesDocument extends VexDocument {
    * Custom meta description for search results.
    */
   metaDescription?: string
+  ogImage?: Id<"images">[]
+  updatedAt?: number
+}
+
+export interface Post extends VexDocument {
+  _id: Id<"posts">
+  vex_status?: "draft" | "published"
+  title: string
+  /**
+   * URL-friendly post path, e.g. vexcms-0-1-0.
+   */
+  slug: string
+  /**
+   * Short summary shown on a future posts index and used as the meta description.
+   */
+  excerpt?: string
+  body?: RichTextDocument
   ogImage?: Id<"images">[]
   updatedAt?: number
 }
@@ -618,6 +635,7 @@ export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
 export type CollectionSlug =
   | "user"
   | "pages"
+  | "posts"
   | "headers"
   | "footers"
   | "themes"
@@ -640,6 +658,7 @@ export type StorageAdapterSlug = "convex"
 export type DocumentBySlug = {
   user: UserDocument
   pages: PagesDocument
+  posts: Post
   headers: HeadersDocument
   footers: FootersDocument
   themes: Theme
@@ -663,6 +682,7 @@ declare module "@vexcms/core" {
     CollectionSlug:
       | "user"
       | "pages"
+      | "posts"
       | "headers"
       | "footers"
       | "themes"
@@ -681,6 +701,7 @@ declare module "@vexcms/core" {
     DocumentBySlug: {
       user: UserDocument
       pages: PagesDocument
+      posts: Post
       headers: HeadersDocument
       footers: FootersDocument
       themes: Theme
@@ -707,6 +728,13 @@ declare module "@vexcms/core" {
       pages: {
         text: "title" | "slug" | "metaTitle" | "metaDescription"
         blocks: "blocks"
+        upload: "ogImage"
+        commitTs: "updatedAt"
+      }
+      posts: {
+        text: "title" | "slug"
+        textarea: "excerpt"
+        richtext: "body"
         upload: "ogImage"
         commitTs: "updatedAt"
       }
@@ -827,10 +855,12 @@ declare module "@vexcms/core" {
     IndexFieldsBySlug: {
       user: { by_email: readonly ["email"] }
       pages: { by_slug: readonly ["slug"]; by_updatedAt: readonly ["updatedAt"] }
+      posts: { by_slug: readonly ["slug"]; by_updatedAt: readonly ["updatedAt"] }
       headers: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
       footers: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
       themes: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
       testimonials: {
+        by_rating: readonly ["rating"]
         by_source: readonly ["source"]
         by_contributorId: readonly ["contributorId"]
         by_avatar: readonly ["avatar"]

@@ -1,13 +1,13 @@
 ---
 title: Roadmap
-description: What's shipped, in progress, planned, and being explored for VexCMS v0.1.0-alpha.
+description: What's shipped in VexCMS 0.1.0, what ships next, and what's not planned.
 ---
 
-VexCMS is under active development. Everything ships as `0.1.0-alpha` until the core feature set is stable enough for a v0.1.0 release.
+VexCMS's free roadmap doesn't stop at 0.1.0. What shipped in VexCMS 0.1.0, what ships next,
+and what isn't planned. This page is the source of truth for the roadmap; the
+[vexcms.dev roadmap](https://vexcms.dev/roadmap) summarises it.
 
-Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · 🔭 Exploring
-
-## Shipped
+## Shipped in 0.1.0
 
 - ✅ 16 field types — `text`, `number`, `checkbox`, `select`, `date`, `url`, `email`, `textarea`, `json`, `relationship`, `upload`, `array`, `group`, `blocks`, `color`, `richtext` (Plate.js via `@vexcms/richtext-plate`, with inline images from the media library)
 - ✅ Versioning & drafts — draft/publish workflow, autosave, version history, restore, and unpublish
@@ -41,50 +41,28 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · �
 - ✅ `commitTs()` field — Convex's own commit timestamp, read-only and auto-indexed; the auto-injected `updatedAt` uses it
 - ✅ Edit-view overhaul — reorganized header with a ⋯ actions menu, every built-in action a replaceable `admin.components.edit` slot contribution, an unsaved-changes guard, duplicate for documents and blocks, and collection URLs under `/admin/collections/<slug>`. See the [admin customization guide](/guides/admin-customization/)
 - ✅ Field input consistency pass — consistent empty, loading, error, and read-only states across inputs, the relationship field included, and the media picker honours the upload field's `accept` filter
+- ✅ Opt-out build-time telemetry — anonymous, aggregate scaffold telemetry collected at `create-vexcms` build time, documented and opt-out in one step. See the [telemetry guide](/guides/telemetry/)
 
-## In progress
+## After 0.1.0
 
-These are the v0.1.0 launch track, in the order they ship.
+Everything below is free and lands in the Apache-2.0 core. It ships in this order.
 
-- 🔄 Localization design — the storage model and versioning interaction decided before anyone has data to migrate. Localization ships free in the core
-- 🔄 Responsive pass across the admin panel, marketing template, and docs
+1. **Plugin system** — The extension points 0.1.0 ships (admin slots, component overrides, action contributions) become a supported plugin API for collections, fields, hooks, access rules and admin views. [`planned` issue #61](https://github.com/ianyimi/vex/issues/61)
+2. **Free features, as demand appears** — No fixed order: 👍 the linked issue to move one up.
+   - **Localization** — Per-field locale values, opted into per collection and per field, with locale-aware drafts. [`planned` issue #59](https://github.com/ianyimi/vex/issues/59)
+   - **Scheduled publishing** — Publish and unpublish at a set time, on Convex's scheduler. [`planned` issue #63](https://github.com/ianyimi/vex/issues/63)
+   - **TanStack Start adapter** — The admin panel and the caching helpers on a second framework. [`planned` issue #64](https://github.com/ianyimi/vex/issues/64)
+   - **Form builder** — Collect input from site visitors, with generated validation and stored submissions. [`planned` issue #57](https://github.com/ianyimi/vex/issues/57)
+   - **Outbound webhooks** — Notify other services when content changes. [`planned` issue #60](https://github.com/ianyimi/vex/issues/60)
+   - **API keys and team management** — Invite people, assign roles, and issue scoped keys for reading content from outside. [`planned` issue #53](https://github.com/ianyimi/vex/issues/53)
+3. **Brownfield adoption** — Add VexCMS to an existing Convex app table by table, without migrating the data it already holds. [`planned` issue #54](https://github.com/ianyimi/vex/issues/54)
 
-## Planned
-
-- 📋 Form builder
-- 📋 Block group categorization
-- 📋 Content scheduling
-- 📋 API keys
-- 📋 Team management
-- 📋 TanStack Start adapter
-- 📋 S3 / R2 storage adapters
-- 📋 Presence — avatars of everyone viewing a document, on every edit view
-
-## Future
-
-Committed, but not yet scheduled — distinct from `Exploring`, which is still open research. These are the items the site's roadmap block marks `future`.
-
-- ⏳ Plugin system — custom field types
-- ⏳ Localization — field variants and locale-aware versioning, free in the core
-- ⏳ Auto-migration — schema diffing and field backfill on deploy
-
-## Exploring
-
-- 🔭 Multi-component workspaces
-- 🔭 Analytics adapter — per-document and per-block metrics surfaced directly in the admin panel
-
-## Enterprise
-
-Paid add-ons, shipped as separate packages under a flat annual licence and running entirely in your own Convex deployment. The core stays Apache-2.0, and nothing free today moves behind the licence.
-
-- 🔭 Real-time collaboration — per-field editing indicators, live cursors, follow mode, collaborative rich-text editing, and concurrent-edit conflict resolution
-- 🔭 SAML / OIDC single sign-on
-- 🔭 Audit log with retention and export
-- 🔭 Approval workflows
-- 🔭 Content branching between environments
+How VexCMS compares today: [Compare](/compare/).
 
 ## Not planned
 
 Assessed and deliberately excluded, so you do not have to wonder:
 
-- **`imageUrl` field.** Use `upload` with the media library, or a `url` field.
+- **`imageUrl` field** — use `upload` with the media library, or a `url` field.
+
+Paid add-ons may come later, as separate packages, after the free roadmap. The core stays Apache-2.0, and nothing free becomes paid.

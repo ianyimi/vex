@@ -30,4 +30,9 @@ describe("NumberFilterInput", () => {
     render(<NumberFilterInput field={fieldDef} value={undefined} op="eq" onChange={vi.fn()} disabled />);
     expect(screen.getByRole("spinbutton")).toBeDisabled();
   });
+
+  it("exposes the field's label as the input's accessible name", () => {
+    render(<NumberFilterInput field={fieldDef} value={undefined} op="eq" onChange={vi.fn()} />);
+    expect(screen.getByRole("spinbutton", { name: "Rating" })).toBeInTheDocument();
+  });
 });

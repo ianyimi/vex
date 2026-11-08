@@ -10,7 +10,12 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: 'VexCMS',
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/ianyimi/vex' }],
+			components: { Head: './src/components/Head.astro' },
+			social: [
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/ianyimi/vex' },
+				{ icon: 'heart', label: 'Sponsors', href: 'https://github.com/sponsors/ianyimi' },
+				{ icon: 'email', label: 'Release emails', href: 'https://buttondown.com/vexcms' },
+			],
 			plugins: [
 				starlightTypedoc({
 					entryPoints: [
@@ -33,7 +38,7 @@ export default defineConfig({
 					details: [
 						'Important notes for interpreting these docs:',
 						'',
-						'- VexCMS ships as `0.1.0-alpha`; `/roadmap` is authoritative for what exists today versus what is planned.',
+						'- VexCMS ships as `0.1.0-alpha`; `/roadmap` lists what shipped in 0.1.0, what ships next (in order), and what is not planned.',
 						'- Config is split in two: `vex.config.ts` is client-safe and imported by the browser, `vex.config.server.ts` layers on the auth adapter and storage adapters. Server-only values never appear on the client half.',
 						'- The Convex schema and TypeScript types are GENERATED from the config by `vex dev` / `vex generate`; never hand-edit `convex/vex.schema.ts` or `src/vex.types.ts`.',
 						'- `/api/**` pages are generated from source TSDoc by TypeDoc. They are the precise signatures; the guides and field pages carry the intent.',
@@ -69,6 +74,8 @@ export default defineConfig({
 			sidebar: [
 				{ label: 'Introduction', slug: 'index' },
 				{ label: 'Roadmap', slug: 'roadmap' },
+				{ label: 'Compare', slug: 'compare' },
+				{ label: 'Accessibility', slug: 'accessibility' },
 				{
 					label: 'Next.js',
 					items: [

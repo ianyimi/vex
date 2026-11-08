@@ -4,6 +4,7 @@ import type { PagesDocument } from "~/vex.types"
 
 import { generatePageMetadata } from "~/lib/metadata"
 import { highlightPageBlocks } from "~/lib/highlight"
+import { resolveDocumentIconNodes } from "~/lib/iconNodes"
 import { vex } from "~/lib/vex"
 
 import { PageContent } from "./PageContent"
@@ -24,10 +25,12 @@ export default async function HomePage() {
   } catch {
     // Fall back to client-only fetch
   }
-
-  const codeHighlights = await highlightPageBlocks(initialData?.[0]?.blocks)
+  const [codeHighlights, iconNodes] = await Promise.all([
+    highlightPageBlocks(initialData?.[0]?.blocks),
+    resolveDocumentIconNodes({ documents: initialData ?? [] }),
+  ])
 
   return (
-    <PageContent codeHighlights={codeHighlights} initialData={initialData} />
+    <PageContent codeHighlights={codeHighlights} iconNodes={iconNodes} initialData={initialData} />
   )
 }

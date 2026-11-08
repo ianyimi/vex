@@ -1,11 +1,13 @@
 import type { ReactNode } from "react"
 
 import { api } from "@convex/_generated/api"
+import { IconNodeProvider } from "@vexcms/react"
 
 import type { FootersDocument, HeadersDocument } from "~/vex.types"
 
 import { SiteFooter } from "~/components/SiteFooter"
 import { SiteHeader } from "~/components/SiteHeader"
+import { resolveDocumentIconNodes } from "~/lib/iconNodes"
 import { vex } from "~/lib/vex"
 
 /**
@@ -31,6 +33,8 @@ export default async function SiteLayout({
     // Convex not available — fall back to client-only fetch
   }
 
+  const iconNodes = await resolveDocumentIconNodes({ documents: [headerData, footerData] })
+
   return (
     <>
       {/* Sits above the sticky header so it is the first tab stop on every
@@ -41,9 +45,11 @@ export default async function SiteLayout({
       >
         Skip to content
       </a>
-      <SiteHeader initialData={headerData} />
-      <main id="main">{children}</main>
-      <SiteFooter initialData={footerData} />
+      <IconNodeProvider nodes={iconNodes}>
+        <SiteHeader initialData={headerData} />
+        <main id="main">{children}</main>
+        <SiteFooter initialData={footerData} />
+      </IconNodeProvider>
     </>
   )
 }

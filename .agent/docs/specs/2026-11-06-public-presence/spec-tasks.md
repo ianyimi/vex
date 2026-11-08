@@ -63,10 +63,10 @@ prompt_version: 1
 ## Step 1 — Public commitments copy [agent]
 Why: Q's output is the wording every later step reuses verbatim. One file makes the copy diffable and gives L's consistency matrix its source.
 Verify: `public-copy.md` holds every string named in spec.md step 1. `rg -o "Paid add-ons may come later.*?nothing free becomes paid\." public-copy.md | sort -u | wc -l` prints `1`. `rg -ni "pro tier|agency|enterprise|maprios|\bSSO\b|audit log|co-edit|annual licen" public-copy.md` returns nothing. § Footer lists 16 `links` and 2 `socialLinks`, with no duplicate label or href. § Privacy contact and § Release emails privacy entry each hold exactly one line
-- [ ] `public-copy.md`: the paid-work line, the post-0.1.0 roadmap (three phases, free-feature list, one line per item), the "who builds this" copy with the one-week triage line, the funding framing, the support-channel line, the contact addresses, the follow line, the Sponsors tier and goal copy, and the SECURITY response window
-- [ ] `public-copy.md` § Footer: the canonical ordered `links` and `socialLinks` for www, which every seed edit inserts at (cross-spec decision 4)
-- [ ] `public-copy.md` § Privacy contact and § Release emails privacy entry, quoted by `/privacy` and `/accessibility` (cross-spec decision 5)
-- [ ] A table in `public-copy.md` tracking each `planned` issue number, filled in by step 7
+- [x] `public-copy.md`: the paid-work line, the post-0.1.0 roadmap (three phases, free-feature list, one line per item), the "who builds this" copy with the one-week triage line, the funding framing, the support-channel line, the contact addresses, the follow line, the Sponsors tier and goal copy, and the SECURITY response window
+- [x] `public-copy.md` § Footer: the canonical ordered `links` and `socialLinks` for www, which every seed edit inserts at (cross-spec decision 4)
+- [x] `public-copy.md` § Privacy contact and § Release emails privacy entry, quoted by `/privacy` and `/accessibility` (cross-spec decision 5)
+- [x] A table in `public-copy.md` tracking each `planned` issue number, filled in by step 7
 
 ## Step 2 — Accounts, addresses and the `vexcms` org [dev]
 Why: Sponsors approval takes "a few days" (GitHub docs), and later steps need real usernames and inboxes (SECURITY.md, the CoC contact, FUNDING.yml, footer links). Applying first hides that lead time behind the rest of the work.
@@ -80,25 +80,25 @@ Verify: the Sponsors application shows "pending review" or "approved"; a test ma
 ## Step 3 — Label taxonomy and sync script [agent]
 Why: a reviewable, reproducible label set rather than click-ops. The check mode catches the silent failure GitHub documents: an issue-form label that doesn't exist in the repo is skipped without error.
 Verify: `node scripts/sync-labels.mjs --check` exits 1 against today's repo (default labels, prefixed set missing) and exits 0 after `node scripts/sync-labels.mjs --prune`. `gh label list --repo ianyimi/vex --limit 100 --json name --jq 'length'` equals the entry count in `labels.yml`. Adding a bogus `labels: ["nope"]` to a form makes `--check` exit 1; revert it afterwards
-- [ ] `yaml` (`catalog:`) added to the root `devDependencies`. The catalog already pins `yaml` for `create-vexcms`
-- [ ] `.github/labels.yml`: `status:`, `area:`, `adapter:`, `type:` (bug / feature / docs), contributor routing, resolution, prioritisation, each with a description and color
-- [ ] `scripts/sync-labels.mjs`: `--check` (diff repo vs file, plus form labels vs file, exit 1 on drift), default upsert via `gh label create --force`, and `--prune` (deletes labels not in the file)
-- [ ] `[dev]` Run `node scripts/sync-labels.mjs --prune` once
+- [x] `yaml` (`catalog:`) added to the root `devDependencies`. The catalog already pins `yaml` for `create-vexcms`
+- [x] `.github/labels.yml`: `status:`, `area:`, `adapter:`, `type:` (bug / feature / docs), contributor routing, resolution, prioritisation, each with a description and color
+- [x] `scripts/sync-labels.mjs`: `--check` (diff repo vs file, plus form labels vs file, exit 1 on drift), default upsert via `gh label create --force`, and `--prune` (deletes labels not in the file)
+- [x] `[dev]` Run `node scripts/sync-labels.mjs --prune` once
 
 ## Step 4 — Issue forms, template chooser and PR template [agent]
 Why: blank issues and missing versions are what make triage expensive. Questions and ideas go to Discussions (decision), so issues stay actionable.
 Verify: `node scripts/sync-labels.mjs --check` exits 0, which proves every form label exists. `node -e` parsing each form with `yaml` succeeds. After the Release merge, the "New issue" page on `master` shows exactly the two forms plus three contact links, and `blank_issues_enabled: false` hides the blank option from non-maintainers
-- [ ] `.github/ISSUE_TEMPLATE/1-bug_report.yml`: versions of `@vexcms/*`, `convex` and `next`; adapters in use (multi-select dropdown, informational, never turned into labels); reproduction link (optional) and numbered steps (required); expected vs actual; logs (`render: shell`). Labels `type: bug` and `status: needs-triage`
-- [ ] `.github/ISSUE_TEMPLATE/2-docs_issue.yml`: page URL, what's wrong, suggested fix. Labels `type: docs`, `area: docs` and `status: needs-triage`
-- [ ] `.github/ISSUE_TEMPLATE/config.yml`: `blank_issues_enabled: false`. Contact links go to Discussions Q&A, Discussions Ideas and the security advisory form
-- [ ] `.github/PULL_REQUEST_TEMPLATE.md`: linked issue, changeset added (`pnpm changeset`, patch per P-025), tests, docs
+- [x] `.github/ISSUE_TEMPLATE/1-bug_report.yml`: versions of `@vexcms/*`, `convex` and `next`; adapters in use (multi-select dropdown, informational, never turned into labels); reproduction link (optional) and numbered steps (required); expected vs actual; logs (`render: shell`). Labels `type: bug` and `status: needs-triage`
+- [x] `.github/ISSUE_TEMPLATE/2-docs_issue.yml`: page URL, what's wrong, suggested fix. Labels `type: docs`, `area: docs` and `status: needs-triage`
+- [x] `.github/ISSUE_TEMPLATE/config.yml`: `blank_issues_enabled: false`. Contact links go to Discussions Q&A, Discussions Ideas and the security advisory form
+- [x] `.github/PULL_REQUEST_TEMPLATE.md`: linked issue, changeset added (`pnpm changeset`, patch per P-025), tests, docs
 
 ## Step 5 — CONTRIBUTING, CODE_OF_CONDUCT, SECURITY [dev]
 Why: three of the five community-profile checks, and the launch-day signal that the project is maintained. SECURITY.md is useless without a working private channel.
 Verify: `pnpm exec prettier --check CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md`. Every command named in CONTRIBUTING's dev setup was run on a fresh clone. Every address and URL in the three files resolves
-- [ ] `CONTRIBUTING.md`: dev setup, the repo map, changesets, where questions, ideas, bugs and security reports go, what each `status:` label means, the reproduction bar (link or steps), the PR checklist, and the triage-within-a-week line from `public-copy.md`
-- [ ] `CODE_OF_CONDUCT.md`: Contributor Covenant 3.0 verbatim (CC BY-SA 4.0 attribution kept), enforcement contact `hello@vexcms.dev`
-- [ ] `SECURITY.md`: supported versions (0.1.x), report via private vulnerability reporting (preferred) or `security@vexcms.dev`, the response window from `public-copy.md`, disclosure through a GitHub Security Advisory with credit
+- [x] `CONTRIBUTING.md`: dev setup, the repo map, changesets, where questions, ideas, bugs and security reports go, what each `status:` label means, the reproduction bar (link or steps), the PR checklist, and the triage-within-a-week line from `public-copy.md`
+- [x] `CODE_OF_CONDUCT.md`: Contributor Covenant 3.0 verbatim (CC BY-SA 4.0 attribution kept), enforcement contact `hello@vexcms.dev`
+- [x] `SECURITY.md`: supported versions (0.1.x), report via private vulnerability reporting (preferred) or `security@vexcms.dev`, the response window from `public-copy.md`, disclosure through a GitHub Security Advisory with credit
 
 ## Step 6 — Repo settings: Discussions, private vulnerability reporting, social preview [dev]
 Why: Discussions is the only support channel at launch (no Discord). Private vulnerability reporting is what SECURITY.md promises. The social card is what every shared link shows.
@@ -111,9 +111,9 @@ Verify: `gh api repos/ianyimi/vex --jq .has_discussions` prints `true`. The Grap
 ## Step 7 — Starter issues [agent drafts, dev files]
 Why: launch visitors who want to help need scoped work, and every post-0.1.0 roadmap item needs a 👍-countable `planned` issue that the docs roadmap links to.
 Verify: `gh issue list --repo ianyimi/vex --label planned --json number --jq length` prints `8`; `--label "good first issue"` returns ≥ 5; every number is recorded in `public-copy.md`; `node scripts/sync-labels.mjs --check` exits 0
-- [ ] `[agent]` `issues/`: 8 `planned` drafts (plugin system, localization, scheduled publishing, TanStack Start adapter, form builder, outbound webhooks, API keys + team management, brownfield adoption). Free-tier scope only, with acceptance criteria and labels
-- [ ] `[agent]` `issues/`: ≥ 5 `good first issue` drafts (+ any `help wanted`) from `backlog.md` and the task inbox. Each is scoped and has acceptance criteria
-- [ ] `[dev]` File each one with `gh issue create --body-file`, then record the numbers in `public-copy.md`
+- [x] `[agent]` `issues/`: 8 `planned` drafts (plugin system, localization, scheduled publishing, TanStack Start adapter, form builder, outbound webhooks, API keys + team management, brownfield adoption). Free-tier scope only, with acceptance criteria and labels
+- [x] `[agent]` `issues/`: ≥ 5 `good first issue` drafts (+ any `help wanted`) from `backlog.md` and the task inbox. Each is scoped and has acceptance criteria
+- [x] `[dev]` File each one with `gh issue create --body-file`, then record the numbers in `public-copy.md`
 
 ## Step 8 — FUNDING.yml and the Sponsors profile [dev]
 Why: renders the repo's Sponsor button (on `master`) and finishes the profile once GitHub approves it.
@@ -124,46 +124,46 @@ Verify: on the Sponsors dashboard the goal and all 4 tiers are published; `node 
 ## Step 9 — Docs roadmap rewrite [dev]
 Why: `apps/docs/src/content/docs/roadmap.md` is the single source of the public roadmap. Its "In progress" list goes stale the day 0.1.0 tags, and its "Enterprise" section names paid features.
 Verify: `pnpm --filter docs build`. `rg -n "Enterprise|annual licence|co-editing|SSO|audit log|In progress|alpha" apps/docs/src/content/docs/roadmap.md` returns nothing. Each of the 8 post-0.1.0 items links its `planned` issue and the link resolves. The paid line matches `public-copy.md` byte for byte
-- [ ] Sections: intro, Shipped in 0.1.0, After 0.1.0 (1 plugin system → 2 free features, unordered and demand-driven → 3 brownfield adoption), Not planned, then the paid line
-- [ ] `apps/docs/astro.config.mjs`: the `starlightLlmsTxt` `details` roadmap sentence matches the new page (the alpha wording flips in step 18)
+- [x] Sections: intro, Shipped in 0.1.0, After 0.1.0 (1 plugin system → 2 free features, unordered and demand-driven → 3 brownfield adoption), Not planned, then the paid line
+- [x] `apps/docs/astro.config.mjs`: the `starlightLlmsTxt` `details` roadmap sentence matches the new page (the alpha wording flips in step 18)
 
 ## Step 10 — www and apps/test seed copy: roadmap page, FAQ, footer [dev]
 Why: the www roadmap block and FAQ summarise Q and must not name paid work. "Who builds this" and the funding and follow links are R's public surface. Footer links are seed data (P-018), so this needs no code.
 Verify: `pnpm --filter www typecheck && pnpm --filter www test`. `rg -n "Enterprise Add-Ons|annual licence|co-editing|Multi-Component" apps/www/convex/seed.ts apps/test/convex/seed.ts apps/www/src/vexcms/blocks` returns nothing. `pnpm --filter www exec convex run seed:reinit` on the dev deployment; `/roadmap` and `/` render the new copy on the running www (port 3030, P-024), and the footer entries present so far appear in `public-copy.md` § Footer order
-- [ ] `apps/www/convex/seed.ts`: roadmap page hero, stats and items (shipped list corrected, post-0.1.0 items as `planned` in phase order, paid and dropped items removed); FAQ "What does it cost?" ends with the paid line; new "Who builds VexCMS?" item; FAQ `supportLink` → Discussions; footer `links` gain Discussions, Release emails, Sponsor and Buy Me a Coffee, and `socialLinks` gains GitHub Sponsors, each at its § Footer position
-- [ ] `apps/www/src/vexcms/blocks/Roadmap/config.ts` and `FAQ/config.ts` `defaultValue`s aligned to `public-copy.md` (these ship to admins adding a new block)
-- [ ] `apps/test/convex/seed.ts` and the matching `apps/test` block `defaultValue`s: the same copy changes (`apps/test` stays a superset of www). Run this only after the telemetry work in `apps/test` is committed
-- [ ] `.agent/docs/standards/preferences.md` P-021: name `seed:reinit` (patch mode) as the way a content change ships, replacing "wipe rows, then `seed:init`" (cross-spec decision 9)
+- [x] `apps/www/convex/seed.ts`: roadmap page hero, stats and items (shipped list corrected, post-0.1.0 items as `planned` in phase order, paid and dropped items removed); FAQ "What does it cost?" ends with the paid line; new "Who builds VexCMS?" item; FAQ `supportLink` → Discussions; footer `links` gain Discussions, Release emails, Sponsor and Buy Me a Coffee, and `socialLinks` gains GitHub Sponsors, each at its § Footer position
+- [x] `apps/www/src/vexcms/blocks/Roadmap/config.ts` and `FAQ/config.ts` `defaultValue`s aligned to `public-copy.md` (these ship to admins adding a new block)
+- [x] `apps/test/convex/seed.ts` and the matching `apps/test` block `defaultValue`s: the same copy changes (`apps/test` stays a superset of www). Run this only after the telemetry work in `apps/test` is committed
+- [x] `.agent/docs/standards/preferences.md` P-021: name `seed:reinit` (patch mode) as the way a content change ships, replacing "wipe rows, then `seed:init`" (cross-spec decision 9)
 
 ## Step 11 — Docs header links and the slim README [dev]
 Why: R's links on the docs, and T's landing README. The 300-line feature reference duplicates the docs and goes stale. The README becomes the pitch plus links.
 Verify: `pnpm --filter docs build`; the docs header shows GitHub, Sponsor and Release emails icons with accessible labels. The README renders on GitHub (preview the branch) with all 4 badges resolving. `rg -n "co-editing|SSO|audit logs|annual licence" README.md` returns nothing
-- [ ] `apps/docs/astro.config.mjs` `social`: add `heart` → Sponsors and `email` → Buttondown
-- [ ] `README.md` rewritten: badges (npm version, CI, licence, Sponsors), hero (the existing `preview.png` until step 16), pitch, quick start (current flow condensed + docs link until step 17), Why Vex, Docs, Roadmap summary + link, Community (Discussions, issues, CONTRIBUTING, SECURITY), Who builds this, Sponsors (names $50, name + logo $250, empty-state line), License + paid line
+- [x] `apps/docs/astro.config.mjs` `social`: add `heart` → Sponsors and `email` → Buttondown
+- [x] `README.md` rewritten: badges (npm version, CI, licence, Sponsors), hero (the existing `preview.png` until step 16), pitch, quick start (current flow condensed + docs link until step 17), Why Vex, Docs, Roadmap summary + link, Community (Discussions, issues, CONTRIBUTING, SECURITY), Who builds this, Sponsors (names $50, name + logo $250, empty-state line), License + paid line
 
 ## Step 12 — Comparison page [dev]
 Why: answers the launch's most common question ("why not Payload/Sanity/Strapi?") with one fair, dated link.
 Verify: `pnpm --filter docs build`; the page renders in the sidebar after Roadmap. Every competitor cell links its source. Each competitor column shows its check date, and every date is within 7 days of the day the page ships (re-check against `competitors.md` and update the dates). `rg -n "SSO|audit|co-edit" apps/docs/src/content/docs/compare.mdx` returns nothing
-- [ ] `apps/docs/src/content/docs/compare.mdx`: intro, a free-tier capability table (Vex + 3 competitors, one check date per competitor), "When to pick something else", sources
-- [ ] `apps/docs/astro.config.mjs` sidebar: a `compare` entry after Roadmap
+- [x] `apps/docs/src/content/docs/compare.mdx`: intro, a free-tier capability table (Vex + 3 competitors, one check date per competitor), "When to pick something else", sources
+- [x] `apps/docs/astro.config.mjs` sidebar: a `compare` entry after Roadmap
 
 ## Step 13 — Brand kit: logos, `/brand` page, footer link [dev]
 Why: U's posts, Product Hunt and the social card need fixed logo files at stable public URLs. The media kit lives on www (decision) as a seeded page, because Next serves no index for a public folder.
 Verify: `pnpm --filter www typecheck && pnpm --filter www test`; after `seed:reinit`, `/brand` renders, and every link on it returns 200 (`curl -sI http://localhost:3030/brand/<file>`). The footer shows "Brand" at its § Footer position
-- [ ] `apps/www/public/brand/`: `vexcms-logo-light.svg`, `vexcms-logo-dark.svg`, `vexcms-mark.svg`, 1024 px PNG exports of each, and `vexcms-mark-240.png` (240×240, the Product Hunt logo)
-- [ ] `apps/www/convex/seed.ts`: a `brand` page (Hero compact + CTA actions linking each file) and the footer "Brand" link at its § Footer position. Same edit in `apps/test/convex/seed.ts` (after the telemetry commit)
-- [ ] `apps/www/e2e/routes.ts`: `{ path: "/brand" }` in `QUALITY_ROUTES`, if the file exists
+- [x] `apps/www/public/brand/`: `vexcms-logo-light.svg`, `vexcms-logo-dark.svg`, `vexcms-mark.svg`, 1024 px PNG exports of each, and `vexcms-mark-240.png` (240×240, the Product Hunt logo)
+- [x] `apps/www/convex/seed.ts`: a `brand` page (Hero compact + CTA actions linking each file) and the footer "Brand" link at its § Footer position. Same edit in `apps/test/convex/seed.ts` (after the telemetry commit)
+- [x] `apps/www/e2e/routes.ts`: `{ path: "/brand" }` in `QUALITY_ROUTES`, if the file exists
 
 ## Step 14 — www posts and the announcement post [dev]
 Why: T's announcement needs a canonical URL that every cross-post in U points at, and U's feature series needs more posts after it. The `posts` collection and `/posts/[slug]` route already exist in `apps/test`. www mirrors them (decision) and dogfoods the richtext field.
 Verify: `pnpm --filter www exec vex generate && pnpm --filter www typecheck && pnpm --filter www test && pnpm --filter www build`. After `seed:reinit`, the seeded announcement opens as a draft in the running admin, and live preview renders it at `/posts/vexcms-0-1-0`. As an anonymous visitor the URL 404s. The draft audit (spec.md step 14, cross-spec decision 3) is recorded in quality-pass `findings.md`
-- [ ] `@vexcms/richtext-plate` (`workspace:*`) in `apps/www/package.json`; `editor: plateEditor()` in `apps/www/src/vex.config.ts`
-- [ ] `apps/www/src/db/constants/index.ts`: `TABLE_SLUG_POSTS`; `apps/www/src/vexcms/collections/posts.ts` (title, slug, excerpt, body richtext, ogImage; drafts + autosave; live preview); export it in `collections/index.ts`
-- [ ] `apps/www/src/lib/useSitePreviewMode.ts` (port of `apps/test`'s); `PageContent.tsx` imports it instead of its private copy
-- [ ] `apps/www/src/auth/access.ts`: anonymous and demo roles read published posts only
-- [ ] `apps/www/convex/posts.ts` (`getBySlug`, `getBySlugPreview`, `publishedSlugs`); `apps/www/src/app/(frontend)/(site)/posts/[slug]/page.tsx` + `PostContent.tsx` (mirrors `apps/test`); `generatePostMetadata` in `apps/www/src/lib/metadata.ts`; `apps/www/src/app/sitemap.ts` lists published posts
-- [ ] `apps/www/convex/seed.ts`: the announcement post (`vex_status: "draft"`), with its Plate JSON body and the canonical URL from `public-copy.md`
-- [ ] `apps/www/e2e/routes.ts`: `{ path: "/posts/vexcms-0-1-0", draft: true }` in `QUALITY_ROUTES`, if the file exists. The `draft` flag is removed in the D1 edit that publishes the post
+- [x] `@vexcms/richtext-plate` (`workspace:*`) in `apps/www/package.json`; `editor: plateEditor()` in `apps/www/src/vex.config.ts`
+- [x] `apps/www/src/db/constants/index.ts`: `TABLE_SLUG_POSTS`; `apps/www/src/vexcms/collections/posts.ts` (title, slug, excerpt, body richtext, ogImage; drafts + autosave; live preview); export it in `collections/index.ts`
+- [x] `apps/www/src/lib/useSitePreviewMode.ts` (port of `apps/test`'s); `PageContent.tsx` imports it instead of its private copy
+- [x] `apps/www/src/auth/access.ts`: anonymous and demo roles read published posts only
+- [x] `apps/www/convex/posts.ts` (`getBySlug`, `getBySlugPreview`, `publishedSlugs`); `apps/www/src/app/(frontend)/(site)/posts/[slug]/page.tsx` + `PostContent.tsx` (mirrors `apps/test`); `generatePostMetadata` in `apps/www/src/lib/metadata.ts`; `apps/www/src/app/sitemap.ts` lists published posts
+- [x] `apps/www/convex/seed.ts`: the announcement post (`vex_status: "draft"`), with its Plate JSON body and the canonical URL from `public-copy.md`
+- [x] `apps/www/e2e/routes.ts`: `{ path: "/posts/vexcms-0-1-0", draft: true }` in `QUALITY_ROUTES`, if the file exists. The `draft` flag is removed in the D1 edit that publishes the post
 
 ## Step 15 — Private planning docs out of the public repo [dev]
 Why: Q keeps tiers, pricing, licence enforcement and customer specifics private. All of it is public today: `.agent/` is tracked on `master` and `dev` of a public repo (pitch deck, `post-v0.1.0-plan.md`, `product/roadmap.md`). Launch traffic is when strangers read the tree. This is a launch blocker for L.

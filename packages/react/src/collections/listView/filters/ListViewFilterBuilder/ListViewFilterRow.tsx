@@ -5,7 +5,6 @@ import { useState } from "react";
 import type { AdminDataField } from "@vexcms/core";
 import {
   Button,
-  Icon,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -15,6 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Icon,
 } from "../../../../ui";
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "../../../../ui/command";
 import { cn } from "../../../../utils/cn";

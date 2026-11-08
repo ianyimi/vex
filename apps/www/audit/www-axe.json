@@ -1,0 +1,217 @@
+{
+  "generated": "2026-11-08T08:55:57.063Z",
+  "baseURL": "http://localhost:3030",
+  "tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa"
+  ],
+  "results": [
+    {
+      "path": "/",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/a-page-that-does-not-exist",
+      "theme": "dark",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/a-page-that-does-not-exist",
+      "theme": "light",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/accessibility",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/accessibility",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/auth/sign-in",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/auth/sign-in",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/auth/sign-up",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/auth/sign-up",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/brand",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/brand",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/features",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/features",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/launch-week",
+      "theme": "dark",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/launch-week",
+      "theme": "light",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/posts/access-control-hooks-validation",
+      "theme": "dark",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/posts/access-control-hooks-validation",
+      "theme": "light",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/posts/create-vexcms-to-deployed",
+      "theme": "dark",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/posts/create-vexcms-to-deployed",
+      "theme": "light",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/posts/one-config-schema-and-types",
+      "theme": "dark",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/posts/one-config-schema-and-types",
+      "theme": "light",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/posts/real-time-admin-and-live-preview",
+      "theme": "dark",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/posts/real-time-admin-and-live-preview",
+      "theme": "light",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/posts/vexcms-0-1-0",
+      "theme": "dark",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/posts/vexcms-0-1-0",
+      "theme": "light",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/privacy",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/privacy",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/roadmap",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/roadmap",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/tour",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/tour",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/unauthorized",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/unauthorized",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    }
+  ]
+}

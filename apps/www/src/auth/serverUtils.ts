@@ -3,7 +3,8 @@ import { getSessionCookie } from "better-auth/cookies"
 import { fetchQuery } from "convex/nextjs"
 import { headers } from "next/headers"
 
-import { AUTH_COOKIE_PREFIX } from "~/db/constants"
+import { AUTH_COOKIE_PREFIX, AUTH_RATE_LIMIT_HEADERS } from "~/db/constants"
+import { env } from "~/env.mjs"
 
 /**
  * Read the Better Auth session token from cookies.
@@ -25,6 +26,44 @@ export async function getSessionToken() {
   }
 
   return sessionTokenCookie
+}
+
+/**
+ * Wraps a Better Auth Next.js route handler ({@link handler}'s `{ GET, POST }`
+ * shape) so every proxied request carries proof of its client IP before
+ * Better Auth forwards it to `.convex.site`. Vercel overwrites
+ * `x-forwarded-for` with the real client IP and never forwards external IPs,
+ * so its first value is trustworthy inside this handler. A caller hitting
+ * `.convex.site` directly can forge any header, so the Convex side
+ * (`convex/auth/rateLimits.ts`'s `limitAuthRequest`) only trusts these two
+ * headers when `proxySecret` matches `AUTH_PROXY_SECRET`.
+ *
+ * Always overwrites any client-sent `AUTH_RATE_LIMIT_HEADERS` values on the
+ * cloned request — a caller cannot smuggle its own attestation past this
+ * proxy hop.
+ *
+ * @param props.handler the unwrapped `{ GET, POST }` handler from
+ * `convexBetterAuthNextJs`.
+ * @returns a `{ GET, POST }` handler with the same signature, each method
+ * cloning its `Request` with `AUTH_RATE_LIMIT_HEADERS.clientIp` and
+ * `AUTH_RATE_LIMIT_HEADERS.proxySecret` set before delegating to the
+ * matching method on `props.handler`.
+ */
+export function withClientIpAttestation(props: {
+  handler: { GET: (request: Request) => Promise<Response>; POST: (request: Request) => Promise<Response> }
+}): { GET: (request: Request) => Promise<Response>; POST: (request: Request) => Promise<Response> } {
+  function attest(request: Request): Request {
+    const clientIp = (request.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ?? ""
+    const headers = new Headers(request.headers)
+    headers.set(AUTH_RATE_LIMIT_HEADERS.clientIp, clientIp)
+    headers.set(AUTH_RATE_LIMIT_HEADERS.proxySecret, env.AUTH_PROXY_SECRET)
+    return new Request(request, { headers })
+  }
+
+  return {
+    GET: (request: Request) => props.handler.GET(attest(request)),
+    POST: (request: Request) => props.handler.POST(attest(request)),
+  }
 }
 
 /**

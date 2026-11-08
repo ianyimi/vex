@@ -9,6 +9,8 @@ import { resolvePagePath } from "~/lib/resolvePagePath"
 import { footers, headers, images, pages, themes, users } from "~/vexcms/collections"
 import { siteSettings } from "~/vexcms/globals"
 
+import { TABLE_SLUG_PAGES } from "./db/constants"
+
 /**
  * VexCMS client-safe configuration for the marketing site.
  *
@@ -27,6 +29,33 @@ const vexConfig = defineConfig({
       side: "right",
     },
     livePreview: {
+      // `headers` declares its preview here rather than in its own
+      // `defineCollection`, to keep both shapes exercised: a collection's own
+      // block still wins field by field over its entry in this map.
+      collections: {
+        headers: { url: "/" },
+      },
+      globals: {
+        // Server-resolved: reads the database with a real `ctx`. No helper and
+        // no type argument — `vex generate` emits this project's `DataModel`
+        // into the `@vexcms/core` augmentation, so `ctx` is typed from there
+        // and `doc` from the map key.
+        siteSettings: {
+          url: {
+            server: async ({ vex }) => {
+              const [page] = await vex.find({
+                collection: TABLE_SLUG_PAGES,
+                withIndex: {
+                  name: "by_slug",
+                  range: (q) => q.eq("slug", "home"),
+                },
+                limit: 1,
+              })
+              return page ? `/${String(page.slug)}` : "/"
+            },
+          },
+        },
+      },
       allowedOrigins: [
         "http://localhost:3000",
         ...(process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : []),

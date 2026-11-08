@@ -1,4 +1,5 @@
-import { text, TextFieldAdmin, type TextField } from "@vexcms/react"
+import { text, type TextField } from "@vexcms/react"
+import { TextFieldAdmin } from "@vexcms/react/admin"
 import { runVexReactSuite, type FieldFixture } from "@vexcms/next/testing"
 
 import { access } from "~/auth/access"

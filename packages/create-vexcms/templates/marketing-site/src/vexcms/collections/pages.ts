@@ -1,8 +1,7 @@
 import { blocks, defineCollection, text, upload, VexError } from "@vexcms/core"
 
-
-import { resolvePagePath } from "~/lib/resolvePagePath"
 import { TABLE_SLUG_IMAGES, TABLE_SLUG_PAGES } from "~/db/constants"
+import { resolvePagePath } from "~/lib/resolvePagePath"
 import { pageBlocks } from "~/vexcms/blocks/config"
 
 export const pages = defineCollection({
@@ -15,24 +14,31 @@ export const pages = defineCollection({
       url: (doc) => resolvePagePath(doc.slug),
     },
   },
+  versions: {
+    drafts: true,
+    autosave: {
+      enabled: true,
+    },
+  },
   fields: {
     title: text({
       label: "Title",
       required: true,
     }),
-    // One type argument — the collection's own slug — types `doc`, `value` and
-    // `ctx` (the project's `DataModel` arrives through the generated
-    // `@vexcms/core` augmentation).
     slug: text<typeof TABLE_SLUG_PAGES>({
       description: "URL-friendly page path",
       index: "by_slug",
       label: "Slug",
       required: true,
-      validate: async ({ value, doc, ctx }) => {
-        const existing = await ctx.db
-          .query("pages")
-          .withIndex("by_slug", (q) => q.eq("slug", value))
-          .first()
+      validate: async ({ value, doc, vex }) => {
+        const [existing] = await vex.find({
+          collection: TABLE_SLUG_PAGES,
+          withIndex: {
+            name: "by_slug",
+            range: (q) => q.eq("slug", value),
+          },
+          limit: 1,
+        })
         if (existing && existing._id !== doc._id) {
           // Rejection is a throw, so the payload can carry more than a message.
           throw new VexError({

@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, ColorField, TDocument } from "@vexcms/core";
 import { ColorFieldCell } from "./Cell";

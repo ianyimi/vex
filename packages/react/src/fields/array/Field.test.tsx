@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
 import {
@@ -362,4 +362,23 @@ runNestedFieldContainerSuite({
   // separate scope, not a per-field-step task — a documented gap, not a
   // silently-dropped category.
   childFieldTypes: ["text", "select", "date", "upload", "array"],
+});
+describe("array: min error association on the role=group wrapper", () => {
+  it("wires aria-describedby onto the group once a min-count submit error shows", async () => {
+    const user = userEvent.setup();
+    const fieldDef = array({
+      items: text(),
+      min: [2, "Need at least 2 tags."],
+      label: "Tags",
+    });
+    const { container } = render(<ArrayHarness fieldDef={fieldDef} initialValue={["one"]} />);
+    const group = container.querySelector('[aria-labelledby="testField-label"]') as HTMLElement;
+    expect(group.getAttribute("aria-describedby")).toBeFalsy();
+
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+
+    await waitFor(() => expect(screen.getByText("Need at least 2 tags.")).toBeInTheDocument());
+    const errorId = screen.getByText("Need at least 2 tags.").id;
+    expect(group.getAttribute("aria-describedby")).toContain(errorId);
+  });
 });

@@ -1,7 +1,7 @@
 import { defineAccess } from "@vexcms/core";
 
 import { TABLE_SLUG_USERS, USER_ROLES } from "~/db/constants";
-import { footers, headers, images, leads, pages, products, testimonials, themes, users } from "~/vexcms/collections";
+import { footers, headers, images, leads, pages, posts, products, testimonials, themes, users } from "~/vexcms/collections";
 import { siteSettings } from "~/vexcms/globals";
 
 const readOnly = {
@@ -29,7 +29,7 @@ export const access = defineAccess({
   roles: Object.values(USER_ROLES),
   userRolesField: "roles",
   userCollectionSlug: TABLE_SLUG_USERS,
-  resources: [images, users, pages, siteSettings, themes, headers, footers, testimonials, products, leads],
+  resources: [images, users, pages, posts, siteSettings, themes, headers, footers, testimonials, products, leads],
   permissions: {
     [USER_ROLES.admin]: {
       "*": true,
@@ -37,6 +37,7 @@ export const access = defineAccess({
     [USER_ROLES.user]: {
       "*": false,
       pages: readOnly,
+      posts: readOnly,
       adminPanel: {
         access: true,
         impersonate: false,

@@ -21,6 +21,7 @@ export const TABLE_SLUG_IMAGES = "images" as const
 
 // Site content (marketing-site overlay)
 export const TABLE_SLUG_PAGES = "pages" as const
+export const TABLE_SLUG_POSTS = "posts" as const
 export const TABLE_SLUG_HEADERS = "headers" as const
 export const TABLE_SLUG_FOOTERS = "footers" as const
 export const TABLE_SLUG_THEMES = "themes" as const

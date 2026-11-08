@@ -1,43 +1,38 @@
 import { defineConfig } from "tsup";
+import { listModuleEntries, preserveModulesPlugin } from "../../scripts/preserveModulesPlugin.mjs";
 
 /**
- * ONE config with BOTH entries and `splitting: true`, deliberately — not the
- * array-of-configs pattern `docs/standards/tooling/tsup-and-exports.md`
- * describes for divergent banners.
+ * One file per source module (`bundle: true, splitting: false`, object-form
+ * `entry` from `listModuleEntries`, plus `preserveModulesPlugin` — see
+ * `scripts/preserveModulesPlugin.mjs`). The package used to build `.` and
+ * `./testing` from one `splitting: true` config so tsup's shared chunk gave
+ * both entries ONE instance of every module they touch, `AppFormContext`'s
+ * `createContext` call above all — two separate builds each inlined their
+ * own copy, and a consumer mixing `TextFieldInput` from `.` with `AppForm`
+ * from `./testing` got two distinct React contexts (measured: 26 of 27
+ * `apps/www` tests failed on exactly that). A per-module build removes the
+ * need for a shared chunk: every module resolves to exactly one `dist/`
+ * file regardless of how many public entries reach it, so `.` and
+ * `./testing` already share one instance of each without a shared tsup
+ * invocation forcing it.
  *
- * Two separate tsup invocations cannot share a chunk, so `.` and `./testing`
- * each inlined their own copy of every module they touch — including
- * `AppFormContext`'s `createContext(null)` call. A consumer importing
- * `TextFieldInput` from `.` and `AppForm`/`runVexReactSuite` from `./testing`
- * then got TWO distinct React contexts, and every mounted component threw
- * "must be rendered inside <AppForm>". Measured in `apps/www`: 26 of 27 tests
- * failed on exactly that, which is the whole reason the test kit exists to
- * begin with. Runtime correctness wins over a cosmetically clean banner.
- *
- * The cost of folding them back together is that the `"use client"` banner is
- * stamped on `dist/testing/index.js` too. That is inert: the test kit is only
- * ever imported by a vitest process, where the directive is an ignored string
- * literal, and it is never part of a Next RSC module graph.
- *
- * `entry` MUST stay in object form. An array form makes `src/testing` the
- * common base dir and emits `dist/index.js` for the testing entry, silently
- * overwriting the main bundle.
+ * The root barrel (`src/index.ts`) no longer carries `"use client"` — every
+ * client module declares its own boundary now, enforced by
+ * `src/clientDirective.test.ts`, so a server component can import `cn` or a
+ * hook through the barrel without making the whole package a client
+ * reference. `dist/testing/index.js` still opens with the directive
+ * (inherited from `src/testing/index.ts`, which keeps it) — inert, since the
+ * test kit only ever runs inside vitest, never inside a Next module graph.
  */
 export default defineConfig({
-  entry: {
-    index: "src/index.ts",
-    "client/index": "src/client/index.ts",
-    "form/index": "src/forms/index.ts",
-    "server/index": "src/server/index.ts",
-    "testing/index": "src/testing/index.ts",
-  },
+  entry: listModuleEntries({ srcDir: "src" }),
   format: ["esm"],
   dts: false, // Declarations come from `tsc --emitDeclarationOnly` in the build script — tsup's rollup-dts pegs the CPU on this graph.
   sourcemap: true,
   clean: true,
-  // Load-bearing: emits shared chunks so both entries reference ONE instance of
-  // every shared module (contexts above all). Do not disable.
-  splitting: true,
+  bundle: true,
+  splitting: false,
+  esbuildPlugins: [preserveModulesPlugin({ srcDir: "src" })],
   skipNodeModulesBundle: true,
   external: [
     // React
@@ -76,10 +71,4 @@ export default defineConfig({
     /^@testing-library\//,
     "convex-test",
   ],
-  // No `banner` here any more. The directive now lives at the top of
-  // `src/index.ts` / `src/testing/index.ts`, because dev resolves those source
-  // files directly (see `workspaceSourceAliases` in each app's next.config.ts)
-  // and a banner only exists in the bundle. esbuild preserves an entry's
-  // directive prologue, so `dist/index.js` still opens with `"use client"` —
-  // verified — and keeping the banner as well emitted it twice.
 });

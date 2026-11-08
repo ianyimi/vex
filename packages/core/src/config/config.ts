@@ -6,6 +6,7 @@ import { VexAuthConfigError } from "../auth/types";
 import { internalCollections } from "../collections/internal";
 import { validateAndMergeStorageConfig, VexStorageConfigError } from "../media";
 import { diffAuthCollections } from "./diffAuthCollections";
+import { assertRolesFieldNotClientWritable } from "./assertRolesFieldNotClientWritable";
 import { DEFAULT_LIVE_PREVIEW_BREAKPOINTS } from "../livePreview";
 import { resolveComponentOverrides, SLOT_IDS } from "../components";
 import { ADMIN_FIELDS, type DataFieldType } from "../fields";
@@ -225,6 +226,8 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
  * @throws {VexStorageConfigError} When a media collection names an unregistered storage adapter.
  * @throws {VexAuthConfigError} When `config.authCollections` disagrees with the
  *   registered auth adapter's collections.
+ * @throws {VexAuthConfigError} When `config.access.userRolesField` is
+ *   client-writable through the registered auth adapter's user collection.
  *
  * @example
  * ```ts
@@ -278,6 +281,7 @@ export function defineServerConfig(props: {
           `authCollections call to match your auth options.`,
       );
     }
+    assertRolesFieldNotClientWritable({ access: config.access, adapter: server.auth.adapter });
   }
 
   return {

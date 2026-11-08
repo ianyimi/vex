@@ -157,3 +157,46 @@ describe("betterAuthAdapter", () => {
     expect(bio?.defaultValue).toBe("Hello");
   });
 });
+
+describe("betterAuthAdapter — clientWritableUserFields", () => {
+  it("lists an additionalField without input: false", () => {
+    const adapter = betterAuthAdapter({
+      config: {
+        user: {
+          additionalFields: {
+            roles: { type: "string[]", defaultValue: ["user"], required: true },
+          },
+        },
+      },
+    });
+    expect(adapter.clientWritableUserFields).toContain("roles");
+  });
+
+  it("excludes an additionalField marked input: false", () => {
+    const adapter = betterAuthAdapter({
+      config: {
+        user: {
+          additionalFields: {
+            roles: {
+              type: "string[]",
+              defaultValue: ["user"],
+              required: true,
+              input: false,
+            },
+          },
+        },
+      },
+    });
+    expect(adapter.clientWritableUserFields).not.toContain("roles");
+  });
+
+  it("excludes the built-in emailVerified field", () => {
+    const adapter = betterAuthAdapter();
+    expect(adapter.clientWritableUserFields).not.toContain("emailVerified");
+  });
+
+  it("excludes the admin plugin's role field", () => {
+    const adapter = betterAuthAdapter({ config: { plugins: [admin()] } });
+    expect(adapter.clientWritableUserFields).not.toContain("role");
+  });
+});

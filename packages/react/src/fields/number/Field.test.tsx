@@ -97,7 +97,7 @@ runFieldInputContractSuite({
   extra: (options) => {
     const collection = options.collection ?? testCollection;
 
-    describe("number: numeric coercion, decimal/negative handling, and the ?? 0 empty fallback", () => {
+    describe("number: numeric coercion, decimal/negative handling, and the ?? \"\" empty fallback", () => {
       it("coerces the typed digits to a number, not a string", async () => {
         const user = userEvent.setup();
         render(
@@ -140,7 +140,7 @@ runFieldInputContractSuite({
         expect(screen.getByTestId("value-probe").textContent).toBe("999");
       });
 
-      it("renders 0, not blank, when the field's value is undefined — the field.state.value ?? 0 fallback", () => {
+      it("renders blank, not 0, when the field's value is undefined — the field.state.value ?? \"\" fallback", () => {
         render(
           <NumberHarness
             fieldDef={options.fixture.fieldDef}
@@ -149,7 +149,7 @@ runFieldInputContractSuite({
           />,
         );
         const input = screen.getByLabelText(options.fixture.fieldDef.label, { exact: false });
-        expect(input).toHaveValue(0);
+        expect(input).toHaveValue(null);
       });
 
       it("accepts and coerces a decimal value", () => {
@@ -183,15 +183,14 @@ runFieldInputContractSuite({
         expect(screen.getByTestId("value-probe").textContent).toBe("-5");
       });
 
-      // Ambiguous intent: neither NumberField's JSDoc nor NumberFieldAdmin's
-      // own JSDoc says what a cleared number field should hold. A user
-      // clearing a required numeric field would reasonably expect the value
-      // to become empty/undefined so "required" validation can catch it — not
-      // silently become a valid 0. `NumberFieldAdmin` computes
-      // `Number(e.target.value)`, and `Number("") === 0`, so it does the
-      // latter. This assertion targets the behavior a user would reasonably
-      // expect and is EXPECTED TO FAIL against the current implementation —
-      // a failing assertion here is the deliverable.
+      // A user clearing an optional numeric field reasonably expects the
+      // value to become empty/undefined so "required" validation (or a
+      // configured min/max default) can run against it on submit, not
+      // silently become a valid 0 — and expects the INPUT itself to stay
+      // visibly empty while typing a replacement value, not snap back to
+      // "0" after every keystroke. `NumberFieldAdmin`/`NumberField` compute
+      // `e.target.value === "" ? undefined : Number(e.target.value)` and
+      // display `value={controlProps.value ?? ""}`, so both hold.
       it("clearing the input resets the stored value to empty, not a silently-valid 0", async () => {
         const user = userEvent.setup();
         render(

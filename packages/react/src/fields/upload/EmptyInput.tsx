@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "../../ui";
 import type { MediaCollectionConfig, UploadField } from "@vexcms/core";
 import { fileMatchesAccept } from "./utils";

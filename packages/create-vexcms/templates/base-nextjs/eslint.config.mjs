@@ -1,6 +1,7 @@
 import convexPlugin from "@convex-dev/eslint-plugin"
 import { FlatCompat } from "@eslint/eslintrc"
 import importX from "eslint-plugin-import-x"
+import jsxA11y from "eslint-plugin-jsx-a11y"
 import perfectionist from "eslint-plugin-perfectionist"
 import tseslint from "typescript-eslint"
 
@@ -10,6 +11,44 @@ const compat = new FlatCompat({
 
 const convexConfig = convexPlugin.configs.recommended[0]
 const convexRules = convexConfig.rules
+
+/**
+ * Promotes one `jsx-a11y/flatConfigs.recommended` rule entry's severity to
+ * `"error"`, keeping its options. Rules the preset ships `"off"` stay off.
+ *
+ * @param config - `"off"` | `"warn"` | `"error"` | `[severity, ...options]`.
+ * @returns The same shape at `"error"`, or `"off"` unchanged.
+ */
+function promoteToError(config) {
+  if (config === "off" || (Array.isArray(config) && config[0] === "off")) {
+    return "off"
+  }
+  if (Array.isArray(config)) {
+    return ["error", ...config.slice(1)]
+  }
+  return "error"
+}
+
+/**
+ * Every `jsx-a11y` recommended rule with its own options, blocking instead of
+ * warning. `label-has-for` stays off: it is deprecated and double-reports what
+ * `label-has-associated-control` already checks.
+ */
+const jsxA11yConfig = {
+  files: ["**/*.tsx"],
+  plugins: {
+    "jsx-a11y": jsxA11y,
+  },
+  rules: {
+    ...Object.fromEntries(
+      Object.entries(jsxA11y.flatConfigs.recommended.rules).map(([rule, config]) => [
+        rule,
+        promoteToError(config),
+      ]),
+    ),
+    "jsx-a11y/label-has-for": "off",
+  },
+}
 
 export const defaultESLintIgnores = [
   "**/.temp",
@@ -124,6 +163,7 @@ export default tseslint.config(
       "import/no-anonymous-default-export": "off",
     },
   },
+  jsxA11yConfig,
   {
     languageOptions: {
       parserOptions: {

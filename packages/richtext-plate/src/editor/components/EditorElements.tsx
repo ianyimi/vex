@@ -401,6 +401,7 @@ export function ImageElement(props: PlateElementProps) {
 
   return (
     <PlateElement {...props} style={getPlateElementStyle(element.align)}>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         contentEditable={false}
         ref={containerRef}
@@ -494,16 +495,19 @@ export function ImageElement(props: PlateElementProps) {
             unless Shift is held. */}
         {(selected || hovered || resizing) && (
           <>
+            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
             <div
               title="Drag to change width"
               onMouseDown={(e) => handleResizeStart(e, "right")}
               style={{ ...resizeHandleStyle("right", resizing), top: 0, right: -4, width: 8, height: "100%" }}
             />
+            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
             <div
               title="Drag to change height"
               onMouseDown={(e) => handleResizeStart(e, "bottom")}
               style={{ ...resizeHandleStyle("bottom", resizing), left: 0, bottom: -4, width: "100%", height: 8 }}
             />
+            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
             <div
               title="Drag to resize — hold Shift to change the shape"
               onMouseDown={(e) => handleResizeStart(e, "corner")}

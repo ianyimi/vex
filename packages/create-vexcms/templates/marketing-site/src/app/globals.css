@@ -146,7 +146,7 @@
   --popover-foreground:          oklch(13.7% 0    0);
 
   /* Brand — ember on --primary */
-  --primary:                     oklch(60.5% 0.175 42);          /* #E8622A */
+  --primary:                     oklch(54%   0.175 42);          /* #BD3E00 */
   --primary-foreground:          oklch(100%  0    0);
 
   /* Neutral secondary */
@@ -167,7 +167,7 @@
   --ring:                        oklch(60.5% 0.175 42);          /* solid ember */
 
   /* Status */
-  --destructive:                 oklch(57.7% 0.198 27);          /* #DC2626 */
+  --destructive:                 oklch(54%   0.198 27);          /* #C82525 */
   --destructive-foreground:      oklch(98%   0    0);
 
   /* Base radius — used by anything reading var(--radius) directly */

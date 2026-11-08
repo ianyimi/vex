@@ -22,6 +22,7 @@ import type { HeaderBlock } from "~/vex.types"
 import { BrandMark } from "~/components/BrandMark"
 import { Container } from "~/components/Container"
 import { MediaImage } from "~/components/MediaImage"
+import { SessionButton } from "~/components/SessionButton"
 
 export { headerBlock } from "./config"
 
@@ -114,7 +115,7 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
           </Link>
 
           {items.length > 0 ? (
-            <nav className={cn("items-center gap-1", navClass)}>
+            <nav aria-label="Primary navigation" className={cn("items-center gap-1", navClass)}>
               {items.map((item) => {
                 const isCurrent = pathname === item.href
                 return (
@@ -138,6 +139,7 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <SessionButton />
           {actions.length > 0 ? (
             <div className={cn("items-center gap-2", navClass)}>
               {actions.map((action) => (
@@ -187,7 +189,7 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
               </SheetTrigger>
               <SheetContent className="rounded-lg border-border bg-background" side="top">
                 <SheetTitle className="sr-only">Menu</SheetTitle>
-                <nav className="flex flex-col px-2 pt-2">
+                <nav aria-label="Primary navigation" className="flex flex-col px-2 pt-2">
                   {items.map((item) => (
                     <Link
                       aria-current={pathname === item.href ? "page" : undefined}
@@ -205,11 +207,11 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
                     </Link>
                   ))}
                 </nav>
-
                 {actions.length > 0 ? (
                   <>
                     <Separator className="my-4" />
                     <div className="flex flex-col gap-2 px-2 pb-2">
+                      <SessionButton className="w-full" size="default" />
                       {actions.map((action) => (
                         <Link
                           className={cn(

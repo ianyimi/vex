@@ -1,7 +1,8 @@
 "use client";
 
 import type { FieldControlProps } from "@vexcms/core";
-import type { ReactHKT, SlotOverrideProps } from "@vexcms/react";
+import type { ReactHKT } from "@vexcms/react";
+import type { SlotOverrideProps } from "@vexcms/react/admin";
 
 /**
  * Per-field `admin.components.Input` override for the `contactPhone` field —

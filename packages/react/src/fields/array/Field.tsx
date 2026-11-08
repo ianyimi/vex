@@ -1,7 +1,6 @@
 "use client";
-
+import { useStore, type AnyFieldApi } from "@tanstack/react-form";
 import { useContext } from "react";
-import type { AnyFieldApi } from "@tanstack/react-form";
 import type { ArrayField as ArrayFieldDef, ArrayType } from "@vexcms/core";
 import {
   ADMIN_FIELDS,
@@ -15,7 +14,7 @@ import {
   type FieldComponentProps,
 } from "@vexcms/core";
 import { ArrowDownIcon, ArrowUpIcon, CopyIcon, TrashIcon } from "lucide-react";
-import { ArrayField, GroupField, useFieldContext } from "../../forms";
+import { ArrayField, fieldDescribedBy, GroupField, isFieldShowingError, useFieldContext, useFormContext } from "../../forms";
 import type { ReactHKT } from "../../adapter";
 import { VexConfigContext } from "../../config";
 import { SlotOutlet } from "../../slots/SlotOutlet";
@@ -157,6 +156,14 @@ function PrimitiveArrayItemControl(props: {
  */
 function ArrayFieldAdminInner(props: FieldComponentProps<{}, ArrayFieldDef<any, ArrayType>>) {
   const field = useFieldContext<ArrayType[]>();
+  const form = useFormContext();
+  const submissionAttempts = useStore(form.store, (state) => state.submissionAttempts);
+  const showError = isFieldShowingError({ field, submissionAttempts });
+  const describedBy = fieldDescribedBy({
+    id: field.name,
+    hasDescription: Boolean(props.fieldDef.description),
+    showError,
+  });
   const config = useContext(VexConfigContext);
   const projectItemActions = config?.admin.components.array.itemActions as unknown as
     | ComponentContributionInput<ReactHKT, ArrayItemActionsProps>[]
@@ -170,7 +177,12 @@ function ArrayFieldAdminInner(props: FieldComponentProps<{}, ArrayFieldDef<any, 
   const itemsHaveOwnHeader = itemFieldDef.type === ADMIN_FIELDS.group.type;
 
   return (
-    <div role="group" aria-labelledby={`${field.name}-label`} aria-disabled={readOnly}>
+    <div
+      role="group"
+      aria-labelledby={`${field.name}-label`}
+      aria-describedby={describedBy}
+      aria-disabled={readOnly}
+    >
       <ArrayField
         label={props.fieldDef.label || props.name}
         description={props.fieldDef.description}

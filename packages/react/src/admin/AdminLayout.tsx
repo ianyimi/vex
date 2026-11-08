@@ -206,7 +206,7 @@ export function AdminLayout(props: AdminLayoutProps) {
           `SidebarInset`'s height with the sidebar). Without this, the wrapper's own
           percentage/flex height ignored the bar's ~48px, overflowing `<main>`'s own bottom
           edge by exactly that much — a second, unwanted page-level scrollbar. */}
-      <main className="vex-scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <main className="vex-scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto" id="main">
         {props.children}
       </main>
     </SidebarInset>
@@ -214,6 +214,12 @@ export function AdminLayout(props: AdminLayoutProps) {
 
   return (
     <>
+      <a
+        className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-3 focus-visible:z-100 focus-visible:rounded-sm focus-visible:border focus-visible:border-border focus-visible:bg-card focus-visible:px-3 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium focus-visible:text-foreground"
+        href="#main"
+      >
+        Skip to content
+      </a>
       <FrameworkComponentsContext.Provider value={props.components ?? {}}>
         <ThemeProvider>
           <TooltipProvider>

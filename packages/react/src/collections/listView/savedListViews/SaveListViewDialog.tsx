@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { VEX_VIEW_SOURCES, type VexViewSource } from "@vexcms/core";
 import {
   Button,
@@ -86,6 +86,7 @@ export function SaveListViewDialog(props: SaveListViewDialogProps) {
   const [target, setTarget] = useState<SaveListViewTarget>(
     props.sharedViewsAvailable ? props.target : VEX_VIEW_SOURCES.local,
   );
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -106,7 +107,7 @@ export function SaveListViewDialog(props: SaveListViewDialogProps) {
         props.onOpenChange(open);
       }}
     >
-      <DialogContent>
+      <DialogContent initialFocus={nameInputRef}>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{props.mode === "create" ? "Save view" : "Rename view"}</DialogTitle>
@@ -122,9 +123,9 @@ export function SaveListViewDialog(props: SaveListViewDialogProps) {
               <FieldContent>
                 <Input
                   id="list-save-view-name"
+                  ref={nameInputRef}
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  autoFocus
                   disabled={props.isPending}
                 />
               </FieldContent>
@@ -149,13 +150,17 @@ export function SaveListViewDialog(props: SaveListViewDialogProps) {
                     value={target}
                     onValueChange={(value) => setTarget(value as SaveListViewTarget)}
                   >
-                    <label className="flex items-center gap-2 text-sm">
-                      <RadioGroupItem value={VEX_VIEW_SOURCES.local} />
+                    <label htmlFor="list-save-view-target-local" className="flex items-center gap-2 text-sm">
+                      <RadioGroupItem id="list-save-view-target-local" value={VEX_VIEW_SOURCES.local} />
                       Only you
                     </label>
                     {props.sharedViewsAvailable && (
-                      <label className="flex items-center gap-2 text-sm aria-disabled:opacity-50" aria-disabled={!props.canCreateShared}>
-                        <RadioGroupItem value={VEX_VIEW_SOURCES.shared} disabled={!props.canCreateShared} />
+                      <label
+                        htmlFor="list-save-view-target-shared"
+                        className="flex items-center gap-2 text-sm aria-disabled:opacity-50"
+                        aria-disabled={!props.canCreateShared}
+                      >
+                        <RadioGroupItem id="list-save-view-target-shared" value={VEX_VIEW_SOURCES.shared} disabled={!props.canCreateShared} />
                         Everyone with access
                       </label>
                     )}

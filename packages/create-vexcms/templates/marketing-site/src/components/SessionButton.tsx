@@ -1,0 +1,122 @@
+"use client"
+
+import { buttonVariants, cn } from "@vexcms/react"
+import { LogIn, LogOut, LoaderCircle } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useState, useSyncExternalStore } from "react"
+
+import { signOut, useSession } from "~/auth/client"
+
+import { Button } from "./ui/button"
+
+/**
+ * One header slot that is always occupied: a disabled "Sign in" while the
+ * session resolves, "Sign in" for a visitor, "Sign out" for a real account.
+ *
+ * Always rendering *something* is the point. A sign-out-only control that
+ * mounts after `useSession()` resolves makes the bar's right edge jump on
+ * every load for a signed-in user, and a signed-out user has no way in
+ * except typing `/auth/sign-in` by hand.
+ *
+ * "Sign in" is a plain link to `/auth/sign-in`. From a client navigation the
+ * `@auth` intercepting route renders the form in a dialog over the current
+ * page, wrapped in `AuthViewProvider`, whose `onSessionChange` refreshes the
+ * tree once the session lands — so there is no `redirectTo` on this link,
+ * that query switches the route to its full-page guard mode.
+ *
+ * `router.refresh()` after `signOut()` is required, not cosmetic:
+ * `AuthServerProvider` resolves the user in a server component, so a
+ * client-only sign-out would clear the client's session state while the
+ * server-rendered tree (and anything gated on it) kept showing the old user
+ * until the next natural navigation.
+ */
+export function SessionButton({
+  className,
+  size = "sm",
+}: {
+  className?: string
+  /** `sm` in the bar; `default` in the mobile Sheet, which needs a 44px row. */
+  size?: "default" | "sm"
+}) {
+  const { data: session, isPending: isSessionPending } = useSession()
+  const router = useRouter()
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  // The server always renders the pending control: there is no session store
+  // on the server. Better Auth's `useSession()` is an external store, so if its
+  // request settles before React hydrates (a fast or blocked fetch), the first
+  // client render would produce a different element and React would discard
+  // and client-render the whole page. `useSyncExternalStore` reads the server
+  // snapshot (`false`) while hydrating and the client one (`true`) after, so
+  // the first client render stays identical to the server's.
+  const isHydrated = useSyncExternalStore(subscribeNever, () => true, () => false)
+
+  const classes = cn(
+    buttonVariants({ size, variant: "ghost" }),
+    "gap-1.5 active:translate-y-px",
+    className,
+  )
+
+  // While the session resolves, show the signed-out control disabled rather
+  // than a spinner: the bar is right-aligned, so if this flips to the slightly
+  // wider "Sign out" only the slot itself grows leftward — GitHub and the
+  // buttons after it never move.
+  if (!isHydrated || isSessionPending) {
+    return (
+      <button aria-busy className={classes} disabled type="button">
+        <LogIn size={14} />
+        Sign in
+      </button>
+    )
+  }
+
+  if (!session?.user) {
+    return (
+      <Link className={classes} href="/auth/sign-in" title="Sign in to your account">
+        <LogIn size={14} />
+        Sign in
+      </Link>
+    )
+  }
+
+  return (
+    <Button
+      aria-busy={isSigningOut}
+      className={classes}
+      disabled={isSigningOut}
+      onClick={() => {
+        setIsSigningOut(true)
+        signOut()
+          .then(() => {
+            router.refresh()
+          })
+          .catch(() => {
+            // A failed sign-out that leaves a stale client cache is worse
+            // than a redundant refresh, so refresh either way.
+            router.refresh()
+          })
+          .finally(() => {
+            setIsSigningOut(false)
+          })
+      }}
+      title="Sign out and return to browsing anonymously"
+      type="button"
+      variant="ghost"
+    >
+      {isSigningOut ? (
+        <LoaderCircle className="animate-spin" size={14} />
+      ) : (
+        <LogOut size={14} />
+      )}
+      Sign out
+    </Button>
+  )
+}
+
+/**
+ * Nothing to subscribe to. Module-level so its identity is stable:
+ * `useSyncExternalStore` resubscribes whenever `subscribe` changes.
+ */
+function subscribeNever(): () => void {
+  return () => undefined
+}

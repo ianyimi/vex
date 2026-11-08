@@ -4,7 +4,7 @@
 import { useState, type ReactNode } from "react";
 import type { VexApiAuth } from "@vexcms/core";
 
-import { AdminLayout } from "@vexcms/react";
+import { AdminLayout } from "@vexcms/react/admin";
 import NextImage from "next/image";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";

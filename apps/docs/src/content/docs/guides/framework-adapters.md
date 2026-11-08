@@ -7,6 +7,40 @@ VexCMS separates its data model and admin logic from the UI layer via a framewor
 
 > **Status:** Only the React adapter exists today. This guide reflects what is implemented and is written to help React adapter consumers understand the architecture, and to serve as a starting point for future framework adapter authors.
 
+## What ships to your pages
+
+`@vexcms/react` ships one dist file per source module and splits its exports by who
+reaches them: the root (`@vexcms/react`, `@vexcms/react/form`) is everything a page or a
+`vex.config.ts` touches, `@vexcms/react/admin` is the panel.
+
+**In a client component, importing from the root costs only what you import.** `import {
+cn } from "@vexcms/react"` in a `"use client"` component pulls in `cn`'s own module graph —
+nothing else in the package ships because your bundler never reached it.
+
+**In a server component, importing from the root costs the root's whole reach.** Next
+registers every `"use client"` module a barrel import can statically reach as a client
+reference, independent of which parts of that barrel your component actually renders — so
+a server component doing `import { Icon } from "@vexcms/react"` pays for everything else
+exported at the root too. That is exactly what the root is kept small for: it holds field,
+config, access and auth types/hooks, `cn`, UI primitives and `Icon` — never the admin
+panel — and a CI gate fails the build if that ever stops being true.
+
+**`/admin` is for extending the panel**, not for pages: the adapter, the field registry,
+every `*FieldAdmin`/`*FieldCell`, slots, the document-edit runtime, admin layout and views,
+the data table and the drag-and-drop primitives it's built on.
+
+**The app form lives at `@vexcms/react/form`**, not at the root — `AppForm`/`useAppForm`
+are not root exports, because some of the root's own field types reach `dnd` through them
+(`ArrayField`, `BlocksField`), which the root must never do. Import the form from `./form`
+whether you're building a field admin component or a config-referenced form elsewhere in
+your app.
+
+**`Icon` loads icons lazily, on public pages and in the admin panel alike.** Icon names
+usually come from CMS data you don't control ahead of time, so `Icon` renders a same-sized
+placeholder and loads only the one icon it was asked for, into a reserved box with no
+layout shift. The admin panel uses the same lazy `Icon` for its sidebar, collection/global
+icons, and menu items — there's no separate eager admin icon component.
+
 ---
 
 ## How the adapter system works
@@ -72,7 +106,8 @@ interface FieldComponentProps<TField extends AdminField = AdminField> {
 Every admin field component binds to its form field via `@vexcms/react/form`'s `useFieldContext()`, reached through `AdminFieldBinding` (which threads `name`/`field` down from the enclosing `<AppForm>`):
 
 ```tsx
-import { AdminFieldBinding, type FieldComponentProps } from "@vexcms/react";
+import { AdminFieldBinding } from "@vexcms/react/admin";
+import type { FieldComponentProps } from "@vexcms/react";
 import { useFieldContext } from "@vexcms/react/form";
 import type { TextField } from "@vexcms/core";
 
@@ -295,7 +330,7 @@ rest of the shell (sidebar, top bar) still renders.
 // app/admin/[[...path]]/page.tsx
 import { fetchQuery } from "convex/nextjs";
 import { vexConvexApi } from "@vexcms/core";
-import { DashboardView, CollectionsIndexView, GlobalsListView, CollectionListView, CollectionEditView } from "@vexcms/react";
+import { DashboardView, CollectionsIndexView, GlobalsListView, CollectionListView, CollectionEditView } from "@vexcms/react/admin";
 
 export async function NextAdminPage(props: {
   config: VexConfig;
@@ -349,7 +384,7 @@ The layout component wraps the page component and stays mounted across navigatio
 import { usePathname } from "next/navigation";
 import NextLink from "next/link";
 import NextImage from "next/image";
-import { AdminLayout } from "@vexcms/react";
+import { AdminLayout } from "@vexcms/react/admin";
 
 export function NextAdminLayout(props: { children: ReactNode }) {
   const pathname = usePathname();

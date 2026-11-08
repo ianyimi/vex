@@ -19,6 +19,20 @@ export const { mutation: vexMutation, internalMutation: vexInternalMutation } = 
   internalMutation,
 });
 
+/**
+ * `getAuth` resolver for this file's own `collectionsApi` call below, and
+ * exported for `versions.ts` (the only other `convex/vex/*` module that needs
+ * it — `globals.ts`/`media.ts` each build their own identical call instead of
+ * importing this one, so the installer's `--orgs`-declined step can strip
+ * organization wiring from each file independently).
+ */
+export const getAuth = createGetAuth({
+  orgCollectionSlug: TABLE_SLUG_ORGANIZATIONS,
+  userCollectionSlug: TABLE_SLUG_USERS,
+  sessionCollectionSlug: TABLE_SLUG_SESSIONS,
+  resolveOrgs: true,
+});
+
 export const {
   find,
   get,
@@ -34,10 +48,5 @@ export const {
   config,
   query,
   mutation: vexMutation,
-  getAuth: createGetAuth({
-    orgCollectionSlug: TABLE_SLUG_ORGANIZATIONS,
-    userCollectionSlug: TABLE_SLUG_USERS,
-    sessionCollectionSlug: TABLE_SLUG_SESSIONS,
-    resolveOrgs: true,
-  }),
+  getAuth,
 });

@@ -1,0 +1,157 @@
+{
+  "generated": "2026-11-08T08:52:48.324Z",
+  "baseURL": "http://localhost:3020",
+  "tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa"
+  ],
+  "results": [
+    {
+      "path": "/",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/a-page-that-does-not-exist",
+      "theme": "dark",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/a-page-that-does-not-exist",
+      "theme": "light",
+      "status": 404,
+      "violations": []
+    },
+    {
+      "path": "/accessibility",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/accessibility",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/auth/sign-in",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/auth/sign-in",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/auth/sign-up",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/auth/sign-up",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/brand",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/brand",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/features",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/features",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/posts/plate-upgrade-smoke",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/posts/plate-upgrade-smoke",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/privacy",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/privacy",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/roadmap",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/roadmap",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/tour",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/tour",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/unauthorized",
+      "theme": "dark",
+      "status": 200,
+      "violations": []
+    },
+    {
+      "path": "/unauthorized",
+      "theme": "light",
+      "status": 200,
+      "violations": []
+    }
+  ]
+}

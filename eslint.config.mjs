@@ -1,4 +1,5 @@
 import js from "@eslint/js";
+import { jsxA11yConfig } from "./eslint.jsx-a11y.mjs";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import jsdocPlugin from "eslint-plugin-jsdoc";
@@ -157,6 +158,7 @@ export default [
       "jsdoc/require-example": "off",
     },
   },
+  jsxA11yConfig,
   {
     files: ["**/*.test.ts", "**/*.test.tsx"],
     // Load the plugin so eslint-disable comments referencing

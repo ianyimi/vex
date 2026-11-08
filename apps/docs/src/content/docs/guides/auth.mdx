@@ -62,7 +62,7 @@ import type { BetterAuthSchemaInput } from "@vexcms/better-auth/client";
 export const authSchema = {
   user: {
     additionalFields: {
-      roles: { type: "string[]", defaultValue: ["user"], required: true },
+      roles: { type: "string[]", defaultValue: ["user"], required: true, input: false },
     },
   },
   plugins: {
@@ -80,6 +80,29 @@ This module is deliberately separate from your real Better Auth options (convent
 plugin list typically pulls in `better-auth/next-js` — which imports `next/headers`. Importing
 any binding from `options.ts` would evaluate all of that, so the client-safe half lives on its
 own and `options.ts` spreads it instead.
+
+### Why `roles` needs `input: false`
+
+Any `additionalFields` entry without `input: false` is writable by the caller through
+Better Auth's own `/sign-up/email` and `/update-user` endpoints — including a role
+field. Without it, anyone can sign up with `roles: ["admin"]` and the value is stored
+as given.
+
+`betterAuthAdapter()` reports every such field as `clientWritableUserFields` on the
+`VexAuthAdapter` it returns, and `defineServerConfig` throws `VexAuthConfigError` at
+`vex dev` (and in any test that imports the server config) when `access.userRolesField`
+is one of them:
+
+```
+VexAuthConfigError: The access config's userRolesField "roles" is client-writable
+through the "better-auth" adapter's "user" collection. Mark it input: false wherever
+your auth provider configures field writability, so end users cannot set their own
+role.
+```
+
+The fix is the `input: false` shown in the example above — add it to the field's entry
+in `authSchema.user.additionalFields`, and to the matching entry if `options.ts`
+redeclares the type rather than spreading `schemaOptions`.
 
 ### Building the auth collections
 

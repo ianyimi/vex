@@ -24,9 +24,16 @@ type Subjects = NonNullable<typeof access.__subjects>;
  * @returns The permission boolean. `false` for a signed-out user; `true` when no
  *   `access` config exists at all — the access system being absent is the documented
  *   open-by-default escape hatch, not a denial.
+ *
+ * `changes` is deliberately omitted: it authorizes a write against a field map, and a
+ * client-side check cannot be trusted with that. Field maps are resolved for UI gating
+ * via `useFieldPermissions` (`@vexcms/react`); the server is what enforces them.
  */
 export function hasPermission<TSubject extends keyof Subjects, TData extends object = object>(
-  props: Omit<HasPermissionProps<Subjects, TSubject, TData>, "access" | "organization" | "user">,
+  props: Omit<
+    HasPermissionProps<Subjects, TSubject, TData>,
+    "access" | "organization" | "user" | "changes"
+  >,
 ): boolean {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const { user, organization } = useAuth();

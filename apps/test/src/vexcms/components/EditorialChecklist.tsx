@@ -1,6 +1,6 @@
 "use client";
 
-import { useVexDocument } from "@vexcms/react";
+import { useVexDocument } from "@vexcms/react/admin";
 
 /**
  * Reminder card above the post's fields: posts are a draft/publish collection

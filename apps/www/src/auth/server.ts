@@ -1,10 +1,11 @@
+import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs"
+import { api } from "@convex/_generated/api"
 import { cache } from "react"
 
-import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs"
-
-import { api } from "@convex/_generated/api"
 import { AUTH_COOKIE_PREFIX } from "~/db/constants"
 import { env } from "~/env.mjs"
+
+import { withClientIpAttestation } from "./serverUtils"
 
 /**
  * Whether a caught query error looks like it was rejected for a stale/invalid
@@ -22,7 +23,7 @@ export const {
   fetchAuthMutation,
   fetchAuthQuery,
   getToken: getTokenUncached,
-  handler,
+  handler: rawHandler,
   isAuthenticated,
   preloadAuthQuery,
 } = convexBetterAuthNextJs({
@@ -55,6 +56,8 @@ export const {
     isAuthError: isAuthTokenError,
   },
 })
+
+export const handler = withClientIpAttestation({ handler: rawHandler })
 
 /**
  * Memoized per request (React `cache()`). `layout.tsx`, `page.tsx`, and

@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColorField, FilterInputProps } from "@vexcms/core";
 import { Input } from "../../ui";
 
@@ -25,6 +27,7 @@ export function ColorFilterInput(props: FilterInputProps<ColorField>) {
       />
       <Input
         className="min-w-0 flex-1"
+        aria-label={props.field.label || "Filter value"}
         value={value}
         onChange={(e) => props.onChange(e.target.value)}
         disabled={props.disabled}

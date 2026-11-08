@@ -1,3 +1,5 @@
+"use client";
+
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, JsonField, TDocument } from "@vexcms/core";
 import { JsonFieldCell } from "./Cell";

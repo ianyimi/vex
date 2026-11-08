@@ -147,7 +147,7 @@ describe('template markers (Contract 4 — installer is the source of truth)', (
     expect(authOptions).toContain('// {{OAUTH_PROVIDERS}}');
     expect(authOptions).toContain('// {{EMAIL_PASSWORD_AUTH}}');
 
-    const authClient = fs.readFileSync(path.join(baseTemplateDir, 'src/auth/client.tsx'), 'utf-8');
+    const authClient = fs.readFileSync(path.join(baseTemplateDir, 'src/auth/AuthViewProvider.tsx'), 'utf-8');
     expect(authClient).toContain('// {{OAUTH_UI_PROVIDERS}}');
     expect(authClient).toContain('/* {{EMAIL_PASSWORD_CREDENTIALS}} */');
 
@@ -177,7 +177,7 @@ describe('template markers (Contract 4 — installer is the source of truth)', (
     expect(authOptions).not.toContain('{{OAUTH_PROVIDERS}}');
     expect(authOptions).not.toContain('{{EMAIL_PASSWORD_AUTH}}');
 
-    const authClient = fs.readFileSync(path.join(bareDir, 'src/auth/client.tsx'), 'utf-8');
+    const authClient = fs.readFileSync(path.join(bareDir, 'src/auth/AuthViewProvider.tsx'), 'utf-8');
     expect(authClient).not.toContain('{{OAUTH_UI_PROVIDERS}}');
     expect(authClient).not.toContain('{{EMAIL_PASSWORD_CREDENTIALS}}');
 
