@@ -163,7 +163,12 @@ export function ArrayField<TItem>(props: ArrayFieldProps<TItem>): ReactNode {
                 onMoveDown: () => moveDown(index),
                 onRemove: () => remove(index),
               });
-              const dragHandle = <DragHandle disabled={Boolean(props.readOnly)} />;
+              const dragHandle = (
+                <DragHandle
+                  disabled={Boolean(props.readOnly)}
+                  aria-label={`Reorder ${props.itemLabel} ${index + 1}`}
+                />
+              );
               return (
                 <Draggable key={itemKeys[index]} id={`${field.name}-${itemKeys[index]}`} index={index} isDragDisabled={Boolean(props.readOnly)}>
                   {props.itemsHaveOwnHeader ? (

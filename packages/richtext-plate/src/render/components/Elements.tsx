@@ -61,10 +61,10 @@ export function BlockquoteElementStatic(props: SlateElementProps) {
     <SlateElement {...props}>
       <blockquote
         style={{
-          borderLeft: "3px solid #d1d5db",
+          borderLeft: "3px solid var(--border)",
           paddingLeft: 16,
           margin: "12px 0",
-          color: "#6b7280",
+          color: "var(--muted-foreground)",
           fontStyle: "italic",
         }}
       >
@@ -85,7 +85,7 @@ export function CodeBlockElementStatic(props: SlateElementProps) {
     <SlateElement {...props}>
       <pre
         style={{
-          background: "#f3f4f6",
+          background: "var(--muted)",
           borderRadius: 6,
           padding: "12px 16px",
           margin: "12px 0",
@@ -214,7 +214,7 @@ export function LinkElementStatic(props: SlateElementProps) {
       as="a"
       attributes={{ ...props.attributes, href: element.url, target: element.target, rel }}
       style={{
-        color: "#2563eb",
+        color: "var(--primary)",
         textDecoration: "underline",
       }}
     >

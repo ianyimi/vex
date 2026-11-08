@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useId } from "react";
 import type { VexMediaDocument } from "@vexcms/core";
 import { Button } from "@vexcms/react";
 
@@ -62,6 +62,13 @@ function UrlTab({
 }) {
   const [url, setUrl] = useState("");
   const [alt, setAlt] = useState("");
+  const urlId = useId();
+  const altId = useId();
+  const urlRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    urlRef.current?.focus();
+  }, []);
 
   const handleInsert = useCallback(() => {
     if (!url.trim()) return;
@@ -70,9 +77,11 @@ function UrlTab({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label style={{ fontSize: 12, fontWeight: 500 }}>
+      <label htmlFor={urlId} style={{ fontSize: 12, fontWeight: 500 }}>
         Image URL
         <input
+          id={urlId}
+          ref={urlRef}
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -81,13 +90,13 @@ function UrlTab({
             if (e.key === "Escape") onClose();
           }}
           placeholder="https://example.com/image.jpg"
-          autoFocus
           style={inputStyle}
         />
       </label>
-      <label style={{ fontSize: 12, fontWeight: 500 }}>
+      <label htmlFor={altId} style={{ fontSize: 12, fontWeight: 500 }}>
         Alt text
         <input
+          id={altId}
           type="text"
           value={alt}
           onChange={(e) => setAlt(e.target.value)}
@@ -129,6 +138,7 @@ function UploadTab({
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const altId = useId();
 
   const handleUpload = useCallback(async () => {
     if (!file || uploading) return;
@@ -191,10 +201,11 @@ function UploadTab({
           }}
         />
       </div>
-      <label style={{ fontSize: 12, fontWeight: 500 }}>
+      <label htmlFor={altId} style={{ fontSize: 12, fontWeight: 500 }}>
         Alt text
         {altRequired && <span style={{ color: "var(--destructive)" }}> *</span>}
         <input
+          id={altId}
           type="text"
           required={altRequired}
           value={alt}
@@ -243,7 +254,12 @@ function MediaTab({
   onUploadNew?: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const imageResults = results.filter((d) => d.mimeType.startsWith("image/"));
+
+  useEffect(() => {
+    searchRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -261,12 +277,13 @@ function MediaTab({
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {onSearchChange && (
         <input
+          ref={searchRef}
           type="text"
           value={searchTerm ?? ""}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search images…"
+          aria-label="Search images"
           style={inputStyle}
-          autoFocus
         />
       )}
       <div

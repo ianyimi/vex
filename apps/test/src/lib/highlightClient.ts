@@ -1,6 +1,7 @@
 import type { Highlighter } from "shiki"
 
 import { createHighlighter } from "shiki"
+import { createJavaScriptRegexEngine } from "shiki/engine/javascript"
 
 import type { CodeLanguage } from "./highlight"
 
@@ -15,6 +16,12 @@ let browserHighlighterPromise: null | Promise<Highlighter> = null
  * the editor's unsaved source exists nowhere but this tab. Loaded through a
  * dynamic import so shiki stays out of the page's main client chunk.
  *
+ * Uses shiki's JavaScript regex engine, not its default Oniguruma engine:
+ * the default compiles Oniguruma to WebAssembly and runs it in the browser,
+ * which needs `'wasm-unsafe-eval'` in the page's `script-src` — this engine
+ * needs neither that nor a larger CSP surface, and covers `CODE_LANGUAGES`
+ * (`bash`, `json`, `ts`, `tsx`) without it.
+ *
  * @param props.code - Source text.
  * @param props.language - Grammar to highlight with.
  * @returns Highlighted inner HTML, matching `highlightCode`'s server output.
@@ -26,6 +33,7 @@ export async function highlightCodeInBrowser(props: {
   browserHighlighterPromise ??= createHighlighter({
     langs: [...CODE_LANGUAGES],
     themes: [CODE_THEME],
+    engine: createJavaScriptRegexEngine(),
   })
   const highlighter = await browserHighlighterPromise
   const html = highlighter.codeToHtml(props.code, {

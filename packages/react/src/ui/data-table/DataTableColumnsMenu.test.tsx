@@ -53,6 +53,57 @@ describe("DataTableColumnsMenu", () => {
     expect(screen.getByRole("checkbox", { name: "Body" })).not.toHaveAttribute("data-checked");
   });
 
+  it("names each row's drag handle after its own column label (F-080)", async () => {
+    render(
+      <DataTableColumnsMenu
+        columnMenuEntries={columnMenuEntries}
+        columns={columns}
+        onColumnsChange={vi.fn()}
+        density="comfortable"
+        onDensityChange={vi.fn()}
+      />,
+    );
+    await openMenu();
+    expect(screen.getByLabelText("Reorder Title column")).toBeInTheDocument();
+    expect(screen.getByLabelText("Reorder Body column")).toBeInTheDocument();
+  });
+
+  it("never collides checkbox ids between two separate instances of the same column field (list view + peek)", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <DataTableColumnsMenu
+          columnMenuEntries={columnMenuEntries}
+          columns={columns}
+          onColumnsChange={vi.fn()}
+          density="comfortable"
+          onDensityChange={vi.fn()}
+        />
+        <DataTableColumnsMenu
+          columnMenuEntries={columnMenuEntries}
+          columns={columns}
+          onColumnsChange={vi.fn()}
+          density="comfortable"
+          onDensityChange={vi.fn()}
+        />
+      </>,
+    );
+    const buttons = screen.getAllByRole("button", { name: /columns/i });
+
+    await user.click(buttons[0]!);
+    await screen.findByRole("dialog");
+    const firstId = screen.getByRole("checkbox", { name: "Title" }).id;
+    await user.keyboard("{Escape}");
+
+    await user.click(buttons[1]!);
+    await screen.findByRole("dialog");
+    const secondId = screen.getByRole("checkbox", { name: "Title" }).id;
+
+    expect(firstId).toBeTruthy();
+    expect(secondId).toBeTruthy();
+    expect(firstId).not.toBe(secondId);
+  });
+
   it("renders rows in columns' own sequence, not columnMenuEntries' own array order", async () => {
     render(
       <DataTableColumnsMenu

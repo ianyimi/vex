@@ -56,7 +56,7 @@ export function NumberFieldAdmin(props: FieldComponentProps<{}, NumberFieldDef> 
         step={props.fieldDef.step}
         min={props.fieldDef.min?.[0]}
         max={props.fieldDef.max?.[0]}
-        value={controlProps.value ?? 0}
+        value={controlProps.value ?? ""}
         onChange={(e) =>
           controlProps.onChange(
             e.target.value === "" ? (undefined as unknown as number) : Number(e.target.value),

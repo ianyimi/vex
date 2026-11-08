@@ -1,6 +1,7 @@
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 
 import { cn } from "../utils/cn";
+import { useAriaControlsCleanup } from "../hooks/useAriaControlsCleanup";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { type ReactNode, type RefObject, useRef } from "react";
 
@@ -79,6 +80,7 @@ function AccordionTrigger({
   postIconChildren?: ReactNode;
 } & AccordionPrimitive.Trigger.Props) {
   const triggerRef = useRef<HTMLButtonElement>(null);
+  useAriaControlsCleanup(triggerRef);
   return (
     <AccordionPrimitive.Header className="flex items-center">
       {leading !== undefined && <div className="flex shrink-0 items-center pl-3">{leading}</div>}
@@ -86,7 +88,7 @@ function AccordionTrigger({
         ref={triggerRef}
         data-slot="accordion-trigger"
         className={cn(
-          "peer/accordion-trigger group/accordion-trigger relative flex min-w-0 flex-1 items-center justify-between rounded-md border border-transparent py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
+          "peer/accordion-trigger group/accordion-trigger relative flex min-w-0 flex-1 items-center justify-between rounded-md border border-transparent py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:focus-ring focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
           className,
         )}
         {...props}

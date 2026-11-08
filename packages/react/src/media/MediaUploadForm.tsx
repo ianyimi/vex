@@ -376,10 +376,18 @@ export function MediaUploadForm({
               <>
                 <div>
                   <div
+                    role="button"
+                    tabIndex={0}
                     className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border bg-muted/30 px-6 py-12 text-center transition-colors hover:border-primary/50 hover:bg-primary/5"
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                       <Icon name="Image" size={24} className="text-muted-foreground" />

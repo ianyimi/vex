@@ -24,6 +24,7 @@ export function DateFilterInput(props: FilterInputProps<DateField>) {
       value={dateValue}
       onChange={(date) => props.onChange(date ? date.getTime() : undefined)}
       classNames={{ trigger: "w-full min-w-0" }}
+      aria-label={props.field.label || "Filter value"}
       disabled={props.disabled}
     />
   );

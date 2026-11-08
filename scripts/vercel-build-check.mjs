@@ -40,6 +40,7 @@ const KEEP = process.argv.includes("--keep");
  *  means a newly required env var that nobody wired up still fails here (P-020). */
 const PLACEHOLDER_ENV = {
   BETTER_AUTH_SECRET: "ci-placeholder-not-a-real-secret",
+  AUTH_PROXY_SECRET: "ci-placeholder-not-a-real-secret",
   NEXT_PUBLIC_CONVEX_URL: "https://ci-placeholder.convex.cloud",
   NEXT_PUBLIC_CONVEX_SITE_URL: "https://ci-placeholder.convex.site",
   NEXT_PUBLIC_SITE_URL: "http://localhost:3030",

@@ -114,6 +114,70 @@ export async function generatePageMetadata(props: { slug?: string }): Promise<Me
 }
 
 /**
+ * Generate Next.js Metadata for one post, by slug.
+ *
+ * @param props - Input props.
+ * @param props.slug - The post slug to fetch.
+ * @returns Metadata for the post, or the site default when the slug doesn't
+ *   resolve or Convex is unreachable.
+ * @throws Never — degrades to the site default on any failure.
+ */
+export async function generatePostMetadata(props: { slug: string }): Promise<Metadata> {
+  try {
+    const settings = (await vex.query(api.siteSettings.get)) as null | Record<string, unknown>
+    if (!settings) {
+      return { title: "Untitled" }
+    }
+
+    const posts = (await vex.query(api.posts.getBySlug, { slug: props.slug })) as
+      | Record<string, unknown>[]
+      | undefined
+    const postData = posts?.[0]
+
+    if (!postData) {
+      const siteName = firstNonBlank(settings.name)
+      return { title: (firstNonBlank(settings.metaTitle, siteName) ?? "Untitled") + TITLE_SUFFIX }
+    }
+
+    const siteName = firstNonBlank(settings.name)
+    const title = (firstNonBlank(postData.title, settings.metaTitle, siteName) ?? "Untitled") + TITLE_SUFFIX
+    const description = firstNonBlank(postData.excerpt, settings.metaDescription, settings.description)
+
+    const postOgImageId = (postData.ogImage as string[] | undefined)?.[0]
+    const siteOgImageId = (settings.ogImage as string[] | undefined)?.[0]
+    const ogImageId = postOgImageId ?? siteOgImageId
+    const ogImageUrl = ogImageId ? await resolveMediaUrl(ogImageId) : undefined
+
+    const twitterHandle = firstNonBlank(settings.twitterHandle)
+
+    const canonicalPath = `/posts/${props.slug}`
+
+    const metadata: Metadata = {
+      alternates: { canonical: canonicalPath },
+      description,
+      metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
+      openGraph: {
+        description,
+        title,
+        ...(ogImageUrl ? { images: [{ url: ogImageUrl }] } : {}),
+      },
+      title,
+    }
+
+    if (ogImageUrl || twitterHandle) {
+      metadata.twitter = {
+        card: ogImageUrl ? "summary_large_image" : "summary",
+        ...(twitterHandle ? { site: twitterHandle } : {}),
+      }
+    }
+
+    return metadata
+  } catch {
+    return { title: "Vex CMS" }
+  }
+}
+
+/**
  * Resolves an `upload()` field's stored media id to a public URL via the
  * Convex file storage adapter. Returns `undefined` when the media document
  * no longer exists or the deployment is unreachable.

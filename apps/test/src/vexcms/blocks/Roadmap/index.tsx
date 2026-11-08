@@ -61,6 +61,7 @@ export default function RoadmapBlock({ block }: BlockComponentProps) {
   })).filter((group) => group.entries.length > 0)
 
   const showFilter = all.length >= FILTER_MIN_ITEMS
+  const activeTriggerId = filter === "all" ? "roadmap-tab-all" : `roadmap-tab-${filter}`
 
   return (
     <section className="py-14 md:py-20 xl:py-24">
@@ -75,12 +76,19 @@ export default function RoadmapBlock({ block }: BlockComponentProps) {
           >
             <ScrollArea>
               <TabsList className="h-10 w-full justify-start rounded-none border-b border-border bg-transparent p-0">
-                <TabsTrigger className="rounded-sm px-3 py-[5px] text-[13px] font-medium" value="all">
+                <TabsTrigger
+                  aria-controls="roadmap-panel"
+                  className="rounded-sm px-3 py-[5px] text-[13px] font-medium"
+                  id="roadmap-tab-all"
+                  value="all"
+                >
                   All {all.length}
                 </TabsTrigger>
                 {grouped.map((group) => (
                   <TabsTrigger
+                    aria-controls="roadmap-panel"
                     className="rounded-sm px-3 py-[5px] text-[13px] font-medium"
+                    id={`roadmap-tab-${group.status}`}
                     key={group.status}
                     value={group.status}
                   >
@@ -93,7 +101,13 @@ export default function RoadmapBlock({ block }: BlockComponentProps) {
           </Tabs>
         ) : null}
 
-        <div className="flex flex-col gap-11">
+        <div
+          aria-labelledby={showFilter ? activeTriggerId : undefined}
+          className="flex flex-col gap-11"
+          id={showFilter ? "roadmap-panel" : undefined}
+          role={showFilter ? "tabpanel" : undefined}
+          tabIndex={showFilter ? 0 : undefined}
+        >
           {grouped.map((group) => (
             <div
               className={cn(filter !== "all" && filter !== group.status && "hidden")}
@@ -198,7 +212,7 @@ export default function RoadmapBlock({ block }: BlockComponentProps) {
                       <span>
                         <span className="text-[14.5px] text-muted-foreground">{item.feature}</span>
                         {item.description ? (
-                          <span className="block text-[13px] leading-[1.5] text-muted-foreground/80">
+                          <span className="block text-[13px] leading-[1.5] text-muted-foreground">
                             {item.description}
                           </span>
                         ) : null}
@@ -240,7 +254,7 @@ function StatusBadge({ status }: { status: RoadmapItemStatus }) {
 
   if (status === "in-progress") {
     return (
-      <span className={cn(base, "border-primary/40 bg-primary/12 text-primary")}>
+      <span className={cn(base, "border-primary/40 bg-primary/5 text-primary")}>
         {/* The one blessed decorative loop on the site. */}
         <span aria-hidden className="live-dot size-[5px] rounded-4xl bg-primary" />
         {GROUP_LABEL[status]}

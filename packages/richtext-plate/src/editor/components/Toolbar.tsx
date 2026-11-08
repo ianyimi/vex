@@ -78,7 +78,8 @@ const tooltipStyles = `
   border: 1px solid var(--border);
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
-.vex-tb-wrap:hover > .vex-tb-tip { display: block; }
+.vex-tb-wrap:hover > .vex-tb-tip,
+.vex-tb-wrap:focus-within > .vex-tb-tip { display: block; }
 `;
 
 /**
@@ -98,13 +99,13 @@ const MARK_KEYS = ["bold", "italic", "underline", "strikethrough", "code"];
 
 const MARK_META: Record<
   string,
-  { label: string; shortcut: string; fw?: number; fs?: string; td?: string }
+  { label: string; name: string; shortcut: string; fw?: number; fs?: string; td?: string }
 > = {
-  bold: { label: "B", shortcut: "Ctrl+B", fw: 700 },
-  italic: { label: "I", shortcut: "Ctrl+I", fs: "italic" },
-  underline: { label: "U", shortcut: "Ctrl+U", td: "underline" },
-  strikethrough: { label: "S", shortcut: "Ctrl+Shift+S" },
-  code: { label: "mono", shortcut: "Ctrl+E" },
+  bold: { label: "B", name: "Bold", shortcut: "Ctrl+B", fw: 700 },
+  italic: { label: "I", name: "Italic", shortcut: "Ctrl+I", fs: "italic" },
+  underline: { label: "U", name: "Underline", shortcut: "Ctrl+U", td: "underline" },
+  strikethrough: { label: "S", name: "Strikethrough", shortcut: "Ctrl+Shift+S" },
+  code: { label: "code", name: "Inline code", shortcut: "Ctrl+E" },
 };
 
 /**
@@ -141,10 +142,11 @@ function MarkButton({ markType }: { markType: string }) {
           textDecoration: meta.td,
         }}
         aria-pressed={isActive}
+        aria-label={`${meta.name} (${meta.shortcut})`}
       >
-        {meta.label}
+        <span aria-hidden="true">{meta.label}</span>
       </button>
-      <Tip text={`${meta.label} (${meta.shortcut})`} />
+      <Tip text={`${meta.name} (${meta.shortcut})`} />
     </span>
   );
 }
@@ -220,9 +222,10 @@ function HeadingDropdown() {
         }}
         aria-expanded={open}
         aria-haspopup="listbox"
+        aria-label={`Heading level: ${displayLabel}`}
       >
-        {displayLabel}
-        <span style={{ fontSize: 10, lineHeight: 1 }}>▾</span>
+        <span aria-hidden="true">{displayLabel}</span>
+        <span aria-hidden="true" style={{ fontSize: 10, lineHeight: 1 }}>▾</span>
       </button>
       {!open && <Tip text="Heading level" />}
       {open && (
@@ -344,8 +347,9 @@ function BlockButton({
         onMouseDown={handleMouseDown}
         style={activeStyle(isActive)}
         aria-pressed={isActive}
+        aria-label={tooltip}
       >
-        {label}
+        <span aria-hidden="true">{label}</span>
       </button>
       <Tip text={tooltip} />
     </span>
@@ -381,8 +385,9 @@ function CodeBlockButton() {
         onMouseDown={handleMouseDown}
         style={activeStyle(isActive)}
         aria-pressed={isActive}
+        aria-label="Code block"
       >
-        {"{ }"}
+        <span aria-hidden="true">{"{ }"}</span>
       </button>
       <Tip text="Code block" />
     </span>
@@ -434,8 +439,9 @@ function ListButton({
         onMouseDown={handleMouseDown}
         style={activeStyle(isActive)}
         aria-pressed={isActive}
+        aria-label={tooltip}
       >
-        {label}
+        <span aria-hidden="true">{label}</span>
       </button>
       <Tip text={tooltip} />
     </span>
@@ -457,6 +463,7 @@ function LinkButton() {
   const [showInput, setShowInput] = useState(false);
   const [url, setUrl] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const urlInputRef = useRef<HTMLInputElement>(null);
 
   const isActive = useEditorSelector(
     (ed) => !!ed.api.node({ match: { type: "a" } }),
@@ -472,6 +479,10 @@ function LinkButton() {
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, [showInput]);
+
+  useEffect(() => {
+    if (showInput) urlInputRef.current?.focus();
   }, [showInput]);
 
   const handleInsert = useCallback(() => {
@@ -490,8 +501,9 @@ function LinkButton() {
           setShowInput((v) => !v);
         }}
         style={activeStyle(isActive)}
+        aria-label="Insert link"
       >
-        🔗
+        <span aria-hidden="true">🔗</span>
       </button>
       {!showInput && <Tip text="Insert link" />}
       {showInput && (
@@ -513,6 +525,7 @@ function LinkButton() {
           }}
         >
           <input
+            ref={urlInputRef}
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -524,7 +537,7 @@ function LinkButton() {
               if (e.key === "Escape") setShowInput(false);
             }}
             placeholder="https://..."
-            autoFocus
+            aria-label="Link URL"
             style={{
               flex: 1,
               padding: "4px 8px",
@@ -608,8 +621,9 @@ function TableButton() {
         }}
         style={activeStyle(false)}
         aria-expanded={open}
+        aria-label="Insert table"
       >
-        ▦
+        <span aria-hidden="true">▦</span>
       </button>
       {!open && <Tip text="Insert table" />}
       {open && (
@@ -653,6 +667,7 @@ function TableButton() {
                 const highlighted =
                   row <= hover.row && col <= hover.col;
                 return (
+                // eslint-disable-next-line jsx-a11y/no-static-element-interactions
                   <div
                     key={i}
                     onMouseEnter={() => setHover({ row, col })}
@@ -711,8 +726,9 @@ function HorizontalRuleButton() {
         type="button"
         onMouseDown={handleMouseDown}
         style={activeStyle(false)}
+        aria-label="Horizontal rule"
       >
-        ―
+        <span aria-hidden="true">―</span>
       </button>
       <Tip text="Horizontal rule" />
     </span>
@@ -817,7 +833,7 @@ export function Toolbar({ features, trailing }: ToolbarProps) {
     groups.push(
       <>
         <ListButton ordered={false} label="•" tooltip="Bullet list" />
-        <ListButton ordered label="1." tooltip="Numbered list" />
+        <ListButton ordered label="1." tooltip="1. Numbered list" />
       </>,
     );
   }

@@ -13,6 +13,8 @@ import {
   session,
   themes,
   verification,
+  vex_versions,
+  vex_views,
 } from "./vex.schema"
 
 export default defineSchema({
@@ -20,6 +22,8 @@ export default defineSchema({
   headers,
   footers,
   themes,
+  vex_versions,
+  vex_views,
   // `organization`/`team`/`teamMember`/`member`/`invitation`/`vex_globals` are
   // hand-written, not imported from `./vex.schema` — the generator only emits
   // them when the `organization()` plugin (`--orgs`) or a registered global is

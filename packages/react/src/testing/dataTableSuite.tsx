@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -342,6 +342,97 @@ export function runDataTableSuite(options?: DataTableSuiteOptions): void {
           expect(onColumnEntriesChange).toHaveBeenCalledWith(
             expect.arrayContaining([expect.objectContaining({ field: "fieldD", width: 190 })]),
           );
+        });
+
+        describe("resize handle value range", () => {
+          const originalClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+          const originalResizeObserver = globalThis.ResizeObserver;
+
+          afterEach(() => {
+            if (originalClientWidth) Object.defineProperty(HTMLElement.prototype, "clientWidth", originalClientWidth);
+            else Reflect.deleteProperty(HTMLElement.prototype, "clientWidth");
+            globalThis.ResizeObserver = originalResizeObserver;
+          });
+
+          function stubContainerWidth(width: { value: number }): void {
+            Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+              configurable: true,
+              get: () => width.value,
+            });
+          }
+
+          function renderFieldD(onColumnEntriesChange = vi.fn()) {
+            render(
+              <DataTable
+                data={ROWS}
+                columns={dividerColumns}
+                enableRowSelection
+                selectedIds={[]}
+                columnEntries={pinnedEntries}
+                onColumnEntriesChange={onColumnEntriesChange}
+              />,
+            );
+            return screen.getByRole("columnheader", { name: "Field D" }).querySelector('[role="separator"]')!;
+          }
+
+          it("exposes the width as aria-valuenow, 60 as aria-valuemin and the unmeasured default 960 as aria-valuemax", () => {
+            const handle = renderFieldD();
+            expect(handle).toHaveAttribute("aria-valuenow", "150");
+            expect(handle).toHaveAttribute("aria-valuemin", "60");
+            expect(handle).toHaveAttribute("aria-valuemax", "960");
+          });
+
+          it("derives aria-valuemax from 90% of the measured table container width", () => {
+            stubContainerWidth({ value: 1000 });
+            const handle = renderFieldD();
+            expect(handle).toHaveAttribute("aria-valuemax", "900");
+          });
+
+          it("recomputes aria-valuemax when the table container resizes", () => {
+            const width = { value: 1000 };
+            stubContainerWidth(width);
+            const callbacks: ResizeObserverCallback[] = [];
+            globalThis.ResizeObserver = class {
+              constructor(callback: ResizeObserverCallback) {
+                callbacks.push(callback);
+              }
+              observe() {}
+              unobserve() {}
+              disconnect() {}
+            } as unknown as typeof ResizeObserver;
+            const handle = renderFieldD();
+            width.value = 500;
+            act(() => {
+              for (const callback of callbacks) callback([], {} as ResizeObserver);
+            });
+            expect(handle).toHaveAttribute("aria-valuemax", "450");
+          });
+
+          it("End commits the maximum width and Home commits the 60px minimum", () => {
+            stubContainerWidth({ value: 1000 });
+            const onColumnEntriesChange = vi.fn();
+            const handle = renderFieldD(onColumnEntriesChange);
+            fireEvent.keyDown(handle, { key: "End" });
+            expect(onColumnEntriesChange).toHaveBeenLastCalledWith(
+              expect.arrayContaining([expect.objectContaining({ field: "fieldD", width: 900 })]),
+            );
+            fireEvent.keyDown(handle, { key: "Home" });
+            expect(onColumnEntriesChange).toHaveBeenLastCalledWith(
+              expect.arrayContaining([expect.objectContaining({ field: "fieldD", width: 60 })]),
+            );
+          });
+
+          it("a drag past the maximum commits the maximum, not the raw pointer width", () => {
+            stubContainerWidth({ value: 400 });
+            const onColumnEntriesChange = vi.fn();
+            const handle = renderFieldD(onColumnEntriesChange);
+            handle.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0, clientX: 600 }));
+            document.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientX: 0 }));
+            document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, clientX: 0 }));
+            expect(onColumnEntriesChange).toHaveBeenCalledWith(
+              expect.arrayContaining([expect.objectContaining({ field: "fieldD", width: 360 })]),
+            );
+          });
         });
 
         it("when there's no pinned-right group at all (no spacer), the last column's own grip stays at its own edge, unrelocated", () => {
@@ -701,6 +792,14 @@ export function runDataTableSuite(options?: DataTableSuiteOptions): void {
           <DataTable data={ROWS} columns={COLUMNS} enableRowSelection selectedIds={["doc_1"]} />,
         );
         expect(screen.getAllByRole("checkbox")[1]).toBeChecked();
+      });
+
+      it("names the select-all header checkbox and names each row checkbox by its row id", () => {
+        render(<DataTable data={ROWS} columns={COLUMNS} enableRowSelection selectedIds={[]} />);
+        expect(screen.getByRole("checkbox", { name: "Select all rows" })).toBeInTheDocument();
+        expect(screen.getByRole("checkbox", { name: "Select row doc_1" })).toBeInTheDocument();
+        expect(screen.getByRole("checkbox", { name: "Select row doc_2" })).toBeInTheDocument();
+        expect(screen.getByRole("checkbox", { name: "Select row doc_3" })).toBeInTheDocument();
       });
 
       /**

@@ -1,0 +1,109 @@
+# status: — issue triage state machine (blue family, darkens with confidence)
+- name: "status: needs-triage"
+  description: Not yet looked at by a maintainer
+  color: C2E0FF
+- name: "status: needs-repro"
+  description: Reported but missing a reproduction link or clear steps
+  color: 76A5EA
+- name: "status: verified"
+  description: Reproduced by a maintainer
+  color: 1D76DB
+- name: "status: cant-reproduce"
+  description: A maintainer could not reproduce it from the report given
+  color: 0B4F9E
+
+# area: — which part of the codebase (purple family, one shade per surface)
+- name: "area: core"
+  description: "@vexcms/core: fields, collections, access, schema generation"
+  color: 8250DF
+- name: "area: ui"
+  description: The admin panel UI (@vexcms/react)
+  color: 8250DF
+- name: "area: cli"
+  description: "@vexcms/cli: vex dev/deploy/generate"
+  color: 8250DF
+- name: "area: create-vexcms"
+  description: The pnpm create vexcms scaffolder
+  color: 8250DF
+- name: "area: templates"
+  description: "create-vexcms's base-nextjs and marketing-site templates"
+  color: 8250DF
+- name: "area: docs"
+  description: docs.vexcms.dev content or structure
+  color: 8250DF
+- name: "area: live-preview"
+  description: Live preview between the admin panel and the frontend
+  color: 8250DF
+- name: "area: versions"
+  description: Versioning and drafts
+  color: 8250DF
+- name: "area: auth"
+  description: Authentication, roles and access control
+  color: 8250DF
+- name: "area: storage"
+  description: Media uploads and storage adapters
+  color: 8250DF
+
+# adapter: — which pluggable package (teal family)
+- name: "adapter: better-auth"
+  description: "@vexcms/better-auth"
+  color: 0B7285
+- name: "adapter: next"
+  description: "@vexcms/next, the framework adapter"
+  color: 0B7285
+- name: "adapter: richtext-plate"
+  description: "@vexcms/richtext-plate"
+  color: 0B7285
+- name: "adapter: file-storage-convex"
+  description: "@vexcms/file-storage-convex"
+  color: 0B7285
+
+# type: — what kind of issue (orange family; no type: question — questions go to Discussions)
+- name: "type: bug"
+  description: Something doesn't work as documented
+  color: D4330C
+- name: "type: feature"
+  description: A free-tier feature request, filed by a maintainer from Discussions Ideas
+  color: FF8C42
+- name: "type: docs"
+  description: A docs.vexcms.dev correction or gap
+  color: FFC999
+
+# contributor routing (GitHub's own historical colors, kept for familiarity)
+- name: "good first issue"
+  description: Small, scoped, and has acceptance criteria — a good first PR
+  color: 7057FF
+- name: "help wanted"
+  description: A maintainer wants help on this one
+  color: "008672"
+
+# resolution (gray family, darkens with finality)
+- name: duplicate
+  description: Already reported or requested elsewhere
+  color: CFD3D7
+- name: stale
+  description: No activity for a long time; may be closed if it stays that way
+  color: B0B4B8
+- name: invalid
+  description: Not a bug, not reproducible as described, or not actionable
+  color: 9E9E9E
+- name: wontfix
+  description: Understood, but won't be worked on
+  color: 5A5A5A
+- name: BREAKING
+  description: A breaking change — called out in the changeset and release notes
+  color: 2B2B2B
+
+# roadmap tracking (red-to-yellow priority family, plus the standalone tracking label)
+- name: planned
+  description: Tracks a post-0.1.0 roadmap item; the docs roadmap links the issue
+  color: 0052CC
+- name: "roadmap: p0"
+  description: Breaks a shipped feature or blocks a release
+  color: B60205
+- name: "roadmap: p1"
+  description: Should land in the next few releases
+  color: D93F0B
+- name: "roadmap: p2"
+  description: Worth doing, no particular urgency
+  color: FBCA04

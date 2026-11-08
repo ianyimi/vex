@@ -65,7 +65,7 @@ jobs:
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" typecheck
 
       - name: Test Packages
-        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" test
+        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter www test
 
       - name: Lint
         run: pnpm lint

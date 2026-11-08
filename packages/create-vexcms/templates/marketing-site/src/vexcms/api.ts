@@ -1,3 +1,5 @@
+"server only"
+
 import { type DataModel } from "@convex/_generated/dataModel"
 import { createGetAuth } from "@vexcms/better-auth"
 import { vexServerApi } from "@vexcms/core/server"

@@ -18,7 +18,7 @@ import {
   generateEnvTsServerSchema,
   generateEnvTsRuntimeMapping,
   generateCredentialsValue,
-} from './string-utils.js';
+} from './stringUtils.js';
 
 /**
  * Next.js framework installer

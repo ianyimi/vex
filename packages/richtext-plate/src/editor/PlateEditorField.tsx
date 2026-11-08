@@ -318,6 +318,7 @@ export function PlateEditorField({
                           e.preventDefault();
                           setShowImageUpload((v) => !v);
                         }}
+                        aria-label="Insert image"
                         style={{
                           background: "transparent",
                           border: "1px solid var(--border)",
@@ -328,7 +329,7 @@ export function PlateEditorField({
                           lineHeight: 1,
                         }}
                       >
-                        🖼
+                        <span aria-hidden="true">🖼</span>
                       </button>
                       <span className="vex-tb-tip">Insert image</span>
                     </span>
@@ -365,7 +366,8 @@ export function PlateEditorField({
         {!readOnly && <TableToolbar />}
 
         {/* Scrollable content area */}
-        <div style={{ maxHeight: 500, overflowY: "auto" }}>
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+        <div data-slot="editor-scroll-wrapper" tabIndex={0} style={{ maxHeight: 500, overflowY: "auto" }}>
           <PlateContent
             aria-label={label || name}
             placeholder={placeholder || "Start writing..."}

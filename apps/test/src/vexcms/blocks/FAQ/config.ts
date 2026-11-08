@@ -55,7 +55,7 @@ export const faqBlock = defineBlock({
         {
           question: "Is Vex CMS free?",
           answer:
-            "Yes, Vex CMS is open source and free to use. You only pay for your Convex usage, which has a generous free tier for most projects.",
+            "Yes. You only pay for your Convex usage, which has a free tier. Paid add-ons may come later, as separate packages, after the free roadmap. The core stays Apache-2.0, and nothing free becomes paid.",
         },
         {
           question: "How do I get started?",

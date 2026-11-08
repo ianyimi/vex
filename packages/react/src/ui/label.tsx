@@ -4,6 +4,7 @@ import { cn } from "../utils/cn"
 
 function Label({ className, ...props }: React.ComponentProps<"label">) {
   return (
+    // eslint-disable-next-line jsx-a11y/label-has-associated-control
     <label
       data-slot="label"
       className={cn(

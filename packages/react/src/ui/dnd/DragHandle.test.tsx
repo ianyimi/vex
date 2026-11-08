@@ -50,4 +50,32 @@ describe("DragHandle", () => {
     const handle = container.querySelector("[data-rfd-drag-handle-draggable-id]");
     expect(handle).not.toBeNull();
   });
+
+  it("forwards an aria-label naming the specific item being reordered", () => {
+    const { getByLabelText } = render(
+      <DndProvider>
+        <Droppable id="test-list" onReorder={() => {}}>
+          <Draggable id="item-1" index={0}>
+            <DragHandle disabled={false} aria-label="Reorder Tag 1" />
+          </Draggable>
+        </Droppable>
+      </DndProvider>,
+    );
+    expect(getByLabelText("Reorder Tag 1")).toBeInTheDocument();
+  });
+
+  it("reserves at least a 24x24 CSS px hit target around the 16px grip icon", () => {
+    const { container } = render(
+      <DndProvider>
+        <Droppable id="test-list" onReorder={() => {}}>
+          <Draggable id="item-1" index={0}>
+            <DragHandle disabled={false} aria-label="Reorder item 1" />
+          </Draggable>
+        </Droppable>
+      </DndProvider>,
+    );
+    const handle = container.querySelector("[data-rfd-drag-handle-draggable-id]");
+    expect(handle?.className).toMatch(/min-h-6/);
+    expect(handle?.className).toMatch(/min-w-6/);
+  });
 });

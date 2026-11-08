@@ -1253,3 +1253,170 @@ anonymity holds, but it is outside the telemetry spec's scope.
 **Blocks.** Nothing.
 
 **Why deferred.** Developer decision (2026-11-05): a core change outside the telemetry spec.
+
+---
+
+## Richtext editor keyboard parity (image select/resize, table-size picker)
+
+**What.** Three `@vexcms/richtext-plate` editor interactions are pointer-only: selecting an
+inline image (`EditorElements.tsx` `handleSelect` keeps local `useState` instead of Slate's
+`useSelected()`/`useFocused()`, so arrowing onto the image void never reveals its align/resize
+controls), resizing it (three `<div onMouseDown>` width/height/aspect handles with no keyboard
+equivalent), and picking table dimensions (the `Toolbar.tsx` table-size grid uses
+`onMouseEnter`/`onMouseDown` only).
+
+**Why.** WCAG 2.2 2.1.1 Keyboard and 2.5.7 Dragging Movements (AA): an editor using only a
+keyboard can't resize images or insert a table of a chosen size. Evidence: quality-pass
+`findings.md` F-007, F-041, F-042 (jsx-a11y `click-events-have-key-events` /
+`no-static-element-interactions`, confirmed by reading the handlers).
+
+**Lift.** Medium: drive image selection from Slate selection state, add arrow-key step resize
+on a selected image (plus numeric width/height inputs as the single-pointer alternative), and
+give the table-size picker an APG Grid keyboard model (arrows move, Enter inserts).
+
+**Blocks.** Nothing.
+
+**Why deferred.** Beyond the quality pass's fix boundary (≤ ~30 lines, no structural change);
+each needs its own interaction design.
+
+## LLC billing stack for paid tiers (ENT-0 prerequisite)
+
+**What.** The corporate billing layer for Pro / Agency / Enterprise sign-ups: Stripe (or
+equivalent) on the LLC (the existing uifoundry.dev entity, reused for VexCMS), a
+`billing@vexcms.dev` mailbox (Google Workspace secondary domain on the LLC's existing
+Workspace — never a primary-domain rename), terms of sale, and invoices issued by the LLC.
+
+**Why we want it.** Paid-tier revenue must flow through the corporate entity for tax
+control (developer decision, 2026-11-07). The donation stream stays separate and personal
+forever: GitHub Sponsors on `ianyimi` and Buy Me a Coffee stay personal; Sponsors profiles
+are non-transferable, which is acceptable only because donations never need to move.
+Buttondown (release emails, registered as `vexcms`) is subscriber data, not money, and is
+transferable whenever needed.
+
+**Lift.** Unassessed; standard SaaS billing setup plus legal copy.
+
+**Blocks.** The first paid signup. Nothing in the 0.1.0 launch track.
+
+**Why deferred.** Post-launch: business-tier design is ENT-0 (`post-v0.1.0-plan.md`), and no
+paid product exists at 0.1.0. Fold this into the ENT-0 spec's scope so the entity layer
+exists before the first paid customer.
+
+**Detail.** 2026-11-07 session discussion (launch coordination); `post-v0.1.0-plan.md` § ENT-0.
+
+---
+
+## `@daveyplate/better-auth-ui` unlabelled controls and invalid nesting
+
+**What.** Three defects on `/auth/sign-in`/`/auth/sign-up`, all rendered entirely inside
+`node_modules/@daveyplate/better-auth-ui`'s own bundled components. **Two are now fixed**
+via `patches/@daveyplate__better-auth-ui@3.4.0.patch` (registered in root `package.json`
+`pnpm.patchedDependencies`): the password-visibility toggle's icon-only `<button>` now
+carries `aria-label` (F-071), and the footer link's `<a href="..."><button>...</button></a>`
+nesting (Nu: "the element `button` must not appear as a descendant of the `a` element") is
+now `<Button asChild><Link>...</Link></Button>`, the standard Radix `Slot` pattern (F-072,
+button-in-link half). **What remains**: `/auth/sign-up` still emits a `<style>` element after
+other body content with an IE/Edge-only `::-ms-reveal`/`::-ms-clear` rule outside an `@scope`
+block (Nu: 2 errors, confirmed on both `apps/www/audit/www-nu.json` and
+`apps/test/audit/test-nu.json`) — repositioning an inline `<style>` tag inside the vendored
+bundle is a larger change than this patch or the quality-pass fix boundary covers.
+
+**Why.** HTML content-model validity (Nu) for the remaining `<style>` placement; the WCAG
+4.1.2 name and nested-interactive defects above are resolved.
+
+**Lift.** Unassessed. The style tag is emitted by the same vendored `dist/index.js` already
+patched once — a second, narrower patch hunk repositioning it is plausible, but risks
+fighting the library's own build output on every version bump; filing upstream is the
+alternative.
+
+**Why deferred.** Outside the quality pass's fix boundary (a markup change inside a
+third-party bundle, not an in-repo file). The two higher-severity defects were worth a
+patch; this validity-only one is deferred pending an upstream fix or a dedicated follow-up
+patch.
+
+**Detail.** `findings.md` F-071, F-072 (`2026-11-06-quality-pass`); the fixed portions
+verified via `patches/@daveyplate__better-auth-ui@3.4.0.patch` + root `package.json`
+`patchedDependencies`; the remaining Nu errors in `apps/www/audit/www-nu.json` and
+`apps/test/audit/test-nu.json`.
+
+---
+
+## Cap heading levels offered by the richtext toolbar
+
+**What.** `packages/richtext-plate`'s `getStaticComponents()` (`render/staticComponents.ts`)
+registers the same `HeadingElementStatic` for `h1` through `h6` uniformly, and the editor-side
+toolbar offers the same range. Every page that embeds a richtext field under its own
+page-level `<h1>` — `/posts/[slug]`'s `PostContent.tsx`: `<h1>{post.title}</h1>` then
+`<RichText content={post.body} />` — lets an editor pick "Heading 1" inside the body and
+duplicate that `<h1>`.
+
+**Why.** Two `<h1>`s on one page fails WCAG 1.3.1/2.4.6 heading-structure expectations and
+confuses screen-reader users navigating by heading.
+
+**Lift.** Unassessed. The toolbar's option set lives in the shared editor package, consumed
+by every richtext field in every app (admin page bodies, posts, any future user collection)
+— capping it globally could be wrong for a field with no page-level heading of its own.
+
+**Why deferred.** Needs a design decision (global cap vs. a per-field
+`editor.headingLevels` option) rather than a markup fix; out of the quality-pass fix
+boundary (classes/attributes/markup only).
+
+**Detail.** `packages/richtext-plate/src/render/staticComponents.ts`;
+`apps/www/src/app/(frontend)/(site)/posts/[slug]/PostContent.tsx`.
+
+---
+
+## Sidebar rail tooltips on keyboard focus (`collapsible="icon"`)
+
+**What.** `SidebarMenuButton`'s `tooltip` shows its label on hover only; keyboard focus never
+opens it. The tooltip only renders when the sidebar is collapsed to the icon rail
+(`collapsible="icon"`), which no shipped app config uses (the admin default is `"offcanvas"`).
+
+**Why.** WCAG 2.2 1.4.13 Content on Hover or Focus and 2.4.6: a sighted keyboard user on an
+icon rail sees icons without their labels. Screen readers are unaffected (the link keeps its
+name). Evidence: quality-pass `findings.md` F-099 (keyboard sweep, 2026-11-08).
+
+**Lift.** Small once a config uses the icon rail: open the Base UI tooltip on focus-visible in
+`packages/react/src/ui/sidebar.tsx` and add a keyboard test against `collapsible="icon"`.
+
+**Blocks.** Nothing.
+
+**Why deferred.** Not reproducible in any shipped configuration, so it can't be verified live
+within the quality pass.
+
+---
+
+## Data-table row checkboxes named by the row's title
+
+**What.** Each data-table row's selection checkbox is named "Select row <_id>"
+(`packages/react/src/ui/data-table/DataTable/index.tsx`). A screen-reader user moving through
+checkboxes hears raw document ids instead of the row's title.
+
+**Why.** WCAG 2.2 2.4.6 Headings and Labels / 4.1.2: the name is valid but not meaningful.
+Evidence: quality-pass `findings.md` F-116 (polish review, 2026-11-08).
+
+**Lift.** Small: an optional `getRowLabel?: (row) => string` on `DataTableProps`, passed by
+`CollectionListView` from the collection's `useAsTitle` field, falling back to `_id`.
+
+**Blocks.** Nothing.
+
+**Why deferred.** A new public prop on `DataTable` — outside the quality pass's fix boundary
+(no public API change).
+
+---
+
+## `apps/test` Convex test harness
+
+**What.** `apps/test` has no `convex-test` harness and its `vitest.config.ts` lacks the
+`@convex` alias `apps/www` has, so nothing there that imports Convex-generated types can be
+unit-tested (e.g. the ported `convex/images.ts` `getById` and `components/MediaImage.tsx`).
+
+**Why.** The two apps are meant to stay in step; `apps/www` covers these with
+`convex/images.test.ts` and `components/MediaImage.test.tsx`, `apps/test` can't. Evidence:
+quality-pass polish fixes (2026-11-08), `findings.md` F-120/F-121.
+
+**Lift.** Small: mirror `apps/www/src/testing/createConvexTest.ts`, the `convex` vitest
+project and the `@convex` alias, then copy the two test files.
+
+**Blocks.** Nothing.
+
+**Why deferred.** Test infrastructure in `apps/test`, outside the polish slice.

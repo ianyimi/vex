@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { text } from "@vexcms/core";
 import type { MediaCollectionConfig, UploadField } from "@vexcms/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
 import { MediaUploadForm } from "./MediaUploadForm";
@@ -72,6 +72,28 @@ describe("MediaUploadForm", () => {
     ).not.toThrow();
 
     expect(screen.getByText("first.png")).toBeTruthy();
+  });
+  it("opens the file picker from the empty-state dropzone via Enter/Space, not just a pointer click", () => {
+    render(
+      <Wrapper>
+        <MediaUploadForm
+          collectionConfig={makeMockMediaCollection()}
+          fieldDef={makeMockUploadField()}
+          multi={true}
+          onComplete={() => {}}
+          onCancel={() => {}}
+        />
+      </Wrapper>,
+    );
+    const dropzone = screen.getByText("Drop Files here, or click to choose").closest('[role="button"]');
+    expect(dropzone).toHaveAttribute("tabIndex", "0");
+    const fileInput = dropzone!.querySelector('input[type="file"]') as HTMLInputElement;
+    const clickSpy = vi.fn();
+    fileInput.addEventListener("click", clickSpy);
+    fireEvent.keyDown(dropzone!, { key: "Enter" });
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(dropzone!, { key: " " });
+    expect(clickSpy).toHaveBeenCalledTimes(2);
   });
 
   it("does not throw when files are appended after the accordion has already mounted", () => {

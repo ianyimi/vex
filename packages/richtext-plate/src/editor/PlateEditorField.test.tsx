@@ -53,4 +53,16 @@ describe("PlateEditorField — content stored under Plate 52", () => {
 
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("names the Insert image toolbar button and hides its glyph from the accessibility tree (F-083)", () => {
+    renderEditor();
+    const imageButton = screen.getByRole("button", { name: "Insert image" });
+    expect(imageButton.querySelector('[aria-hidden="true"]')?.textContent).toBe("🖼");
+  });
+
+  it("makes the scroll wrapper around the read-only content focusable so axe's scrollable-region-focusable has a keyboard path (F-093)", () => {
+    const { editable } = renderEditor();
+    const scrollWrapper = editable.closest('[data-slot="editor-scroll-wrapper"]');
+    expect(scrollWrapper?.getAttribute("tabindex")).toBe("0");
+  });
 });

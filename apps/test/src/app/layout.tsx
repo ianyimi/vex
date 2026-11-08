@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import "./globals.css";
 
-import { LivePreviewProvider } from "@vexcms/react";
+import { LivePreviewProvider, Toaster } from "@vexcms/react";
 import { ThemeScript } from "@vexcms/react/server";
 import { Geist, Geist_Mono } from "next/font/google";
 
@@ -53,6 +53,13 @@ export const metadata: Metadata = {
   title: "VexCMS",
 };
 
+export const viewport: Viewport = {
+  themeColor: [
+    { color: "#F2F2F2", media: "(prefers-color-scheme: light)" },
+    { color: "#080808", media: "(prefers-color-scheme: dark)" },
+  ],
+};
+
 export default function RootLayout({
   auth,
   children,
@@ -96,6 +103,7 @@ export default function RootLayout({
                   `/auth/[pathname]` dialog/full-screen card portals/paints over
                   whichever page (site or admin) triggered it. */}
               {auth}
+              <Toaster />
             </LivePreviewProvider>
           </ClientProviders>
         </ServerProviders>

@@ -14,6 +14,7 @@ export function TextFilterInput(props: FilterInputProps<TextField>) {
   return (
     <Input
       className="w-full min-w-0"
+      aria-label={props.field.label || "Filter value"}
       value={String(props.value ?? "")}
       onChange={(e) => props.onChange(e.target.value)}
       disabled={props.disabled}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, type ReactNode, type RefAttributes } from "react";
+import { Suspense, useEffect, useState, type ReactNode, type RefAttributes } from "react";
 import { Button, Icon, Skeleton, SidebarTrigger, VexLink } from "../ui";
 import { ChevronLeft, ChevronRight, LucideProps } from "lucide-react";
 import {
@@ -305,6 +305,9 @@ function AdminTopNavDocCrumb(props: {
   const { data: doc } = useSuspenseQuery(
     convexQuery(vexConvexApi.get, buildGetArgs({ id: props.documentId, collection: props.collection })),
   );
+  useEffect(() => {
+    if (doc) document.title = `${doc[props.collection.admin.useAsTitle] as string} · Admin`;
+  }, [doc, props.collection]);
   if (!doc) return null;
   const crumb: Crumb = {
     key: "document",
@@ -363,6 +366,11 @@ export default function AdminTopNav(props: { activeSlug?: string; activeDocID?: 
     isGlobals,
     activeGlobal,
   });
+  const pageTitle = baseCrumbs.at(-1)?.label ?? "Admin";
+  useEffect(() => {
+    if (hasDocSlot) return;
+    document.title = `${pageTitle} · Admin`;
+  }, [pageTitle, hasDocSlot]);
   // The current query, appended to the sign-in return URL. Under a covering route (the
   // sign-in modal itself) the URL is the modal's — keep the admin page's own query.
   const frameworkComponents = useFrameworkComponents();
@@ -404,7 +412,7 @@ export default function AdminTopNav(props: { activeSlug?: string; activeDocID?: 
   const nav = isLeft ? items : items.slice().reverse();
 
   const crumbsEl = (
-    <div className="flex items-center gap-2" suppressHydrationWarning>
+    <div className="flex min-w-0 items-center gap-2 overflow-x-auto" suppressHydrationWarning>
       {nav}
     </div>
   );

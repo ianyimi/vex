@@ -24,7 +24,6 @@ export default async function HomePage() {
   } catch {
     // Fall back to client-only fetch
   }
-
   const codeHighlights = await highlightPageBlocks(initialData?.[0]?.blocks)
 
   return (

@@ -7,7 +7,7 @@ import { buildThemeCss, type ThemeScope } from "@vexcms/core"
 import { useLivePreviewDocumentQuery } from "@vexcms/react"
 import { useEffect, useRef } from "react"
 
-import type { SiteSettingsGlobal, Theme } from "~/vex.types"
+import type { SiteSettingsGlobal } from "~/vex.types"
 
 import { GLOBAL_SLUG_SITE_SETTINGS } from "~/db/constants"
 
@@ -52,7 +52,7 @@ export function ThemeLive(props: { scope?: ThemeScope }) {
 
   // `adminTheme ?? activeTheme` mirrors `theme.getAdmin`'s own fallback: the
   // admin adopts the site's palette unless it opts out.
-  const reference = settings as SiteSettingsGlobal | undefined
+  const reference: SiteSettingsGlobal | undefined = settings
   const themeIds = (
     scope === "admin" ? (reference?.adminTheme ?? reference?.activeTheme) : reference?.activeTheme
   ) as string[] | undefined
@@ -94,7 +94,7 @@ export function ThemeLive(props: { scope?: ThemeScope }) {
     if (settings === undefined) {return}
     if (themeId && theme === undefined) {return}
 
-    element.textContent = theme ? buildThemeCss({ theme: theme as Theme, scope }) : ""
+    element.textContent = theme ? buildThemeCss({ theme, scope }) : ""
   }, [settings, theme, themeId, scope])
 
   return null

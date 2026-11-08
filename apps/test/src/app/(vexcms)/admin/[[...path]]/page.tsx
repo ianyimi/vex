@@ -3,6 +3,7 @@ import { NextAdminPage } from "@vexcms/next/server";
 import { redirect } from "next/navigation";
 
 import { getToken, getUserOrg } from "~/auth/server";
+import { TOUR_PATH } from "~/lib/routes";
 import config from "~/vex.config.server";
 
 export const dynamic = "force-dynamic";
@@ -46,10 +47,10 @@ export const dynamic = "force-dynamic";
  *   sign-in lands the caller back where they were headed.
  * - `getToken()`/`getUserOrg()` are awaited inside a `try`/`catch`: a session
  *   **verification** failure (Convex unreachable, a lookup timeout) redirects to
- *   `/unauthorized` — fail closed, mirroring the old proxy's
- *   `verification-failed` branch — instead of surfacing as a 500. `redirect()`
- *   throws its own control-flow error to unwind to the nearest segment, so it is
- *   only ever called from the `catch` block, never awaited inside the `try`.
+ *   `TOUR_PATH` — the backend that failed can't be the thing the fallback
+ *   depends on, so this no longer reuses `/unauthorized`. `redirect()` throws
+ *   its own control-flow error to unwind to the nearest segment, so it is only
+ *   ever called from the `catch` block, never awaited inside the `try`.
  *
  * `NextAdminPage` streams its own real chrome immediately once rendered (title, tabs,
  * toolbar, controls, row-selection checkboxes — the exact page as it was before this gate
@@ -67,7 +68,7 @@ export default async function AdminPage({
 
   const session = await loadAdminSession();
   if (!session) {
-    redirect("/unauthorized");
+    redirect(TOUR_PATH);
   }
   const { token, auth } = session;
 
@@ -89,29 +90,13 @@ export default async function AdminPage({
 
   return (
     <NextAdminPage
+      authPromise={Promise.resolve(auth)}
       config={config}
       params={params}
       searchParams={searchParams}
       tokenPromise={Promise.resolve(token)}
-      authPromise={Promise.resolve(auth)}
     />
   );
-}
-
-/**
- * Resolves the session, failing closed: a `getToken()`/`getUserOrg()` throw
- * (Convex unreachable, a lookup timeout) returns `null` rather than letting
- * the error surface as a 500 — the caller redirects to `/unauthorized`,
- * mirroring the old proxy's `verification-failed` branch.
- */
-async function loadAdminSession() {
-  try {
-    const token = await getToken();
-    const auth = await getUserOrg();
-    return { token, auth };
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -129,4 +114,20 @@ function buildAdminRequestPath(
     value === undefined ? [] : (Array.isArray(value) ? value : [value]).map((v) => `${key}=${v}`),
   );
   return `/admin${segments}${query.length ? `?${query.join("&")}` : ""}`;
+}
+
+/**
+ * Resolves the session, failing closed: a `getToken()`/`getUserOrg()` throw
+ * (Convex unreachable, a lookup timeout) returns `null` rather than letting
+ * the error surface as a 500 — the caller redirects to `TOUR_PATH`, the
+ * static fallback that carries no dependency on the backend that failed.
+ */
+async function loadAdminSession() {
+  try {
+    const token = await getToken();
+    const auth = await getUserOrg();
+    return { token, auth };
+  } catch {
+    return null;
+  }
 }

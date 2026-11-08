@@ -131,18 +131,22 @@ export function MultiSelectTrigger({
   const { open } = useMultiSelectContext();
 
   return (
-    <PopoverTrigger
-      role="combobox"
-      aria-expanded={open}
-      {...props}
+    <div
       className={cn(
-        "flex h-auto min-h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "flex h-auto min-h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] has-[[data-slot=popover-trigger]:focus-visible]:border-ring has-[[data-slot=popover-trigger]:focus-visible]:focus-ring has-disabled:cursor-not-allowed has-disabled:opacity-50 has-[[data-slot=popover-trigger][aria-invalid=true]]:border-destructive has-[[data-slot=popover-trigger][aria-invalid=true]]:ring-[3px] has-[[data-slot=popover-trigger][aria-invalid=true]]:ring-destructive/20 dark:has-[[data-slot=popover-trigger][aria-invalid=true]]:border-destructive/50 dark:has-[[data-slot=popover-trigger][aria-invalid=true]]:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className,
       )}
     >
       {children}
-      <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
-    </PopoverTrigger>
+      <PopoverTrigger
+        role="combobox"
+        aria-expanded={open}
+        {...props}
+        className="ml-auto shrink-0 rounded-sm outline-none"
+      >
+        <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
+      </PopoverTrigger>
+    </div>
   );
 }
 
@@ -247,10 +251,22 @@ export function MultiSelectValue({
             data-selected-item
             className="group flex items-center gap-1"
             key={value}
+            role={clickToRemove ? "button" : undefined}
+            tabIndex={clickToRemove ? 0 : undefined}
             aria-label={clickToRemove ? `Remove ${label}` : undefined}
             onClick={
               clickToRemove
                 ? (e) => {
+                    e.stopPropagation();
+                    toggleValue(value);
+                  }
+                : undefined
+            }
+            onKeyDown={
+              clickToRemove
+                ? (e) => {
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
                     e.stopPropagation();
                     toggleValue(value);
                   }
@@ -359,7 +375,12 @@ export function MultiSelectContent({
               // Focus target for keyboard navigation when there is no search
               // input. Focused by the effect above — never via `autoFocus`,
               // which fires on mount, strictly before positioning.
-              <button data-multiselect-focus className="sr-only" type="button" />
+              <button
+                data-multiselect-focus
+                className="sr-only"
+                type="button"
+                aria-label="Select an option"
+              />
             )}
             <CommandList>
               {canSearch && (

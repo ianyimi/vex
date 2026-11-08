@@ -306,6 +306,7 @@ export function DataTable<TData extends VexDocument>({
             checked={table.getIsAllPageRowsSelected()}
             onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
             disabled={isInitialLoading}
+            aria-label="Select all rows"
           />
         </div>
       ),
@@ -314,6 +315,7 @@ export function DataTable<TData extends VexDocument>({
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label={`Select row ${row.id}`}
           />
         </div>
       ),
@@ -397,8 +399,16 @@ export function DataTable<TData extends VexDocument>({
   const pinnedRightIds = columnPinning.right ?? [];
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const { liveDrag, activeDividerFieldId, setHoveredDividerFieldId, liveWidth, startResize, handleResizeKeyDown } =
-    useDataTableColumnResize(containerRef, columnEntries, onColumnEntriesChange);
+  const {
+    liveDrag,
+    activeDividerFieldId,
+    setHoveredDividerFieldId,
+    liveWidth,
+    startResize,
+    handleResizeKeyDown,
+    minColumnWidth,
+    maxColumnWidth,
+  } = useDataTableColumnResize(containerRef, columnEntries, onColumnEntriesChange);
 
   const table = useReactTable({
     data,
@@ -496,6 +506,8 @@ export function DataTable<TData extends VexDocument>({
               liveWidth={liveWidth}
               startResize={startResize}
               handleResizeKeyDown={handleResizeKeyDown}
+              minColumnWidth={minColumnWidth}
+              maxColumnWidth={maxColumnWidth}
               setHoveredDividerFieldId={setHoveredDividerFieldId}
             />
             <DataTableBody

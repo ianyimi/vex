@@ -64,4 +64,13 @@ describe("ScrollSection", () => {
     expect(screen.queryByText("Body")).not.toBeInTheDocument();
     window.localStorage.removeItem("scroll-section-test");
   });
+
+  it("forwards title as the underlying ScrollArea's accessible name", () => {
+    render(
+      <ScrollSection title="Shared">
+        <div>Body</div>
+      </ScrollSection>,
+    );
+    expect(screen.getByLabelText("Shared")).toBeInTheDocument();
+  });
 });

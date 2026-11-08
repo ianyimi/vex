@@ -4,6 +4,8 @@ import { describe, expect, test } from "vitest";
 
 import * as _generatedApi from "../../../db/test/convex/_generated/api";
 import schema from "../../../db/test/convex/schema";
+import type { VexConfig } from "../../../config";
+import { defineCollection, text } from "../../../index";
 import { publishedSlugs } from "./server";
 
 const modules: Record<string, () => Promise<unknown>> = {
@@ -84,6 +86,30 @@ describe("publishedSlugs (server)", () => {
       });
 
       expect(result).toHaveLength(1);
+    });
+  });
+
+  // A sitemap must never list a draft-only document: its URL 404s for anonymous
+  // visitors and leaks an unpublished slug. The draft filter needs the
+  // collection's `versions.drafts`, so it only applies when `config` is threaded.
+  test("omits draft-only documents when the collection has drafts enabled", async () => {
+    const config = {
+      collections: [
+        defineCollection({
+          slug: "posts",
+          fields: { title: text(), slug: text() },
+          versions: { drafts: true },
+        }),
+      ],
+    } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { slug: "live", title: "Live", vex_status: "published" });
+      await ctx.db.insert("posts", { slug: "unreleased", title: "Unreleased", vex_status: "draft" });
+
+      const result = await publishedSlugs({ collection: "posts", config, ctx });
+
+      expect(result.map((entry) => entry.slug)).toEqual(["live"]);
     });
   });
 });

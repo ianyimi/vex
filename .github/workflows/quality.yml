@@ -1,0 +1,74 @@
+name: quality
+
+on:
+  deployment_status
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.deployment.sha }}
+  cancel-in-progress: true
+
+jobs:
+  axe:
+    name: axe
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – www'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.deployment.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter www exec playwright install --with-deps chromium
+
+      - name: Run axe suite against the preview
+        run: pnpm --filter www exec playwright test e2e/axe.e2e.ts
+        env:
+          CI: "1"
+          QUALITY_BASE_URL: ${{ github.event.deployment_status.target_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+  lighthouse:
+    name: lighthouse
+    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – www'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.deployment.sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Lighthouse CI against the preview
+        run: pnpm --filter www exec lhci autorun
+        env:
+          CI: "1"
+          QUALITY_BASE_URL: ${{ github.event.deployment_status.target_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}

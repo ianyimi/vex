@@ -193,7 +193,14 @@ function RelationshipItemRow({
   return (
     <div className="flex items-center justify-between rounded border-2 border-border px-2">
       <div className="flex w-full items-center gap-2 font-mono">
-        {showDragHandle && <DragHandle disabled={readOnly || Boolean(accessError)} />}
+        {showDragHandle && (
+          <DragHandle
+            disabled={readOnly || Boolean(accessError)}
+            aria-label={`Reorder ${
+              document ? ((document as Record<string, unknown>)[targetCollection.admin.useAsTitle] as string | undefined) ?? document._id : "item"
+            }`}
+          />
+        )}
         {!document ? (
           !accessError ? (
             <Skeleton className="h-10 w-10" />

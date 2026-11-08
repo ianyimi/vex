@@ -7,172 +7,172 @@
 /* eslint-disable perfectionist/sort-object-types */
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 
-import type { DataModel, Id } from "@convex/_generated/dataModel"
-import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"
+import type { DataModel, Id } from "@convex/_generated/dataModel";
+import type { VexDocument, VexDocumentGlobal } from "@vexcms/core";
 
 export interface UserDocument extends VexDocument {
-  _id: Id<"user">
-  name: string
-  email: string
-  emailVerified: boolean
-  image?: string
-  createdAt: number
-  updatedAt: number
-  role?: string
-  banned?: boolean
-  banReason?: string
-  banExpires?: number
-  isAnonymous?: boolean
-  userId?: string
-  roles: string[]
+  _id: Id<"user">;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  image?: string;
+  createdAt: number;
+  updatedAt: number;
+  role?: string;
+  banned?: boolean;
+  banReason?: string;
+  banExpires?: number;
+  isAnonymous?: boolean;
+  userId?: string;
+  roles: string[];
 }
 export type HeroBlock = {
-  blockType: "hero"
-  blockName?: string
-  id: string
-  variant?: ("full" | "compact")[]
-  badgeText?: string
-  badgeLink?: string
-  heading: string
-  subheading?: string
-  installCommand?: string
-  primaryCtaLabel?: string
-  primaryCtaHref?: string
-  secondaryCtaLabel?: string
-  secondaryCtaHref?: string
-}
+  blockType: "hero";
+  blockName?: string;
+  id: string;
+  variant?: ("full" | "compact")[];
+  badgeText?: string;
+  badgeLink?: string;
+  heading: string;
+  subheading?: string;
+  installCommand?: string;
+  primaryCtaLabel?: string;
+  primaryCtaHref?: string;
+  secondaryCtaLabel?: string;
+  secondaryCtaHref?: string;
+};
 
 export type StatsBlock = {
-  blockType: "stats"
-  blockName?: string
-  id: string
-  heading?: string
-  subheading?: string
+  blockType: "stats";
+  blockName?: string;
+  id: string;
+  heading?: string;
+  subheading?: string;
   items: {
+    id?: string;
     /**
      * Free text, not a number — "0", "12" and "~30s" all render. Any unit belongs in
      * the string.
      */
-    value: string
-    label: string
-    description?: string
-  }[]
-}
+    value: string;
+    label: string;
+    description?: string;
+  }[];
+};
 
 export type FeaturesBlock = {
-  blockType: "features"
-  blockName?: string
-  id: string
-  heading: string
-  subheading?: string
+  blockType: "features";
+  blockName?: string;
+  id: string;
+  heading: string;
+  subheading?: string;
   features: {
-    title: string
-    description: string
+    id?: string;
+    title: string;
+    description: string;
     /**
      * Lucide icon name
      */
-    icon?: string
-  }[]
-}
+    icon?: string;
+  }[];
+};
 
 export type CodeShowcaseBlock = {
-  blockType: "code_showcase"
-  blockName?: string
-  id: string
-  heading: string
-  subheading?: string
+  blockType: "code_showcase";
+  blockName?: string;
+  id: string;
+  heading: string;
+  subheading?: string;
   panes: {
+    id?: string;
     /**
      * Shown uppercase in the chrome bar.
      */
-    label: string
-    filename?: string
-    language?: ("ts" | "tsx" | "bash" | "json")[]
+    label: string;
+    filename?: string;
+    language?: ("ts" | "tsx" | "bash" | "json")[];
     /**
      * Hand-written panes carry the primary-coloured label — the only signal separating
      * human input from generated output.
      */
-    authored?: ("authored" | "generated")[]
-    code: string
-    caption?: string
-  }[]
-}
+    authored?: ("authored" | "generated")[];
+    code: string;
+    caption?: string;
+  }[];
+};
 
 export type SplitBlock = {
-  blockType: "split"
-  blockName?: string
-  id: string
-  eyebrow?: string
-  heading: string
-  body: string
+  blockType: "split";
+  blockName?: string;
+  id: string;
+  eyebrow?: string;
+  heading: string;
+  body: string;
   bullets?: {
+    id?: string;
     /**
      * Lucide icon name
      */
-    icon?: string
-    text: string
-  }[]
-  media?: ("code" | "image" | "none")[]
-  code?: string
-  codeFilename?: string
-  codeLanguage?: ("ts" | "tsx" | "bash" | "json")[]
-  image?: Id<"images">[]
-  mediaPosition?: ("right" | "left")[]
-}
+    icon?: string;
+    text: string;
+  }[];
+  media?: ("code" | "image" | "none")[];
+  code?: string;
+  codeFilename?: string;
+  codeLanguage?: ("ts" | "tsx" | "bash" | "json")[];
+  image?: Id<"images">[];
+  mediaPosition?: ("right" | "left")[];
+};
 
 export type HowItWorksBlock = {
-  blockType: "how_it_works"
-  blockName?: string
-  id: string
-  heading: string
-  subheading?: string
+  blockType: "how_it_works";
+  blockName?: string;
+  id: string;
+  heading: string;
+  subheading?: string;
   steps: {
+    id?: string;
     /**
      * Lucide icon name
      */
-    icon?: string
-    title: string
-    description: string
-  }[]
-}
+    icon?: string;
+    title: string;
+    description: string;
+  }[];
+};
 
 export type RoadmapBlock = {
-  blockType: "roadmap"
-  blockName?: string
-  id: string
-  heading: string
-  subheading?: string
+  blockType: "roadmap";
+  blockName?: string;
+  id: string;
+  heading: string;
+  subheading?: string;
   items: {
-    feature: string
-    description?: string
-    status: ("shipped" | "in-progress" | "planned" | "exploring" | "future")[]
-  }[]
-}
+    id?: string;
+    feature: string;
+    description?: string;
+    status: ("shipped" | "in-progress" | "planned" | "exploring" | "future")[];
+  }[];
+};
 
 export type FaqBlock = {
-  blockType: "faq"
-  blockName?: string
-  id: string
-  heading: string
-  subheading?: string
-  supportLink?: string
-  items: {
-    question: string
-    answer: string
-  }[]
-}
+  blockType: "faq";
+  blockName?: string;
+  id: string;
+  heading: string;
+  subheading?: string;
+  supportLink?: string;
+  items: { id?: string; question: string; answer: string }[];
+};
 
 export type CtaBlock = {
-  blockType: "cta"
-  blockName?: string
-  id: string
-  heading: string
-  subheading?: string
-  actions?: {
-    label: string
-    href: string
-  }[]
-}
+  blockType: "cta";
+  blockName?: string;
+  id: string;
+  heading: string;
+  subheading?: string;
+  actions?: { id?: string; label: string; href: string }[];
+};
 
 export type PageBlock =
   | HeroBlock
@@ -183,294 +183,291 @@ export type PageBlock =
   | HowItWorksBlock
   | RoadmapBlock
   | FaqBlock
-  | CtaBlock
+  | CtaBlock;
 
 export interface PagesDocument extends VexDocument {
-  _id: Id<"pages">
-  title: string
+  _id: Id<"pages">;
+  vex_status?: "draft" | "published";
+  title: string;
   /**
    * URL-friendly page path
    */
-  slug: string
-  blocks?: PageBlock[]
+  slug: string;
+  blocks?: PageBlock[];
   /**
    * Custom <title> tag. Falls back to page title if empty.
    */
-  metaTitle?: string
+  metaTitle?: string;
   /**
    * Custom meta description for search results.
    */
-  metaDescription?: string
-  ogImage?: Id<"images">[]
-  updatedAt?: number
+  metaDescription?: string;
+  ogImage?: Id<"images">[];
+  updatedAt?: number;
 }
 export type HeaderBlock = {
-  blockType: "header"
-  blockName?: string
-  id: string
-  logoText?: string
-  logoImage?: Id<"images">[]
-  logoHref?: string
-  menuItems?: {
-    label: string
-    href: string
-  }[]
+  blockType: "header";
+  blockName?: string;
+  id: string;
+  logoText?: string;
+  logoImage?: Id<"images">[];
+  logoHref?: string;
+  menuItems?: { id?: string; label: string; href: string }[];
   actionButtons?: {
-    label: string
-    href: string
-    variant?: ("default" | "outline" | "ghost")[]
-  }[]
-}
+    id?: string;
+    label: string;
+    href: string;
+    variant?: ("default" | "outline" | "ghost")[];
+  }[];
+};
 
 export interface HeadersDocument extends VexDocument {
-  _id: Id<"headers">
-  name: string
-  content?: HeaderBlock[]
-  updatedAt?: number
+  _id: Id<"headers">;
+  name: string;
+  content?: HeaderBlock[];
+  updatedAt?: number;
 }
 export type FooterBlock = {
-  blockType: "footer"
-  blockName?: string
-  id: string
-  logoText?: string
-  logoImage?: Id<"images">[]
-  copyright?: string
-  links?: {
-    label: string
-    href: string
-  }[]
+  blockType: "footer";
+  blockName?: string;
+  id: string;
+  logoText?: string;
+  logoImage?: Id<"images">[];
+  copyright?: string;
+  links?: { id?: string; label: string; href: string }[];
   socialLinks?: {
-    platform: string
-    href: string
+    id?: string;
+    platform: string;
+    href: string;
     /**
      * Lucide icon name
      */
-    icon?: string
-  }[]
-}
+    icon?: string;
+  }[];
+};
 
 export interface FootersDocument extends VexDocument {
-  _id: Id<"footers">
-  name: string
-  content?: FooterBlock[]
-  updatedAt?: number
+  _id: Id<"footers">;
+  name: string;
+  content?: FooterBlock[];
+  updatedAt?: number;
 }
 
 export interface Theme extends VexDocument {
-  _id: Id<"themes">
+  _id: Id<"themes">;
   /**
    * Internal identifier for this theme. Used for idempotent lookups and admin
    * display.
    */
-  name: string
+  name: string;
   /**
    * CSS font-family stack applied to --font-sans. The first available font wins, so
    * a stack naming an unloaded font degrades rather than breaking.
    */
-  fontFamily?: string
+  fontFamily?: string;
   /**
    * Applied to the --radius custom property. Any CSS length.
    */
-  radius?: string
+  radius?: string;
   /**
    * Tokens emitted under :root.
    */
   light?: {
-    background?: string
-    foreground?: string
-    card?: string
-    cardForeground?: string
-    popover?: string
-    popoverForeground?: string
-    primary?: string
-    primaryForeground?: string
-    secondary?: string
-    secondaryForeground?: string
-    muted?: string
-    mutedForeground?: string
-    accent?: string
-    accentForeground?: string
-    destructive?: string
-    destructiveForeground?: string
-    border?: string
-    input?: string
-    ring?: string
-    chart1?: string
-    chart2?: string
-    chart3?: string
-    chart4?: string
-    chart5?: string
-    sidebar?: string
-    sidebarForeground?: string
-    sidebarPrimary?: string
-    sidebarPrimaryForeground?: string
-    sidebarAccent?: string
-    sidebarAccentForeground?: string
-    sidebarBorder?: string
-    sidebarRing?: string
-  }
+    background?: string;
+    foreground?: string;
+    card?: string;
+    cardForeground?: string;
+    popover?: string;
+    popoverForeground?: string;
+    primary?: string;
+    primaryForeground?: string;
+    secondary?: string;
+    secondaryForeground?: string;
+    muted?: string;
+    mutedForeground?: string;
+    accent?: string;
+    accentForeground?: string;
+    destructive?: string;
+    destructiveForeground?: string;
+    border?: string;
+    input?: string;
+    ring?: string;
+    chart1?: string;
+    chart2?: string;
+    chart3?: string;
+    chart4?: string;
+    chart5?: string;
+    sidebar?: string;
+    sidebarForeground?: string;
+    sidebarPrimary?: string;
+    sidebarPrimaryForeground?: string;
+    sidebarAccent?: string;
+    sidebarAccentForeground?: string;
+    sidebarBorder?: string;
+    sidebarRing?: string;
+  };
   /**
    * Tokens emitted under .dark.
    */
   dark?: {
-    background?: string
-    foreground?: string
-    card?: string
-    cardForeground?: string
-    popover?: string
-    popoverForeground?: string
-    primary?: string
-    primaryForeground?: string
-    secondary?: string
-    secondaryForeground?: string
-    muted?: string
-    mutedForeground?: string
-    accent?: string
-    accentForeground?: string
-    destructive?: string
-    destructiveForeground?: string
-    border?: string
-    input?: string
-    ring?: string
-    chart1?: string
-    chart2?: string
-    chart3?: string
-    chart4?: string
-    chart5?: string
-    sidebar?: string
-    sidebarForeground?: string
-    sidebarPrimary?: string
-    sidebarPrimaryForeground?: string
-    sidebarAccent?: string
-    sidebarAccentForeground?: string
-    sidebarBorder?: string
-    sidebarRing?: string
-  }
-  updatedAt?: number
+    background?: string;
+    foreground?: string;
+    card?: string;
+    cardForeground?: string;
+    popover?: string;
+    popoverForeground?: string;
+    primary?: string;
+    primaryForeground?: string;
+    secondary?: string;
+    secondaryForeground?: string;
+    muted?: string;
+    mutedForeground?: string;
+    accent?: string;
+    accentForeground?: string;
+    destructive?: string;
+    destructiveForeground?: string;
+    border?: string;
+    input?: string;
+    ring?: string;
+    chart1?: string;
+    chart2?: string;
+    chart3?: string;
+    chart4?: string;
+    chart5?: string;
+    sidebar?: string;
+    sidebarForeground?: string;
+    sidebarPrimary?: string;
+    sidebarPrimaryForeground?: string;
+    sidebarAccent?: string;
+    sidebarAccentForeground?: string;
+    sidebarBorder?: string;
+    sidebarRing?: string;
+  };
+  updatedAt?: number;
 }
 
 export interface SessionDocument extends VexDocument {
-  _id: Id<"session">
-  expiresAt: number
-  token: string
-  createdAt: number
-  updatedAt: number
-  ipAddress?: string
-  userAgent?: string
-  userId: string
-  impersonatedBy?: string
+  _id: Id<"session">;
+  expiresAt: number;
+  token: string;
+  createdAt: number;
+  updatedAt: number;
+  ipAddress?: string;
+  userAgent?: string;
+  userId: string;
+  impersonatedBy?: string;
 }
 
 export interface AccountDocument extends VexDocument {
-  _id: Id<"account">
-  accountId: string
-  providerId: string
-  userId: string
-  accessToken?: string
-  refreshToken?: string
-  idToken?: string
-  accessTokenExpiresAt?: number
-  refreshTokenExpiresAt?: number
-  scope?: string
-  password?: string
-  createdAt: number
-  updatedAt: number
+  _id: Id<"account">;
+  accountId: string;
+  providerId: string;
+  userId: string;
+  accessToken?: string;
+  refreshToken?: string;
+  idToken?: string;
+  accessTokenExpiresAt?: number;
+  refreshTokenExpiresAt?: number;
+  scope?: string;
+  password?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface VerificationDocument extends VexDocument {
-  _id: Id<"verification">
-  identifier: string
-  value: string
-  expiresAt: number
-  createdAt: number
-  updatedAt: number
+  _id: Id<"verification">;
+  identifier: string;
+  value: string;
+  expiresAt: number;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface ApikeyDocument extends VexDocument {
-  _id: Id<"apikey">
-  configId: string
-  name?: string
-  start?: string
-  referenceId: string
-  prefix?: string
-  key: string
-  refillInterval?: number
-  refillAmount?: number
-  lastRefillAt?: number
-  enabled?: boolean
-  rateLimitEnabled?: boolean
-  rateLimitTimeWindow?: number
-  rateLimitMax?: number
-  requestCount?: number
-  remaining?: number
-  lastRequest?: number
-  expiresAt?: number
-  createdAt: number
-  updatedAt: number
-  permissions?: string
-  metadata?: string
+  _id: Id<"apikey">;
+  configId: string;
+  name?: string;
+  start?: string;
+  referenceId: string;
+  prefix?: string;
+  key: string;
+  refillInterval?: number;
+  refillAmount?: number;
+  lastRefillAt?: number;
+  enabled?: boolean;
+  rateLimitEnabled?: boolean;
+  rateLimitTimeWindow?: number;
+  rateLimitMax?: number;
+  requestCount?: number;
+  remaining?: number;
+  lastRequest?: number;
+  expiresAt?: number;
+  createdAt: number;
+  updatedAt: number;
+  permissions?: string;
+  metadata?: string;
 }
 
 export interface JwksDocument extends VexDocument {
-  _id: Id<"jwks">
-  publicKey: string
-  privateKey: string
-  createdAt: number
-  expiresAt?: number
+  _id: Id<"jwks">;
+  publicKey: string;
+  privateKey: string;
+  createdAt: number;
+  expiresAt?: number;
 }
 
 export interface Image extends VexDocument {
-  _id: Id<"images">
-  filename: string
-  alt: string
-  mimeType: string
-  size: number
-  storageId: string
-  deleted?: boolean
-  src: string
-  width?: number
-  height?: number
-  updatedAt?: number
+  _id: Id<"images">;
+  filename: string;
+  alt: string;
+  mimeType: string;
+  size: number;
+  storageId: string;
+  deleted?: boolean;
+  src: string;
+  width?: number;
+  height?: number;
+  updatedAt?: number;
 }
 
 export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
   /**
    * Used as fallback for logo text, page titles, and meta tags.
    */
-  name: string
-  description?: string
+  name: string;
+  description?: string;
   /**
    * The theme applied to the public site.
    */
-  activeTheme?: Id<"themes">[]
+  activeTheme?: Id<"themes">[];
   /**
    * Optional. Leave empty and the admin panel uses the Active Theme.
    */
-  adminTheme?: Id<"themes">[]
+  adminTheme?: Id<"themes">[];
   /**
    * Site favicon image
    */
-  favicon?: Id<"images">[]
+  favicon?: Id<"images">[];
   /**
    * Default <title> tag for the site
    */
-  metaTitle?: string
+  metaTitle?: string;
   /**
    * Default meta description for SEO
    */
-  metaDescription?: string
+  metaDescription?: string;
   /**
    * Default Open Graph image for social sharing
    */
-  ogImage?: Id<"images">[]
+  ogImage?: Id<"images">[];
   /**
    * @handle for Twitter cards
    */
-  twitterHandle?: string
+  twitterHandle?: string;
   /**
    * GA4 measurement ID (G-XXXXXXXXXX)
    */
-  googleAnalyticsId?: string
+  googleAnalyticsId?: string;
 }
 
 export type CollectionSlug =
@@ -484,31 +481,31 @@ export type CollectionSlug =
   | "verification"
   | "apikey"
   | "jwks"
-  | "images"
+  | "images";
 
-export type GlobalSlug = "siteSettings"
+export type GlobalSlug = "siteSettings";
 
-export type MediaCollectionSlug = "images"
+export type MediaCollectionSlug = "images";
 
-export type StorageAdapterSlug = "convex"
+export type StorageAdapterSlug = "convex";
 
 export type DocumentBySlug = {
-  user: UserDocument
-  pages: PagesDocument
-  headers: HeadersDocument
-  footers: FootersDocument
-  themes: Theme
-  session: SessionDocument
-  account: AccountDocument
-  verification: VerificationDocument
-  apikey: ApikeyDocument
-  jwks: JwksDocument
-  images: Image
-}
+  user: UserDocument;
+  pages: PagesDocument;
+  headers: HeadersDocument;
+  footers: FootersDocument;
+  themes: Theme;
+  session: SessionDocument;
+  account: AccountDocument;
+  verification: VerificationDocument;
+  apikey: ApikeyDocument;
+  jwks: JwksDocument;
+  images: Image;
+};
 
 export type GlobalDocumentBySlug = {
-  siteSettings: SiteSettingsGlobal
-}
+  siteSettings: SiteSettingsGlobal;
+};
 
 declare module "@vexcms/core" {
   interface GeneratedVexTypes {
@@ -523,58 +520,58 @@ declare module "@vexcms/core" {
       | "verification"
       | "apikey"
       | "jwks"
-      | "images"
-    GlobalSlug: "siteSettings"
-    MediaCollectionSlug: "images"
-    StorageAdapterSlug: "convex"
+      | "images";
+    GlobalSlug: "siteSettings";
+    MediaCollectionSlug: "images";
+    StorageAdapterSlug: "convex";
     DocumentBySlug: {
-      user: UserDocument
-      pages: PagesDocument
-      headers: HeadersDocument
-      footers: FootersDocument
-      themes: Theme
-      session: SessionDocument
-      account: AccountDocument
-      verification: VerificationDocument
-      apikey: ApikeyDocument
-      jwks: JwksDocument
-      images: Image
-    }
+      user: UserDocument;
+      pages: PagesDocument;
+      headers: HeadersDocument;
+      footers: FootersDocument;
+      themes: Theme;
+      session: SessionDocument;
+      account: AccountDocument;
+      verification: VerificationDocument;
+      apikey: ApikeyDocument;
+      jwks: JwksDocument;
+      images: Image;
+    };
     GlobalDocumentBySlug: {
-      siteSettings: SiteSettingsGlobal
-    }
+      siteSettings: SiteSettingsGlobal;
+    };
     CollectionsFieldTypeMap: {
       user: {
-        text: "name" | "email" | "image" | "role" | "banReason" | "userId"
-        checkbox: "emailVerified" | "banned" | "isAnonymous"
-        date: "createdAt" | "updatedAt" | "banExpires"
-        array: "roles"
-      }
+        text: "name" | "email" | "image" | "role" | "banReason" | "userId";
+        checkbox: "emailVerified" | "banned" | "isAnonymous";
+        date: "createdAt" | "updatedAt" | "banExpires";
+        array: "roles";
+      };
       pages: {
-        text: "title" | "slug" | "metaTitle" | "metaDescription"
-        blocks: "blocks"
-        upload: "ogImage"
-        number: "updatedAt"
-      }
+        text: "title" | "slug" | "metaTitle" | "metaDescription";
+        blocks: "blocks";
+        upload: "ogImage";
+        commitTs: "updatedAt";
+      };
       headers: {
-        text: "name"
-        blocks: "content"
-        number: "updatedAt"
-      }
+        text: "name";
+        blocks: "content";
+        commitTs: "updatedAt";
+      };
       footers: {
-        text: "name"
-        blocks: "content"
-        number: "updatedAt"
-      }
+        text: "name";
+        blocks: "content";
+        commitTs: "updatedAt";
+      };
       themes: {
-        text: "name" | "fontFamily" | "radius"
-        group: "light" | "dark"
-        number: "updatedAt"
-      }
+        text: "name" | "fontFamily" | "radius";
+        group: "light" | "dark";
+        commitTs: "updatedAt";
+      };
       session: {
-        date: "expiresAt" | "createdAt" | "updatedAt"
-        text: "token" | "ipAddress" | "userAgent" | "userId" | "impersonatedBy"
-      }
+        date: "expiresAt" | "createdAt" | "updatedAt";
+        text: "token" | "ipAddress" | "userAgent" | "userId" | "impersonatedBy";
+      };
       account: {
         text:
           | "accountId"
@@ -584,13 +581,17 @@ declare module "@vexcms/core" {
           | "refreshToken"
           | "idToken"
           | "scope"
-          | "password"
-        date: "accessTokenExpiresAt" | "refreshTokenExpiresAt" | "createdAt" | "updatedAt"
-      }
+          | "password";
+        date:
+          | "accessTokenExpiresAt"
+          | "refreshTokenExpiresAt"
+          | "createdAt"
+          | "updatedAt";
+      };
       verification: {
-        text: "identifier" | "value"
-        date: "expiresAt" | "createdAt" | "updatedAt"
-      }
+        text: "identifier" | "value";
+        date: "expiresAt" | "createdAt" | "updatedAt";
+      };
       apikey: {
         text:
           | "configId"
@@ -600,27 +601,33 @@ declare module "@vexcms/core" {
           | "prefix"
           | "key"
           | "permissions"
-          | "metadata"
+          | "metadata";
         number:
           | "refillInterval"
           | "refillAmount"
           | "rateLimitTimeWindow"
           | "rateLimitMax"
           | "requestCount"
-          | "remaining"
-        date: "lastRefillAt" | "lastRequest" | "expiresAt" | "createdAt" | "updatedAt"
-        checkbox: "enabled" | "rateLimitEnabled"
-      }
+          | "remaining";
+        date:
+          | "lastRefillAt"
+          | "lastRequest"
+          | "expiresAt"
+          | "createdAt"
+          | "updatedAt";
+        checkbox: "enabled" | "rateLimitEnabled";
+      };
       jwks: {
-        text: "publicKey" | "privateKey"
-        date: "createdAt" | "expiresAt"
-      }
+        text: "publicKey" | "privateKey";
+        date: "createdAt" | "expiresAt";
+      };
       images: {
-        text: "filename" | "alt" | "mimeType" | "storageId" | "src"
-        number: "size" | "width" | "height" | "updatedAt"
-        checkbox: "deleted"
-      }
-    }
+        text: "filename" | "alt" | "mimeType" | "storageId" | "src";
+        number: "size" | "width" | "height";
+        checkbox: "deleted";
+        commitTs: "updatedAt";
+      };
+    };
     GlobalsFieldTypeMap: {
       siteSettings: {
         text:
@@ -629,34 +636,49 @@ declare module "@vexcms/core" {
           | "metaTitle"
           | "metaDescription"
           | "twitterHandle"
-          | "googleAnalyticsId"
-        relationship: "activeTheme" | "adminTheme"
-        upload: "favicon" | "ogImage"
-      }
-    }
+          | "googleAnalyticsId";
+        relationship: "activeTheme" | "adminTheme";
+        upload: "favicon" | "ogImage";
+      };
+    };
     IndexFieldsBySlug: {
-      user: { by_email: readonly ["email"] }
-      pages: { by_slug: readonly ["slug"] }
-      headers: { by_name: readonly ["name"] }
-      footers: { by_name: readonly ["name"] }
-      themes: { by_name: readonly ["name"] }
-      session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] }
-      account: { by_userId: readonly ["userId"] }
-      verification: { by_identifier: readonly ["identifier"] }
+      user: { by_email: readonly ["email"] };
+      pages: {
+        by_slug: readonly ["slug"];
+        by_updatedAt: readonly ["updatedAt"];
+      };
+      headers: {
+        by_name: readonly ["name"];
+        by_updatedAt: readonly ["updatedAt"];
+      };
+      footers: {
+        by_name: readonly ["name"];
+        by_updatedAt: readonly ["updatedAt"];
+      };
+      themes: {
+        by_name: readonly ["name"];
+        by_updatedAt: readonly ["updatedAt"];
+      };
+      session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] };
+      account: { by_userId: readonly ["userId"] };
+      verification: { by_identifier: readonly ["identifier"] };
       apikey: {
-        by_configId: readonly ["configId"]
-        by_referenceId: readonly ["referenceId"]
-        by_key: readonly ["key"]
-      }
-      jwks: {}
-      images: { by_deleted: readonly ["deleted"] }
-    }
-    CustomActionsBySlug: {}
+        by_configId: readonly ["configId"];
+        by_referenceId: readonly ["referenceId"];
+        by_key: readonly ["key"];
+      };
+      jwks: {};
+      images: {
+        by_deleted: readonly ["deleted"];
+        by_updatedAt: readonly ["updatedAt"];
+      };
+    };
+    CustomActionsBySlug: {};
     AuthSlugs: {
-      user: "user"
-      organization: never
-    }
-    DataModel: DataModel
-    IconName: keyof typeof import("lucide-react").icons
+      user: "user";
+      organization: "organization";
+    };
+    DataModel: DataModel;
+    IconName: keyof typeof import("lucide-react").icons;
   }
 }

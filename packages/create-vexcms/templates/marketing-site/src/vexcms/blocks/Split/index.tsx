@@ -161,9 +161,9 @@ export default function SplitBlock({ block }: BlockComponentProps) {
             {resolved === "image" && image ? (
               <div className="overflow-hidden rounded-md border border-border bg-card">
                 <MediaImage
-                  alt=""
                   className="aspect-[4/3] w-full object-cover"
                   height={720}
+                  sizes="(min-width: 1280px) 600px, (min-width: 768px) 45vw, 100vw"
                   value={image}
                   width={960}
                 />

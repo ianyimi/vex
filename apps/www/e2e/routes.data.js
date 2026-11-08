@@ -1,0 +1,21 @@
+module.exports = {
+  QUALITY_ROUTES: [
+    { path: "/" },
+    { path: "/features" },
+    { path: "/roadmap" },
+    { path: "/privacy" },
+    { path: "/brand" },
+    { path: "/accessibility" },
+    { draft: true, path: "/launch-week" },
+    { draft: true, path: "/posts/vexcms-0-1-0" },
+    { draft: true, path: "/posts/real-time-admin-and-live-preview" },
+    { draft: true, path: "/posts/one-config-schema-and-types" },
+    { draft: true, path: "/posts/access-control-hooks-validation" },
+    { draft: true, path: "/posts/create-vexcms-to-deployed" },
+    { path: "/tour" },
+    { path: "/auth/sign-in" },
+    { path: "/auth/sign-up" },
+    { notFound: true, path: "/a-page-that-does-not-exist" },
+    { path: "/unauthorized" },
+  ],
+};

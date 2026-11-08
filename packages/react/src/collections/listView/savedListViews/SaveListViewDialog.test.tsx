@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SaveListViewDialog } from "./SaveListViewDialog";
@@ -20,6 +20,47 @@ describe("SaveListViewDialog", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+  it("focuses the name input when opened, via a ref effect, not the autoFocus attribute", async () => {
+    render(
+      <SaveListViewDialog
+        open
+        onOpenChange={() => {}}
+        mode="create"
+        name=""
+        description=""
+        target="local"
+        canCreateShared
+        sharedViewsAvailable
+        isPending={false}
+        onSubmit={() => {}}
+      />,
+    );
+    const input = screen.getByLabelText("Name");
+    expect(input).not.toHaveAttribute("autofocus");
+    await waitFor(() => expect(input).toHaveFocus());
+  });
+
+  it("associates each scope radio with its label via id/htmlFor, not nesting alone", () => {
+    render(
+      <SaveListViewDialog
+        open
+        onOpenChange={() => {}}
+        mode="create"
+        name=""
+        description=""
+        target="local"
+        canCreateShared
+        sharedViewsAvailable
+        isPending={false}
+        onSubmit={() => {}}
+      />,
+    );
+    expect(screen.getByLabelText("Only you")).toHaveAttribute("id", "list-save-view-target-local");
+    expect(screen.getByLabelText("Everyone with access")).toHaveAttribute(
+      "id",
+      "list-save-view-target-shared",
+    );
   });
 
   it("submits the trimmed name/description/target in create mode", async () => {

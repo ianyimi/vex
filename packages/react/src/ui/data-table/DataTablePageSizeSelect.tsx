@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../select";
 import { RadioGroup, RadioGroupItem } from "../radio-group";
 import type { ActionPlacement } from "../ActionsMenu";
@@ -42,6 +44,7 @@ export interface DataTablePageSizeSelectProps {
  * @returns The page size control, or `null` when `pageSizeOptions` has one or fewer entries.
  */
 export function DataTablePageSizeSelect(props: DataTablePageSizeSelectProps) {
+  const idPrefix = useId();
   if (props.pageSizeOptions.length <= 1) return null;
 
   if (props.placement === "menu") {
@@ -54,8 +57,8 @@ export function DataTablePageSizeSelect(props: DataTablePageSizeSelectProps) {
           className="px-2"
         >
           {props.pageSizeOptions.map((n) => (
-            <label key={n} className="flex items-center gap-2 text-sm">
-              <RadioGroupItem value={String(n)} aria-label={`${n} per load`} />
+            <label key={n} className="flex items-center gap-2 text-sm" htmlFor={`${idPrefix}-${n}`}>
+              <RadioGroupItem id={`${idPrefix}-${n}`} value={String(n)} aria-label={`${n} per load`} />
               {n} per load
             </label>
           ))}

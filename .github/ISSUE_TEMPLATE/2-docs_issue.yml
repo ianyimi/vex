@@ -1,0 +1,27 @@
+name: Docs issue
+description: A docs.vexcms.dev correction or gap
+labels: ["type: docs", "area: docs", "status: needs-triage"]
+body:
+  - type: input
+    id: page-url
+    attributes:
+      label: Page URL
+      placeholder: https://docs.vexcms.dev/fields/richtext/
+    validations:
+      required: true
+
+  - type: textarea
+    id: whats-wrong
+    attributes:
+      label: What's wrong?
+      description: Incorrect, missing, outdated, or unclear — be as specific as you can.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-fix
+    attributes:
+      label: Suggested fix
+      description: Optional — if you already know what the page should say instead.
+    validations:
+      required: false

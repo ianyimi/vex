@@ -745,6 +745,12 @@ describe("ListViewPeek", () => {
       fireEvent.keyDown(handle, { key: "ArrowRight" });
       expect(onWidthChange).toHaveBeenCalledWith(388);
     });
+    it("exposes aria-valuenow/min/max on the resize handle, matching the rendered/clamped width", async () => {
+      const { handle } = await renderResizable(vi.fn());
+      expect(handle).toHaveAttribute("aria-valuenow", "400");
+      expect(handle).toHaveAttribute("aria-valuemin", "320");
+      expect(handle).toHaveAttribute("aria-valuemax", String(Math.round(window.innerWidth * 0.6)));
+    });
 
     it("shows a Reset peek width button on handle hover/focus, which clears the saved width", async () => {
       const onWidthChange = vi.fn();

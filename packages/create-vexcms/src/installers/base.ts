@@ -23,7 +23,7 @@ import {
   stripOrgFromAuthContext,
   stripOrgFromHasPermission,
   stripOrgFromDbConstants,
-} from './string-utils.js';
+} from './stringUtils.js';
 
 /**
  * Dependencies only the marketing overlay needs.

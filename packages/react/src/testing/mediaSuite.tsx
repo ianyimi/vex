@@ -279,7 +279,18 @@ function describeMediaLibraryGrid(access: VexAccessConfig | undefined) {
 
     it("shows the empty-state copy once the find query resolves with no items", async () => {
       await renderGrid({ rows: [] });
-      await waitFor(() => expect(screen.getByText("No media files yet")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getAllByText("No media files yet").length).toBeGreaterThan(0));
+    });
+
+    it("exposes an sr-only status region announcing the empty-state copy, independent of the visible message", async () => {
+      await renderGrid({ rows: [] });
+      const status = await screen.findByRole("status");
+      await waitFor(() => expect(status).toHaveTextContent("No media files yet"));
+    });
+
+    it("updates the sr-only status region's count once results load", async () => {
+      await renderGrid({ rows: [{ filename: "solo.png" }] });
+      await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("1 file loaded"));
     });
 
     it("renders exactly one tile when the find query resolves with a single item", async () => {
@@ -451,6 +462,41 @@ function describeMediaLibraryGrid(access: VexAccessConfig | undefined) {
       fireEvent.click(screen.getByText("a.png").closest("button") as HTMLButtonElement);
 
       expect(onSelect).toHaveBeenCalledWith([ids[1]]);
+    });
+    it("sets aria-pressed on a selected tile and clears it once deselected", async () => {
+      const t = convexTest(schema, testModules);
+      const ids = await seedMedia(t as never, [{ filename: "a.png" }]);
+      const { queryClient, convexClient } = buildConvexStack(t);
+      const { rerender } = renderWithVexProviders(
+        <ConvexProvider client={convexClient}>
+          <QueryClientProvider client={queryClient}>
+            <MediaLibraryGrid
+              targetCollectionConfig={targetCollectionConfig}
+              multi
+              onSelect={() => {}}
+              selectedIds={[]}
+            />
+          </QueryClientProvider>
+        </ConvexProvider>,
+        { access },
+      );
+      await waitFor(() => expect(screen.getByText("a.png")).toBeInTheDocument());
+      const tile = screen.getByText("a.png").closest("button") as HTMLButtonElement;
+      expect(tile).toHaveAttribute("aria-pressed", "false");
+
+      rerender(
+        <ConvexProvider client={convexClient}>
+          <QueryClientProvider client={queryClient}>
+            <MediaLibraryGrid
+              targetCollectionConfig={targetCollectionConfig}
+              multi
+              onSelect={() => {}}
+              selectedIds={[ids[0]!]}
+            />
+          </QueryClientProvider>
+        </ConvexProvider>,
+      );
+      expect(screen.getByText("a.png").closest("button")).toHaveAttribute("aria-pressed", "true");
     });
   });
 }

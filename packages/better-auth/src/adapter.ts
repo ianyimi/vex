@@ -62,6 +62,24 @@ const HIDDEN_FIELDS = new Set([
 ]);
 
 /**
+ * Lists the user table's field names an end user can set directly through
+ * Better Auth's public endpoints (sign-up, update-user).
+ *
+ * @param props.fields - The merged `DBFieldAttribute` map for the user
+ *   table (`tables.user.fields`). `getAuthTables` already spreads
+ *   `config.user.additionalFields` into this map, so no separate merge is
+ *   needed here.
+ * @returns Field names whose `input` is not explicitly `false`.
+ */
+function getClientWritableUserFields(props: {
+  fields: Record<string, DBFieldAttribute>;
+}): readonly string[] {
+  return Object.entries(props.fields)
+    .filter(([, attr]) => attr.input !== false)
+    .map(([name]) => name);
+}
+
+/**
  * Creates a Vex auth adapter from a Better Auth configuration.
  *
  * Introspects Better Auth's full merged schema (base fields + plugin fields
@@ -204,6 +222,9 @@ export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdap
     name: "better-auth",
     collections,
     userCollection: userSlug as CollectionSlug,
+    clientWritableUserFields: tables.user
+      ? getClientWritableUserFields({ fields: tables.user.fields })
+      : undefined,
   };
 }
 

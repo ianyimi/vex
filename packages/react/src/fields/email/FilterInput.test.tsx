@@ -24,4 +24,9 @@ describe("EmailFilterInput", () => {
     render(<EmailFilterInput field={fieldDef} value="" op="eq" onChange={vi.fn()} disabled />);
     expect(screen.getByRole("textbox")).toBeDisabled();
   });
+
+  it("exposes the field's label as the input's accessible name", () => {
+    render(<EmailFilterInput field={fieldDef} value="" op="eq" onChange={vi.fn()} />);
+    expect(screen.getByRole("textbox", { name: "Email" })).toBeInTheDocument();
+  });
 });

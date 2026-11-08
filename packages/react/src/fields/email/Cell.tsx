@@ -36,7 +36,7 @@ export function EmailFieldCell<TData extends TDocument = TDocument>(
       )
     : `mailto:${props.value}`;
   return (
-    <VexLink href={href}>
+    <VexLink href={href} aria-label={props.isTitleField ? undefined : `Email ${props.value}`}>
       <span className="font-bold" title={props.value}>
         {props.value.length > 77 ? `${props.value.slice(0, 77)}...` : props.value}
       </span>
