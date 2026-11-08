@@ -5,43 +5,58 @@ on:
 
 # Every Vercel project posts its own deployment_status for the same commit, so
 # the group includes the environment; keyed on the SHA alone, a vex-docs event
-# (whose jobs skip) cancels the in-flight vex-www run.
+# cancels the in-flight vex-www run.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.deployment.sha }}-${{ github.event.deployment_status.environment }}
   cancel-in-progress: true
 
+# Every Vercel project's deployment triggers this workflow, and a PR lists only
+# the newest check per name. So a non-www run must not reuse the names `axe` /
+# `lighthouse`: it would hide the vex-www result, and a skipped job would
+# satisfy a required check of that name. Each job therefore always starts (a
+# job-level `if` would skip it before its `name` expression is evaluated, and
+# the PR would show the raw expression), names itself after the deployment,
+# and gates its steps on QUALITY_TARGET instead.
 jobs:
   axe:
-    # Every Vercel project's deployment triggers this workflow, and the PR lists
-    # only the newest check per name, so a skipped vex-docs job named `axe` would
-    # hide the vex-www result (and would satisfy a required `axe` check).
-    name: "${{ github.event.deployment_status.environment == 'Preview – vex-www' && 'axe' || format('axe (skipped: {0})', github.event.deployment_status.environment) }}"
-    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www'
+    name: "${{ (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www') && 'axe' || format('axe (not run: {0})', github.event.deployment_status.environment) }}"
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      QUALITY_TARGET: ${{ github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www' }}
     steps:
+      - name: Not the vex-www preview; nothing to audit
+        if: env.QUALITY_TARGET != 'true'
+        run: echo "Deployment ${{ github.event.deployment_status.environment }} (${{ github.event.deployment_status.state }}) is not audited."
+
       - name: Checkout
+        if: env.QUALITY_TARGET == 'true'
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.deployment.sha }}
 
       - name: Setup pnpm
+        if: env.QUALITY_TARGET == 'true'
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
 
       - name: Setup Node.js
+        if: env.QUALITY_TARGET == 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: "pnpm"
 
       - name: Install dependencies
+        if: env.QUALITY_TARGET == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
+        if: env.QUALITY_TARGET == 'true'
         run: pnpm --filter www exec playwright install --with-deps chromium
 
       - name: Run axe suite against the preview
+        if: env.QUALITY_TARGET == 'true'
         run: pnpm --filter www exec playwright test e2e/axe.e2e.ts
         env:
           CI: "1"
@@ -49,7 +64,7 @@ jobs:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       - name: Upload axe results
-        if: always()
+        if: always() && env.QUALITY_TARGET == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: axe-results
@@ -58,34 +73,44 @@ jobs:
           retention-days: 14
 
   lighthouse:
-    # Named apart for non-www deployments; see the axe job.
-    name: "${{ github.event.deployment_status.environment == 'Preview – vex-www' && 'lighthouse' || format('lighthouse (skipped: {0})', github.event.deployment_status.environment) }}"
-    if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www'
+    name: "${{ (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www') && 'lighthouse' || format('lighthouse (not run: {0})', github.event.deployment_status.environment) }}"
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      QUALITY_TARGET: ${{ github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www' }}
     steps:
+      - name: Not the vex-www preview; nothing to audit
+        if: env.QUALITY_TARGET != 'true'
+        run: echo "Deployment ${{ github.event.deployment_status.environment }} (${{ github.event.deployment_status.state }}) is not audited."
+
       - name: Checkout
+        if: env.QUALITY_TARGET == 'true'
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.deployment.sha }}
 
       - name: Setup pnpm
+        if: env.QUALITY_TARGET == 'true'
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
 
       - name: Setup Node.js
+        if: env.QUALITY_TARGET == 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: "pnpm"
 
       - name: Install dependencies
+        if: env.QUALITY_TARGET == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Calibrate CPU throttling to this runner
+        if: env.QUALITY_TARGET == 'true'
         run: pnpm --filter www exec node e2e/lighthouseCpuSlowdown.cjs
 
       - name: Run Lighthouse CI against the preview
+        if: env.QUALITY_TARGET == 'true'
         run: pnpm --filter www exec lhci autorun
         env:
           CI: "1"
@@ -93,11 +118,11 @@ jobs:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       - name: Summarize Lighthouse results
-        if: always()
+        if: always() && env.QUALITY_TARGET == 'true'
         run: pnpm --filter www exec node e2e/lighthouseSummary.cjs
 
       - name: Upload Lighthouse reports
-        if: always()
+        if: always() && env.QUALITY_TARGET == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lighthouse-reports
