@@ -4,7 +4,7 @@ import { buttonVariants, cn, Icon } from "@vexcms/react";
 import { LogIn } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import { signOut, useSession } from "~/auth/client";
 
@@ -49,6 +49,14 @@ export function SessionButton({
   const { data: session, isPending: isSessionPending } = useSession();
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  // The server always renders the pending control: there is no session store
+  // on the server. Better Auth's `useSession()` is an external store, so if its
+  // request settles before React hydrates (a fast or blocked fetch), the first
+  // client render would produce a different element and React would discard
+  // and client-render the whole page. `useSyncExternalStore` reads the server
+  // snapshot (`false`) while hydrating and the client one (`true`) after, so
+  // the first client render stays identical to the server's.
+  const isHydrated = useSyncExternalStore(subscribeNever, () => true, () => false);
 
   const classes = cn(
     buttonVariants({ size, variant: "ghost" }),
@@ -60,7 +68,7 @@ export function SessionButton({
   // than a spinner: the bar is right-aligned, so if this flips to the slightly
   // wider "Sign out" only the slot itself grows leftward — GitHub and the
   // buttons after it never move.
-  if (isSessionPending) {
+  if (!isHydrated || isSessionPending) {
     return (
       <button aria-busy className={classes} disabled type="button">
         <LogIn size={14} />
@@ -110,4 +118,12 @@ export function SessionButton({
       Sign out
     </Button>
   );
+}
+
+/**
+ * Nothing to subscribe to. Module-level so its identity is stable:
+ * `useSyncExternalStore` resubscribes whenever `subscribe` changes.
+ */
+function subscribeNever(): () => void {
+  return () => undefined;
 }

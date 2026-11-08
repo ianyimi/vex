@@ -87,6 +87,7 @@ catalog:
   platejs: 53.5.2
   pluralize-esm: 9.0.5
   prettier: 3.9.5
+  puppeteer-core: 25.16.0
   react: 19.2.7
   react-day-picker: 9.6.0
   react-dom: 19.2.7

@@ -258,6 +258,9 @@ catalogs:
     prettier:
       specifier: 3.9.5
       version: 3.9.5
+    puppeteer-core:
+      specifier: 25.16.0
+      version: 25.16.0
     react:
       specifier: 19.2.7
       version: 19.2.7
@@ -796,6 +799,9 @@ importers:
       prettier:
         specifier: 'catalog:'
         version: 3.9.5
+      puppeteer-core:
+        specifier: 'catalog:'
+        version: 25.16.0(proxy-agent@6.5.0)
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.2
@@ -10492,7 +10498,7 @@ snapshots:
       jose: 6.2.3
       kysely: 0.29.3
       nanostores: 1.4.0
-      zod: 4.4.3
+      zod: 4.6.7
     optionalDependencies:
       '@opentelemetry/api': 1.10.0
 
@@ -10506,7 +10512,7 @@ snapshots:
       jose: 6.2.3
       kysely: 0.29.3
       nanostores: 1.4.0
-      zod: 4.4.3
+      zod: 4.6.7
     optionalDependencies:
       '@opentelemetry/api': 1.10.0
 

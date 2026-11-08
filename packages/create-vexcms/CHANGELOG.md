@@ -32,6 +32,18 @@
   `CODE_COLOR_REPLACEMENTS` as the server. Before, those panes shipped Tokyo Night's raw
   comment colour `#51597D`, which is 3.00:1 on `--color-code-bg` and fails WCAG AA.
 
+- The marketing-site template's header `SessionButton` no longer breaks hydration. Better
+  Auth's `useSession()` is an external store, so when the session request settled before
+  React hydrated, the first client render produced a "Sign in" link where the server had
+  rendered the pending button. React then threw error #418 and client-rendered the whole
+  page, which delayed LCP. The button now renders its pending state until hydration
+  finishes.
+
+- The scaffolded browser auth client (`src/auth/client.tsx`) now calls `/api/auth` on
+  `window.location.origin` instead of `NEXT_PUBLIC_SITE_URL`. On a Vercel preview the
+  deployment URL differs from the configured site URL, and the CSP's `connect-src 'self'`
+  blocked the session request. Server renders still use `NEXT_PUBLIC_SITE_URL`.
+
 ## 0.1.0-alpha.30
 
 ### Patch Changes

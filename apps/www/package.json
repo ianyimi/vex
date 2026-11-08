@@ -83,6 +83,7 @@
     "eslint-plugin-react-hooks": "catalog:",
     "jsdom": "catalog:",
     "prettier": "catalog:",
+    "puppeteer-core": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",

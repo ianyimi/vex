@@ -27,7 +27,11 @@ import { env } from "~/env.mjs"
  */
 export const authClient = createAuthClient({
   basePath: "/api/auth",
-  baseURL: env.NEXT_PUBLIC_SITE_URL,
+  // Same-origin in the browser: a Vercel deployment's own URL (`….vercel.app`)
+  // differs from `NEXT_PUBLIC_SITE_URL`, and a cross-origin call is blocked by
+  // the CSP's `connect-src 'self'`. The env value only serves server renders,
+  // where there is no window.
+  baseURL: typeof window === "undefined" ? env.NEXT_PUBLIC_SITE_URL : window.location.origin,
   plugins: [adminClient(), anonymousClient(), apiKeyClient(), convexClient()],
 })
 

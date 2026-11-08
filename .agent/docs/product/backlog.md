@@ -1420,3 +1420,27 @@ project and the `@convex` alias, then copy the two test files.
 **Blocks.** Nothing.
 
 **Why deferred.** Test infrastructure in `apps/test`, outside the polish slice.
+
+---
+
+## Back/forward cache for live-data pages
+
+**What.** Every `apps/www` site page keeps the Convex client's WebSocket open for live
+content, and Chrome won't put a page with an open WebSocket in the back/forward cache
+(Lighthouse `bf-cache`: "Pages with WebSocket can't enter back/forward cache", failure type
+"Pending browser support"). Back/forward navigation reloads the page instead of restoring it.
+
+**Why.** Instant back/forward is a large perceived-speed win on a marketing site, and
+Lighthouse reports it on every audited URL. Evidence: PR #69 Lighthouse runs (2026-11-08);
+`apps/www/lighthouserc.cjs` holds `bf-cache` at `warn` until this lands.
+
+**Lift.** Small to medium. Close the Convex client (or pause its socket) on `pagehide`, reopen
+on `pageshow` when `event.persisted`, and re-subscribe active queries. Needs a check that
+react-query caches and live-preview overlays survive the restore. Mirror into `apps/test` and
+the `base-nextjs` provider.
+
+**Blocks.** Nothing; `ConvexReactClient` exposes `close()`, and a new client per restore
+fits `getClients()` in `components/providers/convex.tsx`.
+
+**Why deferred.** It's a behaviour change in the shared Convex provider. It's out of scope
+for getting the quality checks green, and `bf-cache` stays reported in CI meanwhile.
