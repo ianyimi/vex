@@ -44,6 +44,19 @@
   deployment URL differs from the configured site URL, and the CSP's `connect-src 'self'`
   blocked the session request. Server renders still use `NEXT_PUBLIC_SITE_URL`.
 
+- Both template highlighters (marketing-site `highlight.ts` / `highlightClient.ts`) share
+  a 5 s per-line `tokenizeTimeLimit` instead of Shiki's 500 ms default. A cold first
+  highlight under load could stop partway through a line, and everything after a `//`
+  comment then rendered as comment.
+
+- The marketing-site CTA block renders actions that point at a file (`/brand/logo.svg`)
+  as plain anchors. `next/link` prefetched them as routes (`?_rsc=…`) and logged a 404
+  for each one.
+
+- The scaffolded client providers set Zod to `jitless` in the browser (`src/lib/zodJitless.ts`).
+  Zod 4's `new Function` probe on the first form parse was blocked by the production CSP and
+  logged a CSP violation on every auth page.
+
 ## 0.1.0-alpha.30
 
 ### Patch Changes

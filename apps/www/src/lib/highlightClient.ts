@@ -5,7 +5,12 @@ import { createJavaScriptRegexEngine } from "shiki/engine/javascript"
 
 import type { CodeLanguage } from "./highlight"
 
-import { CODE_COLOR_REPLACEMENTS, CODE_LANGUAGES, CODE_THEME } from "./highlight"
+import {
+  CODE_COLOR_REPLACEMENTS,
+  CODE_LANGUAGES,
+  CODE_THEME,
+  CODE_TOKENIZE_TIME_LIMIT_MS,
+} from "./highlight"
 
 let browserHighlighterPromise: null | Promise<Highlighter> = null
 
@@ -40,6 +45,7 @@ export async function highlightCodeInBrowser(props: {
     colorReplacements: CODE_COLOR_REPLACEMENTS,
     lang: props.language,
     theme: CODE_THEME,
+    tokenizeTimeLimit: CODE_TOKENIZE_TIME_LIMIT_MS,
   })
   const match = /<code[^>]*>([\s\S]*)<\/code>/.exec(html)
   return match?.[1] ?? html

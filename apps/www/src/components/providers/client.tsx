@@ -1,5 +1,8 @@
 "use client"
 
+// First, so Zod is jitless before any import below can run a parse.
+import "~/lib/zodJitless"
+
 import { type PropsWithChildren } from "react"
 
 import { VexConfigProvider } from "@vexcms/react"
