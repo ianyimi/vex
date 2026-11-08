@@ -3,8 +3,11 @@ name: quality
 on:
   deployment_status
 
+# Every Vercel project posts its own deployment_status for the same commit, so
+# the group includes the environment; keyed on the SHA alone, a vex-docs event
+# (whose jobs skip) cancels the in-flight vex-www run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.deployment.sha }}
+  group: ${{ github.workflow }}-${{ github.event.deployment.sha }}-${{ github.event.deployment_status.environment }}
   cancel-in-progress: true
 
 jobs:
