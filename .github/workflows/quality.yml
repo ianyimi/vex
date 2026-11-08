@@ -109,10 +109,6 @@ jobs:
         if: env.QUALITY_TARGET == 'true'
         run: pnpm install --frozen-lockfile
 
-      - name: Calibrate CPU throttling to this runner
-        if: env.QUALITY_TARGET == 'true'
-        run: pnpm --filter www exec node e2e/lighthouseCpuSlowdown.cjs
-
       - name: Run Lighthouse CI against the preview
         if: env.QUALITY_TARGET == 'true'
         run: pnpm --filter www exec lhci autorun

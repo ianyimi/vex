@@ -1,7 +1,8 @@
 /**
  * Renders the LHCI results in `.lighthouseci/` as a Markdown job summary: one
  * row per audited URL (best and worst of its runs for the budgeted metrics),
- * then every failed `error`-level assertion. Appends to
+ * then every failed `error`-level assertion and every missed timing target
+ * (those warn rather than fail). Appends to
  * `$GITHUB_STEP_SUMMARY` when set, otherwise prints to stdout. The full
  * per-run HTML/JSON reports ship separately as the `lighthouse-reports`
  * artifact.
@@ -10,6 +11,13 @@ const { appendFileSync, existsSync, readdirSync, readFileSync } = require("node:
 const { join } = require("node:path");
 
 const resultsDir = join(__dirname, "..", ".lighthouseci");
+
+// The simulated timing budgets in lighthouserc.cjs, which warn instead of fail.
+const TIMING_AUDITS = new Set([
+  "categories.performance",
+  "largest-contentful-paint",
+  "total-blocking-time",
+]);
 
 /**
  * Formats the spread of one metric across runs as `best` or `best–worst`.
@@ -65,14 +73,25 @@ function renderSummary() {
   }
 
   const assertionsPath = join(resultsDir, "assertion-results.json");
-  const failures = existsSync(assertionsPath)
-    ? JSON.parse(readFileSync(assertionsPath, "utf8")).filter((a) => !a.passed && a.level === "error")
+  const missed = existsSync(assertionsPath)
+    ? JSON.parse(readFileSync(assertionsPath, "utf8")).filter((a) => !a.passed)
     : [];
+  // Scores are 0–1 and keep two decimals; millisecond values round to integers.
+  const num = (v) => (Math.abs(v) <= 1 ? v.toFixed(2) : String(Math.round(v)));
+  const describe = (a) => {
+    const audit = a.auditProperty ? `${a.auditId}.${a.auditProperty}` : a.auditId;
+    return `- \`${new URL(a.url).pathname}\` **${audit}**: ${num(a.actual)} (target ${a.operator} ${a.expected}; runs: ${a.values.map(num).join(", ")})`;
+  };
+
+  const failures = missed.filter((a) => a.level === "error");
   lines.push("", failures.length ? "### Failed assertions" : "All `error`-level assertions passed.", "");
-  for (const failure of failures) {
-    lines.push(
-      `- \`${new URL(failure.url).pathname}\` **${failure.auditId}**: ${failure.actual} (expected ${failure.operator} ${failure.expected}; runs: ${failure.values.join(", ")})`,
-    );
+  lines.push(...failures.map(describe));
+
+  const timing = missed.filter(
+    (a) => a.level === "warn" && TIMING_AUDITS.has(a.auditProperty ? `${a.auditId}.${a.auditProperty}` : a.auditId),
+  );
+  if (timing.length) {
+    lines.push("", "### Timing targets missed (reported, not gating)", "", ...timing.map(describe));
   }
   return `${lines.join("\n")}\n`;
 }
