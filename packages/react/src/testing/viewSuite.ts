@@ -769,7 +769,37 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
         }),
         { convex: t },
       );
-      expect(utils.getByText("Document not found.")).toBeInTheDocument();
+      expect(utils.getByText("Document not found")).toBeInTheDocument();
+      expect(utils.getByText(`Document "${doc._id}" doesn't exist.`)).toBeInTheDocument();
+      expect(
+        utils.getByRole("button", { name: `Back to ${testCollection.labels.plural}` }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the document not-found state when no document id is given", () => {
+      const utils = renderView(
+        createElement(CollectionEditView, {
+          collection: testCollection.slug,
+          documentId: undefined,
+          initialData: null,
+        }),
+        { convex: t },
+      );
+      expect(utils.getByText("Document not found")).toBeInTheDocument();
+      expect(utils.getByText(`No document in "${testCollection.slug}" to show.`)).toBeInTheDocument();
+    });
+
+    it("shows the collection not-found state when the collection slug does not resolve", () => {
+      const utils = renderView(
+        createElement(CollectionEditView, {
+          collection: "does-not-exist" as typeof testCollection.slug,
+          documentId: doc._id,
+          initialData: doc,
+        }),
+        { convex: t },
+      );
+      expect(utils.getByText("Collection not found")).toBeInTheDocument();
+      expect(utils.getByText(`Collection "does-not-exist" doesn't exist.`)).toBeInTheDocument();
     });
 
     it("renders an optional field that is entirely absent from the seeded document", () => {

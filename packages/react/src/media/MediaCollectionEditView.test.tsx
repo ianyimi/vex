@@ -132,3 +132,34 @@ describe("MediaCollectionEditView — document appearing after a missing prefetc
     consoleError.mockRestore();
   });
 });
+
+describe("MediaCollectionEditView — not found", () => {
+  const t = convexTest(schema, testModules);
+
+  it("shows the collection not-found state when the collection slug does not resolve", () => {
+    const utils = renderView(
+      createElement(MediaCollectionEditView, {
+        collection: "does-not-exist" as (typeof testClientConfig.mediaCollections)[number]["slug"],
+        documentId: undefined,
+        initialData: null,
+      }),
+      { convex: t },
+    );
+    expect(utils.getByText("Collection not found")).toBeInTheDocument();
+    expect(utils.getByText(`Collection "does-not-exist" doesn't exist.`)).toBeInTheDocument();
+    expect(utils.getByRole("button", { name: "Back to dashboard" })).toBeInTheDocument();
+  });
+
+  it("shows the document not-found state when the document does not resolve", async () => {
+    const utils = renderView(
+      createElement(MediaCollectionEditView, {
+        collection: testClientConfig.mediaCollections[0].slug,
+        documentId: "missing-doc" as never,
+        initialData: null,
+      }),
+      { convex: t },
+    );
+    expect(await utils.findByText("Document not found")).toBeInTheDocument();
+    expect(utils.getByText(`Document "missing-doc" doesn't exist.`)).toBeInTheDocument();
+  });
+});
