@@ -1,5 +1,32 @@
 # create-vexcms
 
+## 0.1.0-alpha.31
+
+### Patch Changes
+
+- 910f2e7: Accessibility pass on the admin panel against WCAG 2.2 AA and the WAI-ARIA APG patterns.
+  Sidebar actions, multi-select chips, pagination, date/time pickers, resizable panels and
+  data-table labels expose correct names, roles and keyboard support; data-table column
+  resize is keyboard-operable (arrows, Home/End) and capped at 90% of the table container.
+  Array fields, timestamps, media and relationship inputs, and the richtext toolbar gain
+  accessible names and status regions; dialogs set initial focus; `ThemeProvider` applies
+  the stored theme before paint in client-only renders.
+
+  Both `create-vexcms` templates are re-synced from the reference apps: production-only CSP
+  and security headers, root `not-found` pages, drafts and live preview on the
+  marketing-site `pages` collection, and a session button in the site header.
+
+- 910f2e7: Scaffolded `user.additionalFields.roles` now carries `input: false`. Without it, Better
+  Auth 1.6.23 writes any `roles` value a caller sends on `/sign-up/email` or `/update-user`
+  straight onto the user row — `additionalFields` only sets a _default_, not a block on
+  caller-supplied input. A visitor who knows the field name can `POST` `{ "roles": ["admin"] }`
+  during sign-up and become an admin on first request, no further exploit needed.
+
+  Existing projects: add `input: false` next to `roles` in `src/auth/schema.ts` (or wherever
+  your scaffold's `authSchema.user.additionalFields` lives) and redeploy. Any other
+  `additionalFields` entry the server sets itself — never one a sign-up or profile-update
+  form should carry — needs the same flag.
+
 ## 0.1.0-alpha.30
 
 ### Patch Changes
