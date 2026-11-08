@@ -27,6 +27,11 @@
   `additionalFields` entry the server sets itself — never one a sign-up or profile-update
   form should carry — needs the same flag.
 
+- The marketing-site template's browser code highlighter (`highlightCodeInBrowser`, used
+  when live content misses the server-built highlight map) now applies the same
+  `CODE_COLOR_REPLACEMENTS` as the server. Before, those panes shipped Tokyo Night's raw
+  comment colour `#51597D`, which is 3.00:1 on `--color-code-bg` and fails WCAG AA.
+
 ## 0.1.0-alpha.30
 
 ### Patch Changes
