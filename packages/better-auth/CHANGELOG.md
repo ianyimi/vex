@@ -1,5 +1,7 @@
 # @vexcms/better-auth
 
+## 0.1.0-alpha.32
+
 ## 0.1.0-alpha.31
 
 ### Patch Changes
