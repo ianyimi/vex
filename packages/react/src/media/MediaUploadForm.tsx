@@ -10,6 +10,8 @@ import type { AdminDataField, MediaCollectionConfig, UploadField } from "@vexcms
 import { Button, Input, Label, Icon } from "../ui";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { AppForm } from "../forms";
+import { getVexErrorMessage } from "../utils/errors";
+import { toast } from "sonner";
 
 /**
  * Props for MediaUploadForm component.
@@ -315,7 +317,7 @@ export function MediaUploadForm({
         form.reset();
       } catch (error) {
         console.error("Upload failed:", error);
-        // TODO: Show error toast
+        toast.error("Upload failed", { description: getVexErrorMessage(error) });
       }
     },
   });
