@@ -42,9 +42,12 @@ const assertions = {
 // `/tour` is the only audited page whose LCP element is an image (a
 // screenshot). Lighthouse's simulation charges it every script requested
 // before it painted, so its LCP flips between ~1.8 s and ~4.4 s with server
-// response time while the observed paint stays ~200 ms. It warns there; every
-// text-LCP route keeps the hard gate. The patterns are disjoint because LHCI
-// evaluates each matrix entry on its own.
+// response time while the observed paint stays ~200 ms. LCP is a quarter of
+// the performance score, so the same flip moves `/tour`'s score between
+// ~0.99 and ~0.82 on identical code (dev 155de007 vs release PR #74,
+// 2026-11-09). Both warn there; every text-LCP route keeps the hard gates.
+// The patterns are disjoint because LHCI evaluates each matrix entry on its
+// own.
 const TOUR_URL = "/tour/?$";
 
 module.exports = {
@@ -59,6 +62,7 @@ module.exports = {
         {
           assertions: {
             ...assertions,
+            "categories:performance": ["warn", { minScore: 0.9 }],
             "largest-contentful-paint": ["warn", { maxNumericValue: 2500 }],
           },
           matchingUrlPattern: TOUR_URL,
