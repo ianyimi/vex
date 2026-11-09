@@ -1,5 +1,99 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.33
+
+### Patch Changes
+
+- 64f2ef7: The six remaining "TODO: add not found view" placeholders in the collection, global, and media edit views now render the shared `AdminNotFound` state instead of a bare `<p>` line. Each shows the caller-supplied slug or id in its detail line. A missing collection or global links back to the dashboard. A missing document links back to its collection's list.
+- 8cf0b32: The admin panel renders icons from lucide's full icon set again instead of loading each one on
+  demand. On-demand loading made every admin icon flash its placeholder on page refresh.
+  `AdminLayout` now mounts an internal `IconComponentsProvider` with `lucide-react`'s `icons`, so
+  `Icon` renders the real SVG in the server HTML and on hydration. The cost is a larger `/admin`
+  bundle. Public pages are unchanged: they still load icons on demand, or render them from
+  `IconNodeProvider`, and never import the full set.
+
+  The JSON editor's loading fallback now carries `aria-required`, so a required JSON field no
+  longer reads as optional to assistive tech while CodeMirror loads.
+
+- 8cf0b32: Fixes five issues found in the 2026-11-09 `create-vexcms` run-through and its follow-up polish pass:
+
+  - **Silent save failures.** `DocumentSaveAction`'s non-versioned update/upsert path had no
+    try/catch — a rejected `update`/`upsert` mutation propagated out of `handleSave` as an
+    unhandled promise rejection, and `runtime.onSaved` never ran. Now caught and routed through
+    `applyVexFieldErrors`, mirroring the versioned (draft) path and `VersionPublishAction`; the
+    mutation's own `useVexMutation` `onError` still shows the visible toast. Audited every other
+    admin mutation call site for the same missing-catch pattern and fixed the same way:
+    `VersionUnpublishAction`, `ListViewBulkDeleteAction`, `ListViewRowDeleteAction`,
+    `MediaCollectionListView`'s bulk delete, and `MediaUploadDropzone`/`MediaUploadForm` (the
+    latter two previously had no visible error at all on an upload failure — `generateUploadUrl`
+    is a plain `useMutation` with no `onError`). Both `createMediaDocument` calls now also pass
+    `errorToast: false`: without it, a rejected create fired its own catch-and-toast AND
+    `useVexMutation`'s default "Request failed" toast — two toasts for one failure.
+  - **Create dialog overflow.** `ListViewCreateDocumentForm`'s wrapping element had no flex sizing,
+    so `DialogFooter` sat outside the scrollable region on a long form and spilled below the
+    panel. The wrapper now fills the dialog's remaining height (`flex min-h-0 flex-1 flex-col`) —
+    fields scroll inside the dialog, header and footer stay pinned.
+  - **Read-only fields in create forms.** `ListViewCreateDocumentForm` picked `required` fields
+    without excluding `admin.readOnly` — a create form asked for a value it could never persist
+    (e.g. Better Auth's `emailVerified`/`createdAt`/`updatedAt`). Excluded in both `"required"`
+    and `"all"` fieldsMode.
+  - **Hide "New" on the auth user collection (decision D2).** Added top-level `disableCreate` to
+    `CollectionConfig` (`@vexcms/core`) — hides the list view's "+ New" action
+    (toolbar and empty state) and blocks `?createNew=true` outright, even hand-typed. Set from
+    `@vexcms/better-auth`'s adapter on the user collection only: users arrive via sign-up, never
+    an admin-authored create form.
+  - **`disableCreate` gap in relationship fields and Duplicate.** Decision D2's gate only
+    covered the list view's own "+ New"/`?createNew=true` entry points — `RelationshipPicker`
+    still rendered a working Create tab (`ListViewCreateDocumentForm`) for a `disableCreate`
+    target collection, reachable from both its own tab trigger and `EmptyInput`'s "Create …"
+    button, which now hides too. `CollectionDuplicateMenuItem`'s "Duplicate" had the
+    same gap for its own collection: offered a working admin-authored create (via its all-fields
+    conflict-fallback dialog) on a collection that explicitly has none. All three now check
+    `disableCreate` and render nothing / Select-only, the same gate `ListViewCreateAction`/
+    `ListViewCreateDocumentModal` already applied.
+
+- 87376fb: The list view's title link (the `useAsTitle` cell in every data-table row) now has a 44px-tall
+  tap area, matching the Apple HIG / Android touch-target guidance. Previously the link rendered
+  at its text line box (~16px). The link uses a minimum height with a matching negative vertical
+  margin, so row height and desktop density are unchanged. The data-table cell wrapper now clips
+  long text horizontally only, so the tap area is not cut off at the top and bottom, and in compact
+  density the tap area is capped at the 36px row height.
+- 8cf0b32: `MediaUploadDropzone` and `MediaUploadForm` now measure an uploaded image's pixel
+  width/height via `createImageBitmap` before creating its media document, and pass them
+  through to `createMediaDocument`. Previously neither component measured dimensions at
+  all, so the `width`/`height` fields `@vexcms/file-storage-convex`'s `defineMediaCollection`
+  declares stayed unset after every upload regardless of the file.
+
+  Non-image MIME types and files the browser can't decode are left with `width`/`height`
+  omitted entirely, matching the fields' existing optional semantics.
+
+- b33d9a3: Failed media uploads now show an error toast with the readable error message, instead of only logging to the console.
+- 8cf0b32: `@vexcms/react/server`'s `ThemeScript` now exports its inline theme-init IIFE source as a
+  standalone `buildThemeInitScript({ storageKey })` function, so a consumer can reuse the exact
+  script `<ThemeScript />` renders without also rendering the Server Component itself.
+
+  Added for Next.js App Router consumers specifically: rendering `<ThemeScript />` directly from
+  `app/layout.tsx` can trigger React's dev-only "Encountered a script tag while rendering React
+  component" console warning whenever `next dev` answers a route with its minimal error shell
+  (e.g. a thrown `notFound()`) and reconciles the real root layout entirely client-side from the
+  RSC payload — a `<script>` host node React commits that way is never executed and React warns
+  about it, regardless of which API produced the element (`next/script`'s `beforeInteractive`
+  strategy does not avoid this either; verified against its actual source). A genuine Server
+  Component only ever runs once, so it can't distinguish "I'm raw server HTML" from "I'm being
+  committed by the client reconciler" to render differently for the second case — only a Client
+  Component checking `typeof window` can, which is why `buildThemeInitScript` now exists as a
+  separable primitive: apps build a small local `"use client"` wrapper around it that renders the
+  real script during SSR and `null` on every client render (see `ThemeScript.tsx`'s doc comment
+  for the full write-up and the live verification this was checked against). `ThemeScript` itself
+  is unchanged and still the right choice for Remix, Vite, and the Next.js pages router.
+
+- Updated dependencies [8cf0b32]
+- Updated dependencies [8cf0b32]
+- Updated dependencies [8cf0b32]
+- Updated dependencies [8cf0b32]
+  - @vexcms/core@0.1.0-alpha.33
+  - @vexcms/better-auth@0.1.0-alpha.33
+
 ## 0.1.0-alpha.32
 
 ### Patch Changes

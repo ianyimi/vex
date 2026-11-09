@@ -1,5 +1,29 @@
 # www
 
+## 0.1.0-alpha.33
+
+### Patch Changes
+
+- Updated dependencies [8cf0b32]
+- Updated dependencies [64f2ef7]
+- Updated dependencies [8cf0b32]
+- Updated dependencies [8cf0b32]
+- Updated dependencies [8cf0b32]
+- Updated dependencies [87376fb]
+- Updated dependencies [8cf0b32]
+- Updated dependencies [8cf0b32]
+- Updated dependencies [8cf0b32]
+- Updated dependencies [8cf0b32]
+- Updated dependencies [b33d9a3]
+- Updated dependencies [8cf0b32]
+- Updated dependencies [8cf0b32]
+  - @vexcms/core@0.1.0-alpha.33
+  - @vexcms/react@0.1.0-alpha.33
+  - @vexcms/better-auth@0.1.0-alpha.33
+  - @vexcms/next@0.1.0-alpha.33
+  - @vexcms/file-storage-convex@0.1.0-alpha.33
+  - @vexcms/richtext-plate@0.1.0-alpha.33
+
 ## 0.1.0-alpha.32
 
 ### Patch Changes
