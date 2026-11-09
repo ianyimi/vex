@@ -89,11 +89,18 @@ export function ListViewCreateDocumentForm({
   });
 
   const dataFields = getDataFields({ fields: collection.fields });
+  // `admin.readOnly` fields (e.g. the auth adapter's `emailVerified`/`createdAt`/
+  // `updatedAt` — `betterAuthAttrToVexField` marks every non-editable system field
+  // this way) are server-managed: a create form never collects them, in EITHER
+  // mode — "required" would otherwise ask for a value it can't accept, and "all"
+  // would render a disabled-looking input for a field this write path never sends.
   const fieldKeys =
     fieldsMode === "all"
-      ? Object.keys(dataFields)
+      ? Object.entries(dataFields)
+          .filter(([, fieldDef]) => !fieldDef.admin.readOnly)
+          .map(([fieldKey]) => fieldKey)
       : Object.entries(dataFields)
-          .filter(([, fieldDef]) => fieldDef.required)
+          .filter(([, fieldDef]) => fieldDef.required && !fieldDef.admin.readOnly)
           .map(([fieldKey]) => fieldKey);
 
   const form = useFieldsForm({
@@ -131,6 +138,7 @@ export function ListViewCreateDocumentForm({
 
   return (
     <div
+      className="flex min-h-0 flex-1 flex-col"
       onSubmitCapture={(event) => {
         if (isSubmittingRef.current) {
           event.preventDefault();

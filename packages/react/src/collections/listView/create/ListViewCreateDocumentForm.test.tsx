@@ -142,4 +142,107 @@ describe("ListViewCreateDocumentForm", () => {
     const docs = await createdDocuments(t);
     expect(docs).toHaveLength(1);
   });
+
+  it("excludes a readOnly required field from the required fieldsMode (issue 3)", () => {
+    // Mirrors the auth adapter's `emailVerified`/`createdAt`/`updatedAt` —
+    // `admin.readOnly: true` AND `required: true` together, e.g. Better
+    // Auth's system fields. A create form can never collect a value for
+    // these; picking them into `fieldKeys` asked the user to fill a field
+    // the write path can't accept.
+    const readOnlyRequiredCollection = defineCollection({
+      slug: testCollection.slug,
+      fields: {
+        status: text({ required: true }),
+        emailVerified: text({ required: true, admin: { readOnly: true } }),
+      },
+    });
+    const t = convexTest(schema, testModules);
+    const { convexClient, queryClient } = buildConvexStack(t);
+    renderWithVexProviders(
+      <ConvexProvider client={convexClient}>
+        <QueryClientProvider client={queryClient}>
+          <ListViewCreateDocumentForm
+            collection={readOnlyRequiredCollection}
+            onCreated={vi.fn()}
+            onCancel={vi.fn()}
+          />
+        </QueryClientProvider>
+      </ConvexProvider>,
+      { config: defineConfig({ collections: [readOnlyRequiredCollection] }) },
+    );
+    expect(screen.getByLabelText(/^status/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/emailVerified/i)).not.toBeInTheDocument();
+  });
+
+  it("excludes a readOnly field from the all fieldsMode (issue 3)", () => {
+    const readOnlyCollection = defineCollection({
+      slug: testCollection.slug,
+      fields: {
+        status: text({ required: false }),
+        lastSyncedAt: text({ admin: { readOnly: true } }),
+      },
+    });
+    const t = convexTest(schema, testModules);
+    const { convexClient, queryClient } = buildConvexStack(t);
+    renderWithVexProviders(
+      <ConvexProvider client={convexClient}>
+        <QueryClientProvider client={queryClient}>
+          <ListViewCreateDocumentForm
+            collection={readOnlyCollection}
+            fieldsMode="all"
+            onCreated={vi.fn()}
+            onCancel={vi.fn()}
+          />
+        </QueryClientProvider>
+      </ConvexProvider>,
+      { config: defineConfig({ collections: [readOnlyCollection] }) },
+    );
+    expect(screen.getByLabelText(/^status/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/lastSyncedAt/i)).not.toBeInTheDocument();
+  });
+
+  it("creates exactly once on a single submit with two required fields, even when the last field's blur and the submit land in the same tick (issue 5 regression guard)", async () => {
+    // Mirrors the reported repro (marketing `pages`: fill Title+Slug, click
+    // once) with this schema's own two required fields. `fireEvent.blur`
+    // immediately followed by `fireEvent.submit` — no `await` between them,
+    // unlike `userEvent.click`, which yields a microtask between pointer
+    // sub-events — is the worst case for any stale cross-field validation
+    // state blocking or double-firing the submit.
+    const twoRequiredFieldsCollection = defineCollection({
+      slug: testCollection.slug,
+      fields: {
+        status: text({ required: true }),
+        title: text({ required: true }),
+      },
+    });
+    const t = convexTest(schema, testModules);
+    const { convexClient, queryClient } = buildConvexStack(t);
+    const onCreated = vi.fn();
+    renderWithVexProviders(
+      <ConvexProvider client={convexClient}>
+        <QueryClientProvider client={queryClient}>
+          <ListViewCreateDocumentForm
+            collection={twoRequiredFieldsCollection}
+            onCreated={onCreated}
+            onCancel={vi.fn()}
+          />
+        </QueryClientProvider>
+      </ConvexProvider>,
+      { config: defineConfig({ collections: [twoRequiredFieldsCollection] }) },
+    );
+
+    const statusInput = screen.getByLabelText(/^status/i);
+    const titleInput = screen.getByLabelText(/^title/i);
+    fireEvent.change(statusInput, { target: { value: "draft" } });
+    fireEvent.change(titleInput, { target: { value: "Hello World" } });
+    const form = screen.getByRole("button", { name: "Create" }).closest("form")!;
+    fireEvent.blur(titleInput);
+    fireEvent.submit(form);
+
+    await waitFor(() => expect(onCreated).toHaveBeenCalledTimes(1));
+    const docs = await createdDocuments(t);
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?.status).toBe("draft");
+    expect(docs[0]?.title).toBe("Hello World");
+  });
 });

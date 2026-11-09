@@ -71,10 +71,12 @@ harness_model_role: default
      `--monorepo` rewriting. Re-run `node scripts/sync-template-versions.mjs` rather than
      hand-editing a version string.
    - **Prohibited-pattern sweep.** Grep every translated file for `object(`, `ui(`, `tabs(`,
-     `imageUrl(`, `richtext(`, `admin.blockStyles`, a scalar (non-array) `select`
-     `defaultValue`, `_vexDrafts`, `livePreview`, `vex_status`/`vex_version`, and any
-     per-instance `admin.components.Field` — none may survive translation. These are current-API
-     violations or unshipped-feature (versioning/drafts) leftovers, not stylistic nits.
+     `imageUrl(`, `admin.blockStyles`, a scalar (non-array) `select`
+     `defaultValue`, `_vexDrafts`, and any per-instance `admin.components.Field` — none may
+     survive translation. These are current-API violations or unshipped-feature leftovers, not
+     stylistic nits. (`richtext(`, `livePreview` and `vex_status`/`vex_version` were removed
+     from this list 2026-11-06: all three are shipped field/API names used in the apps and
+     templates.)
    - **Regenerate every template artifact when schema/types changed.** If the change touched
      `vex.config.ts`, a collection, a block config, or anything under `packages/core/src/schema`
      or `packages/core/src/fields`, do not hand-edit the template's generated files. All three

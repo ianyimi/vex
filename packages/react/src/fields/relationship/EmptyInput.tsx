@@ -49,15 +49,17 @@ export function RelationshipEmpty({
         >
           Select {label}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon="Plus"
-          onClick={() => onPickerOpen("create")}
-          disabled={readOnly}
-        >
-          Create {targetCollection.labels.singular}
-        </Button>
+        {!targetCollection.disableCreate && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="Plus"
+            onClick={() => onPickerOpen("create")}
+            disabled={readOnly}
+          >
+            Create {targetCollection.labels.singular}
+          </Button>
+        )}
       </div>
     </div>
   );

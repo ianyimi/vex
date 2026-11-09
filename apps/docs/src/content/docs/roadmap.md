@@ -41,6 +41,8 @@ and what isn't planned. This page is the source of truth for the roadmap; the
 - ✅ `commitTs()` field — Convex's own commit timestamp, read-only and auto-indexed; the auto-injected `updatedAt` uses it
 - ✅ Edit-view overhaul — reorganized header with a ⋯ actions menu, every built-in action a replaceable `admin.components.edit` slot contribution, an unsaved-changes guard, duplicate for documents and blocks, and collection URLs under `/admin/collections/<slug>`. See the [admin customization guide](/guides/admin-customization/)
 - ✅ Field input consistency pass — consistent empty, loading, error, and read-only states across inputs, the relationship field included, and the media picker honours the upload field's `accept` filter
+- ✅ Responsive pass across the admin panel and marketing site
+- ✅ Accessibility statement — the admin panel and marketing template's accessibility commitments and known gaps, at [/accessibility](/accessibility/)
 - ✅ Opt-out build-time telemetry — anonymous, aggregate scaffold telemetry collected at `create-vexcms` build time, documented and opt-out in one step. See the [telemetry guide](/guides/telemetry/)
 
 ## After 0.1.0

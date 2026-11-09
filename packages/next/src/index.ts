@@ -101,5 +101,7 @@ export { vexMetadata } from "./seo/vexMetadata";
 export { vexStaticParams } from "./seo/vexStaticParams";
 export { createVexRevalidateRoute } from "./cache/createVexRevalidateRoute";
 export type { CreateVexRevalidateRouteProps } from "./cache/createVexRevalidateRoute";
+export { createVexDraftModeRoute } from "./livePreview/createVexDraftModeRoute";
+export type { CreateVexDraftModeRouteProps } from "./livePreview/createVexDraftModeRoute";
 export type {
 } from "./cache/types";

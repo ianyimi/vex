@@ -14,7 +14,7 @@ import { resolveAccessCall } from "../../../access/resolveAccessCall";
  * Import from `@vexcms/core/server`.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @param args - `{ ctx, config, adapter, collectionSlug, storageId, filename, mimeType, size, alt?, adapterFields? }`.
+ * @param args - `{ ctx, config, adapter, collectionSlug, storageId, filename, mimeType, size, alt?, width?, height?, adapterFields? }`.
  * @returns Promise resolving to the new media document's ID as a string.
  * @example
  * ```ts
@@ -50,6 +50,13 @@ export async function createMediaDocument<TDataModel extends GenericDataModel = 
         mimeType: args.mimeType,
         size: args.size,
         adapterFields: args.adapterFields,
+        // Omitted entirely when not measured (non-image MIME types, or a
+        // decode failure) rather than set to `undefined` — an explicit key
+        // here would count as a "changed field" against `deniedFieldIn`
+        // even with an `undefined` value, rejecting every write for any
+        // role whose field map doesn't happen to list `width`/`height`.
+        ...(args.width !== undefined ? { width: args.width } : {}),
+        ...(args.height !== undefined ? { height: args.height } : {}),
       },
     });
   }
@@ -65,5 +72,7 @@ export async function createMediaDocument<TDataModel extends GenericDataModel = 
     size: args.size,
     alt: args.alt,
     adapterFields: args.adapterFields,
+    ...(args.width !== undefined ? { width: args.width } : {}),
+    ...(args.height !== undefined ? { height: args.height } : {}),
   });
 }

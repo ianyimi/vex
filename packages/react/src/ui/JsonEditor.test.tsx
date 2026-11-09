@@ -22,7 +22,7 @@ vi.mock("./JsonEditorView", () => ({
 describe("JsonEditor", () => {
   it("shows the Suspense fallback textarea synchronously before the lazy-loaded CodeMirror view resolves", () => {
     const { container } = render(
-      <JsonEditor id="settings" value={JSON.stringify({ a: 1 }, null, 2)} onChange={() => {}} />,
+      <JsonEditor id="settings" value={JSON.stringify({ a: 1 }, null, 2)} onChange={() => {}} aria-required />,
     );
 
     // Queried synchronously, before any `await`: the dynamic
@@ -34,5 +34,8 @@ describe("JsonEditor", () => {
     expect(fallback).toHaveAttribute("readonly");
     expect(fallback).toHaveValue(JSON.stringify({ a: 1 }, null, 2));
     expect(container.querySelector('[data-testid="real-editor"]')).toBeNull();
+    // The fallback is the control assistive tech sees until the chunk loads;
+    // without this a required JSON field read as optional on a slow load.
+    expect(fallback).toHaveAttribute("aria-required", "true");
   });
 });

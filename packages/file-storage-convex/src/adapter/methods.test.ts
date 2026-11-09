@@ -78,6 +78,65 @@ describe("createMediaDocument", () => {
       deleted: false,
     });
   });
+
+  it("persists width/height when provided", async () => {
+    const mockCtx = {
+      storage: {
+        getUrl: vi.fn().mockResolvedValue("https://example.com/file.jpg"),
+      },
+      db: {
+        insert: vi.fn().mockResolvedValue("doc_789"),
+      },
+    };
+
+    // @ts-expect-error mocking mutationCtx for file upload operations
+    await createMediaDocument(mockCtx, {
+      collectionSlug: "images",
+      storageId: "storage_789",
+      filename: "cover.png",
+      mimeType: "image/png",
+      size: 204800,
+      alt: "Cover photo",
+      width: 1920,
+      height: 1080,
+    });
+
+    expect(mockCtx.db.insert).toHaveBeenCalledWith("images", {
+      src: "https://example.com/file.jpg",
+      storageId: "storage_789",
+      filename: "cover.png",
+      mimeType: "image/png",
+      size: 204800,
+      alt: "Cover photo",
+      deleted: false,
+      width: 1920,
+      height: 1080,
+    });
+  });
+
+  it("omits width/height entirely (not as undefined keys) when not provided, e.g. a non-image upload", async () => {
+    const mockCtx = {
+      storage: {
+        getUrl: vi.fn().mockResolvedValue("https://example.com/file.pdf"),
+      },
+      db: {
+        insert: vi.fn().mockResolvedValue("doc_321"),
+      },
+    };
+
+    // @ts-expect-error mocking mutationCtx for file upload operations
+    await createMediaDocument(mockCtx, {
+      collectionSlug: "images",
+      storageId: "storage_321",
+      filename: "manual.pdf",
+      mimeType: "application/pdf",
+      size: 51200,
+    });
+
+    const insertedDoc = mockCtx.db.insert.mock.calls[0]?.[1];
+    expect(insertedDoc).not.toHaveProperty("width");
+    expect(insertedDoc).not.toHaveProperty("height");
+  });
 });
 
 describe("deleteMedia", () => {

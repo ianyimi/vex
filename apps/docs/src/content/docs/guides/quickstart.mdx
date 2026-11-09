@@ -20,23 +20,28 @@ no starter collections, or `--orgs` to enable multi-tenant organizations. See th
 [`create-vexcms` flags reference](https://github.com/ianyimi/vex/blob/master/packages/create-vexcms/README.md)
 for the full list, including `--monorepo` and `--yes`.
 
+The CLI asks eight questions (name, framework, dev server port — default `3010` — email/password
+auth, organizations, OAuth providers, `git init`, install). Installing dependencies defaults to
+**no**; if you kept that default, run `pnpm install` in the new folder first.
+
 ## Stand up your deployment
 
 ```bash
 cd my-site
-npx convex dev
+npx convex dev --once
 ```
 
-The first run links or creates your Convex deployment and prints your real
-`NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL`. Copy them into `.env.local`,
-replacing the scaffolded `https://placeholder.convex.cloud` / `.convex.site` placeholders, then
-stop the process.
+The first run links or creates your Convex deployment and writes your real
+`NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` and `CONVEX_DEPLOYMENT` into
+`.env.local`, replacing the scaffolded `https://placeholder.convex.cloud` / `.convex.site`
+placeholders.
 
 `next.config.ts` derives `images.remotePatterns` from `NEXT_PUBLIC_CONVEX_URL` automatically,
 so `next/image` picks up the real deployment's hostname without any further edits.
 
 Better Auth runs inside the Convex deployment, not the Next.js server, so it never reads
-`.env.local`. Push the same `SITE_URL` and `BETTER_AUTH_SECRET` values to the deployment itself:
+`.env.local`. Push the same `SITE_URL` and `BETTER_AUTH_SECRET` values to the deployment itself
+(use the port you chose; `3010` is the default):
 
 ```bash
 npx convex env set SITE_URL http://localhost:3010
@@ -47,18 +52,30 @@ Skipping this step is the most common cause of a `403` on your first sign-in att
 
 ## Run the dev servers
 
+Two terminals:
+
 ```bash
+# Terminal 1: regenerates the schema and types from vex.config.ts, and runs `convex dev`
+pnpm vex:dev
+
+# Terminal 2: Next.js
 pnpm dev
 ```
 
-This starts Next.js, `convex dev`, and the `vex` config watcher together. Open
-`http://localhost:3010` (or the port you chose while scaffolding).
+On the marketing-site starter, seed the starter content once, with `pnpm vex:dev` running:
+
+```bash
+pnpm seed
+```
+
+Open `http://localhost:3010` (or the port you chose while scaffolding).
 
 ## Create your admin account
 
-Sign up from the landing page. The **first** account created is automatically promoted to admin
-and redirected into `/admin` — every VexCMS project boots from an empty database with no
-pre-seeded credentials.
+Sign up — from the landing page's **Create Admin Account** button on a `--bare` project, or
+**Sign in** → **Sign up** in the marketing site's header. The **first** account created is
+automatically promoted to admin and redirected into `/admin` — every VexCMS project boots from
+an empty database with no pre-seeded credentials.
 
 ## Next steps
 

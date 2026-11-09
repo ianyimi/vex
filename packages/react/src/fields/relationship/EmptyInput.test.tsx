@@ -64,4 +64,25 @@ describe("RelationshipEmpty", () => {
       screen.getByRole("button", { name: "Create Document" }),
     ).toBeDisabled();
   });
+
+  it("hides the Create button for a disableCreate target collection, keeping Select", () => {
+    const disableCreateCollection: CollectionConfig = {
+      ...targetCollection,
+      disableCreate: true,
+    };
+    render(
+      <RelationshipEmpty
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={disableCreateCollection}
+        readOnly={false}
+        onPickerOpen={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Select Documents" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Create Document" }),
+    ).not.toBeInTheDocument();
+  });
 });

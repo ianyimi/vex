@@ -71,7 +71,12 @@ export async function update<
   DataModel extends GenericDataModel,
   TCollectionSlug extends CollectionSlug,
 >(args: UpdateServerArgs<DataModel, TCollectionSlug>): Promise<void> {
-  const collection = args.config.collections.find((c) => c.slug === args.collection);
+  // Media collections (`config.mediaCollections`) are edited through the same
+  // mutation as every other collection — the admin edit view for an image calls
+  // `vex:update` — so both lists are searched.
+  const collection =
+    args.config.collections.find((c) => c.slug === args.collection) ??
+    args.config.mediaCollections?.find((c) => c.slug === args.collection);
   if (!collection) {
     throw new ConvexError(`No collection registered with slug "${args.collection}"`);
   }

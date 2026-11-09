@@ -60,6 +60,8 @@ const schema = defineSchema({
     size: v.number(),
     src: v.optional(v.string()),
     storageId: v.string(),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
   }).searchIndex("search_filename", { searchField: "filename", filterFields: [] }),
   // Minimal history table for the unpublish confirmation dialog's
   // `vex:listVersions` fake (bridge.ts): an empty table reads as "no earlier

@@ -16,7 +16,7 @@ import { Icon as LucideIcon } from "lucide-react";
 // import below keeps the real types via the aliases imported above instead.
 // @ts-expect-error -- see comment above; no declaration for the extension-qualified runtime path
 import { DynamicIcon as UntypedDynamicIcon } from "lucide-react/dynamic.mjs";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo, type ComponentType } from "react";
 
 import { iconKeyOf, isIconName, type IconKey } from "./iconKey";
 
@@ -44,6 +44,25 @@ export function IconNodeProvider(props: { nodes: IconNodeMap; children: ReactNod
   return <IconNodeContext.Provider value={value}>{props.children}</IconNodeContext.Provider>;
 }
 
+/** Lucide icon components keyed by PascalCase name — `lucide-react`'s `icons` export. */
+export type IconComponentMap = Partial<Record<string, ComponentType<LucideProps>>>;
+
+const IconComponentsContext = createContext<IconComponentMap | null>(null);
+
+/**
+ * Supplies a full, statically imported icon set so every `Icon` below renders
+ * synchronously — in the server HTML and on hydration — with no placeholder
+ * swap. The admin panel mounts this with `lucide-react`'s `icons`: it pays the
+ * full icon set's download so admin icons never flash on load. Public pages
+ * keep the on-demand path (plus `IconNodeProvider`) and never import the set.
+ *
+ * @param props.icons - Icon components keyed by PascalCase name.
+ * @param props.children - Subtree whose `Icon`s should use the set.
+ */
+export function IconComponentsProvider(props: { icons: IconComponentMap; children: ReactNode }) {
+  return <IconComponentsContext.Provider value={props.icons}>{props.children}</IconComponentsContext.Provider>;
+}
+
 /**
  * Props for the `Icon` component.
  *
@@ -64,7 +83,9 @@ const warnedNames = new Set<string>();
 /**
  * Renders a Lucide icon by name.
  *
- * If `IconNodeProvider` carries a node for `name` (server-resolved via
+ * Inside `IconComponentsProvider` (the admin panel mounts it with lucide's
+ * full icon set) it renders that component synchronously. Otherwise, if
+ * `IconNodeProvider` carries a node for `name` (server-resolved via
  * `resolveIconNodes`), it renders synchronously from that node — real SVG in
  * the server HTML, no request. Otherwise it falls back to loading the icon
  * on demand: resolves `name` to `lucide-react/dynamic`'s kebab-case key and
@@ -103,6 +124,7 @@ const warnedNames = new Set<string>();
  */
 export function Icon({ name, className, ...rest }: IconProps) {
   const nodes = useContext(IconNodeContext);
+  const components = useContext(IconComponentsContext);
   const key = iconKeyOf({ name });
   if (!key) {
     if (process.env.NODE_ENV !== "production" && !warnedNames.has(name)) {
@@ -114,6 +136,10 @@ export function Icon({ name, className, ...rest }: IconProps) {
       );
     }
     return null;
+  }
+  const StaticIcon = components?.[name];
+  if (StaticIcon) {
+    return <StaticIcon className={className} {...rest} />;
   }
   const iconNode = nodes[key];
   if (iconNode) {

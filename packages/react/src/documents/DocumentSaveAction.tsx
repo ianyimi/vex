@@ -11,7 +11,7 @@ import { usePermission } from "../access";
 import { useVexMutation } from "../hooks";
 import { useDocumentEditRuntime } from "./DocumentEditRuntimeContext";
 import { changedValues } from "../forms/changedValues";
-import { getVexErrorMessage } from "../utils/errors";
+import { applyVexFieldErrors, getVexErrorMessage } from "../utils/errors";
 import { Button } from "../ui";
 import { toast } from "sonner";
 
@@ -111,14 +111,27 @@ export function DocumentSaveAction(props: EditSlotProps) {
     }
     const changes = changedValues(form);
     if (Object.keys(changes).length === 0 && document.saved !== undefined) return;
-    if (props.kind === "collection") {
-      await updateMutation({ id: document.id!, collection: props.slug, data: changes });
-    } else {
-      await upsertMutation({
-        slug: props.slug,
-        data: document.saved === undefined ? (form.state.values as Record<string, unknown>) : changes,
-      });
-      if (document.saved === undefined) form.reset();
+    try {
+      if (props.kind === "collection") {
+        await updateMutation({ id: document.id!, collection: props.slug, data: changes });
+      } else {
+        await upsertMutation({
+          slug: props.slug,
+          data: document.saved === undefined ? (form.state.values as Record<string, unknown>) : changes,
+        });
+        if (document.saved === undefined) form.reset();
+      }
+    } catch (error) {
+      // `updateMutation`/`upsertMutation` are `useVexMutation`s with no
+      // `errorToast` override, so their own `onError` already shows the
+      // generic "Request failed" toast exactly once — this only applies any
+      // field-specific detail (e.g. a unique-field conflict), same as
+      // `VersionPublishAction`'s catch above. Never re-thrown: a rejection
+      // here must not become an unhandled promise rejection at the
+      // `onClick={() => void handleSave()}` call site below, which has no
+      // catch of its own.
+      applyVexFieldErrors(form as unknown as Parameters<typeof applyVexFieldErrors>[0], error);
+      return;
     }
     runtime.onSaved(changes);
   }

@@ -185,6 +185,8 @@ const MUTATION_HANDLERS: Record<string, FakeMutationHandler> = {
       mimeType: args.mimeType as string,
       size: args.size as number,
       storageId: args.storageId as string,
+      ...(args.width !== undefined ? { width: args.width as number } : {}),
+      ...(args.height !== undefined ? { height: args.height as number } : {}),
     }),
   // Mints a fixed stand-in for a signed upload URL: no adapter in this kit
   // ever fetches it, the URL is only handed to the caller-supplied

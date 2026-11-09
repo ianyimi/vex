@@ -80,3 +80,15 @@ export const VEX_VIEW_SOURCES = {
 
 /** Saved-view source union, derived from {@link VEX_VIEW_SOURCES}. */
 export type VexViewSource = (typeof VEX_VIEW_SOURCES)[keyof typeof VEX_VIEW_SOURCES];
+
+/**
+ * Symbol key `defineCollection()` attaches the caller's raw, un-resolved
+ * input under, non-enumerably, on the `CollectionConfig` object it returns.
+ * Lets a consumer that genuinely needs the exact authored input back —
+ * `mergeAuthCollections`'s generic merge is the one caller — recover it,
+ * while an ordinary object spread of the resolved config (`{ ...collection }`)
+ * silently drops it: spreading a resolved collection to "modify" it was
+ * always the wrong move; call `defineCollection` again on the modified
+ * input instead.
+ */
+export const COLLECTION_INPUT: unique symbol = Symbol("vex.collectionInput");

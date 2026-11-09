@@ -24,16 +24,22 @@ Next.js admin panel for editing content.
 
 ## Quick Start
 
+Scaffold a complete Next.js + Convex + Vex project (answer "yes" to installing dependencies):
+
 ```bash
 pnpm create vexcms@alpha my-site
 cd my-site
-npx convex dev
+npx convex dev --once
+npx convex env set SITE_URL http://localhost:3010
+npx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
 ```
 
-`npx convex dev` links or creates your Convex deployment and prints the real
-`NEXT_PUBLIC_CONVEX_URL`/`NEXT_PUBLIC_CONVEX_SITE_URL` — paste them into `.env.local`. See the
-[quickstart guide](https://docs.vexcms.dev/guides/quickstart/) for the Better Auth environment
-variables, `pnpm dev`, and signing in as the first (auto-promoted) admin.
+Then run `pnpm vex:dev` and `pnpm dev` in two terminals (on the marketing-site starter, run
+`pnpm seed` once while `pnpm vex:dev` is running). Open `http://localhost:3010` (or your chosen
+port) and sign up — the first account is automatically promoted to admin and redirected into
+`/admin`.
+
+See the [quickstart guide](https://docs.vexcms.dev/guides/quickstart/) for each step in detail.
 
 ## Why VexCMS?
 

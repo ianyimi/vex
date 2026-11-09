@@ -53,6 +53,38 @@ describe("betterAuthAdapter", () => {
     expect(user?.meta?.protected).toBeUndefined();
   });
 
+  it("hides the New action on every adapter collection (decision D2)", () => {
+    const adapter = betterAuthAdapter();
+    const user = adapter.collections.find((c) => c.slug === "user");
+    const session = adapter.collections.find((c) => c.slug === "session");
+    expect(user?.disableCreate).toBe(true);
+    // The admin DOES render `protected` collections (session/account/
+    // verification) — `protected` only stops a PROJECT'S OWN collection
+    // from reusing the slug (`mergeAuthCollections`), it doesn't hide the
+    // collection from the admin panel. Every one of these collections'
+    // rows arrives from Better Auth's own endpoints, never an
+    // admin-authored create form, so every one sets the flag.
+    expect(session?.disableCreate).toBe(true);
+  });
+
+  it("hides the New action under a custom user modelName", () => {
+    const adapter = betterAuthAdapter({
+      config: { user: { modelName: "members" } },
+    });
+    const members = adapter.collections.find((c) => c.slug === "members");
+    expect(members?.disableCreate).toBe(true);
+  });
+
+  it("sets a short admin.view.columns default on the user collection only", () => {
+    const adapter = betterAuthAdapter();
+    const user = adapter.collections.find((c) => c.slug === "user");
+    const session = adapter.collections.find((c) => c.slug === "session");
+    expect(user?.admin.view.state.columns).toEqual(["name", "email", "createdAt"]);
+    // session has no name/email/role/banned fields, so defineCollection's
+    // own default (every non-hidden field) applies instead.
+    expect(session?.admin.view.state.columns).not.toEqual(["name", "email", "createdAt"]);
+  });
+
   it("keeps user-editable fields writable", () => {
     const adapter = betterAuthAdapter();
     const user = adapter.collections.find((c) => c.slug === "user");

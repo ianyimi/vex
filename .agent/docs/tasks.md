@@ -15,9 +15,6 @@
 - 10. J — Responsive / mobile UI pass — FINAL gate before tagging
 - Rename naming outliers: MediaLibaryGrid.tsx, use-mobile.ts, blocks/logo-cloud.ts
 - Access constraint builder (spec 2026-08-25-access-constraint-builder)
-- N — Update + test create-vexcms templates: sync `base-nextjs` from `apps/test` and `marketing-site` from `apps/www` (template-sync skill), scaffold from packed tarballs, manual run-through per template on a fresh Convex deployment (launch plan § N)
-- S — Harden the live demo: anonymous-user cleanup cron, anonymous sign-in rate limit, read-only proven by direct mutation calls, Convex sized for launch traffic, screenshot/video fallback (launch plan § S)
-- P — Launch analytics & monitoring: Vercel Web Analytics + Speed Insights on www and docs, template default, privacy page, Vercel spend + Convex usage alerts, uptime checks (launch plan § P)
 - Q — Write spec + publish post-0.1.0 roadmap: free-tier order only (plugins → free features → brownfield adoption); one line on paid work, no tiers or paid features named; docs `roadmap.md` is the single source (launch plan § Q)
 - R — Funding & sustainability: community-funded framing (sponsorship funds free-tier bug fixes and features), GitHub Sponsors tiers + goal, Buy Me a Coffee, `.github/FUNDING.yml`, contact + `security@` addresses, "built in free time" copy, Q's paid-work line everywhere (launch plan § R)
 - O — GitHub repo readiness: labels (`.github/labels.yml`), issue forms + `config.yml`, Discussions as the support channel (no Discord yet), PR template, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY + private vulnerability reporting, social preview, starter issues, claim `vexcms` org, community profile 100% (launch plan § O)
@@ -63,3 +60,6 @@
 - 7. G — Field input consistency pass: relationship field, loading states, media MIME filter, conditional fields
 - F follow-up — spec 2026-09-18-lifecycle-hooks-validation step 8: write `scripts/verify-hooks-wiring.mjs`, add a `createVexMutations` assertion to `scripts/verify-scaffold.mjs`, and write `apps/docs/src/content/docs/guides/lifecycle-hooks.mdx` (apps/test + base-nextjs template wiring, and the marketing-site slug validator, are done)
 - Tree-shakeable react package (spec 2026-11-08-tree-shakeable-react-package)
+- N — Update + test create-vexcms templates: sync `base-nextjs` from `apps/test` and `marketing-site` from `apps/www` (template-sync skill), scaffold from packed tarballs, manual run-through per template on a fresh Convex deployment (launch plan § N)
+- S — Harden the live demo: anonymous-user cleanup cron, anonymous sign-in rate limit, read-only proven by direct mutation calls, Convex sized for launch traffic, screenshot/video fallback (launch plan § S)
+- P — Launch analytics & monitoring: Vercel Web Analytics + Speed Insights on www and docs, template default, privacy page, Vercel spend + Convex usage alerts, uptime checks (launch plan § P)

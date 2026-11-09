@@ -70,7 +70,17 @@ export function ListViewRowDeleteAction(props: ListViewRowSlotProps): ReactNode 
         entityName={collection.labels.plural.toLowerCase()}
         isDeleting={removeMutation.isPending}
         onConfirm={async () => {
-          await removeMutation.mutateAsync({ ids: [doc._id], collection: collection.slug });
+          try {
+            await removeMutation.mutateAsync({ ids: [doc._id], collection: collection.slug });
+          } catch {
+            // `removeMutation`'s own `useVexMutation` `onError` already shows
+            // the generic "Request failed" toast — swallowed here only so the
+            // rejection never reaches `AlertDialogAction`'s `onClick={onConfirm}`
+            // wiring (`DataTableBulkDeleteModal`), which has no catch of its
+            // own and would otherwise surface as an unhandled promise
+            // rejection. The modal stays open so the user can retry.
+            return;
+          }
           setOpen(false);
           if (selection.selectedIds.includes(doc._id)) {
             selection.setSelectedIds(selection.selectedIds.filter((id) => id !== doc._id));

@@ -609,6 +609,9 @@ export const init = internalMutation({
       await ctx.db.insert(TABLE_SLUG_PAGES, {
         title: "Home",
         slug: "home",
+        // `pages` is versioned (`versions.drafts`): reads are published-only, so a
+        // seeded row without this is invisible on the public site.
+        vex_status: "published",
         blocks: [
           {
             blockType: BLOCK_SLUG_HERO,
@@ -984,6 +987,7 @@ export const articles = defineTable({
       await ctx.db.insert(TABLE_SLUG_PAGES, {
         title: "Features",
         slug: "features",
+        vex_status: "published",
         blocks: [
           {
             blockType: BLOCK_SLUG_HERO,
@@ -1085,6 +1089,7 @@ export const articles = defineTable({
       await ctx.db.insert(TABLE_SLUG_PAGES, {
         title: "Roadmap",
         slug: "roadmap",
+        vex_status: "published",
         blocks: [
           {
             blockType: BLOCK_SLUG_HERO,

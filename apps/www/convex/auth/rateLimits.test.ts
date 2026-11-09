@@ -1,13 +1,13 @@
-import type schema from "@convex/schema"
 // @vitest-environment edge-runtime
+import type schema from "@convex/schema"
 import type { TestConvex } from "convex-test"
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { AUTH_RATE_LIMIT_HEADERS } from "~/db/constants"
+import { AUTH_RATE_LIMIT_HEADERS, AUTH_RATE_LIMIT_NAMES } from "~/db/constants"
 import { createConvexTest } from "~/testing/createConvexTest"
 
-import { hashClientIp, limitAuthRequest } from "./rateLimits"
+import { authRateLimiter, hashClientIp, limitAuthRequest } from "./rateLimits"
 
 const SECRET = "test-proxy-secret"
 
@@ -107,6 +107,53 @@ describe("limitAuthRequest", () => {
     }
 
     const thirtyFirst = await runLimitAuthRequest(t, forgedRequest({ ip: "203.0.113.99", path: "/api/auth/sign-in/anonymous" }))
+
+    expect(thirtyFirst?.status).toBe(429)
+  })
+
+  it("allows 3 attested email sign-ups from one IP, then 429s the 4th with a positive Retry-After", async () => {
+    vi.stubEnv("AUTH_PROXY_SECRET", SECRET)
+    const t = createConvexTest()
+
+    for (let i = 0; i < 3; i++) {
+      const result = await runLimitAuthRequest(t, attestedRequest({ ip: "203.0.113.7", path: "/api/auth/sign-up/email" }))
+      expect(result).toBeNull()
+    }
+
+    const fourth = await runLimitAuthRequest(t, attestedRequest({ ip: "203.0.113.7", path: "/api/auth/sign-up/email" }))
+
+    expect(fourth).not.toBeNull()
+    expect(fourth?.status).toBe(429)
+    expect(Number(fourth?.retryAfter)).toBeGreaterThan(0)
+  })
+
+  it("429s on the global user-creation limit once 600/hour is exhausted, even for a fresh per-IP bucket", async () => {
+    vi.stubEnv("AUTH_PROXY_SECRET", SECRET)
+    const t = createConvexTest()
+
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 600; i++) {
+        const result = await authRateLimiter.limit(ctx, AUTH_RATE_LIMIT_NAMES.globalUserCreation, {})
+        expect(result.ok).toBe(true)
+      }
+    })
+
+    const result = await runLimitAuthRequest(t, attestedRequest({ ip: "203.0.113.200", path: "/api/auth/sign-in/anonymous" }))
+
+    expect(result).not.toBeNull()
+    expect(result?.status).toBe(429)
+    expect(Number(result?.retryAfter)).toBeGreaterThan(0)
+  })
+
+  it("draws from the shared unattested bucket when AUTH_PROXY_SECRET is unset, regardless of a claimed attestation header", async () => {
+    const t = createConvexTest()
+
+    for (let i = 0; i < 30; i++) {
+      const result = await runLimitAuthRequest(t, attestedRequest({ ip: `203.0.113.${i}`, path: "/api/auth/sign-in/anonymous" }))
+      expect(result).toBeNull()
+    }
+
+    const thirtyFirst = await runLimitAuthRequest(t, attestedRequest({ ip: "203.0.113.99", path: "/api/auth/sign-in/anonymous" }))
 
     expect(thirtyFirst?.status).toBe(429)
   })

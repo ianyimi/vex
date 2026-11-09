@@ -1,5 +1,6 @@
 import { api } from "@convex/_generated/api"
 import { vexStaticParams } from "@vexcms/next/seo"
+import { draftMode } from "next/headers"
 import { notFound } from "next/navigation"
 
 import { highlightPageBlocks } from "~/lib/highlight"
@@ -51,6 +52,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
  * Same contract as the site root: read through the shared cached `vex` client,
  * and 404 on a missing document rather than rendering an empty 200 that a
  * crawler would index as a live but blank page.
+ *
+ * Exception: a document that has never been published has no row for `getBySlug`
+ * (published-only) to find, but IS visible to the client-side live-preview layer
+ * (`PageContent`'s `getBySlugPreview`, gated on `readDrafts`) once it mounts. Calling
+ * `notFound()` here fired before that client layer ever got a chance, so a preview
+ * of a brand-new draft 404'd outright. `(await draftMode()).isEnabled` is checked
+ * ONLY as the fallback when the published query came up empty — Draft Mode is
+ * enabled exclusively by the session-verified `/api/vex/live-preview` route
+ * handler (`createVexDraftModeRoute`), reached via `proxy.ts`'s hand-off, so this
+ * never skips the 404 for an anonymous visitor. The route stays statically
+ * prerendered for everyone outside Draft Mode: Next.js runs this check against
+ * the per-request Draft Mode cookie, not at build time.
  */
 export default async function PublicPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -59,7 +72,10 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
   const initialData = await vex.query(api.pages.getBySlug, { slug: normalized })
 
   if (!initialData || initialData.length === 0) {
-    notFound()
+    const draft = await draftMode()
+    if (!draft.isEnabled) {
+      notFound()
+    }
   }
 
   const [codeHighlights, iconNodes] = await Promise.all([
