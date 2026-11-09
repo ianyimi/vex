@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { type CommitTsField as CommitTsFieldDef, type FieldComponentProps } from "@vexcms/core";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../ui/tooltip";
 import { useFieldContext } from "../../forms";
@@ -39,12 +39,17 @@ export function CommitTsFieldAdmin(props: FieldComponentProps<{}, CommitTsFieldD
  */
 function CommitTsFieldValue(props: { label: string; fieldDef: CommitTsFieldDef }): ReactNode {
   const field = useFieldContext<number | undefined>();
+  const labelId = useId();
   const value = field.state.value;
   if (value === undefined) return null;
   const formatted = formatCommitTsFieldValue({ value, format: props.fieldDef.admin.format });
   return (
-    <div className="space-y-1 rounded-sm border-2 border-border p-3 text-sm">
-      <span className="text-muted-foreground">{props.label}</span>
+    <div
+      role="group"
+      aria-labelledby={labelId}
+      className="space-y-1 rounded-sm border-2 border-border p-3 text-sm"
+    >
+      <span id={labelId} className="text-muted-foreground">{props.label}</span>
       <p>
         <TooltipProvider delay={1000}>
           <Tooltip>

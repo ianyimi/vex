@@ -1,10 +1,10 @@
 "use client";
 
-import { buttonVariants, cn, Icon } from "@vexcms/react";
-import { LogIn } from "lucide-react";
+import { buttonVariants, cn } from "@vexcms/react";
+import { LogIn, LogOut, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import { signOut, useSession } from "~/auth/client";
 
@@ -28,9 +28,9 @@ import { Button } from "./ui/button";
  *
  * "Sign in" is a plain link to `/auth/sign-in`. From a client navigation the
  * `@auth` intercepting route renders the form in a dialog over the current
- * page, and `AuthUIProvider.onSessionChange` refreshes the tree once the
- * session lands, so there is no `redirectTo` — that query switches the route
- * to its full-page guard mode.
+ * page, wrapped in `AuthViewProvider`, whose `onSessionChange` refreshes the
+ * tree once the session lands — so there is no `redirectTo` on this link,
+ * that query switches the route to its full-page guard mode.
  *
  * `router.refresh()` after `signOut()` is required, not cosmetic:
  * `AuthServerProvider` resolves the user in a server component, so a
@@ -49,6 +49,14 @@ export function SessionButton({
   const { data: session, isPending: isSessionPending } = useSession();
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  // The server always renders the pending control: there is no session store
+  // on the server. Better Auth's `useSession()` is an external store, so if its
+  // request settles before React hydrates (a fast or blocked fetch), the first
+  // client render would produce a different element and React would discard
+  // and client-render the whole page. `useSyncExternalStore` reads the server
+  // snapshot (`false`) while hydrating and the client one (`true`) after, so
+  // the first client render stays identical to the server's.
+  const isHydrated = useSyncExternalStore(subscribeNever, () => true, () => false);
 
   const classes = cn(
     buttonVariants({ size, variant: "ghost" }),
@@ -60,7 +68,7 @@ export function SessionButton({
   // than a spinner: the bar is right-aligned, so if this flips to the slightly
   // wider "Sign out" only the slot itself grows leftward — GitHub and the
   // buttons after it never move.
-  if (isSessionPending) {
+  if (!isHydrated || isSessionPending) {
     return (
       <button aria-busy className={classes} disabled type="button">
         <LogIn size={14} />
@@ -102,12 +110,20 @@ export function SessionButton({
       type="button"
       variant="ghost"
     >
-      <Icon
-        className={cn(isSigningOut && "animate-spin")}
-        name={isSigningOut ? "LoaderCircle" : "LogOut"}
-        size={14}
-      />
+      {isSigningOut ? (
+        <LoaderCircle className="animate-spin" size={14} />
+      ) : (
+        <LogOut size={14} />
+      )}
       Sign out
     </Button>
   );
+}
+
+/**
+ * Nothing to subscribe to. Module-level so its identity is stable:
+ * `useSyncExternalStore` resubscribes whenever `subscribe` changes.
+ */
+function subscribeNever(): () => void {
+  return () => undefined;
 }

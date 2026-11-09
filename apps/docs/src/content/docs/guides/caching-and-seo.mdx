@@ -347,6 +347,56 @@ This is what a sitemap's `getUpdatedAt` (above) reads, and it's collection-only:
   own locked `updatedAt` from the auth provider's real schema attribute where one exists;
   `defineCollection` leaves an already-declared field alone rather than overwriting it.
 
+## Adding page analytics
+
+The marketing-site starter ships with no analytics configured — nothing collects a page view or
+a performance metric until you add it.
+
+### Vercel Web Analytics
+
+Install the package and mount `<Analytics />` once, in the root layout:
+
+```bash
+pnpm add @vercel/analytics
+```
+
+```tsx
+// src/app/layout.tsx
+import { Analytics } from "@vercel/analytics/next";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Analytics />
+      </body>
+    </html>
+  );
+}
+```
+
+Then enable Web Analytics under the project's **Analytics** tab on the Vercel dashboard — the
+routes it needs (`/_vercel/insights/*`) only exist after the next deployment. Collection is
+cookieless: a visitor is identified by a hash of the request that resets every 24 hours, never a
+cookie or an IP address. See https://vercel.com/docs/analytics.
+
+### Speed Insights (optional)
+
+`<SpeedInsights />` from `@vercel/speed-insights/next` reports Core Web Vitals the same way.
+Mount it beside `<Analytics />`:
+
+```tsx
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
+<Analytics />
+<SpeedInsights sampleRate={0.05} />
+```
+
+`sampleRate` (0–1) caps how much of your traffic reports a Web Vital — useful if the free
+10,000-events-per-30-days pool, shared across every project on the team, needs to stretch across
+a traffic spike. Omit it to sample every page view. See https://vercel.com/docs/speed-insights.
+
 ## What's deliberately out of scope
 
 - **No server-side dispatch.** A Convex-write-triggered purge with no admin panel open at all

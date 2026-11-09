@@ -70,7 +70,7 @@ export class ConvexStorageAdapter extends StorageAdapterPresignedUrl {
    * Inserts a media document into the target collection table after a file upload completes.
    *
    * @param ctx - Convex mutation context.
-   * @param args - Document fields: `collectionSlug`, `storageId`, `filename`, `mimeType`, `size`, optional `alt` and `adapterFields`.
+   * @param args - Document fields: `collectionSlug`, `storageId`, `filename`, `mimeType`, `size`, optional `alt`, `width`, `height` and `adapterFields`.
    * @returns Promise resolving to the new media document ID as a string.
    */
   async createMediaDocument<TDataModel extends GenericDataModel = GenericDataModel>(
@@ -82,6 +82,8 @@ export class ConvexStorageAdapter extends StorageAdapterPresignedUrl {
       mimeType: string;
       size: number;
       alt?: string;
+      width?: number;
+      height?: number;
       adapterFields?: Record<string, unknown>;
     },
   ): Promise<string> {

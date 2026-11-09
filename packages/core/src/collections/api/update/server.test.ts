@@ -38,6 +38,21 @@ describe("update (server)", () => {
     });
   });
 
+  // Regression (LI-19 run-through, 2026-11-09): the admin edit view saves a
+  // media document through `vex:update`, and `update` only searched
+  // `config.collections`, so every media edit threw "No collection registered"
+  // and the form silently kept the old value.
+  test("updates a document in a media collection", async () => {
+    const t = convexTest(schema, modules);
+    const mediaOnly = { collections: [], mediaCollections: [postsResource] } as unknown as VexConfig;
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", { title: "Old", slug: "old" });
+      await update({ ctx, id, collection: "posts", config: mediaOnly, data: { title: "New" } });
+      const doc = await ctx.db.get(id);
+      expect(doc?.title).toBe("New");
+    });
+  });
+
   // Regression: the authorization callback must receive the STORED document, not
   // `args.data`. Checking the caller-supplied patch let a per-document rule be
   // satisfied by the payload — send a permitted value for the guarded field and

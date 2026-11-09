@@ -5,8 +5,11 @@ import { useDropzone, type Accept } from "react-dropzone"; // or custom implemen
 import { StorageAdapterSlug, vexConvexApi } from "@vexcms/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
+import { toast } from "sonner";
 import { useStorageAdapterMap } from "../config";
 import { useVexMutation } from "../hooks";
+import { measureImageDimensions } from "./measureImageDimensions";
+import { getVexErrorMessage } from "../utils/errors";
 
 /**
  * MIME types this dropzone accepts, keyed the way react-dropzone's `useDropzone({ accept })`
@@ -65,6 +68,11 @@ export function MediaUploadDropzone(props: MediaUploadDropzoneProps) {
     getChanges: ({ args, result }) => [{ after: { ...args, _id: result } }],
     mutationFn: vexConvexApi.media.createMediaDocument,
     operation: "create",
+    // The dropzone's own `onDrop` catch below always shows a toast on any
+    // step's failure (upload URL, POST, measure, create doc) — without this,
+    // a rejected create additionally fires `useVexMutation`'s own default
+    // "Request failed" onError toast, doubling up.
+    errorToast: false,
   });
 
   const storageAdapterMap = useStorageAdapterMap();
@@ -83,6 +91,7 @@ export function MediaUploadDropzone(props: MediaUploadDropzoneProps) {
       });
 
       const { storageId } = await adapterUploadFile(file, url);
+      const dimensions = await measureImageDimensions(file);
 
       // 3. Create media document
       const mediaId = await createMediaDocument({
@@ -93,6 +102,7 @@ export function MediaUploadDropzone(props: MediaUploadDropzoneProps) {
         mimeType: file.type,
         size: file.size,
         alt: file.name,
+        ...(dimensions ? { width: dimensions.width, height: dimensions.height } : {}),
       });
 
       return mediaId;
@@ -118,8 +128,17 @@ export function MediaUploadDropzone(props: MediaUploadDropzoneProps) {
       const [file] = acceptedFiles;
       if (!file) return;
 
-      const mediaId = await uploadFile(file);
-      props.onUploadComplete(mediaId);
+      // react-dropzone calls `onDrop` itself with no catch of its own —
+      // `generateUploadUrl` (a plain `useMutation`, no `onError`) and the
+      // storage adapter's own upload call previously rejected straight into
+      // an unhandled promise rejection with no visible error at all. Caught
+      // and toasted here, same as `richtext/Field.tsx`'s `reportMediaError`.
+      try {
+        const mediaId = await uploadFile(file);
+        props.onUploadComplete(mediaId);
+      } catch (error) {
+        toast.error("Upload failed", { description: getVexErrorMessage(error) });
+      }
     },
     [props.onUploadComplete, uploadFile],
   );

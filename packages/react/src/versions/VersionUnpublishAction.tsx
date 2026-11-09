@@ -97,6 +97,12 @@ export function VersionUnpublishAction(props: EditSlotProps) {
           ? { collection: props.slug, id: document.id! }
           : { global: props.slug },
       );
+    } catch {
+      // `unpublishMutation`'s own `errorToast` ("Unpublish failed") already
+      // reports this via `useVexMutation`'s `onError` — swallowed here only
+      // so the rejection never reaches `onClick={() => void handleUnpublish()}`
+      // below, which has no catch of its own and would otherwise surface as
+      // an unhandled promise rejection.
     } finally {
       setConfirming(false);
     }

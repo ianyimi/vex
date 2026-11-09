@@ -3,11 +3,41 @@ import type { NextConfig } from "next";
 import { existsSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-import "./src/env.mjs";
+import { env } from "./src/env.mjs";
+import { buildContentSecurityPolicy } from "./src/lib/csp";
 
 // Absolute path to the monorepo root (dev/).
 // turbopack.root must be absolute; resolveAlias values are relative to it.
 const repoRoot = resolve(__dirname, "../..");
+
+// Convex file storage URLs are served from `<deployment>.convex.cloud` —
+// derive the hostname from the validated NEXT_PUBLIC_CONVEX_URL for the
+// CSP's img-src/connect-src, mirroring apps/www/next.config.ts. Falls back
+// to an empty host when the URL is unset or unparsable.
+let convexHost = "";
+try {
+  convexHost = new URL(env.NEXT_PUBLIC_CONVEX_URL).hostname;
+} catch {
+  // No deployment yet — leave convexHost empty.
+}
+
+// Vercel sets NODE_ENV=production for both the production domain and every
+// preview deployment, so a pushed branch's preview still gets the full
+// header set below; only `next dev` (:3020) skips it.
+const isProduction = process.env.NODE_ENV === "production";
+
+const securityHeaders: { key: string; value: string }[] = isProduction
+  ? [
+      {
+        key: "Content-Security-Policy",
+        value: buildContentSecurityPolicy({ convexHost, frameAncestors: "'self'" }),
+      },
+      { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Permissions-Policy", value: "geolocation=(), camera=(), microphone=()" },
+    ]
+  : [];
 
 /**
  * Maps every workspace package's bare specifier to its TypeScript source entry.
@@ -79,6 +109,11 @@ const nextConfig: NextConfig = {
   },
   allowedDevOrigins: ["127.0.01", "localhost"],
   reactCompiler: true,
+  // Every UA is treated as HTML-limited so metadata (the <title>, the
+  // theme-color meta) always streams in the initial HTML rather than only
+  // after JS hydration — the served HTML stays valid and assistive tech
+  // reading the first response gets a real title (F-073).
+  htmlLimitedBots: /.*/,
   images: {
     remotePatterns: [
       {
@@ -116,6 +151,9 @@ const nextConfig: NextConfig = {
       "nuqs/adapters/next": "apps/test/node_modules/nuqs/dist/adapters/next.js",
       "nuqs/adapters/next/app": "apps/test/node_modules/nuqs/dist/adapters/next/app.js",
     },
+  },
+  async headers() {
+    return securityHeaders.length > 0 ? [{ source: "/:path*", headers: securityHeaders }] : [];
   },
 };
 

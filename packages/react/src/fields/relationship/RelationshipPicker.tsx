@@ -6,12 +6,12 @@ import {
   Button,
   Dialog,
   DialogContent,
-  Icon,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "../../ui";
+import { Icon } from "../../ui/Icon";
 import { RelationshipDocumentList } from "./RelationshipDocumentList";
 import { ListViewCreateDocumentForm } from "../../collections/listView/create/ListViewCreateDocumentForm";
 
@@ -47,8 +47,13 @@ export interface RelationshipPickerProps {
  * while `ListViewCreateDocumentForm` reports an in-flight submit via
  * `onSubmittingChange`, same guard `ListViewCreateDocumentModal` applies.
  *
+ * `targetCollection.disableCreate` drops the Create tab/trigger
+ * entirely — only Select renders, same gate `ListViewCreateAction`/
+ * `ListViewCreateDocumentModal` apply to their own create entry points.
+ *
  * @param props - Component props.
- * @returns A `Dialog` with Select/Create tabs.
+ * @returns A `Dialog` with a Select tab, plus a Create tab unless the target
+ *   collection has `disableCreate` set.
  */
 export function RelationshipPicker({
   fieldDef,
@@ -59,7 +64,17 @@ export function RelationshipPicker({
   onSelect,
   onCancel,
 }: RelationshipPickerProps) {
-  const [activeTab, setActiveTab] = useState<"select" | "create">(defaultTab);
+  // `disableCreate` collections (e.g. the auth user collection,
+  // decision D2) have no admin-authored create workflow — same gate
+  // `ListViewCreateAction`/`ListViewCreateDocumentModal` apply to their own
+  // create entry points, mirrored here so this dialog never offers a Create
+  // tab for one. `defaultTab` is ignored rather than trusted in that case: a
+  // caller could still ask for "create" (e.g. `EmptyInput`'s own button,
+  // gated the same way, but defense in depth against any other caller).
+  const canCreate = !targetCollection.disableCreate;
+  const [activeTab, setActiveTab] = useState<"select" | "create">(
+    canCreate ? defaultTab : "select",
+  );
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -111,14 +126,16 @@ export function RelationshipPicker({
                 </Button>
               }
             />
-            <TabsTrigger
-              value="create"
-              render={
-                <Button variant="ghost" icon="Plus">
-                  Create
-                </Button>
-              }
-            />
+            {canCreate && (
+              <TabsTrigger
+                value="create"
+                render={
+                  <Button variant="ghost" icon="Plus">
+                    Create
+                  </Button>
+                }
+              />
+            )}
           </TabsList>
 
           <TabsContent value="select">
@@ -150,14 +167,16 @@ export function RelationshipPicker({
             </div>
           </TabsContent>
 
-          <TabsContent value="create" className="mt-0">
-            <ListViewCreateDocumentForm
-              collection={targetCollection}
-              onCreated={handleCreated}
-              onCancel={handleCancel}
-              onSubmittingChange={setIsSubmitting}
-            />
-          </TabsContent>
+          {canCreate && (
+            <TabsContent value="create" className="mt-0">
+              <ListViewCreateDocumentForm
+                collection={targetCollection}
+                onCreated={handleCreated}
+                onCancel={handleCancel}
+                onSubmittingChange={setIsSubmitting}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </DialogContent>
     </Dialog>

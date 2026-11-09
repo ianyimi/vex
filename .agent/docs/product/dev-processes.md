@@ -75,8 +75,14 @@ Read live output: `tmux capture-pane -t project-vex:0.0 -p -S -100`.
 
 ## Changesets + Release Flow
 
-1. Feature/fix commit lands.
+1. Feature/fix commit lands on `dev`.
 2. `pnpm changeset` — select affected packages, pick bump type, write description.
-3. Changeset lives in `.changeset/*.md` until release.
-4. `pnpm version:packages` bumps versions + updates template version refs + syncs `apps/www/package.json#version`.
-5. `pnpm release` builds and publishes `@vexcms/*` + `create-vexcms` to npm (needs `NPM_TOKEN`).
+3. Changeset lives in `.changeset/*.md` until release. Never run `pnpm version:packages`
+   locally: consumed changesets plus any added before the merge make CI bump twice
+   (`0.1.0-alpha.31` was skipped that way).
+4. Merge `dev` → `master`. `.github/workflows/release.yml` (changesets/action) runs
+   `pnpm version:packages` (bumps versions, writes CHANGELOGs, updates template version refs,
+   syncs `apps/www/package.json#version`) and opens the "chore: version packages" PR.
+5. Merge that PR: the next Release run finds no pending changesets and runs `pnpm release`,
+   which builds and publishes `@vexcms/*` + `create-vexcms` to npm (needs `NPM_TOKEN`). Then
+   merge `master` back into `dev`.

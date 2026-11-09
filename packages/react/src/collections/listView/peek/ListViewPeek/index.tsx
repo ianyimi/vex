@@ -543,6 +543,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
   // split `renderedWidth` already drew between `liveDragWidth` and
   // `props.width` before this.
   const renderedWidth = liveDragWidth ?? clampPeekWidth(props.width);
+  const maxPeekWidth = clampPeekWidth(Number.MAX_SAFE_INTEGER);
 
   // Only active once mounted (never on the very first paint — a cold
   // deep link's initial position must never visibly "animate in") AND
@@ -837,10 +838,15 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
          */}
         <div className="hidden md:contents">
           <div aria-hidden="true" data-active={resizeActive} className={cn(DIVIDER_HIGHLIGHT_CLASS, "left-0")} />
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
           <div
             role="separator"
             aria-orientation="vertical"
             aria-label="Resize preview width"
+            aria-valuenow={renderedWidth}
+            aria-valuemin={PEEK_PANEL_MIN_WIDTH_PX}
+            aria-valuemax={maxPeekWidth}
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
             tabIndex={0}
             className="absolute top-0 left-0 h-full w-1.5 cursor-col-resize touch-none select-none focus-visible:outline-none"
             data-resizing={liveDragWidth !== null}

@@ -309,33 +309,73 @@ The listener attaches only when **both** are true on the previewed page:
 - the `vex-live-preview` cookie (`LIVE_PREVIEW_COOKIE`) holds `"1"`.
 
 Your middleware sets that cookie, and only after verifying an admin session — session
-verification calls your own generated Convex API, so the framework cannot do it for you:
+verification calls your own generated Convex API, so the framework cannot do it for you.
+It hands the request off to a Route Handler rather than setting the cookie itself,
+because enabling Next.js [Draft Mode](https://nextjs.org/docs/app/guides/draft-mode) —
+needed so a previewed document that has never been published can skip its page's own
+`notFound()` and still render for the client-side preview layer — can only be done from
+a Route Handler or Server Action, never from middleware:
 
 ```ts
-import {
-  LIVE_PREVIEW_COOKIE,
-  LIVE_PREVIEW_COOKIE_MAX_AGE_SECONDS,
-  LIVE_PREVIEW_QUERY_PARAM,
-} from "@vexcms/core"
+// middleware.ts / proxy.ts
+import { LIVE_PREVIEW_COOKIE, LIVE_PREVIEW_QUERY_PARAM } from "@vexcms/core"
+import { DRAFT_MODE_BYPASS_COOKIE } from "@vexcms/next/livePreview"
 
 async function grantPreviewIfRequested(request: NextRequest) {
   if (request.nextUrl.searchParams.get(LIVE_PREVIEW_QUERY_PARAM) !== "1") {
+    return NextResponse.next()
+  }
+  // Already handed off once this request — the route below set BOTH cookies
+  // and redirected back here. Skip re-verifying, or this loops forever.
+  //
+  // Check BOTH cookies, not just the marker: `LIVE_PREVIEW_COOKIE` lives for
+  // `LIVE_PREVIEW_COOKIE_MAX_AGE_SECONDS` (1h), but `DRAFT_MODE_BYPASS_COOKIE`
+  // (Next's own `__prerender_bypass`) is a browser-session cookie that can
+  // disappear well before that — a closed browser, or Draft Mode disabled
+  // some other way. Short-circuiting on the marker alone would then skip the
+  // hand-off, and never re-enable Draft Mode, for up to the rest of that hour.
+  const alreadyHandedOff =
+    request.cookies.get(LIVE_PREVIEW_COOKIE)?.value === "1" &&
+    request.cookies.has(DRAFT_MODE_BYPASS_COOKIE)
+  if (alreadyHandedOff) {
     return NextResponse.next()
   }
   if ((await resolveSessionStatus()) !== "authenticated") {
     return NextResponse.next()
   }
 
-  const response = NextResponse.next()
-  response.cookies.set(LIVE_PREVIEW_COOKIE, "1", {
-    path: "/",
-    maxAge: LIVE_PREVIEW_COOKIE_MAX_AGE_SECONDS,
-    sameSite: "lax",
-    httpOnly: false, // read by the provider in the browser; carries no secret
-  })
-  return response
+  const draftModeUrl = new URL("/api/vex/live-preview", request.url)
+  draftModeUrl.searchParams.set("redirect", request.nextUrl.pathname + request.nextUrl.search)
+  return NextResponse.redirect(draftModeUrl)
 }
 ```
+
+```ts
+// app/api/vex/live-preview/route.ts
+import { createVexDraftModeRoute } from "@vexcms/next/livePreview"
+import { getToken } from "~/auth/server"
+
+export const { GET } = createVexDraftModeRoute({ getToken })
+```
+
+`createVexDraftModeRoute` re-verifies the session with your own `getToken` (the same
+accessor `createVexRevalidateRoute` takes), calls `(await draftMode()).enable()`, sets
+`LIVE_PREVIEW_COOKIE` itself, and redirects to the validated `redirect` target — the
+middleware's cookie check above then lets that second pass straight through. A page
+that already has a published row never needs this hand-off at all; it only matters for
+a document with a draft row and no published one yet, which is exactly when the page's
+own published-only query comes back empty.
+
+**Leaving preview mode.** The same route also disables: call it with `?disable=1` (no
+session required — turning preview off needs no authorization) to clear both Draft Mode
+and `LIVE_PREVIEW_COOKIE` and redirect to `redirect`, or `/` if `redirect` is absent. A
+signed-out request that still carries a `redirect` param — the exact shape the
+middleware above hands off, always including one — gets the same disable-and-redirect
+treatment instead of a bare `401`, so a session that expired between the page load and
+this request never leaves Draft Mode stuck on for an anonymous visitor. The one case
+that still returns `401` is no session AND no `redirect` param: a caller hitting the
+route directly rather than through the middleware hand-off. The open-redirect guard on
+`redirect` — same-origin relative paths only — applies to every one of these outcomes.
 
 Checklist for any project embedding a preview surface:
 

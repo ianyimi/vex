@@ -25,7 +25,7 @@ export const authOptions: BetterAuthOptions = {
   ...schemaOptions,
   // Unique per app so another Better Auth app on localhost cannot share or
   // shadow this session cookie — see AUTH_COOKIE_PREFIX.
-  advanced: { cookiePrefix: AUTH_COOKIE_PREFIX },
+  advanced: { cookiePrefix: AUTH_COOKIE_PREFIX, ipAddress: { disableIpTracking: true } },
   baseURL: process.env.SITE_URL,
   databaseHooks: {
     // Ties Better Auth's anonymous-plugin users to `access.anonRole` (see

@@ -80,3 +80,21 @@ export const VEX_VIEW_SOURCES = {
 
 /** Saved-view source union, derived from {@link VEX_VIEW_SOURCES}. */
 export type VexViewSource = (typeof VEX_VIEW_SOURCES)[keyof typeof VEX_VIEW_SOURCES];
+
+/**
+ * Symbol key `defineCollection()` attaches the caller's raw, un-resolved
+ * input under, non-enumerably, on the `CollectionConfig` object it returns.
+ * Lets a consumer that genuinely needs the exact authored input back —
+ * `mergeAuthCollections`'s generic merge is the one caller — recover it,
+ * while an ordinary object spread of the resolved config (`{ ...collection }`)
+ * silently drops it: spreading a resolved collection to "modify" it was
+ * always the wrong move; call `defineCollection` again on the modified
+ * input instead.
+ *
+ * Registered with `Symbol.for`, not `Symbol()`: a bundle can contain two
+ * copies of `@vexcms/core` (in this monorepo, Convex's bundler resolves the
+ * app's imports to core's source and `@vexcms/better-auth`'s dist imports to
+ * core's dist), and a plain `Symbol()` would then differ between the copy that
+ * built the auth collections and the copy that merges them.
+ */
+export const COLLECTION_INPUT: unique symbol = Symbol.for("vexcms.collectionInput");

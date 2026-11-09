@@ -7,7 +7,7 @@ import {
   GenericQueryCtx,
   GenericMutationCtx,
 } from "convex/server";
-import { GenericId, v } from "convex/values";
+import { GenericId, v, ConvexError } from "convex/values";
 import type { VexConfig } from "../../config";
 import type { CollectionSlug } from "../../types/generated";
 import { VERSION_STATUS_SCHEMA } from "../../versions/schema";
@@ -241,6 +241,21 @@ export function collectionsApi<
       },
       returns: v.string(),
       handler: async (ctx, args) => {
+        // Looked up the same way `create()` (`./create/server.ts`) itself
+        // resolves the collection — ahead of the real insert, so a
+        // `disableCreate` collection rejects before any permission check or
+        // write runs. `create()` imported directly from
+        // `@vexcms/core/server` is NOT gated here — only this admin-facing
+        // network endpoint is.
+        const collection = config.collections.find((c) => c.slug === args.collection);
+        if (!collection) {
+          throw new ConvexError(`No collection registered with slug "${args.collection}"`);
+        }
+        if (collection.disableCreate) {
+          throw new ConvexError(
+            `Collection "${args.collection}" has disableCreate set — the vex:create endpoint is disabled for it. Use create() from "@vexcms/core/server" directly instead.`,
+          );
+        }
         const auth = await resolveGetAuth({ ctx, config, getAuth });
         return await create({
           auth,

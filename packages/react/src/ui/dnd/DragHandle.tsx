@@ -12,10 +12,12 @@ export function DragHandle({
   children,
   className,
   disabled = false,
+  "aria-label": ariaLabel,
   ...divProps
 }: {
   dragHandleProps?: DraggableProvidedDragHandleProps | null;
   disabled?: boolean;
+  "aria-label"?: string;
 } & ComponentPropsWithoutRef<"div">) {
   const dnd = useDndContext();
   // Read the Draggable ancestor's context directly (nullable) instead of the
@@ -31,7 +33,7 @@ export function DragHandle({
     if (children) {
       return (
         <div
-          className={cn("shrink-0 opacity-50 cursor-default pointer-events-none", className)}
+          className={cn("flex min-h-6 min-w-6 shrink-0 items-center justify-center opacity-50 cursor-default pointer-events-none", className)}
           {...divProps}
         >
           {children}
@@ -40,7 +42,7 @@ export function DragHandle({
     }
     return (
       <div
-        className={cn("shrink-0 opacity-50 cursor-default pointer-events-none", className)}
+        className={cn("flex min-h-6 min-w-6 shrink-0 items-center justify-center opacity-50 cursor-default pointer-events-none", className)}
         {...divProps}
       >
         <GripVertical size={16} />
@@ -52,14 +54,24 @@ export function DragHandle({
 
   if (children) {
     return (
-      <div className={cn("cursor-grab shrink-0", className)} {...resolvedProps} {...divProps}>
+      <div
+        className={cn("flex min-h-6 min-w-6 shrink-0 cursor-grab items-center justify-center", className)}
+        aria-label={ariaLabel}
+        {...resolvedProps}
+        {...divProps}
+      >
         {children}
       </div>
     );
   }
 
   return (
-    <div className={cn("cursor-grab shrink-0", className)} {...resolvedProps} {...divProps}>
+    <div
+      className={cn("flex min-h-6 min-w-6 shrink-0 cursor-grab items-center justify-center", className)}
+      aria-label={ariaLabel}
+      {...resolvedProps}
+      {...divProps}
+    >
       <GripVertical size={16} />
     </div>
   );

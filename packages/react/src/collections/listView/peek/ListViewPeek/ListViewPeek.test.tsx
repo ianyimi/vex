@@ -129,7 +129,14 @@ describe("ListViewPeek", () => {
       { convex: t, config: defineConfig({ collections: [iconCollection] }) },
     );
     await waitFor(() => expect(within(container).getByRole("button", { name: "Close" })).toBeInTheDocument());
-    expect(container.querySelector("svg.lucide-file-text")).toBeInTheDocument();
+    // The avatar's icon renders through the lazy root `Icon` (`DynamicIcon`), which never
+    // gets a `lucide-{name}` class — only the generic `lucide` one — so it's identified
+    // below by lucide-react's own `FileText` path data instead of a `.lucide-file-text` class.
+    await waitFor(() =>
+      expect(container.querySelector("svg.lucide path")?.getAttribute("d")).toBe(
+        "M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z",
+      ),
+    );
     // No initials fallback rendered alongside the icon.
     expect(screen.queryByText("DO")).not.toBeInTheDocument();
   });
@@ -744,6 +751,12 @@ describe("ListViewPeek", () => {
       onWidthChange.mockClear();
       fireEvent.keyDown(handle, { key: "ArrowRight" });
       expect(onWidthChange).toHaveBeenCalledWith(388);
+    });
+    it("exposes aria-valuenow/min/max on the resize handle, matching the rendered/clamped width", async () => {
+      const { handle } = await renderResizable(vi.fn());
+      expect(handle).toHaveAttribute("aria-valuenow", "400");
+      expect(handle).toHaveAttribute("aria-valuemin", "320");
+      expect(handle).toHaveAttribute("aria-valuemax", String(Math.round(window.innerWidth * 0.6)));
     });
 
     it("shows a Reset peek width button on handle hover/focus, which clears the saved width", async () => {

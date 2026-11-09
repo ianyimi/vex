@@ -4,138 +4,111 @@
 /* eslint-disable perfectionist/sort-union-types */
 /* eslint-disable perfectionist/sort-interfaces */
 /* eslint-disable perfectionist/sort-modules */
+/* eslint-disable perfectionist/sort-object-types */
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 
-import type { DataModel, Id } from "@convex/_generated/dataModel"
-import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"
+import type { DataModel, Id } from "@convex/_generated/dataModel";
+import type { VexDocument, VexDocumentGlobal } from "@vexcms/core";
 
 export interface UserDocument extends VexDocument {
-  _id: Id<"user">
-  name: string
-  email: string
-  emailVerified: boolean
-  image?: string
-  createdAt: number
-  updatedAt: number
-  role?: string
-  banned?: boolean
-  banReason?: string
-  banExpires?: number
-  isAnonymous?: boolean
-  userId?: string
-  roles: string[]
+  _id: Id<"user">;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  image?: string;
+  createdAt: number;
+  updatedAt: number;
+  role?: string;
+  banned?: boolean;
+  banReason?: string;
+  banExpires?: number;
+  isAnonymous?: boolean;
+  userId?: string;
+  roles: string[];
 }
 
 export interface SessionDocument extends VexDocument {
-  _id: Id<"session">
-  expiresAt: number
-  token: string
-  createdAt: number
-  updatedAt: number
-  ipAddress?: string
-  userAgent?: string
-  userId: string
-  impersonatedBy?: string
-  activeOrganizationId?: string
+  _id: Id<"session">;
+  expiresAt: number;
+  token: string;
+  createdAt: number;
+  updatedAt: number;
+  ipAddress?: string;
+  userAgent?: string;
+  userId: string;
+  impersonatedBy?: string;
 }
 
 export interface AccountDocument extends VexDocument {
-  _id: Id<"account">
-  accountId: string
-  providerId: string
-  userId: string
-  accessToken?: string
-  refreshToken?: string
-  idToken?: string
-  accessTokenExpiresAt?: number
-  refreshTokenExpiresAt?: number
-  scope?: string
-  password?: string
-  createdAt: number
-  updatedAt: number
+  _id: Id<"account">;
+  accountId: string;
+  providerId: string;
+  userId: string;
+  accessToken?: string;
+  refreshToken?: string;
+  idToken?: string;
+  accessTokenExpiresAt?: number;
+  refreshTokenExpiresAt?: number;
+  scope?: string;
+  password?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface VerificationDocument extends VexDocument {
-  _id: Id<"verification">
-  identifier: string
-  value: string
-  expiresAt: number
-  createdAt: number
-  updatedAt: number
+  _id: Id<"verification">;
+  identifier: string;
+  value: string;
+  expiresAt: number;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface ApikeyDocument extends VexDocument {
-  _id: Id<"apikey">
-  configId: string
-  name?: string
-  start?: string
-  referenceId: string
-  prefix?: string
-  key: string
-  refillInterval?: number
-  refillAmount?: number
-  lastRefillAt?: number
-  enabled?: boolean
-  rateLimitEnabled?: boolean
-  rateLimitTimeWindow?: number
-  rateLimitMax?: number
-  requestCount?: number
-  remaining?: number
-  lastRequest?: number
-  expiresAt?: number
-  createdAt: number
-  updatedAt: number
-  permissions?: string
-  metadata?: string
+  _id: Id<"apikey">;
+  configId: string;
+  name?: string;
+  start?: string;
+  referenceId: string;
+  prefix?: string;
+  key: string;
+  refillInterval?: number;
+  refillAmount?: number;
+  lastRefillAt?: number;
+  enabled?: boolean;
+  rateLimitEnabled?: boolean;
+  rateLimitTimeWindow?: number;
+  rateLimitMax?: number;
+  requestCount?: number;
+  remaining?: number;
+  lastRequest?: number;
+  expiresAt?: number;
+  createdAt: number;
+  updatedAt: number;
+  permissions?: string;
+  metadata?: string;
 }
 
 export interface JwksDocument extends VexDocument {
-  _id: Id<"jwks">
-  publicKey: string
-  privateKey: string
-  createdAt: number
-  expiresAt?: number
-}
-
-export interface OrganizationDocument extends VexDocument {
-  _id: Id<"organization">
-  name: string
-  slug: string
-  logo?: string
-  createdAt: number
-  metadata?: string
-}
-
-export interface MemberDocument extends VexDocument {
-  _id: Id<"member">
-  organizationId: string
-  userId: string
-  role: string
-  createdAt: number
-}
-
-export interface InvitationDocument extends VexDocument {
-  _id: Id<"invitation">
-  organizationId: string
-  email: string
-  role?: string
-  status: string
-  expiresAt: number
-  createdAt: number
-  inviterId: string
+  _id: Id<"jwks">;
+  publicKey: string;
+  privateKey: string;
+  createdAt: number;
+  expiresAt?: number;
 }
 
 export interface Image extends VexDocument {
-  _id: Id<"images">
-  filename: string
-  alt: string
-  mimeType: string
-  size: number
-  storageId: string
-  deleted?: boolean
-  src: string
-  width?: number
-  height?: number
-  updatedAt?: number
+  _id: Id<"images">;
+  filename: string;
+  alt: string;
+  mimeType: string;
+  size: number;
+  storageId: string;
+  deleted?: boolean;
+  src: string;
+  width?: number;
+  height?: number;
+  updatedAt?: number;
 }
 
 export type CollectionSlug =
@@ -145,29 +118,23 @@ export type CollectionSlug =
   | "verification"
   | "apikey"
   | "jwks"
-  | "organization"
-  | "member"
-  | "invitation"
-  | "images"
+  | "images";
 
-export type GlobalSlug = never
+export type GlobalSlug = never;
 
-export type MediaCollectionSlug = "images"
+export type MediaCollectionSlug = "images";
 
-export type StorageAdapterSlug = "convex"
+export type StorageAdapterSlug = "convex";
 
 export type DocumentBySlug = {
-  user: UserDocument
-  session: SessionDocument
-  account: AccountDocument
-  verification: VerificationDocument
-  apikey: ApikeyDocument
-  jwks: JwksDocument
-  organization: OrganizationDocument
-  member: MemberDocument
-  invitation: InvitationDocument
-  images: Image
-}
+  user: UserDocument;
+  session: SessionDocument;
+  account: AccountDocument;
+  verification: VerificationDocument;
+  apikey: ApikeyDocument;
+  jwks: JwksDocument;
+  images: Image;
+};
 
 declare module "@vexcms/core" {
   interface GeneratedVexTypes {
@@ -178,38 +145,31 @@ declare module "@vexcms/core" {
       | "verification"
       | "apikey"
       | "jwks"
-      | "organization"
-      | "member"
-      | "invitation"
-      | "images"
-    GlobalSlug: never
-    MediaCollectionSlug: "images"
-    StorageAdapterSlug: "convex"
+      | "images";
+    GlobalSlug: never;
+    MediaCollectionSlug: "images";
+    StorageAdapterSlug: "convex";
     DocumentBySlug: {
-      user: UserDocument
-      session: SessionDocument
-      account: AccountDocument
-      verification: VerificationDocument
-      apikey: ApikeyDocument
-      jwks: JwksDocument
-      organization: OrganizationDocument
-      member: MemberDocument
-      invitation: InvitationDocument
-      images: Image
-    }
-    GlobalDocumentBySlug: {}
+      user: UserDocument;
+      session: SessionDocument;
+      account: AccountDocument;
+      verification: VerificationDocument;
+      apikey: ApikeyDocument;
+      jwks: JwksDocument;
+      images: Image;
+    };
+    GlobalDocumentBySlug: {};
     CollectionsFieldTypeMap: {
       user: {
-        text: "name" | "email" | "image" | "role" | "banReason" | "userId"
-        checkbox: "emailVerified" | "banned" | "isAnonymous"
-        date: "createdAt" | "updatedAt" | "banExpires"
-        array: "roles"
-      }
+        text: "name" | "email" | "image" | "role" | "banReason" | "userId";
+        checkbox: "emailVerified" | "banned" | "isAnonymous";
+        date: "createdAt" | "updatedAt" | "banExpires";
+        array: "roles";
+      };
       session: {
-        date: "expiresAt" | "createdAt" | "updatedAt"
-        text:
-          "token" | "ipAddress" | "userAgent" | "userId" | "impersonatedBy" | "activeOrganizationId"
-      }
+        date: "expiresAt" | "createdAt" | "updatedAt";
+        text: "token" | "ipAddress" | "userAgent" | "userId" | "impersonatedBy";
+      };
       account: {
         text:
           | "accountId"
@@ -219,13 +179,17 @@ declare module "@vexcms/core" {
           | "refreshToken"
           | "idToken"
           | "scope"
-          | "password"
-        date: "accessTokenExpiresAt" | "refreshTokenExpiresAt" | "createdAt" | "updatedAt"
-      }
+          | "password";
+        date:
+          | "accessTokenExpiresAt"
+          | "refreshTokenExpiresAt"
+          | "createdAt"
+          | "updatedAt";
+      };
       verification: {
-        text: "identifier" | "value"
-        date: "expiresAt" | "createdAt" | "updatedAt"
-      }
+        text: "identifier" | "value";
+        date: "expiresAt" | "createdAt" | "updatedAt";
+      };
       apikey: {
         text:
           | "configId"
@@ -235,62 +199,56 @@ declare module "@vexcms/core" {
           | "prefix"
           | "key"
           | "permissions"
-          | "metadata"
+          | "metadata";
         number:
           | "refillInterval"
           | "refillAmount"
           | "rateLimitTimeWindow"
           | "rateLimitMax"
           | "requestCount"
-          | "remaining"
-        date: "lastRefillAt" | "lastRequest" | "expiresAt" | "createdAt" | "updatedAt"
-        checkbox: "enabled" | "rateLimitEnabled"
-      }
+          | "remaining";
+        date:
+          | "lastRefillAt"
+          | "lastRequest"
+          | "expiresAt"
+          | "createdAt"
+          | "updatedAt";
+        checkbox: "enabled" | "rateLimitEnabled";
+      };
       jwks: {
-        text: "publicKey" | "privateKey"
-        date: "createdAt" | "expiresAt"
-      }
-      organization: {
-        text: "name" | "slug" | "logo" | "metadata"
-        date: "createdAt"
-      }
-      member: {
-        text: "organizationId" | "userId" | "role"
-        date: "createdAt"
-      }
-      invitation: {
-        text: "organizationId" | "email" | "role" | "status" | "inviterId"
-        date: "expiresAt" | "createdAt"
-      }
+        text: "publicKey" | "privateKey";
+        date: "createdAt" | "expiresAt";
+      };
       images: {
-        text: "filename" | "alt" | "mimeType" | "storageId" | "src"
-        number: "size" | "width" | "height" | "updatedAt"
-        checkbox: "deleted"
-      }
-    }
-    GlobalsFieldTypeMap: {}
+        text: "filename" | "alt" | "mimeType" | "storageId" | "src";
+        number: "size" | "width" | "height";
+        checkbox: "deleted";
+        commitTs: "updatedAt";
+      };
+    };
+    GlobalsFieldTypeMap: {};
     IndexFieldsBySlug: {
-      user: { by_email: readonly ["email"] }
-      session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] }
-      account: { by_userId: readonly ["userId"] }
-      verification: { by_identifier: readonly ["identifier"] }
+      user: { by_email: readonly ["email"] };
+      session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] };
+      account: { by_userId: readonly ["userId"] };
+      verification: { by_identifier: readonly ["identifier"] };
       apikey: {
-        by_configId: readonly ["configId"]
-        by_referenceId: readonly ["referenceId"]
-        by_key: readonly ["key"]
-      }
-      jwks: {}
-      organization: { by_slug: readonly ["slug"] }
-      member: { by_organizationId: readonly ["organizationId"]; by_userId: readonly ["userId"] }
-      invitation: { by_organizationId: readonly ["organizationId"]; by_email: readonly ["email"] }
-      images: { by_deleted: readonly ["deleted"] }
-    }
-    CustomActionsBySlug: {}
+        by_configId: readonly ["configId"];
+        by_referenceId: readonly ["referenceId"];
+        by_key: readonly ["key"];
+      };
+      jwks: {};
+      images: {
+        by_deleted: readonly ["deleted"];
+        by_updatedAt: readonly ["updatedAt"];
+      };
+    };
+    CustomActionsBySlug: {};
     AuthSlugs: {
-      user: "user"
-      organization: "organization"
-    }
-    DataModel: DataModel
-    IconName: keyof typeof import("lucide-react").icons
+      user: "user";
+      organization: "organization";
+    };
+    DataModel: DataModel;
+    IconName: keyof typeof import("lucide-react").icons;
   }
 }

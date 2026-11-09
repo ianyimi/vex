@@ -53,6 +53,38 @@ describe("betterAuthAdapter", () => {
     expect(user?.meta?.protected).toBeUndefined();
   });
 
+  it("hides the New action on every adapter collection (decision D2)", () => {
+    const adapter = betterAuthAdapter();
+    const user = adapter.collections.find((c) => c.slug === "user");
+    const session = adapter.collections.find((c) => c.slug === "session");
+    expect(user?.disableCreate).toBe(true);
+    // The admin DOES render `protected` collections (session/account/
+    // verification) — `protected` only stops a PROJECT'S OWN collection
+    // from reusing the slug (`mergeAuthCollections`), it doesn't hide the
+    // collection from the admin panel. Every one of these collections'
+    // rows arrives from Better Auth's own endpoints, never an
+    // admin-authored create form, so every one sets the flag.
+    expect(session?.disableCreate).toBe(true);
+  });
+
+  it("hides the New action under a custom user modelName", () => {
+    const adapter = betterAuthAdapter({
+      config: { user: { modelName: "members" } },
+    });
+    const members = adapter.collections.find((c) => c.slug === "members");
+    expect(members?.disableCreate).toBe(true);
+  });
+
+  it("sets a short admin.view.columns default on the user collection only", () => {
+    const adapter = betterAuthAdapter();
+    const user = adapter.collections.find((c) => c.slug === "user");
+    const session = adapter.collections.find((c) => c.slug === "session");
+    expect(user?.admin.view.state.columns).toEqual(["name", "email", "createdAt"]);
+    // session has no name/email/role/banned fields, so defineCollection's
+    // own default (every non-hidden field) applies instead.
+    expect(session?.admin.view.state.columns).not.toEqual(["name", "email", "createdAt"]);
+  });
+
   it("keeps user-editable fields writable", () => {
     const adapter = betterAuthAdapter();
     const user = adapter.collections.find((c) => c.slug === "user");
@@ -155,5 +187,48 @@ describe("betterAuthAdapter", () => {
     expect(bio?.type).toBe("text");
     expect(bio?.required).toBe(true);
     expect(bio?.defaultValue).toBe("Hello");
+  });
+});
+
+describe("betterAuthAdapter — clientWritableUserFields", () => {
+  it("lists an additionalField without input: false", () => {
+    const adapter = betterAuthAdapter({
+      config: {
+        user: {
+          additionalFields: {
+            roles: { type: "string[]", defaultValue: ["user"], required: true },
+          },
+        },
+      },
+    });
+    expect(adapter.clientWritableUserFields).toContain("roles");
+  });
+
+  it("excludes an additionalField marked input: false", () => {
+    const adapter = betterAuthAdapter({
+      config: {
+        user: {
+          additionalFields: {
+            roles: {
+              type: "string[]",
+              defaultValue: ["user"],
+              required: true,
+              input: false,
+            },
+          },
+        },
+      },
+    });
+    expect(adapter.clientWritableUserFields).not.toContain("roles");
+  });
+
+  it("excludes the built-in emailVerified field", () => {
+    const adapter = betterAuthAdapter();
+    expect(adapter.clientWritableUserFields).not.toContain("emailVerified");
+  });
+
+  it("excludes the admin plugin's role field", () => {
+    const adapter = betterAuthAdapter({ config: { plugins: [admin()] } });
+    expect(adapter.clientWritableUserFields).not.toContain("role");
   });
 });

@@ -1,5 +1,38 @@
 # @vexcms/better-auth
 
+## 0.1.0-alpha.32
+
+## 0.1.0-alpha.31
+
+### Patch Changes
+
+- 910f2e7: `defineServerConfig` now throws `VexAuthConfigError` when `access.userRolesField` is
+  client-writable through the registered auth adapter's user collection. A role field that
+  end users can set through sign-up or profile update is a privilege escalation, and it now
+  fails at `vex dev` instead of shipping.
+
+  **`VexAuthAdapter` gains an optional `clientWritableUserFields`.** `betterAuthAdapter()`
+  fills it from the merged user table's fields (including `user.additionalFields`) where
+  `input !== false`. Any other adapter that wants this check opts in the same way;
+  omitting the property skips the check entirely.
+
+  **Upgrade note.** If `access.userRolesField` names a field your auth provider lets end
+  users set directly, `vex dev` and anything importing your server config now fails
+  immediately with `VexAuthConfigError` naming the field, the adapter and the fix — add
+  `input: false` to that field's definition (for Better Auth, in
+  `authSchema.user.additionalFields` and the matching entry passed to `betterAuth()`).
+
+- 910f2e7: Scaffolded `user.additionalFields.roles` now carries `input: false`. Without it, Better
+  Auth 1.6.23 writes any `roles` value a caller sends on `/sign-up/email` or `/update-user`
+  straight onto the user row — `additionalFields` only sets a _default_, not a block on
+  caller-supplied input. A visitor who knows the field name can `POST` `{ "roles": ["admin"] }`
+  during sign-up and become an admin on first request, no further exploit needed.
+
+  Existing projects: add `input: false` next to `roles` in `src/auth/schema.ts` (or wherever
+  your scaffold's `authSchema.user.additionalFields` lives) and redeploy. Any other
+  `additionalFields` entry the server sets itself — never one a sign-up or profile-update
+  form should carry — needs the same flag.
+
 ## 0.1.0-alpha.30
 
 ## 0.1.0-alpha.29

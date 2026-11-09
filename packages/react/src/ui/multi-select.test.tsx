@@ -1,6 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { act } from "react";
+import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+
+import { expectNoA11yViolations } from "../testing/a11y";
 
 beforeAll(() => {
   // cmdk observes its list for virtual sizing; jsdom has no ResizeObserver.
@@ -133,5 +136,96 @@ describe("MultiSelectContent focus", () => {
     await flushFrames();
 
     expect(document.activeElement?.hasAttribute("data-multiselect-focus")).toBe(true);
+  });
+});
+
+describe("MultiSelect a11y", () => {
+  // See ui/select.test.tsx for why this is disabled: jsdom's
+  // `navigator.vendor` trips Base UI's `isSafari` detection, the only
+  // condition under which its internal FocusGuard span (inserted by the
+  // `Popover` this component composes) gets a `role` with no accessible
+  // name.
+  const FOCUS_GUARD_JSDOM_SAFARI_RULES = { "aria-command-name": { enabled: false } };
+
+  it("has no detectable accessibility violations while open with a selection", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <MultiSelect defaultValues={["a"]}>
+        <MultiSelectTrigger aria-label="Tags">
+          <MultiSelectValue placeholder="Pick tags" />
+        </MultiSelectTrigger>
+        <MultiSelectContent>
+          <MultiSelectItem value="a">Alpha</MultiSelectItem>
+          <MultiSelectItem value="b">Beta</MultiSelectItem>
+        </MultiSelectContent>
+      </MultiSelect>,
+    );
+    await user.click(screen.getByRole("combobox", { name: "Tags" }));
+    await screen.findByRole("option", { name: "Alpha" });
+    await expectNoA11yViolations(container, { rules: FOCUS_GUARD_JSDOM_SAFARI_RULES });
+  });
+
+  it("exposes role=combobox and aria-expanded on the trigger", () => {
+    render(
+      <MultiSelect defaultValues={["Alpha"]}>
+        <MultiSelectTrigger aria-label="Tags">
+          <MultiSelectValue placeholder="Pick tags" />
+        </MultiSelectTrigger>
+      </MultiSelect>,
+    );
+    const trigger = screen.getByRole("combobox", { name: "Tags" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("the chip remove button is not nested inside the trigger button (no axe nested-interactive)", () => {
+    const { container } = render(
+      <MultiSelect defaultValues={["Alpha"]}>
+        <MultiSelectTrigger aria-label="Tags">
+          <MultiSelectValue placeholder="Pick tags" />
+        </MultiSelectTrigger>
+      </MultiSelect>,
+    );
+    const trigger = screen.getByRole("combobox", { name: "Tags" });
+    const remove = screen.getByRole("button", { name: "Remove Alpha" });
+    expect(trigger.contains(remove)).toBe(false);
+    expect(container.querySelectorAll("button, [role=button]")).toHaveLength(2);
+  });
+
+  it("reaches the chip remove button via real Tab order, then the combobox trigger", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">Before</button>
+        <MultiSelect defaultValues={["Alpha"]}>
+          <MultiSelectTrigger aria-label="Tags">
+            <MultiSelectValue placeholder="Pick tags" />
+          </MultiSelectTrigger>
+        </MultiSelect>
+      </>,
+    );
+    const before = screen.getByRole("button", { name: "Before" });
+    const remove = screen.getByRole("button", { name: "Remove Alpha" });
+    const trigger = screen.getByRole("combobox", { name: "Tags" });
+
+    before.focus();
+    await user.tab();
+    expect(document.activeElement).toBe(remove);
+    await user.tab();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("removes a selected chip with the keyboard, reached via real Tab order", async () => {
+    const user = userEvent.setup();
+    render(
+      <MultiSelect defaultValues={["Alpha"]}>
+        <MultiSelectTrigger aria-label="Tags">
+          <MultiSelectValue placeholder="Pick tags" />
+        </MultiSelectTrigger>
+      </MultiSelect>,
+    );
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Remove Alpha" })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(screen.queryByRole("button", { name: "Remove Alpha" })).not.toBeInTheDocument();
   });
 });

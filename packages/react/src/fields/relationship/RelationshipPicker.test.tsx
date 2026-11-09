@@ -198,3 +198,60 @@ describe("RelationshipPicker", () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("RelationshipPicker — disableCreate", () => {
+  // Mirrors `@vexcms/better-auth`'s adapter setting this on the auth user
+  // collection (decision D2) — a relationship target with no
+  // admin-authored create workflow.
+  const disableCreateCollection: CollectionConfig = {
+    ...targetCollection,
+    disableCreate: true,
+  };
+
+  it("renders no Create tab/trigger for a disableCreate target collection", () => {
+    render(
+      <RelationshipPicker
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={disableCreateCollection}
+        selectedIds={[]}
+        drafts={false}
+        onSelect={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("tab", { name: "Create" })).not.toBeInTheDocument();
+    expect(screen.getByText("document list (0 selected)")).toBeInTheDocument();
+  });
+
+  it('falls back to the Select view even when defaultTab is "create", for a disableCreate target collection', () => {
+    render(
+      <RelationshipPicker
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={disableCreateCollection}
+        selectedIds={[]}
+        drafts={false}
+        defaultTab="create"
+        onSelect={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("document list (0 selected)")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "finish create" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("still renders the Create tab for a normal (non-disableCreate) target collection", () => {
+    render(
+      <RelationshipPicker
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={targetCollection}
+        selectedIds={[]}
+        drafts={false}
+        onSelect={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("tab", { name: "Create" })).toBeInTheDocument();
+  });
+});

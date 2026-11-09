@@ -17,7 +17,7 @@ export async function generateUploadUrl<TDataModel extends GenericDataModel = Ge
  * Inserts a media document into the target collection table after a file upload completes.
  *
  * @param ctx - Convex mutation context.
- * @param args - Document fields: `collectionSlug`, `storageId`, `filename`, `mimeType`, `size`, optional `alt` and `adapterFields`.
+ * @param args - Document fields: `collectionSlug`, `storageId`, `filename`, `mimeType`, `size`, optional `alt`, `width`, `height` and `adapterFields`.
  * @returns Promise resolving to the new media document ID as a string.
  */
 export async function createMediaDocument<TDataModel extends GenericDataModel = GenericDataModel>(
@@ -29,6 +29,8 @@ export async function createMediaDocument<TDataModel extends GenericDataModel = 
     mimeType: string;
     size: number;
     alt?: string;
+    width?: number;
+    height?: number;
     adapterFields?: Record<string, unknown>;
   },
 ): Promise<string> {
@@ -42,6 +44,11 @@ export async function createMediaDocument<TDataModel extends GenericDataModel = 
     size: args.size,
     alt: args.alt ?? args.filename,
     deleted: false,
+    // Omitted entirely rather than written as `undefined` for a non-image
+    // upload or a decode failure — `width`/`height` are optional columns
+    // (`mediaCollection.ts`'s `number()`, no `required: true`).
+    ...(args.width !== undefined ? { width: args.width } : {}),
+    ...(args.height !== undefined ? { height: args.height } : {}),
     ...(args.adapterFields ?? {}),
   });
   return docId;

@@ -31,10 +31,10 @@ import {
   resolveListViewSearchField,
   vexConvexApi,
 } from "@vexcms/core";
+import { adminHref, VexAuthProvider } from "@vexcms/react";
 import {
   AdminNotFound,
   AdminTopNav,
-  adminHref,
   CollectionEditView,
   CollectionListView,
   CollectionsIndexView,
@@ -43,8 +43,7 @@ import {
   GlobalsListView,
   MediaCollectionEditView,
   MediaCollectionListView,
-  VexAuthProvider,
-} from "@vexcms/react";
+} from "@vexcms/react/admin";
 import { dehydrate } from "@tanstack/react-query";
 import { fetchQuery } from "convex/nextjs";
 import { cookies } from "next/headers";

@@ -62,6 +62,35 @@ const HIDDEN_FIELDS = new Set([
 ]);
 
 /**
+ * Candidate columns for the user collection's default admin list view, in
+ * display order — filtered down to whichever actually exist on the merged
+ * field set (`fields`) before use, so a custom `modelName`/plugin set with
+ * no `role`/`banned` field doesn't request a column nothing populates.
+ * `role` covers Better Auth's own built-in field name; `roles` covers the
+ * `admin` plugin's additional field of the same purpose — at most one of
+ * the two exists on any given schema.
+ */
+const USER_COLUMN_CANDIDATES = ["name", "email", "roles", "role", "banned", "createdAt"];
+
+/**
+ * Lists the user table's field names an end user can set directly through
+ * Better Auth's public endpoints (sign-up, update-user).
+ *
+ * @param props.fields - The merged `DBFieldAttribute` map for the user
+ *   table (`tables.user.fields`). `getAuthTables` already spreads
+ *   `config.user.additionalFields` into this map, so no separate merge is
+ *   needed here.
+ * @returns Field names whose `input` is not explicitly `false`.
+ */
+function getClientWritableUserFields(props: {
+  fields: Record<string, DBFieldAttribute>;
+}): readonly string[] {
+  return Object.entries(props.fields)
+    .filter(([, attr]) => attr.input !== false)
+    .map(([name]) => name);
+}
+
+/**
  * Creates a Vex auth adapter from a Better Auth configuration.
  *
  * Introspects Better Auth's full merged schema (base fields + plugin fields
@@ -186,13 +215,34 @@ export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdap
     }
 
     const isProtected = slug !== "user" && slug !== "users";
+    // Same heuristic as `betterAuthAttrToVexField`'s own `isUserTable`: the
+    // user collection is identified by its real (possibly custom) model
+    // name, not just the literal "user"/"users" slugs `isProtected` checks.
+    const isUserCollection =
+      slug === props?.config?.user?.modelName || slug === "user" || slug === "users";
+
+    // A short, stable admin list for the user collection only — every other
+    // auth table (session/account/verification) keeps `defineCollection`'s
+    // own default (every non-hidden field). Filtered to fields that actually
+    // exist so a custom `modelName`/schema with no `role`/`banned` plugin
+    // fields doesn't request a column nothing populates.
+    const userColumns = USER_COLUMN_CANDIDATES.filter((candidate) => candidate in fields);
 
     collections.push(
       defineCollection<AuthFieldMeta, AuthCollectionMeta>({
         slug: slug as CollectionSlug,
         fields,
+        // Every auth collection's rows arrive from Better Auth's own
+        // endpoints (sign-up, session creation, OAuth linking, email
+        // verification) — never an admin-authored create form — so every
+        // one of them hides "+ New"/`?createNew=true` and rejects
+        // `vex:create`, not just the user collection (the admin DOES render
+        // `protected` collections; `protected` only blocks a PROJECT'S OWN
+        // collection from reusing the slug, see `mergeAuthCollections`).
+        disableCreate: true,
         admin: {
           icon: "Lock",
+          ...(isUserCollection && userColumns.length > 0 ? { view: { columns: userColumns } } : {}),
         },
         meta: isProtected ? { protected: true } : undefined,
       }),
@@ -204,6 +254,9 @@ export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdap
     name: "better-auth",
     collections,
     userCollection: userSlug as CollectionSlug,
+    clientWritableUserFields: tables.user
+      ? getClientWritableUserFields({ fields: tables.user.fields })
+      : undefined,
   };
 }
 

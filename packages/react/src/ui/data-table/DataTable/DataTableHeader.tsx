@@ -34,6 +34,8 @@ export interface DataTableHeaderProps<TData>
     | "liveWidth"
     | "startResize"
     | "handleResizeKeyDown"
+    | "minColumnWidth"
+    | "maxColumnWidth"
     | "setHoveredDividerFieldId"
   > {
   table: Table<TData>;
@@ -70,6 +72,8 @@ export function DataTableHeader<TData>({
   liveWidth,
   startResize,
   handleResizeKeyDown,
+  minColumnWidth,
+  maxColumnWidth,
   setHoveredDividerFieldId,
 }: DataTableHeaderProps<TData>) {
   return (
@@ -208,10 +212,15 @@ export function DataTableHeader<TData>({
                     />
                   )}
                   {isResizable && !isSpacerGripColumn && !isSuppressedByBoundaryGrip && (
+                    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
                     <div
                       role="separator"
                       aria-orientation="vertical"
                       aria-label={`Resize ${meta?.label ?? header.column.id} column`}
+                      aria-valuenow={Math.round(width)}
+                      aria-valuemin={minColumnWidth}
+                      aria-valuemax={Math.max(maxColumnWidth, Math.round(width))}
+                      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
                       tabIndex={0}
                       className={cn(
                         "absolute top-0 h-full w-1.5 cursor-col-resize touch-none select-none focus-visible:outline-none",
@@ -245,7 +254,7 @@ export function DataTableHeader<TData>({
               return (
                 <Fragment key={`spacer-${header.id}`}>
                   <TableHead
-                    aria-hidden="true"
+                    aria-hidden={spacerGripHeader ? undefined : "true"}
                     className={cn(rowClass, SPACER_CELL_CLASS, spacerGripHeader && "relative")}
                   >
                     {spacerGripHeader && (
@@ -256,10 +265,15 @@ export function DataTableHeader<TData>({
                       />
                     )}
                     {spacerGripHeader && (
+                      // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
                       <div
                         role="separator"
                         aria-orientation="vertical"
                         aria-label={`Resize ${spacerMeta?.label ?? spacerGripHeader.column.id} column`}
+                        aria-valuenow={Math.round(spacerGripWidth)}
+                        aria-valuemin={minColumnWidth}
+                        aria-valuemax={Math.max(maxColumnWidth, Math.round(spacerGripWidth))}
+                        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
                         tabIndex={0}
                         className={cn(
                           "absolute top-0 h-full w-1.5 cursor-col-resize touch-none select-none focus-visible:outline-none",

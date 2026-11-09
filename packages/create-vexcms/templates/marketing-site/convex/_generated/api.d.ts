@@ -17,6 +17,7 @@ import type * as auth_sessions from "../auth/sessions.js";
 import type * as footers from "../footers.js";
 import type * as headers from "../headers.js";
 import type * as http from "../http.js";
+import type * as images from "../images.js";
 import type * as pages from "../pages.js";
 import type * as seed from "../seed.js";
 import type * as siteSettings from "../siteSettings.js";
@@ -25,6 +26,7 @@ import type * as vex from "../vex.js";
 import type * as vex_firstUser from "../vex/firstUser.js";
 import type * as vex_globals from "../vex/globals.js";
 import type * as vex_media from "../vex/media.js";
+import type * as vex_versions from "../vex/versions.js";
 
 import type {
   ApiFromModules,
@@ -42,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   footers: typeof footers;
   headers: typeof headers;
   http: typeof http;
+  images: typeof images;
   pages: typeof pages;
   seed: typeof seed;
   siteSettings: typeof siteSettings;
@@ -50,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   "vex/firstUser": typeof vex_firstUser;
   "vex/globals": typeof vex_globals;
   "vex/media": typeof vex_media;
+  "vex/versions": typeof vex_versions;
 }>;
 
 /**

@@ -116,6 +116,10 @@ export interface CreateMediaDocumentServerArgs<
   size: number;
   /** Alt text for accessibility — defaults to `filename` if omitted. */
   alt?: string;
+  /** Pixel width, for an image — measured client-side; omitted for non-image MIME types. */
+  width?: number;
+  /** Pixel height, for an image — measured client-side; omitted for non-image MIME types. */
+  height?: number;
   /** Adapter-specific fields (e.g., Cloudinary transformation params). */
   adapterFields?: Record<string, unknown>;
 }
@@ -168,6 +172,10 @@ export interface CreateMediaDocumentClientArgs extends GenericMediaMutationClien
   size: number;
   /** Alt text for accessibility — defaults to `filename` if omitted. */
   alt?: string;
+  /** Pixel width, for an image — measured client-side; omitted for non-image MIME types. */
+  width?: number;
+  /** Pixel height, for an image — measured client-side; omitted for non-image MIME types. */
+  height?: number;
   /** Adapter-specific fields (e.g., Cloudinary transformation params). */
   adapterFields?: Record<string, unknown>;
 }
@@ -235,6 +243,8 @@ export interface VexMediaCreateMediaDocumentArgs {
   mimeType: string;
   size: number;
   alt?: string;
+  width?: number;
+  height?: number;
   adapterFields?: Record<string, unknown>;
 }
 

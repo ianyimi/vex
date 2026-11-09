@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/next",
-  "version": "0.1.0-alpha.30",
+  "version": "0.1.0-alpha.32",
   "description": "Next.js adapter and admin routes for VexCMS",
   "keywords": [
     "cms",
@@ -52,6 +52,11 @@
       "source": "./src/cache/index.ts",
       "import": "./dist/cache/index.js",
       "types": "./dist/cache/index.d.ts"
+    },
+    "./livePreview": {
+      "source": "./src/livePreview/index.ts",
+      "import": "./dist/livePreview/index.js",
+      "types": "./dist/livePreview/index.d.ts"
     },
     "./seo": {
       "source": "./src/seo/index.ts",

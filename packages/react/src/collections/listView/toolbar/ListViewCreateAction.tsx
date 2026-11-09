@@ -17,7 +17,12 @@ import { useListViewContext } from "../ListViewContext";
  * `aria-disabled` link, not an absent one, matching `CollectionDeleteAction`'s own
  * self-check precedent (a disabled affordance, never a hidden one).
  *
- * @returns The create button + modal.
+ * `collection.disableCreate` is different in kind, not degree: a collection whose
+ * rows only ever come from an external write path (the auth adapter's user collection,
+ * populated by sign-up — decision D2) has no "create" workflow to offer at all, so this
+ * renders nothing rather than a disabled affordance.
+ *
+ * @returns The create button + modal, or `null` when `disableCreate` is set.
  */
 export function ListViewCreateAction(): ReactNode {
   const { collection } = useListViewContext();
@@ -27,6 +32,8 @@ export function ListViewCreateAction(): ReactNode {
     scope: PERMISSION_SCOPES.any,
   });
   const config = useVexConfig();
+
+  if (collection.disableCreate) return null;
 
   return (
     <>

@@ -1,5 +1,5 @@
 ---
-verified_at: 4d504e7f8a331526538e55bb7843cc9ef8b42ace
+verified_at: 2e7848153986c40f23b733662f71d3639c4e0c4b
 ---
 
 # Tech Stack
@@ -54,6 +54,8 @@ left unbackticked for the same reason as the workspace table above.
 | Plate 52 (@vexcms/richtext-plate) | Richtext editor |
 | Zod 4 | Input validation / field input schemas |
 | Astro 6 + Starlight (+ starlight-typedoc) | Docs site (apps/docs) |
+| @convex-dev/rate-limiter 0.3.2 | Convex component, www auth rate limits (0.4.x needs `@convex-dev/batch-worker` → `convex-helpers` ≥0.1.127, which peers `convex ^1.46`; the catalog pins `convex` 1.44.0) |
+| @vercel/speed-insights 2.0.0 | www, sampled Core Web Vitals from real visitors |
 
 ## Dev Tooling
 

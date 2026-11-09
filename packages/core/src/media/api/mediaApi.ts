@@ -117,6 +117,8 @@ export function mediaApi<
         mimeType: v.string(),
         size: v.number(),
         alt: v.optional(v.string()),
+        width: v.optional(v.number()),
+        height: v.optional(v.number()),
         adapterFields: v.optional(v.any()),
       },
       returns: v.string(),
@@ -133,6 +135,8 @@ export function mediaApi<
           mimeType: args.mimeType,
           size: args.size,
           alt: args.alt,
+          width: args.width,
+          height: args.height,
           adapterFields: args.adapterFields,
         });
       },

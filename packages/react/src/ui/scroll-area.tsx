@@ -1,3 +1,5 @@
+"use client";
+
 import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react";
 
 import { cn } from "../utils/cn";
@@ -11,6 +13,7 @@ function ScrollArea({
   className,
   children,
   verticalScrollbarClassName,
+  "aria-label": ariaLabel,
   ...props
 }: ScrollAreaPrimitive.Root.Props & { verticalScrollbarClassName?: string }) {
   return (
@@ -21,7 +24,14 @@ function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        // Base UI's own default `role="presentation"` strips the element from
+        // the accessibility tree entirely, making `aria-label` meaningless —
+        // and HTML forbids `aria-label` on `role="presentation"` outright (Nu
+        // validator, F-101). `role="region"` is the correct landmark role for
+        // a labeled scrollable area and permits `aria-label` normally.
+        role="region"
+        aria-label={ariaLabel ?? "Scrollable content"}
+        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:focus-ring"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>

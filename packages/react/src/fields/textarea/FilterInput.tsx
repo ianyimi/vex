@@ -1,3 +1,5 @@
+"use client";
+
 import type { FilterInputProps, TextareaField } from "@vexcms/core";
 import { Input } from "../../ui";
 
@@ -17,6 +19,7 @@ export function TextareaFilterInput(props: FilterInputProps<TextareaField>) {
   return (
     <Input
       className="w-full min-w-0"
+      aria-label={props.field.label || "Filter value"}
       value={String(props.value ?? "")}
       onChange={(e) => props.onChange(e.target.value)}
       disabled={props.disabled}

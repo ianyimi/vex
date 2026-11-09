@@ -74,8 +74,9 @@ runFieldInputContractSuite({
       it("renders the configured label, not the raw stored value, for an already-selected option", () => {
         render(<SelectHarness fieldDef={fixture.fieldDef} initialValue={["published"]} />);
 
+        const combobox = screen.getByRole("combobox");
         expect(
-          within(screen.getByRole("combobox")).getByText("Published"),
+          within(combobox.parentElement!).getByText("Published"),
         ).toBeInTheDocument();
       });
 
@@ -206,12 +207,15 @@ runFieldInputContractSuite({
 
         // `MultiSelectValue` renders a `clickToRemove` badge per selected
         // value even while closed — a second removal path independent of
-        // reopening the popover. Scoped to the trigger: the always-mounted
-        // hidden item list (kept for `onItemAdded` registration) renders the
-        // same label text but is excluded from role/text queries only when
-        // scoped — `within` avoids the ambiguity outright.
+        // reopening the popover. Scoped to the trigger's wrapper (the
+        // chip and the combobox button are siblings inside it, not nested —
+        // F-091/nested-interactive): the always-mounted hidden item list
+        // (kept for `onItemAdded` registration) renders the same label text
+        // but lives in a completely separate subtree, so scoping here avoids
+        // the ambiguity outright.
         const combobox = screen.getByRole("combobox");
-        await user.click(within(combobox).getByText("Draft"));
+        const triggerWrapper = combobox.parentElement!;
+        await user.click(within(triggerWrapper).getByText("Draft"));
 
         expect(screen.getByTestId("value-probe").textContent).toBe(
           JSON.stringify(["published"]),

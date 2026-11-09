@@ -1,3 +1,5 @@
+"use client";
+
 import type { ComponentType, ReactNode } from "react";
 
 /** Minimal structural shape `RenderBlocks` needs from a block value. */

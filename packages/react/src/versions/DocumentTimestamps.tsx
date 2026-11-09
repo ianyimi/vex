@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { formatDateFieldValue } from "../fields/date/utils";
 
 /** `time` precision `DocumentTimestamps` renders its "Created at" value at — matches the injected `updatedAt` field. */
@@ -23,10 +23,15 @@ const CREATED_AT_TIME = {
 export function DocumentTimestamps(props: {
   creationTime: number | undefined;
 }): ReactNode {
+  const labelId = useId();
   if (props.creationTime === undefined) return null;
   return (
-    <div className="space-y-1 rounded-sm border-2 border-border p-3 text-sm">
-      <span className="text-muted-foreground">Created at</span>
+    <div
+      role="group"
+      aria-labelledby={labelId}
+      className="space-y-1 rounded-sm border-2 border-border p-3 text-sm"
+    >
+      <span id={labelId} className="text-muted-foreground">Created at</span>
       <p>
         {formatDateFieldValue({
           value: props.creationTime,

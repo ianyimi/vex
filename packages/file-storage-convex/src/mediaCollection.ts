@@ -71,18 +71,19 @@ export function defineMediaCollection<
   const fields: Record<string, AdminField<TFieldMeta>> = {
     // Required base fields — user fields spread after so label/description overrides work
     filename: text({
+      label: "Filename",
       required: true,
       searchIndex: { name: "search_filename", filterFields: ["alt"] },
     }),
-    alt: text({ required: true }),
-    mimeType: text({ required: true }),
-    size: number({ required: true }),
-    storageId: text({ required: true }),
-    deleted: checkbox({ defaultValue: false, index: "by_deleted" }),
+    alt: text({ label: "Alt text", required: true }),
+    mimeType: text({ label: "MIME type", required: true }),
+    size: number({ label: "Size", required: true }),
+    storageId: text({ label: "Storage ID", required: true }),
+    deleted: checkbox({ label: "Deleted", defaultValue: false, index: "by_deleted" }),
     // Convex-specific fields
-    src: text({ required: true }),
-    width: number(),
-    height: number(),
+    src: text({ label: "URL", required: true }),
+    width: number({ label: "Width" }),
+    height: number({ label: "Height" }),
     // User-provided fields last so they override label/description on the base fields above
     ...userFields,
   };

@@ -15,15 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Pull requests from forks receive no secrets (see the fork build step).
+      FORK_PR: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: "pnpm"
@@ -32,6 +35,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Packages
+        if: env.FORK_PR != 'true'
         # `apps/test`'s public routes PRERENDER at build time (see
         # `apps/test/src/app/(frontend)/(site)/page.tsx`, which reads through the
         # cached `vex` client with `revalidate = 3600` instead of the old dynamic
@@ -61,14 +65,45 @@ jobs:
           NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
 
+      - name: Build Packages (fork PR, without apps/test)
+        # GitHub gives `pull_request` runs from forks no secrets or variables, so
+        # apps/test can't reach the shared test deployment its prerender reads.
+        # Build everything else; generate apps/test's Next route types (normally a
+        # side effect of `next build`) so Typecheck Packages still covers it.
+        # SKIP_ENV_VALIDATION only lets next.config.ts load for typegen, which
+        # makes no Convex calls. The Release workflow (push to master, with
+        # secrets) builds apps/test in full once the PR merges.
+        if: env.FORK_PR == 'true'
+        run: |
+          echo "::notice::Fork PR: secrets are unavailable, so the apps/test production build and Site Bundle Budget are skipped."
+          pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" build
+          pnpm --filter test exec next typegen
+        env:
+          SKIP_ENV_VALIDATION: "1"
+
+      - name: Check Import Cost
+        run: node scripts/check-import-cost.mjs
+
+      - name: Site Bundle Budget
+        if: env.FORK_PR != 'true'
+        # `next analyze` loads `apps/test/next.config.ts`, which validates the
+        # app env (`src/env.mjs`) before compiling, so it needs the same
+        # variables as the build above.
+        run: node scripts/check-site-bundle.mjs --app apps/test
+        env:
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+          NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+
       - name: Typecheck Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" typecheck
 
       - name: Test Packages
-        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" test
+        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter www test
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint && pnpm --filter www --filter test lint
 
       - name: Check Packed Manifests
         run: node scripts/check-packed-manifests.mjs

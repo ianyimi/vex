@@ -1,11 +1,13 @@
 import { api } from "@convex/_generated/api"
 import { vexStaticParams } from "@vexcms/next/seo"
+import { draftMode } from "next/headers"
 import { notFound } from "next/navigation"
 
 import type { PagesDocument } from "~/vex.types"
 
 import { generatePageMetadata } from "~/lib/metadata"
 import { highlightPageBlocks } from "~/lib/highlight"
+import { resolveDocumentIconNodes } from "~/lib/iconNodes"
 import { vex } from "~/lib/vex"
 
 import { PageContent } from "../PageContent"
@@ -43,6 +45,10 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
   // - The query SUCCEEDS and returns `[]`: the deployment answered, and this
   //   page genuinely does not exist. That must be a real 404, not an empty
   //   200 — an empty 200 gets the URL indexed as a live, blank page.
+  //   Exception: in a live-preview session (Draft Mode, enabled by
+  //   `/api/vex/live-preview`), a never-published page has no published row
+  //   yet; skip the 404 so the client preview layer (`getBySlugPreview`) can
+  //   render the draft. Outside Draft Mode the route stays prerendered.
   let initialData: PagesDocument[] | undefined
   let reachable = true
   try {
@@ -52,12 +58,18 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
   }
 
   if (reachable && (!initialData || initialData.length === 0)) {
-    notFound()
+    const draft = await draftMode()
+    if (!draft.isEnabled) {
+      notFound()
+    }
   }
 
-  const codeHighlights = await highlightPageBlocks(initialData?.[0]?.blocks)
+  const [codeHighlights, iconNodes] = await Promise.all([
+    highlightPageBlocks(initialData?.[0]?.blocks),
+    resolveDocumentIconNodes({ documents: initialData ?? [] }),
+  ])
 
   return (
-    <PageContent codeHighlights={codeHighlights} initialData={initialData} slug={normalized} />
+    <PageContent codeHighlights={codeHighlights} iconNodes={iconNodes} initialData={initialData} slug={normalized} />
   )
 }

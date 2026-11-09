@@ -6,3 +6,4 @@ export * from "./usePaginatedSearch";
 export * from "./useTableSelection";
 export * from "./useVexListQuery";
 export * from "./useVexDocQuery";
+export * from "./useAriaControlsCleanup";

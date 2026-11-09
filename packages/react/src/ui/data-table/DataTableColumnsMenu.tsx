@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { createPortal } from "react-dom";
 import { GripVertical } from "lucide-react";
 import { columnEntryField, type ColumnEntry, type ListDensity } from "@vexcms/core";
@@ -151,6 +151,7 @@ export function reorderColumns<TFieldSlug extends string = string>(props: {
 export function DataTableColumnsMenu<TFieldSlug extends string = string>(
   props: DataTableColumnsMenuProps<TFieldSlug>,
 ): ReactNode {
+  const idPrefix = useId();
   if (props.columnMenuEntries.length === 0) return null;
 
   const metaByField = new Map(props.columnMenuEntries.map((column) => [column.field, column]));
@@ -339,8 +340,12 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
                     <div className="ml-1 shrink-0 cursor-grabbing" {...provided.dragHandleProps}>
                       <GripVertical size={16} />
                     </div>
-                    <label className={rowLabelClassName(row.meta)}>
+                    <label
+                      className={rowLabelClassName(row.meta)}
+                      htmlFor={`${idPrefix}-${row.meta.field}-visible-clone`}
+                    >
                       <Checkbox
+                        id={`${idPrefix}-${row.meta.field}-visible-clone`}
                         aria-label={row.meta.label}
                         checked={!entryHidden(row.entry)}
                         disabled={!row.meta.hideable}
@@ -369,9 +374,13 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
                 {orderedColumns.map((row, index) => (
                   <Draggable key={row.meta.field} id={row.meta.field} index={index}>
                     <div className="flex items-center gap-1 rounded-sm hover:bg-muted">
-                      <DragHandle className="ml-1" />
-                      <label className={rowLabelClassName(row.meta)}>
+                      <DragHandle className="ml-1" aria-label={`Reorder ${row.meta.label} column`} />
+                      <label
+                        className={rowLabelClassName(row.meta)}
+                        htmlFor={`${idPrefix}-${row.meta.field}-visible`}
+                      >
                         <Checkbox
+                          id={`${idPrefix}-${row.meta.field}-visible`}
                           aria-label={row.meta.label}
                           checked={!entryHidden(row.entry)}
                           disabled={!row.meta.hideable}
@@ -413,11 +422,11 @@ export function DataTableColumnsMenu<TFieldSlug extends string = string>(
           value={props.density}
           onValueChange={(value) => props.onDensityChange(value as ListDensity)}
         >
-          <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="comfortable" aria-label="Comfortable" /> Comfortable
+          <label className="flex items-center gap-2 text-sm" htmlFor={`${idPrefix}-comfortable`}>
+            <RadioGroupItem id={`${idPrefix}-comfortable`} value="comfortable" aria-label="Comfortable" /> Comfortable
           </label>
-          <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="compact" aria-label="Compact" /> Compact
+          <label className="flex items-center gap-2 text-sm" htmlFor={`${idPrefix}-compact`}>
+            <RadioGroupItem id={`${idPrefix}-compact`} value="compact" aria-label="Compact" /> Compact
           </label>
         </RadioGroup>
         </div>

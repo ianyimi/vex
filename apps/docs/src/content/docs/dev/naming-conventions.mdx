@@ -203,7 +203,9 @@ The top level of `packages/react/src/*` is a **closed** set of domain folders
 mirroring `core/src/`: `access/`, `admin/`, `auth/`, `client/`,
 `collections/`, `config/`, `documents/`, `fields/`, `forms/`, `globals/`,
 `hooks/`, `livePreview/`, `media/`, `modals/`, `revalidate/`, `slots/`,
-`testing/`, `ui/`, `utils/`, `versions/`, plus `adapter.ts` and `index.ts`.
+`testing/`, `ui/`, `utils/`, `versions/`, plus `server/` (the `@vexcms/react/server`
+subpath entry for server-only exports, the counterpart of `client/`), `adapter.ts`
+and `index.ts`.
 A new top-level folder is only for a new domain that `core/src/` also has.
 Never name one after a UI surface, view, or feature (`list/`, `edit/`,
 `data/`, `views/`, `filters/`, `actions/`).
@@ -288,6 +290,35 @@ naming the action.
 - **OK:** `commands/dev.ts`, `commands/deploy.ts`
 - **Not OK:** `commands/dev-server.ts`, `commands/StartDev.ts`
 
+### `@vexcms/better-auth`, `@vexcms/telemetry`, `create-vexcms`
+
+#### better-auth-package-files
+
+`packages/better-auth/src/**` is camelCase modules named after what they export:
+`adapter.ts`, `client.ts` (the client-safe entry), `collections.ts`,
+`pluginSchemas.ts` (+ its `.generated.ts` output) and the `convex/` folder.
+
+- **OK:** `adapter.ts`, `pluginSchemas.generated.ts`, `convex/anonRole.ts`
+- **Not OK:** `BetterAuthAdapter.ts`, `plugin-schemas.ts`
+
+#### telemetry-package-files
+
+`packages/telemetry/src/**` is camelCase, one concern per file, named after its
+main export. `index.ts` stays type-only against `@vexcms/core`; `config.ts` (the
+`./config` entry) is the one module that may import `@vexcms/core` values.
+
+- **OK:** `recordTelemetryEvent.ts`, `fitTelemetryEvent.test.ts`
+- **Not OK:** `RecordTelemetryEvent.ts`, `telemetry-settings.ts`
+
+#### create-vexcms-src-files
+
+The scaffolding CLI's source (`packages/create-vexcms/src/**`) is camelCase
+modules: `index.ts`, `installers/`, `helpers/`, `utils/`. The templates follow the
+host-app rules below.
+
+- **OK:** `installers/createInstaller.ts`, `installers/stringUtils.ts`
+- **Not OK:** `installers/string-utils.ts`, `installers/NextJsInstaller.ts`
+
 ### Host apps (`apps/test`, `apps/www`) + `create-vexcms` templates
 
 These rules apply identically to `apps/test`, `apps/www`, and both
@@ -296,8 +327,8 @@ copies of the apps, so their conventions match exactly.
 
 #### convex-resource-files
 
-Convex function files (`apps/test/convex/*.ts`, `convex/auth/**`,
-`convex/vex/**`) are camelCase resource/action nouns.
+Convex function files (`convex/*.ts`, `convex/auth/**`, `convex/vex/**` in
+`apps/test` and `apps/www`) are camelCase resource/action nouns.
 
 - **OK:** `convex/media.ts`, `convex/auth/db.ts`
 - **Not OK:** `convex/media-operations.ts`, `convex/GetMedia.ts`
@@ -319,7 +350,7 @@ types (e.g. `access.typecheck.ts` pins slug-aware action unions).
 
 #### vexcms-resource-defs
 
-Collection definitions (`apps/test/src/vexcms/collections/**`) are camelCase
+Collection definitions (`src/vexcms/collections/**` in `apps/test` and `apps/www`) are camelCase
 resource names — no PascalCase, no type suffixes.
 
 - **OK:** `collections/pages.ts`, `collections/siteSettings.ts`
@@ -340,7 +371,7 @@ aggregate.
 
 Host-app `components/` root (`apps/test`, `apps/www`, both templates) is
 PascalCase components named after their default export (mirrors
-`react-components-pascal`); `ui/` keeps the shadcn exception below,
+`react-components-pascal`), each optionally with a colocated `.test.tsx`; `ui/` keeps the shadcn exception below,
 `providers/` keeps its fixed roles, and `motion-primitives/`
 (marketing-site-derived apps only) is a feature subfolder of plain PascalCase
 widgets.
@@ -351,7 +382,8 @@ widgets.
 #### host-app-ui-kebab
 
 Host-app `components/ui/` mirrors `shadcn-ui-kebab` — generated primitives
-keep kebab-case, hand-written additions may be PascalCase.
+keep kebab-case, hand-written additions may be PascalCase, and each may carry
+a colocated `.test.tsx`.
 
 - **OK:** `ui/button.tsx`, `ui/field.tsx`
 - **Not OK:** `ui/Button.tsx`

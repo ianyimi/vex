@@ -1,8 +1,67 @@
-import { icons, type LucideProps } from "lucide-react";
-import type { ComponentPropsWithRef } from "react";
+"use client";
+
+import type { IconNode, LucideProps } from "lucide-react";
+import type { DynamicIcon as DynamicIconType } from "lucide-react/dynamic";
+import type { ComponentPropsWithRef, ReactNode } from "react";
 import type { IconName } from "@vexcms/core";
 
+import { Icon as LucideIcon } from "lucide-react";
+// `lucide-react@0.577.0` ships no package.json "exports" map (fixed only in
+// 1.x), so the extensionless "lucide-react/dynamic" specifier above resolves
+// fine for TYPES under TypeScript's "bundler" resolution, but NOT at runtime
+// in real consumer bundlers (confirmed: Node's own ESM loader throws
+// `ERR_MODULE_NOT_FOUND` for it) — only the exact on-disk file,
+// "lucide-react/dynamic.mjs", resolves everywhere. TypeScript in turn can't
+// find a declaration for THAT extension-qualified path, so the runtime
+// import below keeps the real types via the aliases imported above instead.
+// @ts-expect-error -- see comment above; no declaration for the extension-qualified runtime path
+import { DynamicIcon as UntypedDynamicIcon } from "lucide-react/dynamic.mjs";
+import { createContext, useContext, useMemo, type ComponentType } from "react";
+
+import { iconKeyOf, isIconName, type IconKey } from "./iconKey";
+
 export type { IconName };
+export { isIconName };
+
+const DynamicIcon: typeof DynamicIconType = UntypedDynamicIcon;
+
+/** Icon nodes keyed by lucide key ("layout-grid"), as built by `resolveIconNodes`. */
+export type IconNodeMap = Partial<Record<IconKey, IconNode>>;
+
+const IconNodeContext = createContext<IconNodeMap>({});
+
+/**
+ * Supplies server-resolved icon nodes so `Icon` renders them synchronously,
+ * real SVG in the server HTML with no request, instead of loading each icon
+ * on demand. Nested providers merge; the inner map wins on a shared key.
+ *
+ * @param props.nodes - Map produced by `resolveIconNodes` from `@vexcms/react/server`.
+ * @param props.children - Subtree whose `Icon`s should use the map.
+ */
+export function IconNodeProvider(props: { nodes: IconNodeMap; children: ReactNode }) {
+  const parent = useContext(IconNodeContext);
+  const value = useMemo(() => ({ ...parent, ...props.nodes }), [parent, props.nodes]);
+  return <IconNodeContext.Provider value={value}>{props.children}</IconNodeContext.Provider>;
+}
+
+/** Lucide icon components keyed by PascalCase name — `lucide-react`'s `icons` export. */
+export type IconComponentMap = Partial<Record<string, ComponentType<LucideProps>>>;
+
+const IconComponentsContext = createContext<IconComponentMap | null>(null);
+
+/**
+ * Supplies a full, statically imported icon set so every `Icon` below renders
+ * synchronously — in the server HTML and on hydration — with no placeholder
+ * swap. The admin panel mounts this with `lucide-react`'s `icons`: it pays the
+ * full icon set's download so admin icons never flash on load. Public pages
+ * keep the on-demand path (plus `IconNodeProvider`) and never import the set.
+ *
+ * @param props.icons - Icon components keyed by PascalCase name.
+ * @param props.children - Subtree whose `Icon`s should use the set.
+ */
+export function IconComponentsProvider(props: { icons: IconComponentMap; children: ReactNode }) {
+  return <IconComponentsContext.Provider value={props.icons}>{props.children}</IconComponentsContext.Provider>;
+}
 
 /**
  * Props for the `Icon` component.
@@ -24,11 +83,17 @@ const warnedNames = new Set<string>();
 /**
  * Renders a Lucide icon by name.
  *
- * Looks up the icon from the `lucide-react` icon map at runtime, so tree-shaking
- * applies at the bundler level. Accepts the full Lucide props surface —
- * `strokeWidth`, `absoluteStrokeWidth`, all SVG attributes, and ref forwarding.
- * `className` is extracted and merged through `cn()` before being passed to the
- * underlying icon component.
+ * Inside `IconComponentsProvider` (the admin panel mounts it with lucide's
+ * full icon set) it renders that component synchronously. Otherwise, if
+ * `IconNodeProvider` carries a node for `name` (server-resolved via
+ * `resolveIconNodes`), it renders synchronously from that node — real SVG in
+ * the server HTML, no request. Otherwise it falls back to loading the icon
+ * on demand: resolves `name` to `lucide-react/dynamic`'s kebab-case key and
+ * renders `DynamicIcon`, so only the icons a page actually uses are fetched —
+ * not `lucide-react`'s full icon set. Until the icon's own dynamic import
+ * resolves, a placeholder `<svg>` reserves the exact box the icon will
+ * render into (same `width`/`height`/`className`), so nothing shifts when it
+ * arrives.
  *
  * Returns `null` if `name` does not match a known icon, so a bad string from
  * untyped data cannot throw at runtime. After `vex generate`, {@link IconName}
@@ -55,10 +120,13 @@ const warnedNames = new Set<string>();
  * ```
  *
  * @see {@link IconName} for the full set of valid icon names
+ * @see {@link isIconName} to guard untyped data before rendering
  */
 export function Icon({ name, className, ...rest }: IconProps) {
-  const LucideIcon = icons[name as keyof typeof icons];
-  if (!LucideIcon) {
+  const nodes = useContext(IconNodeContext);
+  const components = useContext(IconComponentsContext);
+  const key = iconKeyOf({ name });
+  if (!key) {
     if (process.env.NODE_ENV !== "production" && !warnedNames.has(name)) {
       warnedNames.add(name);
       console.warn(
@@ -69,5 +137,24 @@ export function Icon({ name, className, ...rest }: IconProps) {
     }
     return null;
   }
-  return <LucideIcon className={className} {...rest} />;
+  const StaticIcon = components?.[name];
+  if (StaticIcon) {
+    return <StaticIcon className={className} {...rest} />;
+  }
+  const iconNode = nodes[key];
+  if (iconNode) {
+    return <LucideIcon className={className} iconNode={iconNode} {...rest} />;
+  }
+  // Read, don't destructure, `width`/`height`/`size` off `rest`: destructuring
+  // them out and passing them back explicitly (`width={width}`) sets that key
+  // to `undefined` on the element whenever the caller omitted it, which
+  // overrides `DynamicIcon`'s own `size`-derived default — the placeholder
+  // and the loaded icon would then disagree on their box. Leaving them inside
+  // `rest` and spreading it keeps an omitted prop genuinely absent.
+  const boxWidth = rest.width ?? rest.size ?? 24;
+  const boxHeight = rest.height ?? rest.size ?? 24;
+  function Placeholder() {
+    return <svg aria-hidden="true" className={className} height={boxHeight} width={boxWidth} />;
+  }
+  return <DynamicIcon className={className} fallback={Placeholder} name={key} {...rest} />;
 }

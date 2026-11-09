@@ -1,3 +1,5 @@
+"use client";
+
 import { type DisplayComponentProps, type TDocument, type TextField } from "@vexcms/core";
 
 /**

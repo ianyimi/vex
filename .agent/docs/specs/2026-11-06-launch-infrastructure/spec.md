@@ -59,15 +59,27 @@ Launch-plan item 15: S (live demo hardening), P (launch analytics & monitoring),
 - **Self-assigned admin.** Anyone can make themselves admin through Better Auth's sign-up (`roles` is client-writable, proven in-process; see `sources.md` §14).
 - **User-table growth.** Scripted sign-ups can grow the user table without bound, and every new user re-runs a whole-table scan for every connected visitor.
 
-S closes both and adds a demo fallback for outages. P adds measurement (Web Analytics on www + docs, sampled Speed Insights on www), a privacy page, spend and usage caps, and uptime alerts. N carries everything into the `create-vexcms` templates.
+## Deviations from this spec, as built (2026-11-06 — 2026-11-09)
+
+- **Step 2 — `@convex-dev/rate-limiter` pinned to 0.3.2, not 0.4.3.** 0.4.x depends on `@convex-dev/batch-worker` → `convex-helpers` ≥0.1.127, which peers `convex ^1.46`; the catalog pins `convex` 1.44.0. Same client API at 0.3.2.
+- **Step 2 — `apps/www/vitest.config.ts` splits into `app`/`convex` projects**, not a single config with a `@convex` alias: the setup file's axe-core throws outside a DOM, so the jsdom (`app`) and edge-runtime (`convex`) suites run as separate Vitest projects, each with its own environment.
+- **Step 2 — `createConvexTest`'s identity type is named `TestUserIdentity` and is a `type` alias, not an interface.** `convex-test`'s `withIdentity` needs `Partial<UserIdentity>`, which an interface with no index signature can't satisfy; `email` is still required (not optional, unlike `convex-test`'s own `UserIdentity`), since every caller this harness builds resolves through `createGetAuth` by `_id`, and `promoteFirstAdmin` separately reads `identity.email` to find the same user by its `by_email` index.
+- **Step 6 — production `limitAuthRequest`/`withClientIpAttestation` return a `Response | null` exactly as specified.** Only `rateLimits.test.ts` differs: `convex-test` 0.0.38 serializes `t.run` return values, so the test reduces the `Response` to `{ status, retryAfter }` inside `t.run` rather than asserting on the `Response` object directly.
+- **Step 10 — `/tour`'s `TourContent.tsx` is a client component in BOTH apps, not just `apps/test`.** `apps/www` built the split first — `cn`/`buttonVariants`/`Container` from `@vexcms/react` are client-only, so the spec's server-only `page.tsx` failed `next build` — and it was ported to `apps/test` verbatim, not introduced there.
+- **Step 10 — the "media library" tour screenshot and its alt/caption were reworded** to match what it actually shows (the `images` collection list, signed out — the picker grid isn't reachable) and the dashboard shot (no document counts), rather than the originally-planned generic captions.
+- **Step 11 — `@vercel/speed-insights` pinned to 2.0.0, not 2.1.0**: 2.1.0 was inside the 3-day `minimumReleaseAge` window on 2026-11-07.
+- **Step 17 (N sync) — `marketing-site`'s live-preview/drafts base-layer swap reads the active preview session via `useSyncExternalStore`** (`src/lib/useSitePreviewMode.ts`), not a `useState`-in-an-effect pattern — the server snapshot returns `false`, avoiding a hydration mismatch.
+- **Step 3 — `makeFunctionReference` is used in `apps/www/convex/readOnlyAccess.test.ts`** for the four `vex/versions` mutations, not for template regeneration: the generated `api` type drops `api.vex.versions` (a `UnionToIntersection` merge issue), so the test builds those four references by hand.
+- **2026-11-09 run-through fixes, uncommitted:** `@vexcms/core`'s `update` mutation only searched `config.collections` (fixed: also resolves media collections); the `create-vexcms` installer now writes README setup lines with the chosen port and runs `git init` after lint/format, not before; the base template's intercepted sign-up modal now wraps in `AuthViewProvider`; `marketing-site`'s seed writes `vex_status: "published"` on `home`/`features`/`roadmap` (page documents are versioned, so an unset status made every seeded page invisible). Four more defects were reported, not fixed — see `backlog.md` ("Admin \"New User\" dialog…", "First \"Create\" click…", "Live preview of a never-published draft page…", "Base scaffold's `images` collection…"). Release mechanics' "Publish a new alpha" task carries these to the published package.
 
 Cross-spec decisions in `.agent/docs/product/launch-cross-spec-decisions.md` (2026-11-07) are binding here and add these dependencies:
 
 - **N is blocked** (steps 17–20) until all of these are done:
-  - quality-pass step 12 (`2026-11-06-quality-pass`)
+  - quality-pass steps 12 and 13 (`2026-11-06-quality-pass`; step 13 is the widened K conformance review)
   - M (`2026-10-26-build-time-telemetry`) committed
   - public-presence steps 10, 13 and 14 (`2026-11-06-public-presence`)
-  - launch-kit step 9 (`2026-11-06-launch-kit-final-review`)
+
+  Launch-kit step 9 is **not** required (amended 2026-11-07): its posts and the `launch-week` page are excluded from the templates by type (decision 17), and L step 18 checks the scaffold.
 
   That way the template exclusions run against the final www. Public-presence step 17 waits on step 19 here.
 - **`/privacy`** (step 13) runs after public-presence steps 1–2.
@@ -106,7 +118,7 @@ High-care: the developer implements; code blocks below are guided stubs plus com
     - **Collections and routes:** the `posts` collection and `/posts/[slug]`, and every post document. `base-nextjs` already has posts, and `@vexcms/richtext-plate` stays out of the marketing template.
     - **Pages and routes:** the `privacy`, `accessibility`, `brand` and `launch-week` pages, and `/tour`.
     - **Footer:** the Privacy, Accessibility, Brand, Discussions, Release emails, Sponsor and Buy Me a Coffee links, and the Sponsors `socialLinks` entry.
-    - **Copy:** the roadmap and FAQ copy is replaced with generic template copy, with no `public-copy.md` strings.
+    - **Copy:** ~~the roadmap and FAQ copy is replaced with generic template copy~~ — amended 2026-11-09 (developer, D1): the starter keeps VexCMS's own copy everywhere, roadmap and FAQ included, as a worked example. No `public-copy.md` string is copied in.
 18. **Operational records live in this spec folder**: `live-proof.md`, `sizing.md`, `operations.md`, `n-sync.md`, `n-runthrough.md`. Step 21 edits `.agent/docs/product/v0.1.0-launch-plan.md` and `.agent/docs/product/backlog.md` directly (cross-spec decision 8).
 
 ## Out of Scope
@@ -245,12 +257,12 @@ Verify: `grep -rn -A4 "roles: {" apps/www/convex/auth/schema.ts apps/test/src/au
 
 Registers `@convex-dev/rate-limiter` as the repo's first Convex component and builds the Convex half of `apps/www`'s test harness (steps 3, 5 and 6 depend on both). `createConvexTest` lives in `src/testing/`, not `convex/`, so `convex-test` — a devDependency with no place in the deployed bundle — never gets swept into a pushed function module by the Convex CLI's single-dot rule (decision 8).
 
-- [ ] `pnpm-workspace.yaml` catalog: `@convex-dev/rate-limiter: 0.4.3`
-- [ ] `apps/www/package.json`: `@convex-dev/rate-limiter` (dependency), `convex-test` + `@edge-runtime/vm` (devDependencies), all `catalog:`
-- [ ] `apps/www/convex/convex.config.ts`: `app.use(rateLimiter)`
-- [ ] `apps/www/vitest.config.ts`: include `convex/**/*.test.ts`, inline `convex-test`, alias `@convex`
-- [ ] `apps/www/src/testing/createConvexTest.ts`: `createConvexTest()` and `insertTestUser()`
-- [ ] `.github/workflows/ci.yml`: `--filter www` on the Test Packages step
+- [x] `pnpm-workspace.yaml` catalog: `@convex-dev/rate-limiter: 0.3.2` (not 0.4.3 — see Deviations)
+- [x] `apps/www/package.json`: `@convex-dev/rate-limiter` (dependency), `convex-test` + `@edge-runtime/vm` (devDependencies), all `catalog:`
+- [x] `apps/www/convex/convex.config.ts`: `app.use(rateLimiter)`
+- [x] `apps/www/vitest.config.ts`: include `convex/**/*.test.ts`, inline `convex-test`, split into `app`/`convex` projects (not a single config with a `@convex` alias — see Deviations)
+- [x] `apps/www/src/testing/createConvexTest.ts`: `createConvexTest()` and `insertTestUser()`
+- [x] `.github/workflows/ci.yml`: `--filter www` on the Test Packages step
 
 #### pnpm-workspace.yaml
 
@@ -259,7 +271,7 @@ Registers `@convex-dev/rate-limiter` as the repo's first Convex component and bu
 **1 — alphabetical position in `catalog:`, immediately after `@codemirror/view`.**
 
 ```yaml
-  "@convex-dev/rate-limiter": 0.4.3
+  "@convex-dev/rate-limiter": 0.3.2
 ```
 
 #### apps/www/package.json
@@ -2159,10 +2171,10 @@ Verify: `pnpm --filter www build` lists `/tour` as static (`○`). `/tour` on :3
 
 `[agent]`
 
-- [ ] `pnpm-workspace.yaml` catalog: `@vercel/speed-insights: 2.1.0`
-- [ ] `apps/www/package.json`: `@vercel/speed-insights` dep, `catalog:`
-- [ ] `apps/www/src/lib/analytics.ts`: `SPEED_INSIGHTS_SAMPLE_RATE`
-- [ ] `apps/www/src/app/layout.tsx`: `<SpeedInsights sampleRate={SPEED_INSIGHTS_SAMPLE_RATE} />` beside `<Analytics />`
+- [x] `pnpm-workspace.yaml` catalog: `@vercel/speed-insights: 2.0.0` (not 2.1.0 — see Deviations)
+- [x] `apps/www/package.json`: `@vercel/speed-insights` dep, `catalog:`
+- [x] `apps/www/src/lib/analytics.ts`: `SPEED_INSIGHTS_SAMPLE_RATE`
+- [x] `apps/www/src/app/layout.tsx`: `<SpeedInsights sampleRate={SPEED_INSIGHTS_SAMPLE_RATE} />` beside `<Analytics />`
 
 #### pnpm-workspace.yaml
 
@@ -2172,7 +2184,7 @@ Verify: `pnpm --filter www build` lists `/tour` as static (`○`). `/tour` on :3
 
 ```yaml
   "@vercel/analytics": "^2.0.1"
-  "@vercel/speed-insights": 2.1.0
+  "@vercel/speed-insights": 2.0.0
 ```
 
 #### apps/www/package.json
@@ -2541,10 +2553,11 @@ Verify: `pnpm --filter test typecheck && pnpm --filter test test` green. On the 
 ### Step 17 — N: Sync both templates
 `[agent]` **Blocked on:** all of these, so the exclusions run once, against the final www (cross-spec dependency edges):
 
-- quality-pass step 12
+- quality-pass steps 12 and 13
 - M committed
 - public-presence steps 10 (seed copy, footer), 13 (`/brand`) and 14 (www posts and the announcement)
-- launch-kit step 9 (launch-week posts and `/launch-week`)
+
+Launch-kit step 9 (launch-week posts and `/launch-week`) is not a dependency (amended 2026-11-07): both are excluded from the templates by type.
 
 Run the `template-sync` skill (`.omp/skills/template-sync/SKILL.md`) once for `base-nextjs` ← `apps/test` and once for `marketing-site` ← `apps/www`, per its own preflight (`harness doctor`, `harness state`) and its step 1 (load the app→template translation table in `2026-08-31-wp2-cli-templates/spec.md` before touching anything).
 
@@ -2554,7 +2567,7 @@ Translation rules specific to this spec, applied on top of the skill's existing 
   - The `posts` collection (its `src/vexcms/collections/` file and registration) and the `/posts/[slug]` route, plus every post document in the seed. `base-nextjs` already has posts, and `@vexcms/richtext-plate` stays out of the marketing template and its `package.json`.
   - The `privacy`, `accessibility`, `brand` and `launch-week` page documents in the seed, and the `/tour` route.
   - The Privacy, Accessibility, Brand, Discussions, Release emails, Sponsor and Buy Me a Coffee entries in the footer `links`, and the Sponsors entry in `socialLinks`.
-  - The roadmap page and FAQ copy: replaced with generic template copy. No string from `public-copy.md` may appear in the template; `rg -F` each `public-copy.md` line against `packages/create-vexcms/templates/marketing-site` and expect no match.
+  - The roadmap page and FAQ copy: keep VexCMS's own copy (amended 2026-11-09, developer D1; was "replaced with generic template copy"). No string from `public-copy.md` may appear in the template; `rg -F` each `public-copy.md` line against `packages/create-vexcms/templates/marketing-site` and expect no match.
 - `/tour` and `(vexcms)/admin/error.tsx` are www/test-only. They answer "what does the live demo show when it's down", which has no meaning for a scaffold that has never been deployed. Neither file crosses into either template.
 - The bootstrap fix (step 4/16's `useQuery(..., session?.user ? {} : "skip")`) and the step 1 `roles` `input: false` fix MUST be in both templates — `base-nextjs`'s `FirstAdminBootstrap.tsx` and `base-nextjs`'s `convex/auth/schema.ts`.
 - Template `layout.tsx` (both templates) mounts no `<Analytics />` and no `<SpeedInsights />` — decision 13, the marketing template ships no analytics, and the base template never had either to begin with.
@@ -2628,7 +2641,7 @@ Verify: `node scripts/template-diff.mjs --app apps/www` and `--app apps/test` li
 - every non-empty line of `public-copy.md`, fed to `rg -F`
 
 ### Step 18 — N: Scaffold from packed tarballs
-`[agent]` **Blocked on:** step 17, and through it quality-pass step 12, M, public-presence steps 10, 13 and 14, and launch-kit step 9.
+`[agent]` **Blocked on:** step 17, and through it quality-pass steps 12 and 13, M, and public-presence steps 10, 13 and 14.
 
 Run the three scaffold gates in order. `verify-scaffold.mjs` requires every publishable package's `dist/` to be current (`pnpm --filter "@vexcms/*" --filter create-vexcms build` first — the script's own header says this precondition is "not performed here"); it packs tarballs and scaffolds both templates against them, not the workspace. `scaffold-smoke.mjs --bare` scaffolds the base template with no install/git; `scaffold-smoke.mjs` (no flag) does the full marketing scaffold. Neither smoke script needs the packed-tarball precondition — both load installer source directly via `jiti`.
 
@@ -2643,7 +2656,7 @@ Failure-handling rule (AP-020): a defect any of the three gates finds is fixed i
 Verify: `node scripts/verify-scaffold.mjs` exits 0; `node scripts/scaffold-smoke.mjs --bare` exits 0; `node scripts/scaffold-smoke.mjs` exits 0.
 
 ### Step 19 — N: Run-through per template on a fresh Convex deployment
-`[agent]` **Blocked on:** step 18, and through it quality-pass step 12, M, public-presence steps 10, 13 and 14, and launch-kit step 9. **Downstream:** public-presence step 17 (README quick start) waits for this step to pass (cross-spec dependency edges).
+`[agent]` **Blocked on:** step 18, and through it quality-pass steps 12 and 13, M, and public-presence steps 10, 13 and 14. **Downstream:** public-presence step 17 (README quick start) waits for this step to pass (cross-spec dependency edges).
 
 `[dev]` Create a fresh Convex project per template (two separate projects — scaffolds must not share a deployment). In each scaffold directory: start `vex dev` and `next dev` (the developer starts both; no agent starts a dev server, P-024).
 

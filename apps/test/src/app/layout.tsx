@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import "./globals.css";
 
-import { LivePreviewProvider } from "@vexcms/react";
-import { ThemeScript } from "@vexcms/react/server";
+import { LivePreviewProvider, Toaster } from "@vexcms/react";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import ClientProviders from "~/components/providers/client";
 import ServerProviders from "~/components/providers/server";
 import { ThemeLive } from "~/components/ThemeLive";
+import { ThemeScript } from "~/components/ThemeScript";
 
 /**
  * Geist carries the whole type system — display through body — so weight is
@@ -53,6 +53,13 @@ export const metadata: Metadata = {
   title: "VexCMS",
 };
 
+export const viewport: Viewport = {
+  themeColor: [
+    { color: "#F2F2F2", media: "(prefers-color-scheme: light)" },
+    { color: "#080808", media: "(prefers-color-scheme: dark)" },
+  ],
+};
+
 export default function RootLayout({
   auth,
   children,
@@ -67,11 +74,15 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* ThemeScript applies the persisted light/dark class before first
-            paint (no flash). ThemeStyle is NOT here: it reads Convex, and the
-            root must stay free of Convex reads. It is emitted by
-            `(frontend)/layout.tsx` (covers `(site)` and the auth routes) and
-            by `unauthorized/page.tsx`, which sits outside that group. Admin
+        {/* `~/components/ThemeScript`, NOT `@vexcms/react/server`'s
+            `<ThemeScript />` directly — see that component's doc comment
+            ("Next.js App Router: a dev-only console warning") for why this
+            app needs its own thin client wrapper around it. Applies the
+            persisted light/dark class before first paint (no flash).
+            ThemeStyle is NOT here: it reads Convex, and the root must stay
+            free of Convex reads. It is emitted by `(frontend)/layout.tsx`
+            (covers `(site)` and the auth routes) and by
+            `unauthorized/page.tsx`, which sits outside that group. Admin
             keeps its own `<ThemeStyle scope="admin" />` — the admin layout
             re-emits its own scope at higher specificity, so
             `siteSettings.adminTheme` opts out. */}
@@ -96,6 +107,7 @@ export default function RootLayout({
                   `/auth/[pathname]` dialog/full-screen card portals/paints over
                   whichever page (site or admin) triggered it. */}
               {auth}
+              <Toaster />
             </LivePreviewProvider>
           </ClientProviders>
         </ServerProviders>

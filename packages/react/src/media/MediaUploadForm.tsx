@@ -7,9 +7,12 @@ import { useConvexMutation } from "@convex-dev/react-query";
 import { useVexMutation } from "../hooks";
 import { vexConvexApi, formatBytes, formatMimeType } from "@vexcms/core";
 import type { AdminDataField, MediaCollectionConfig, UploadField } from "@vexcms/core";
-import { Button, Icon, Input, Label } from "../ui";
+import { Button, Input, Label, Icon } from "../ui";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { AppForm } from "../forms";
+import { getVexErrorMessage } from "../utils/errors";
+import { toast } from "sonner";
+import { measureImageDimensions } from "./measureImageDimensions";
 
 /**
  * Props for MediaUploadForm component.
@@ -133,18 +136,18 @@ function StagedFilesEditor({
                     variant="ghost"
                     size="sm"
                     onClick={() => onRemove(index)}
-                    className="text-destructive hover:text-destructive/60 ml-4"
+                    className="ml-4 text-destructive hover:text-destructive/60"
                     disabled={isSubmitting}
                     icon="Trash"
                   />
                 }
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                  <span className="font-mono text-xs text-muted-foreground tabular-nums">
                     {index + 1}
                   </span>
                   <Icon name="Image" size={14} />
-                  <span className="truncate max-w-[200px] text-sm font-medium">
+                  <span className="max-w-[200px] truncate text-sm font-medium">
                     {fileData.filename}
                   </span>
                   <span className="ml-auto text-xs text-muted-foreground">
@@ -257,6 +260,11 @@ export function MediaUploadForm({
     getChanges: ({ args, result }) => [{ after: { ...args, _id: result } }],
     mutationFn: vexConvexApi.media.createMediaDocument,
     operation: "create",
+    // The submit handler's own catch below always shows a toast on any
+    // step's failure (upload URL, POST, measure, create doc) — without this,
+    // a rejected create additionally fires `useVexMutation`'s own default
+    // "Request failed" onError toast, doubling up.
+    errorToast: false,
   });
 
   // Initialize TanStack Form with array field
@@ -295,6 +303,7 @@ export function MediaUploadForm({
             }
 
             const { storageId } = await uploadResponse.json();
+            const dimensions = await measureImageDimensions(fileData.file);
 
             // 3. Create media document
             const mediaDocId = await createMediaDoc({
@@ -305,6 +314,7 @@ export function MediaUploadForm({
               mimeType: fileData.file.type,
               size: fileData.file.size,
               alt: fileData.alt,
+              ...(dimensions ? { width: dimensions.width, height: dimensions.height } : {}),
             });
 
             return mediaDocId;
@@ -314,8 +324,7 @@ export function MediaUploadForm({
         onComplete(createdIds);
         form.reset();
       } catch (error) {
-        console.error("Upload failed:", error);
-        // TODO: Show error toast
+        toast.error("Upload failed", { description: getVexErrorMessage(error) });
       }
     },
   });
@@ -376,10 +385,18 @@ export function MediaUploadForm({
               <>
                 <div>
                   <div
+                    role="button"
+                    tabIndex={0}
                     className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border bg-muted/30 px-6 py-12 text-center transition-colors hover:border-primary/50 hover:bg-primary/5"
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                       <Icon name="Image" size={24} className="text-muted-foreground" />
@@ -435,9 +452,8 @@ export function MediaUploadForm({
                       <div className="space-y-1.5">
                         <Label htmlFor={field.name} className="text-xs font-medium">
                           Filename{" "}
-                          {(collectionConfig.fields.alt as AdminDataField | undefined)?.required && (
-                            <span className="text-destructive">*</span>
-                          )}
+                          {(collectionConfig.fields.alt as AdminDataField | undefined)
+                            ?.required && <span className="text-destructive">*</span>}
                         </Label>
                         <Input
                           id={field.name}

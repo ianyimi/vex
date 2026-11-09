@@ -1,0 +1,837 @@
+{
+  "generated": "2026-11-08T08:55:57.006Z",
+  "method": "document.documentElement.scrollWidth vs clientWidth for overflowX; each visible, text-bearing or interactive leaf element overflowing the viewport and not inside a horizontally-scrollable ancestor counts toward culpritsOutsideScrollRegions, with its trimmed text and left/right bounds recorded in offscreenControls.",
+  "routes": [
+    "/",
+    "/features",
+    "/roadmap",
+    "/privacy",
+    "/brand",
+    "/accessibility",
+    "/launch-week",
+    "/posts/vexcms-0-1-0",
+    "/posts/real-time-admin-and-live-preview",
+    "/posts/one-config-schema-and-types",
+    "/posts/access-control-hooks-validation",
+    "/posts/create-vexcms-to-deployed",
+    "/tour",
+    "/auth/sign-in",
+    "/auth/sign-up",
+    "/a-page-that-does-not-exist",
+    "/unauthorized"
+  ],
+  "widths": [
+    375,
+    390,
+    640,
+    767,
+    768,
+    769,
+    1024,
+    1280,
+    1536
+  ],
+  "results": {
+    "/": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/features": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/roadmap": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/privacy": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/brand": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/accessibility": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/launch-week": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/posts/vexcms-0-1-0": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/posts/real-time-admin-and-live-preview": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/posts/one-config-schema-and-types": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/posts/access-control-hooks-validation": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/posts/create-vexcms-to-deployed": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/tour": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/auth/sign-in": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/auth/sign-up": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/a-page-that-does-not-exist": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/unauthorized": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "640": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "767": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "769": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1280": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1536": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    }
+  },
+  "findings": [],
+  "fixes": []
+}

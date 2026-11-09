@@ -46,7 +46,6 @@ export {
 // with React `*FieldInput` component names; users get them via inference
 // through the config functions).
 export type {
-  AdminUser,
   // HKT-bound (admin.components.preview = React ComponentType)
   RelationshipFieldInput,
   RelationshipField,
@@ -70,6 +69,7 @@ export type {
   VexServerConfigInput,
   RelationshipPreviewProps,
 } from "@vexcms/react";
+export type { AdminUser } from "@vexcms/react/admin";
 
 // API functions are NOT re-exported from this barrel because @vexcms/next's
 // root index.ts is imported by server components (NextAdminPage). Pulling
@@ -101,5 +101,7 @@ export { vexMetadata } from "./seo/vexMetadata";
 export { vexStaticParams } from "./seo/vexStaticParams";
 export { createVexRevalidateRoute } from "./cache/createVexRevalidateRoute";
 export type { CreateVexRevalidateRouteProps } from "./cache/createVexRevalidateRoute";
+export { createVexDraftModeRoute } from "./livePreview/createVexDraftModeRoute";
+export type { CreateVexDraftModeRouteProps } from "./livePreview/createVexDraftModeRoute";
 export type {
 } from "./cache/types";

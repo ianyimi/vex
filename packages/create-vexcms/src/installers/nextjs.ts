@@ -18,7 +18,7 @@ import {
   generateEnvTsServerSchema,
   generateEnvTsRuntimeMapping,
   generateCredentialsValue,
-} from './string-utils.js';
+} from './stringUtils.js';
 
 /**
  * Next.js framework installer
@@ -68,7 +68,7 @@ export class VexNextJSInstaller extends VexFrameworkInstaller {
 
   /**
    * Update OAuth UI configuration in auth client file
-   * Target file: src/auth/client.tsx
+   * Target file: src/auth/AuthViewProvider.tsx
    *
    * @param selectedProviders - IDs of the OAuth providers chosen for the project (e.g. `["google", "github"]`).
    * @param emailPasswordEnabled - Whether email/password authentication is also enabled.
@@ -77,7 +77,7 @@ export class VexNextJSInstaller extends VexFrameworkInstaller {
     selectedProviders: string[],
     emailPasswordEnabled: boolean
   ): Promise<void> {
-    const providersFilePath = join(this.targetPath, 'src/auth/client.tsx');
+    const providersFilePath = join(this.targetPath, 'src/auth/AuthViewProvider.tsx');
 
     const uiConfigBlock = generateOAuthUIProvidersBlock(selectedProviders);
     await replacePlaceholder(

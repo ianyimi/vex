@@ -1,0 +1,77 @@
+name: Bug report
+description: Something doesn't work as documented
+labels: ["type: bug", "status: needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. A reproduction (even a minimal one) is the single
+        biggest thing that speeds up a fix — Convex-backed repros are costly to build from scratch, so
+        a link isn't required, but detailed steps are.
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "The `@vexcms/*` package versions, `convex`, and `next`, e.g. `@vexcms/core@0.1.0-alpha.11, convex@1.44.0, next@16.4.3`"
+      placeholder: "@vexcms/core@0.1.0-alpha.x, convex@x.x.x, next@x.x.x"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: adapters
+    attributes:
+      label: Which adapters are in use?
+      description: Informational only — this does not apply a label automatically.
+      multiple: true
+      options:
+        - "@vexcms/better-auth"
+        - "@vexcms/file-storage-convex"
+        - "@vexcms/richtext-plate"
+        - None of these
+    validations:
+      required: false
+
+  - type: input
+    id: reproduction-link
+    attributes:
+      label: Reproduction link (optional)
+      description: A minimal repo, StackBlitz, or branch that reproduces the issue.
+      placeholder: https://github.com/you/minimal-repro
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps from a fresh `pnpm create vexcms@alpha` (or your own setup) to the bug.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Paste any error output, stack trace, or console output. This will be formatted as a code block.
+      render: shell
+    validations:
+      required: false

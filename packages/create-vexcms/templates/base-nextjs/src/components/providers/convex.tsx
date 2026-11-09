@@ -63,7 +63,7 @@ function useResumeIfStaleSessionCookie(convex: ConvexReactClient, startedPaused:
       resumed.current = true;
       void convex.setAuth(
         () => Promise.resolve(null),
-        () => {},
+        () => undefined,
       );
     }
   }, [convex, isPending, session, startedPaused]);
@@ -92,7 +92,7 @@ function useResumeIfStaleSessionCookie(convex: ConvexReactClient, startedPaused:
 function useBeginAuthTransitionOnSessionChange() {
   const { beginTransition } = useAuthTransition();
   const { data: session } = authClient.useSession();
-  const identity = (session?.user?.id as string | undefined) ?? null;
+  const identity = session?.user?.id ?? null;
   const lastIdentityRef = useRef(identity);
   useLayoutEffect(() => {
     if (identity !== lastIdentityRef.current) {

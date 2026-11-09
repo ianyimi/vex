@@ -1,5 +1,5 @@
 import { AdminField, DataFieldSlug } from "../fields";
-import { ConvexSystemField, CollectionSystemField } from "./constants";
+import { ConvexSystemField, CollectionSystemField, COLLECTION_INPUT } from "./constants";
 import type { ComponentContributionInput, ComponentHKT, EditComponentsConfigInput } from "../components/types";
 import type { CollectionSlug } from "../types/generated";
 import { TDocument } from "../documents/types";
@@ -312,6 +312,7 @@ export interface AdminCollectionConfigInput<
    * See https://lucide.dev/icons/
    */
   icon?: IconName;
+
   /**
    * The default ("All") view — the view active whenever the URL carries no
    * `view=` param, AND the collection-wide list
@@ -390,6 +391,7 @@ export interface AdminCollectionConfig<
   /** The field used as the document's human-readable title in the admin panel. */
   useAsTitle: ConvexSystemField | NoInfer<TFieldSlug>;
   icon?: IconName;
+
   /** The resolved default ("All") view — always present, and every collection-wide list setting that used to live on the now-deleted `admin.table`. See {@link ResolvedDefaultView}. */
   view: ResolvedDefaultView<TFieldSlug>;
   /** Resolved preset views, `where` intact — see the `views` warning on {@link AdminCollectionConfigInput}. */
@@ -478,6 +480,27 @@ export interface CollectionConfigInput<
     TComponent,
     TCollectionSlug extends CollectionSlug ? TCollectionSlug : CollectionSlug
   >;
+  /**
+   * Hides every admin-authored create entry point for this collection — the
+   * list view's "+ New {label}" action, `?createNew=true`'s create-document
+   * modal, and a relationship field's picker Create tab/trigger when this
+   * collection is the target — for a collection whose rows only ever come
+   * from an external write path (e.g. the auth adapter's user collection,
+   * populated by sign-up, never by an admin-authored create form). Also
+   * makes the `vex:create` Convex endpoint (`collectionsApi`) reject with a
+   * `ConvexError`. Edit remains unaffected, and `create()` imported directly
+   * from `@vexcms/core/server` still works — this only blocks the
+   * admin-facing entry points and the one network endpoint the admin UI
+   * itself calls, not every programmatic write path.
+   *
+   * Top-level (not under `admin`) so `mergeAuthCollections`'s generic merge
+   * (`auth/mergeCollections.ts`) carries an auth adapter's own value through
+   * even when a project supplies its own `users.ts` with no admin block at
+   * all.
+   *
+   * @default false
+   */
+  disableCreate?: boolean;
   /** Convex table name — used as the database table identifier and URL slug in the admin panel. */
   slug: TCollectionSlug;
   /**
@@ -618,6 +641,12 @@ export interface CollectionConfig<
 > {
   /** Resolved admin panel configuration for this collection. */
   admin: AdminCollectionConfig<TFieldSlug, TComponent, TCollectionSlug>;
+  /**
+   * Hides every admin-authored create entry point for this collection, and
+   * makes the `vex:create` endpoint reject. Always present — defaults to
+   * `false`. @see {@link CollectionConfigInput#disableCreate}
+   */
+  disableCreate: boolean;
   /** Convex table name for this collection. */
   slug: TCollectionSlug;
   /** Display names shown in the admin panel — always present after defaults are applied. */
@@ -656,6 +685,28 @@ export interface CollectionConfig<
     };
     cascadeDelete: boolean;
   };
+  /**
+   * The raw input `defineCollection()` was called with, attached
+   * non-enumerably under this symbol key — an ordinary object spread of a
+   * resolved `CollectionConfig` (`{ ...collection }`) drops it. The ONE
+   * reader is `mergeAuthCollections`'s generic merge, which needs the exact
+   * authored shape back to tell "a key the project genuinely set to
+   * `undefined`" apart from "a key `defineCollection` resolved to a
+   * default", and to merge the two sides' `fields` on its own, different
+   * rule.
+   *
+   * Deliberately untyped against this interface's own generic params
+   * (always the fully-defaulted `CollectionConfigInput`): threading
+   * `TFieldMeta`/`TComponent` through here would put them in a contravariant
+   * (function-prop) position, making `CollectionConfig` itself invariant in
+   * those params — every call site that currently relies on a MORE specific
+   * collection being assignable where a less-specific one is expected (e.g.
+   * `betterAuthAdapter`'s `AuthCollectionConfig[]` push) would break. A
+   * reader narrows with its own cast instead, the same boundary
+   * `mergeSingleCollection` already crosses for the locked-field check.
+   * @see {@link COLLECTION_INPUT}
+   */
+  readonly [COLLECTION_INPUT]?: CollectionConfigInput;
 }
 
 /**

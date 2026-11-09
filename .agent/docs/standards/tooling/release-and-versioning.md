@@ -8,10 +8,14 @@ applies_to: [".changeset/**", ".github/workflows/**", "scripts/sync-template-ver
   `baseBranch: master`, `updateInternalDependencies: patch`.
 - Every change to a published package needs a changeset (`pnpm changeset`) — enforced by
   the commit checklist.
-- Release flow: push to master → `.github/workflows/release.yml` (pnpm + Node 20, frozen
-  lockfile, build/typecheck/test) → changesets action runs
+- Release flow: push to master → `.github/workflows/release.yml` (pnpm + Node 22, frozen
+  lockfile, build/typecheck/test) → changesets action. With pending changesets it runs
   `pnpm version:packages` (= `changeset version && node scripts/sync-template-versions.mjs`)
-  and `pnpm release` (= filtered build + `changeset publish`, needs NPM_TOKEN).
+  and opens the "chore: version packages" PR; merging that PR leaves none, so the next run
+  runs `pnpm release` (= filtered build + `changeset publish`, needs NPM_TOKEN).
+- Never run `pnpm version:packages` on `dev`. It consumes changesets early, and any changeset
+  added before the merge makes CI bump a second time (`0.1.0-alpha.31` was skipped this way).
+  After a release, merge `master` back into `dev` so the bumped versions and CHANGELOGs return.
 - `scripts/sync-template-versions.mjs` reads `packages/core/package.json` version and
   rewrites every create-vexcms template's `@vexcms/*` deps to `~<version>` — templates
   always pull compatible versions post-release. The publishable package list is derived

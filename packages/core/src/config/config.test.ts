@@ -3,9 +3,11 @@ import {
   defineConfig,
   defineServerConfig,
   defineCollection,
+  defineAccess,
   text,
   upload,
   richtext,
+  WILDCARD_KEY,
   DEFAULT_LIVE_PREVIEW_BREAKPOINTS,
 } from "../";
 import type {
@@ -48,11 +50,15 @@ function makeMockStorageAdapter(name = "convex"): VexStorageAdapter {
   } as unknown as VexStorageAdapter;
 }
 
-function makeMockAuthAdapter(collections: VexAuthAdapter["collections"] = []): VexAuthAdapter {
+function makeMockAuthAdapter(
+  collections: VexAuthAdapter["collections"] = [],
+  clientWritableUserFields?: readonly string[],
+): VexAuthAdapter {
   return {
     name: "mock-auth",
     collections,
     userCollection: "users",
+    clientWritableUserFields,
   } as unknown as VexAuthAdapter;
 }
 
@@ -408,6 +414,71 @@ describe("defineServerConfig", () => {
       server: { auth: { adapter } },
     });
     expect(server.auth).toEqual({ adapter });
+  });
+
+  const usersWithRoles = defineCollection({
+    slug: "users",
+    fields: { email: text(), roles: text() },
+  });
+
+  const rolesAccess = defineAccess({
+    roles: ["admin", "user"] as const,
+    resources: [usersWithRoles],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: { admin: { [WILDCARD_KEY]: true }, user: {} },
+  });
+
+  it("throws when the access role field is client-writable on the adapter's user collection", () => {
+    const client = defineConfig({ access: rolesAccess, authCollections: [usersWithRoles] as never });
+    expect(() =>
+      defineServerConfig({
+        config: client,
+        server: { auth: { adapter: makeMockAuthAdapter([usersWithRoles] as never, ["roles"]) } },
+      }),
+    ).toThrow(VexAuthConfigError);
+    expect(() =>
+      defineServerConfig({
+        config: client,
+        server: { auth: { adapter: makeMockAuthAdapter([usersWithRoles] as never, ["roles"]) } },
+      }),
+    ).toThrow(/"roles" is client-writable through the "mock-auth" adapter/);
+  });
+
+  it("does not throw when the role field is not in the adapter's client-writable list", () => {
+    const client = defineConfig({ access: rolesAccess, authCollections: [usersWithRoles] as never });
+    expect(() =>
+      defineServerConfig({
+        config: client,
+        server: { auth: { adapter: makeMockAuthAdapter([usersWithRoles] as never, ["name"]) } },
+      }),
+    ).not.toThrow();
+  });
+
+  it("does not throw when the adapter omits clientWritableUserFields", () => {
+    const client = defineConfig({ access: rolesAccess, authCollections: [usersWithRoles] as never });
+    expect(() =>
+      defineServerConfig({
+        config: client,
+        server: { auth: { adapter: makeMockAuthAdapter([usersWithRoles] as never) } },
+      }),
+    ).not.toThrow();
+  });
+
+  it("does not throw when the adapter's user collection differs from access.userCollectionSlug", () => {
+    const client = defineConfig({ access: rolesAccess, authCollections: [usersWithRoles] as never });
+    const differentUserCollectionAdapter = {
+      name: "mock-auth",
+      collections: [usersWithRoles] as never,
+      userCollection: "accounts",
+      clientWritableUserFields: ["roles"],
+    } as unknown as VexAuthAdapter;
+    expect(() =>
+      defineServerConfig({
+        config: client,
+        server: { auth: { adapter: differentUserCollectionAdapter } },
+      }),
+    ).not.toThrow();
   });
 });
 

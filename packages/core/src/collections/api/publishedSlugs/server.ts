@@ -2,7 +2,8 @@ import type { GenericDataModel, GenericQueryCtx } from "convex/server";
 
 import type { CollectionSlug } from "../../../types/generated";
 import { find } from "../find/server";
-import type { AccessCallOptions, QueryCallActionFor } from "../../../db/types";
+import type { VexConfig } from "../../../config";
+import type { AccessCallOptions, QueryCallActionFor, VexApiAuth } from "../../../db/types";
 
 /**
  * Server-side args for `publishedSlugs`.
@@ -16,8 +17,16 @@ export interface PublishedSlugsServerArgs<
 > {
   /** Per-call access override. Sitemaps are anonymous — pass `{ bypass: true }`. */
   access?: AccessCallOptions<QueryCallActionFor<TCollectionSlug>>;
+  /** The caller's resolved auth. Threaded by `vexServerApi`'s bound `publishedSlugs`. */
+  auth?: VexApiAuth;
   /** The collection to read slugs from. */
   collection: TCollectionSlug;
+  /**
+   * The resolved VexCMS config. Threaded by `vexServerApi`'s bound
+   * `publishedSlugs`. Without it, `find` can't see `versions.drafts`, so
+   * draft-only rows are returned too.
+   */
+  config?: VexConfig;
   /** Convex query context. */
   ctx: GenericQueryCtx<DataModel>;
   /** Maximum number of documents to return. Defaults to 5000. */
@@ -74,7 +83,9 @@ export async function publishedSlugs<
 >(args: PublishedSlugsServerArgs<DataModel, TCollectionSlug>): Promise<PublishedSlug[]> {
   const docs = await find({
     access: args.access,
+    auth: args.auth,
     collection: args.collection,
+    config: args.config,
     ctx: args.ctx,
     limit: args.limit ?? 5000,
   });

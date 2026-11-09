@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Shadcn Datetime Picker with support for timezone, date and time selection, minimum and maximum date limits, and 12-hour format...
  * Check out the live demo at https://shadcn-datetime-picker-pro.vercel.app/
@@ -146,6 +148,8 @@ export type DateTimePickerProps = {
    * accessible name even when `id` matches.
    */
   "aria-labelledby"?: string;
+  /** Direct accessible name for the trigger — simpler than `aria-labelledby` when there's no existing label element to point at (e.g. a filter row's value control). */
+  "aria-label"?: string;
   /**
    * Called when the trigger loses focus — wired to `field.handleBlur` so
    * TanStack Form's touched-state tracking works the same way every other
@@ -192,10 +196,12 @@ export function DateTimePicker({
   id,
   "aria-required": ariaRequired,
   "aria-labelledby": ariaLabelledBy,
+  "aria-label": ariaLabel,
   onBlur,
   ...props
 }: DateTimePickerProps & CalendarProps) {
   const [open, setOpen] = useState(false);
+  const popoverContentId = React.useId();
   const [monthYearPicker, setMonthYearPicker] = useState<
     "month" | "year" | false
   >(false);
@@ -304,8 +310,11 @@ export function DateTimePicker({
                   {...props}
                   id={id}
                   role="combobox"
+                  aria-expanded={open}
+                  aria-controls={popoverContentId}
                   aria-required={ariaRequired}
                   aria-labelledby={ariaLabelledBy}
+                  aria-label={ariaLabel}
                   aria-disabled={disabled}
                   onBlur={onBlur}
                   className={cn(
@@ -344,26 +353,46 @@ export function DateTimePicker({
               )
         }
       />
-      <PopoverContent className="w-auto p-2">
-        <div className="flex items-center justify-between">
+      <PopoverContent id={popoverContentId} className="w-auto p-2">
+      <div className="flex items-center justify-between">
           <div className="text-md font-bold ms-2 flex items-center cursor-pointer">
             <div>
               <span
+                role="button"
+                tabIndex={0}
+                aria-expanded={monthYearPicker === "month"}
                 onClick={() =>
                   setMonthYearPicker(
                     monthYearPicker === "month" ? false : "month",
                   )
                 }
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  setMonthYearPicker(
+                    monthYearPicker === "month" ? false : "month",
+                  );
+                }}
               >
                 {format(month, "MMMM")}
               </span>
               <span
                 className="ms-1"
+                role="button"
+                tabIndex={0}
+                aria-expanded={monthYearPicker === "year"}
                 onClick={() =>
                   setMonthYearPicker(
                     monthYearPicker === "year" ? false : "year",
                   )
                 }
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  setMonthYearPicker(
+                    monthYearPicker === "year" ? false : "year",
+                  );
+                }}
               >
                 {format(month, "yyyy")}
               </span>
@@ -609,6 +638,7 @@ function TimePicker({
   max?: Date;
   timePicker?: DateTimePickerProps["timePicker"];
 }) {
+  const popoverContentId = React.useId();
   // hours24h = HH
   // hours12h = hh
   const formatStr = useMemo(
@@ -869,6 +899,7 @@ function TimePicker({
             type="button"
             role="combobox"
             aria-expanded={open}
+            aria-controls={popoverContentId}
             className={cn(
               buttonVariants({ variant: "outline" }),
               "justify-between",
@@ -881,7 +912,7 @@ function TimePicker({
           </button>
         )}
       />
-      <PopoverContent className="p-0 w-auto" side="top">
+      <PopoverContent id={popoverContentId} className="p-0 w-auto" side="top">
         <div className="flex-col gap-2 p-2">
           <div className="flex h-56 gap-1">
             {(!timePicker || timePicker.hour) && (

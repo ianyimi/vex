@@ -39,21 +39,26 @@ export default function CTABlock({ block }: BlockComponentProps) {
 
         {items.length > 0 ? (
           <div className="mx-auto mt-9 flex w-full max-w-[320px] flex-col gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
-            {items.map((action, index) => (
-              <Link
-                className={cn(
-                  buttonVariants({
-                    size: "lg",
-                    variant: index === 0 ? "default" : "outline",
-                  }),
-                  "active:translate-y-px"
-                )}
-                href={action.href}
-                key={`${action.label}-${index}`}
-              >
-                {action.label}
-              </Link>
-            ))}
+            {items.map((action, index) => {
+              // A file under `public/` (`/brand/vexcms-mark.svg`) is not a route:
+              // `next/link` would prefetch its RSC payload (`?_rsc=…`) and 404.
+              const ActionLink = /\.\w+$/.test(action.href.split(/[?#]/)[0] ?? "") ? "a" : Link
+              return (
+                <ActionLink
+                  className={cn(
+                    buttonVariants({
+                      size: "lg",
+                      variant: index === 0 ? "default" : "outline",
+                    }),
+                    "active:translate-y-px"
+                  )}
+                  href={action.href}
+                  key={`${action.label}-${index}`}
+                >
+                  {action.label}
+                </ActionLink>
+              )
+            })}
           </div>
         ) : null}
       </Container>

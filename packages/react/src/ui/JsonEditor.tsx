@@ -44,11 +44,14 @@ export function JsonEditor(props: JsonEditorProps) {
   return (
     <Suspense
       fallback={
+        // Same accessible state as the loaded editor: until the chunk
+        // arrives this textarea IS the control assistive tech sees.
         <Textarea
           id={props.id}
           value={props.value}
           readOnly
           aria-labelledby={props["aria-labelledby"]}
+          aria-required={props["aria-required"]}
           placeholder={props.placeholder}
           className="min-h-32 font-mono"
         />

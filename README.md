@@ -1,4 +1,4 @@
-# Vex CMS
+# VexCMS
 
 > [!WARNING]
 > VexCMS is pre-release software, published only under the `alpha` npm dist-tag
@@ -7,434 +7,90 @@
 > Use it for experiments and evaluation only; do not put it behind production
 > traffic or real user data. Breaking changes land between alpha releases without
 > deprecation cycles, and there is no migration path between alphas. See the
-> [roadmap](apps/docs/src/content/docs/roadmap.md) (published at
-> [docs.vexcms.dev](https://docs.vexcms.dev)) for what is and is not shipped.
+> [roadmap](https://docs.vexcms.dev/roadmap/) for what is and is not shipped.
+
+[![npm version](https://img.shields.io/npm/v/@vexcms/core)](https://www.npmjs.com/package/@vexcms/core)
+[![CI](https://github.com/ianyimi/vex/actions/workflows/ci.yml/badge.svg)](https://github.com/ianyimi/vex/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/ianyimi/vex)](https://github.com/ianyimi/vex/blob/master/LICENSE)
+[![Sponsors](https://img.shields.io/github/sponsors/ianyimi)](https://github.com/sponsors/ianyimi)
 
 <p align="center">
   <img src=".github/assets/preview.png" alt="The VexCMS admin panel editing a Roadmap page: a title, a slug, and an ordered Content field of Hero, Stats, and Roadmap blocks, with the collections and globals sidebar on the right." width="100%">
 </p>
 
-A type-safe headless CMS built natively on [Convex](https://convex.dev). Vex generates your Convex schema and typed query/mutation API from a single config file, with a self-hosted Next.js admin panel for editing content.
-
-**Apache-2.0 Licensed.**
-
-> **Status:** Vex is in `alpha`. APIs may change between `0.x` releases.
+A type-safe headless CMS built natively on [Convex](https://convex.dev). VexCMS generates your
+Convex schema and typed query/mutation API from a single config file, with a self-hosted
+Next.js admin panel for editing content.
 
 ## Quick Start
 
-Scaffold a complete Next.js + Convex + Vex project:
+Scaffold a complete Next.js + Convex + Vex project (answer "yes" to installing dependencies):
 
 ```bash
 pnpm create vexcms@alpha my-site
-```
-
-By default this includes a full marketing-site starter — pages, blocks, roadmap and changelog collections, auth, and a seeded read-only admin panel. Pass `--bare` for an empty project with no starter collections, or `--orgs` to enable multi-tenant organizations.
-
-```bash
 cd my-site
-npx convex dev
-```
-
-First run only — this links or creates your Convex deployment and prints the real
-`NEXT_PUBLIC_CONVEX_URL`/`NEXT_PUBLIC_CONVEX_SITE_URL`. Paste them into `.env.local`, replacing
-the generated `https://placeholder.convex.cloud`/`.convex.site` values; leave `Ctrl-C` for now.
-
-Then set two values on the deployment itself. Better Auth runs inside Convex, not in the
-Next.js server, so it never reads `.env.local`:
-
-```bash
+npx convex dev --once
 npx convex env set SITE_URL http://localhost:3010
 npx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
 ```
 
-Skipping this is the most common cause of a `403` on your first sign-in.
+Then run `pnpm vex:dev` and `pnpm dev` in two terminals (on the marketing-site starter, run
+`pnpm seed` once while `pnpm vex:dev` is running). Open `http://localhost:3010` (or your chosen
+port) and sign up — the first account is automatically promoted to admin and redirected into
+`/admin`.
 
-```bash
-pnpm dev        # Next.js + convex dev + the vex watcher, together
-```
+See the [quickstart guide](https://docs.vexcms.dev/guides/quickstart/) for each step in detail.
 
-Open `http://localhost:3010` (or your chosen port). Sign up — the first account is automatically
-promoted to admin and redirected into `/admin`.
+## Why VexCMS?
 
-### Manual setup
-
-Adding Vex to an existing Next.js + Convex app instead:
-
-```bash
-# Vex packages
-pnpm add @vexcms/core@alpha @vexcms/next@alpha @vexcms/react@alpha @vexcms/better-auth@alpha @vexcms/file-storage-convex@alpha better-auth
-
-# Peer dependencies Vex expects your app to already manage
-pnpm add convex react react-dom next zod @tanstack/react-query @tanstack/react-form @tanstack/react-table @convex-dev/react-query nuqs lucide-react
-
-# CLI (schema/type generation, dev watcher)
-pnpm add -D @vexcms/cli@alpha
-```
-
-1. Define collections, blocks, and access rules in `vex.config.ts` (client-safe — see [Schema & Field System](#schema--field-system) below), then layer the auth adapter and storage adapters onto it in `vex.config.server.ts` via `defineServerConfig`.
-2. Run `vex dev` to generate your Convex schema/types and start `convex dev` in watch mode — it requires `vex.config.server.ts` to exist alongside `vex.config.ts`.
-3. Mount the admin panel: a `VexConfigProvider` (from `@vexcms/react`, importing `vex.config.ts`) around `app/admin/layout.tsx`, and `NextAdminPage` (from `@vexcms/next/server`, importing `vex.config.server.ts`) at `app/admin/[[...slug]]/page.tsx`.
-4. Query your content from the frontend with the generated, typed Convex API.
-
-### Building with LLMs
-
-The docs site serves [llms.txt](https://llmstxt.org) indexes for AI coding agents — point your agent at `/llms.txt` (index), `/llms-full.txt` (complete docs), or `/llms-small.txt` (compact) on the docs site to give it the full Vex API surface while it builds your site.
-
-## Why Vex?
-
-- **Convex-native**: your Vex config generates the Convex schema — no translation layer, no separate ORM.
+- **Convex-native**: your VexCMS config generates the Convex schema — no translation layer, no separate ORM.
 - **Full type safety**: fields, relationships, access permissions, and the generated document/query types are all type-checked end to end.
 - **Real-time by default**: Convex's reactive subscriptions power live updates across the admin panel and your frontend.
 - **PayloadCMS-familiar DX**: if you know Payload, the collection/field/access shape will feel familiar — different runtime, similar authoring model.
 - **Self-hosted**: you own your data, your Convex deployment, and your admin panel.
 
-## Features
+## Docs
 
-### Schema & Field System
+The full field reference, guides (auth, access control, caching, theming, adapters, lifecycle
+hooks, admin customization, list views), and the generated API reference live at
+[docs.vexcms.dev](https://docs.vexcms.dev). The docs site also serves
+[llms.txt](https://llmstxt.org) indexes for AI coding agents — point your agent at `/llms.txt`
+(index), `/llms-full.txt` (complete docs), or `/llms-small.txt` (compact).
 
-Define content types with a fully typed field system. Vex ships 16 field types:
+## Roadmap
 
-| Field          | Description                                          |
-| -------------- | ----------------------------------------------------- |
-| `text`         | Single-line string value                               |
-| `email`        | Email string with format validation                    |
-| `textarea`     | Multi-line string, with a character counter             |
-| `json`         | Arbitrary structured JSON, edited with CodeMirror       |
-| `number`       | Numeric value                                          |
-| `checkbox`     | Boolean toggle                                         |
-| `select`       | One or more values from a fixed option list            |
-| `date`         | Date/time value                                        |
-| `url`          | URL string                                             |
-| `relationship` | Reference(s) to documents in another collection        |
-| `upload`       | Reference(s) to a media document                       |
-| `array`        | Repeatable list of a nested field type                 |
-| `group`        | Named set of sub-fields stored as a nested object       |
-| `blocks`       | Ordered list of typed content blocks (flexible layout) |
-| `color`        | CSS colour string (hex/rgb/hsl/oklch) or theme-token reference |
-| `richtext`     | Rich text document edited with Plate.js (`@vexcms/richtext-plate`) |
+Next comes a plugin system, then free features as demand appears — localization, scheduled
+publishing, a TanStack Start adapter, a form builder, outbound webhooks, API keys and team
+management — then brownfield adoption. All of it is free, in the Apache-2.0 core. See the
+full [roadmap](https://docs.vexcms.dev/roadmap/).
 
-Plus `tabs`, `collapsible`, `row`, and `ui` — non-persisted layout fields that
-organize the edit form — and `admin.condition` on every field, data or layout,
-to show or hide it from `{ data, siblingData }`, enforced client- and
-server-side. **Coming soon:** a dedicated `/fields/richtext/` docs page — see
-the [roadmap](apps/docs/src/content/docs/roadmap.md).
+## Compare
 
-```typescript
-import { defineCollection, text, select, relationship } from "@vexcms/core";
+[VexCMS vs Payload, Sanity and Strapi](https://docs.vexcms.dev/compare/).
 
-export const posts = defineCollection({
-  slug: "posts",
-  admin: {
-    useAsTitle: "title",
-    view: { columns: ["title", "category"] },
-    group: "Content",
-  },
-  fields: {
-    title: text({ label: "Title", required: true }),
-    slug: text({ label: "Slug", required: true, index: "by_slug" }),
-    author: relationship({ collection: { slug: "users" } }),
-    category: select({
-      label: "Category",
-      required: true,
-      defaultValue: ["engineering"],
-      options: [
-        { label: "Engineering", value: "engineering" },
-        { label: "Design", value: "design" },
-      ],
-    }),
-  },
-});
-```
+## Community
 
-`relationship` fields always store `Id<collection>[]` in Convex — `hasMany` is a UI-only hint for whether the admin picker allows one or multiple selections. A `by_<fieldKey>` index is generated automatically for every relationship field.
+- **Questions and ideas**: [GitHub Discussions](https://github.com/ianyimi/vex/discussions)
+- **Bugs**: [issues](https://github.com/ianyimi/vex/issues/new/choose)
+- **Release emails**: [subscribe](https://buttondown.com/vexcms)
+- **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Security**: [SECURITY.md](SECURITY.md) — private vulnerability reporting, or security@vexcms.dev
 
-### Blocks
+## Who builds this
 
-Reusable content blocks for flexible page layouts, composed with a `blocks` field:
+VexCMS is built and maintained by one developer, [@ianyimi](https://github.com/ianyimi), in
+their free time. New issues are triaged within a week; how fast a fix lands depends on its
+severity and on sponsorship.
 
-```typescript
-import { defineBlock, defineCollection, blocks, text } from "@vexcms/core";
+## Sponsors
 
-const heroBlock = defineBlock({
-  slug: "hero",
-  label: "Hero Section",
-  fields: {
-    heading: text({ label: "Heading", required: true }),
-    subheading: text({ label: "Subheading" }),
-  },
-});
+Sponsorship pays for time on the free core: faster bug fixes first, then the free roadmap.
+Sponsor on [GitHub Sponsors](https://github.com/sponsors/ianyimi) (monthly or one-time), or
+[buy me a coffee](https://buymeacoffee.com/zaye).
 
-export const pages = defineCollection({
-  slug: "pages",
-  fields: {
-    title: text({ required: true }),
-    layout: blocks({ label: "Layout", blocks: [heroBlock] }),
-  },
-});
-```
-
-### Globals
-
-Singleton documents for site-wide settings, outside the collection list/pagination model:
-
-```typescript
-import { defineGlobal, text, relationship } from "@vexcms/core";
-
-export const siteSettings = defineGlobal({
-  slug: "siteSettings",
-  label: "Site Settings",
-  fields: {
-    siteName: text({ label: "Site Name", required: true }),
-    activeTheme: relationship({ label: "Active Theme", collection: { slug: "themes" } }),
-  },
-  admin: { group: "Site Builder" },
-});
-```
-
-### Media & Storage Adapters
-
-Media collections are declared directly on the **client** config's `mediaCollections`, via a
-storage package's `defineMediaCollection()` (imported from its `/client` entry point).
-`@vexcms/file-storage-convex` stores files in Convex file storage and adds the required media
-fields (`filename`, `alt`, `mimeType`, `size`, `storageId`, `src`, plus dimensions)
-automatically. The adapter instance itself is server-only and registers separately, via
-`defineServerConfig`:
-
-```typescript
-// vex.config.ts (client)
-import { defineConfig, text } from "@vexcms/core";
-import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
-
-const images = defineMediaCollection({
-  slug: "images",
-  fields: { caption: text() },
-});
-
-export default defineConfig({
-  mediaCollections: [images],
-  collections: [
-    /* posts, pages, ... */
-  ],
-});
-```
-
-```typescript
-// vex.config.server.ts (server)
-import { defineServerConfig } from "@vexcms/core";
-import { convexFileStorage } from "@vexcms/file-storage-convex";
-
-import vexConfig from "./vex.config";
-
-export default defineServerConfig({
-  config: vexConfig,
-  server: { storage: { adapters: [convexFileStorage()] } },
-});
-```
-
-Reference uploaded media from any collection with the `upload` field:
-
-```typescript
-featuredImage: upload({ to: "images", label: "Featured Image" }),
-```
-
-### Access Control (RBAC)
-
-Type-safe, role-based permissions per document via `defineAccess`. Write rules with `withIndex`/`where` — they compile **into the Convex query itself** instead of reading rows into JS and discarding what fails a check. `withIndex` narrows through a declared index (an equality or range on the index's leading fields); `where` is the predicate for everything an index range can't express — an `or` across fields, a `neq`, a condition on a field no index leads with:
-
-```typescript
-import { defineAccess, WILDCARD_KEY } from "@vexcms/core";
-
-export const access = defineAccess({
-  roles: ["admin", "user"],
-  resources: [posts, comments, users],
-  userCollectionSlug: "users",
-  userRolesField: "roles",
-  permissions: {
-    admin: { [WILDCARD_KEY]: true },
-    user: {
-      posts: {
-        // Published posts plus the caller's own drafts. An `or` across two fields
-        // is not one index range, so it is a `where`.
-        read: {
-          where: ({ user, q }) => q.or(q.eq("status", "published"), q.eq("author", user._id)),
-        },
-        create: true,
-        // A mutation authorizes one already-loaded document: there is no query to
-        // narrow, so `withIndex` is unavailable and `where` is checked against it.
-        update: {
-          where: ({ user, q }) => q.and(q.eq("author", user._id), q.neq("status", "archived")),
-        },
-        delete: false,
-      },
-      comments: {
-        // Own comments through the `by_author` index generated for every relationship
-        // field; a `neq` is not an index range, so `where` filters within it.
-        read: {
-          withIndex: ({ user }) => ({ name: "by_author", range: (ix) => ix.eq("author", user._id) }),
-          where: { field: "hidden", op: "neq", value: true },
-        },
-      },
-    },
-  },
-});
-```
-
-Need a check that field comparisons can't express — an array `includes`, a string operation? Add a `filter` callback beside `withIndex` / `where`; it runs per document after the query narrows. Bare callback rules (`update: ({ user, data }) => …`) remain as the fallback for fully imperative checks.
-
-`anonRole` names the role a caller with **zero** roles resolves to — a genuinely unauthenticated visitor. It is how a public, read-only admin panel works: grant the anon role read permissions plus admin-panel access and nothing else. Check permissions at runtime with `hasPermission` (or better, the one-file wrapper shown in the access-control guide):
-
-```typescript
-import { hasPermission } from "@vexcms/core";
-
-hasPermission({ access, user, resource: "posts", action: "update", data: post }); // boolean
-hasPermission({ access, user, resource: "posts", action: "delete", data: post, throwOnDenied: true }); // throws on deny
-```
-
-### Pagination & Data Tables
-
-The admin panel's collection list view is a paginated data table backed by Convex's `usePaginatedQuery`. Page size is configurable per collection:
-
-```typescript
-export const posts = defineCollection({
-  slug: "posts",
-  admin: {
-    view: {
-      pageSize: 10,
-      pageSizeOptions: [10, 25, 50, 100],
-      columns: ["title", "status"],
-    },
-  },
-  fields: {
-    /* ... */
-  },
-});
-```
-
-### Authentication (Better Auth)
-
-Built-in integration with [Better Auth](https://better-auth.com). `betterAuthAdapter()` extracts and merges Better Auth's user/session/account/verification tables into your Vex collections; `authDbApi()` wires the Convex DB adapter. The adapter is server-only, so it's registered on `vex.config.server.ts`; the client config derives the same collections from a plain-data schema description via `betterAuthCollections()` from `@vexcms/better-auth/client`:
-
-```typescript
-// vex.config.ts (client)
-import { betterAuthCollections } from "@vexcms/better-auth/client";
-import { defineConfig } from "@vexcms/core";
-
-import { authSchema } from "./auth/schema";
-
-export default defineConfig({
-  authCollections: betterAuthCollections(authSchema),
-  collections: [posts],
-});
-```
-
-```typescript
-// vex.config.server.ts (server)
-import { betterAuthAdapter } from "@vexcms/better-auth";
-import { defineServerConfig } from "@vexcms/core";
-
-import { authOptions } from "./auth/options";
-
-import vexConfig from "./vex.config";
-
-export default defineServerConfig({
-  config: vexConfig,
-  server: { auth: { adapter: betterAuthAdapter({ config: authOptions }) } },
-});
-```
-
-`authSchema` is a client-safe module holding model names, `user.additionalFields`, and the plugin descriptor map; `authOptions` spreads it and adds the secret, base URL, and real plugin instances. See the [Authentication guide](https://docs.vexcms.dev/guides/auth/) for the full pattern, the optional `server.auth.adapter` divergence check, and the modelled-plugin list.
-
-```typescript
-// convex/auth/db.ts
-import { authDbApi } from "@vexcms/better-auth/convex";
-import { internalMutation, internalQuery } from "../_generated/server";
-import schema from "../schema";
-
-export const { dbCreate, dbFindOne, dbFindMany, dbCount, dbUpdate, dbUpdateMany, dbDelete, dbDeleteMany } =
-  authDbApi({ schema, internalQuery, internalMutation });
-```
-
-### CLI & Type Generation
-
-`@vexcms/cli` watches your config and keeps Convex schema, types, and per-collection query/mutation files in sync:
-
-- `vex dev` — generate the Convex schema, start `convex dev`, and watch your config's imports for changes.
-- `vex dev --once` — generate and push the schema once, then exit (useful in CI).
-- `vex generate` — regenerate `vex.types.ts` and the typed per-collection Convex API files.
-- `vex deploy` — generate the schema, run migrations if configured, and deploy to production (replaces `convex deploy`).
-
-### Admin Panel
-
-A self-hosted Next.js admin panel, mounted directly in your app:
-
-```tsx
-// app/(vexcms)/admin/[[...path]]/page.tsx — minimal sketch; the create-vexcms template also
-// fails closed on session-verification errors and keeps the full deep link in `redirectTo`.
-import { canAccessAdminPanel } from "@vexcms/core";
-import { NextAdminPage } from "@vexcms/next/server";
-import { redirect } from "next/navigation";
-
-import { getToken, getUserOrg } from "~/auth/server";
-import config from "../../../../vex.config.server";
-
-export default async function AdminPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ path?: string[] }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const token = await getToken();
-  if (!token) redirect("/auth/sign-in?redirectTo=/admin");
-
-  const auth = await getUserOrg();
-  if (
-    !canAccessAdminPanel({ access: config.access, user: auth.user, organization: auth.organization })
-  ) {
-    redirect("/unauthorized");
-  }
-
-  return (
-    <NextAdminPage
-      config={config}
-      params={params}
-      searchParams={searchParams}
-      tokenPromise={Promise.resolve(token)}
-      authPromise={Promise.resolve(auth)}
-    />
-  );
-}
-```
-
-It includes a paginated data table per collection, Zod-validated edit forms generated from your field config, a media library with an upload dropzone, role-based access control, and sidebar grouping for collection organization.
-
-## Architecture
-
-```
-@vexcms/core                 Schema definitions, fields, access control (RBAC), versions, type/query generation, Convex server API (`convex` as a peer dependency)
-@vexcms/cli                  CLI: schema generation, type generation, file watching
-@vexcms/react                Shared admin UI components, hooks, and HKT-bound config re-exports
-@vexcms/next                 Next.js admin panel entry points (NextAdminPage, NextAdminLayout)
-@vexcms/better-auth           Better Auth adapter for Vex (schema extraction + Convex DB adapter)
-@vexcms/file-storage-convex  Convex file storage adapter and media collection factory
-@vexcms/richtext-plate       Plate.js rich text editor and renderer for the `richtext` field
-create-vexcms                Project scaffolding CLI (`pnpm create vexcms`)
-```
-
-## Tech Stack
-
-- **Database**: [Convex](https://convex.dev) — real-time serverless database
-- **Admin Panel**: [Next.js](https://nextjs.org) (App Router)
-- **Authentication**: [Better Auth](https://better-auth.com)
-- **Rich Text**: [Plate.js](https://platejs.org) (`@vexcms/richtext-plate`)
-- **Form Validation**: [Zod](https://zod.dev) + [TanStack Form](https://tanstack.com/form)
-- **Data Table**: [TanStack Table](https://tanstack.com/table)
-- **UI Components**: [shadcn/ui](https://ui.shadcn.com)
+No sponsors yet — be the first.
 
 ## License
 
-Apache-2.0. The core stays Apache-2.0: every field type, the admin panel, the CLI, RBAC,
-drafts, live preview, and hooks, plus localization and presence when they land. Paid
-add-ons (real-time co-editing, SSO, audit logs, approval workflows, environment branching)
-will ship later as separate, self-hosted packages under an annual licence; nothing free
-today becomes paid later.
+VexCMS is Apache-2.0 licensed. Paid add-ons may come later, as separate packages, after the
+free roadmap. The core stays Apache-2.0, and nothing free becomes paid.

@@ -1,5 +1,93 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.32
+
+### Patch Changes
+
+- 9959fc1: Bumped `patch` despite being breaking: the `alpha` pre-release track keeps every package on
+  the `0.1.0` base so `changeset pre exit` lands on `0.1.0`. The breaking surface is itemized
+  below and in the commit's `BREAKING CHANGE:` footer.
+
+  Split `@vexcms/react`'s public surface in two: the root (`.`) holds everything a page touches, `@vexcms/react/admin` holds the framework adapter, field `Admin`/`Cell` components, slots, the document-edit runtime, admin layout/views, collection/media/global views, the list-view context, the live-preview panel, the modal surface, `useVexForm`, and the `data-table`/`dnd`/`sidebar`/`resizable` UI primitives. A server component importing the root no longer pulls any of that into the client graph. `useAppForm`/`AppForm` are removed from the root entirely — the app form's surface was always `@vexcms/react/form`, and the root must not reach `dnd` through `ArrayField`/`BlocksField`'s drag handles.
+
+  **BREAKING CHANGE.** Update every import of a moved name from `@vexcms/react` to `@vexcms/react/admin`:
+
+  | Old import (`@vexcms/react`)                                                                                                                                                             | New import            |
+  | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+  | `reactAdapter`                                                                                                                                                                           | `@vexcms/react/admin` |
+  | `*FieldAdmin`, `*FieldCell` (all field types)                                                                                                                                            | `@vexcms/react/admin` |
+  | `SlotOutlet`, `SlotOverrideOutlet`, `type SlotOverrideProps`                                                                                                                             | `@vexcms/react/admin` |
+  | `useVexForm`                                                                                                                                                                             | `@vexcms/react/admin` |
+  | `VexDocumentProvider`, `useVexDocument`, `type VexDocumentState`                                                                                                                         | `@vexcms/react/admin` |
+  | `SLOT_IDS`, `BUILTIN_CONTRIBUTION_IDS`                                                                                                                                                   | `@vexcms/react/admin` |
+  | `DocumentEditSlotOutlet`, `DocumentEditRuntimeProvider`, `useDocumentEditRuntime`, `documentEditBuiltinContributions`, `useEditActionsMenuDialog`, `EditActionsMenuItem` (+ their types) | `@vexcms/react/admin` |
+  | `type EditSlotProps`, `type EditSlotConfigInput`, `type ComponentContributionInput`, `type ComponentOverrideInput`, `type SlotId`, `type SlotAccessContext`, `type SlotAccessPredicate`  | `@vexcms/react/admin` |
+  | `AdminLayout`, `AdminNotFound`, `AppSidebar`, `AdminTopNav`, `DashboardView`, `CollectionsIndexView`, `AdminCardSection`, `AdminIndexEmptyState` (+ their types)                         | `@vexcms/react/admin` |
+  | `CollectionListView`, `CollectionEditView`, `MediaCollectionListView`, `MediaCollectionEditView`, `GlobalEditView`, `GlobalsListView`                                                    | `@vexcms/react/admin` |
+  | `useListViewContext`, `ListViewContextProvider`, `type ListViewContextState`                                                                                                             | `@vexcms/react/admin` |
+  | `ModalSurfaceProvider`, `useModalSurface`                                                                                                                                                | `@vexcms/react/admin` |
+  | `LivePreviewPanel`, `resolveLivePreviewUrl`, `type LivePreviewFrameGeometry`, `useLivePreviewPanelMinSize`, `useLivePreviewPanelState`                                                   | `@vexcms/react/admin` |
+  | `DataTable*` (all of `ui/data-table`), `Sidebar*`, `Resizable*`, dnd exports (`DndProvider`, `Droppable`, `Draggable`, `DragHandle`, `useAccordionDndState`)                             | `@vexcms/react/admin` |
+  | `useAppForm`, `AppForm`                                                                                                                                                                  | `@vexcms/react/form`  |
+
+  `ReactHKT` and `ReactAdapter` stay importable as types from both the root and `/admin` — they cost nothing and `RelationshipFieldInput`/`CollectionConfigInput`/etc. at the root reference `ReactHKT`.
+
+  `@vexcms/react/admin` also exports two components the docs already described but no entry exposed. `VersionHistoryDropdown` (with `VersionHistoryPanelProps` and `VersionHistoryTarget`) renders a document's version list in a custom edit view, and `AdminFieldBinding` binds a custom field component inside a framework adapter.
+
+  `@vexcms/next`'s `NextAdminLayoutClient` and `NextAdminPage` now import the ten moved view/layout components from `@vexcms/react/admin`; its own public API is unchanged.
+
+- 9959fc1: **Root `Icon` loads icons on demand instead of bundling all 1703 of `lucide-react`'s icon components.**
+  Every page that renders an `Icon` by name — directly, or through a collection's `admin.icon`, a block's
+  `icon` field, or `Button`'s own `icon` prop — used to pull in every icon lucide-react ships (505 KB). `Icon`
+  now resolves the name to `lucide-react/dynamic`'s on-demand import and reserves the loaded icon's exact box
+  with a placeholder `<svg>` while it loads, so nothing shifts. A new `isIconName(name): name is IconName`
+  export lets a caller holding untyped data (CMS content, a block field) check a name before rendering it,
+  the same guard `Icon` applies internally.
+
+  The admin panel uses the same lazy `Icon` everywhere, including its own sidebar, collection/global
+  icons, field previews, and menu-item icons — there is no separate eager admin icon component.
+
+  **Migration:** nothing for root `Icon` callers — same props, same `null`-on-unknown-name fallback, same
+  one-warning-per-name behavior; the only visible difference is a brief placeholder box before an icon paints.
+  A caller doing `icons[name]` directly against `lucide-react` to render a CMS-driven icon (as `Features`/`HowItWorks`/`Footer`/`Split`
+  block renderers do) should switch to `Icon` + `isIconName` to get the same lazy loading.
+
+  **Server-resolved icon nodes for first paint.** `resolveIconNodes`, exported from `@vexcms/react/server`,
+  resolves a set of icon names to lucide's serializable `IconNode`s on the server. A new `IconNodeProvider`
+  (and its `IconNodeMap` type), both exported from the root, hands those nodes to every `Icon` beneath it;
+  `Icon` now checks that provider first and renders a matching node synchronously — real SVG in the server
+  HTML, no request — before falling back to the lazy `DynamicIcon` path above for any name the server never
+  saw (live-preview edits, client-only data). A route that already collects the documents it renders can
+  resolve their icons once and wrap its tree: `IconNodeProvider` merges with any parent provider, so a
+  layout-level map (header/footer icons) and a page-level map (block icons) compose without either
+  overwriting the other.
+
+- Updated dependencies [9959fc1]
+  - @vexcms/core@0.1.0-alpha.32
+  - @vexcms/better-auth@0.1.0-alpha.32
+
+## 0.1.0-alpha.31
+
+### Patch Changes
+
+- 910f2e7: Accessibility pass on the admin panel against WCAG 2.2 AA and the WAI-ARIA APG patterns.
+  Sidebar actions, multi-select chips, pagination, date/time pickers, resizable panels and
+  data-table labels expose correct names, roles and keyboard support; data-table column
+  resize is keyboard-operable (arrows, Home/End) and capped at 90% of the table container.
+  Array fields, timestamps, media and relationship inputs, and the richtext toolbar gain
+  accessible names and status regions; dialogs set initial focus; `ThemeProvider` applies
+  the stored theme before paint in client-only renders.
+
+  Both `create-vexcms` templates are re-synced from the reference apps: production-only CSP
+  and security headers, root `not-found` pages, drafts and live preview on the
+  marketing-site `pages` collection, and a session button in the site header.
+
+- Updated dependencies [910f2e7]
+- Updated dependencies [910f2e7]
+- Updated dependencies [910f2e7]
+  - @vexcms/core@0.1.0-alpha.31
+  - @vexcms/better-auth@0.1.0-alpha.31
+
 ## 0.1.0-alpha.30
 
 ### Patch Changes

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { useForm } from "@tanstack/react-form";
+import { Toaster } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { adminFieldToInputSchema, defineConfig, text } from "@vexcms/core";
 import type {
@@ -175,13 +176,18 @@ runFieldInputContractSuite({
         // `if (readOnly) { <>...</>; }` block that never `return`s it. Execution
         // falls through to the interactive (but prop-disabled) dropzone below
         // instead. This asserts the code's own evident intent.
-        render(<Harness fieldDef={fixture.fieldDef} readOnly={true} initialValue={fixture.empty} />);
+        render(
+          <Harness fieldDef={fixture.fieldDef} readOnly={true} initialValue={fixture.empty} />,
+        );
         expect(screen.getByText("—")).toBeInTheDocument();
       });
 
       it("throws the config guard's exact message when fieldDef.to doesn't match any configured media collection", () => {
         const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-        const orphanFieldDef = { ...fixture.fieldDef, to: "does-not-exist" } as unknown as UploadField;
+        const orphanFieldDef = {
+          ...fixture.fieldDef,
+          to: "does-not-exist",
+        } as unknown as UploadField;
         try {
           expect(() =>
             render(
@@ -350,7 +356,9 @@ runFieldInputContractSuite({
         generateUploadUrlMock.mockResolvedValue({ url: "https://storage.example/put/1" });
         vi.stubGlobal(
           "fetch",
-          vi.fn().mockResolvedValue({ ok: true, json: async () => ({ storageId: "stub-storage-id" }) }),
+          vi
+            .fn()
+            .mockResolvedValue({ ok: true, json: async () => ({ storageId: "stub-storage-id" }) }),
         );
         createMediaDocMock.mockResolvedValue("new-media-id");
 
@@ -368,7 +376,9 @@ runFieldInputContractSuite({
         // `closePicker()` — the modal unmounts and the filled state (hasMany
         // controls) takes over.
         await waitFor(() =>
-          expect(screen.queryByRole("button", { name: "Create & select (1)" })).not.toBeInTheDocument(),
+          expect(
+            screen.queryByRole("button", { name: "Create & select (1)" }),
+          ).not.toBeInTheDocument(),
         );
         expect(screen.getByRole("button", { name: "Select Images" })).toBeInTheDocument();
 
@@ -391,16 +401,94 @@ runFieldInputContractSuite({
         });
       });
 
-      // TODO: Un-skip once MediaUploadForm.tsx's onSubmit catch block gets a
-      // real accessible error indicator (its own `// TODO: Show error toast`)
-      // instead of `console.error` only — needs a UI component, not a
-      // one-line fix, tracked separately from this spec's 24 defects.
-      it.skip("[finding] recovers from a failed storage upload — the button un-sticks and the staged file survives for a retry, but nothing tells the user it failed", async () => {
+      it("measures and passes image width/height through to createMediaDocument when the browser can decode the file", async () => {
+        generateUploadUrlMock.mockResolvedValue({ url: "https://storage.example/put/1" });
+        vi.stubGlobal(
+          "fetch",
+          vi
+            .fn()
+            .mockResolvedValue({ ok: true, json: async () => ({ storageId: "stub-storage-id" }) }),
+        );
+        vi.stubGlobal(
+          "createImageBitmap",
+          vi.fn().mockResolvedValue({ width: 800, height: 600, close: vi.fn() }),
+        );
+        createMediaDocMock.mockResolvedValue("new-media-id");
+
+        render(
+          <Harness fieldDef={fixture.fieldDef} readOnly={false} initialValue={fixture.empty} />,
+        );
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        fireEvent.change(fileInput, { target: { files: [makeFile("cover.png")] } });
+
+        const submitButton = await screen.findByRole("button", { name: "Create & select (1)" });
+        fireEvent.click(submitButton);
+
+        await waitFor(() =>
+          expect(
+            screen.queryByRole("button", { name: "Create & select (1)" }),
+          ).not.toBeInTheDocument(),
+        );
+
+        expect(createMediaDocMock).toHaveBeenCalledWith({
+          adapter: "convex",
+          collectionSlug: "images",
+          storageId: "stub-storage-id",
+          filename: "cover.png",
+          mimeType: "image/png",
+          size: expect.any(Number),
+          alt: "",
+          width: 800,
+          height: 600,
+        });
+      });
+
+      it("omits width/height for a non-image MIME type even when the browser's decoder is available", async () => {
+        generateUploadUrlMock.mockResolvedValue({ url: "https://storage.example/put/1" });
+        vi.stubGlobal(
+          "fetch",
+          vi
+            .fn()
+            .mockResolvedValue({ ok: true, json: async () => ({ storageId: "stub-storage-id" }) }),
+        );
+        const createImageBitmapMock = vi
+          .fn()
+          .mockResolvedValue({ width: 800, height: 600, close: vi.fn() });
+        vi.stubGlobal("createImageBitmap", createImageBitmapMock);
+        createMediaDocMock.mockResolvedValue("new-media-id");
+
+        render(
+          <Harness fieldDef={fixture.fieldDef} readOnly={false} initialValue={fixture.empty} />,
+        );
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        fireEvent.change(fileInput, {
+          target: { files: [makeFile("manual.pdf", "application/pdf")] },
+        });
+
+        const submitButton = await screen.findByRole("button", { name: "Create & select (1)" });
+        fireEvent.click(submitButton);
+
+        await waitFor(() =>
+          expect(
+            screen.queryByRole("button", { name: "Create & select (1)" }),
+          ).not.toBeInTheDocument(),
+        );
+
+        expect(createImageBitmapMock).not.toHaveBeenCalled();
+        const call = vi.mocked(createMediaDocMock).mock.calls[0]?.[0];
+        expect(call).not.toHaveProperty("width");
+        expect(call).not.toHaveProperty("height");
+      });
+
+      it("[finding] recovers from a failed storage upload — the button un-sticks and the staged file survives for a retry, but nothing tells the user it failed", async () => {
         generateUploadUrlMock.mockResolvedValue({ url: "https://storage.example/put/1" });
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, json: async () => ({}) }));
 
         render(
-          <Harness fieldDef={fixture.fieldDef} readOnly={false} initialValue={fixture.empty} />,
+          <>
+            <Harness fieldDef={fixture.fieldDef} readOnly={false} initialValue={fixture.empty} />
+            <Toaster />
+          </>,
         );
         const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
         fireEvent.change(fileInput, { target: { files: [makeFile("cover.png")] } });
@@ -412,15 +500,15 @@ runFieldInputContractSuite({
         // catches the `!uploadResponse.ok` throw, so `form.state.isSubmitting`
         // still settles back to false and `form.reset()` is skipped — the
         // button un-sticks from "Uploading…" and the staged file isn't dropped.
-        expect(await screen.findByRole("button", { name: "Create & select (1)" })).not.toBeDisabled();
+        expect(
+          await screen.findByRole("button", { name: "Create & select (1)" }),
+        ).not.toBeDisabled();
         expect(screen.getByText("cover.png")).toBeInTheDocument();
         expect(createMediaDocMock).not.toHaveBeenCalled();
 
-        // The catch block's only action is `console.error("Upload failed:", error)`
-        // — see its own `// TODO: Show error toast` — so there is no accessible
-        // indicator a user could notice. This asserts the reasonably-expected
-        // outcome (some accessible error indicator exists) and documents the gap.
-        expect(screen.queryByRole("alert")).not.toBeNull();
+        // The catch block shows a sonner error toast whose description is the
+        // readable error message for the failed upload.
+        expect(await screen.findByText("Upload failed for cover.png")).toBeInTheDocument();
       });
     });
   },

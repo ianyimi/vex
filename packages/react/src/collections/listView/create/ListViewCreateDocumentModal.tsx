@@ -16,10 +16,16 @@ import { parseAsBoolean, useQueryState } from "nuqs";
  * Renders `ListViewCreateDocumentForm`, closing by clearing the URL param on both
  * create and cancel.
  *
+ * `collection.disableCreate` blocks this modal outright — even a
+ * hand-typed `?createNew=true` renders nothing, matching `ListViewCreateAction`
+ * hiding the "+ New" affordance that would normally open it (decision D2: the
+ * auth adapter's user collection has no admin-authored create workflow).
+ *
  * @param props - Component props.
  * @param props.collection - The slug of the collection the new document will be created in.
  * @returns A URL-state-driven `<Modal>` containing the creation form, or `null`
- *   when `collection` does not resolve against the current config.
+ *   when `collection` does not resolve against the current config, or when it
+ *   has `disableCreate` set.
  * @throws Never — resolution failure renders `null` instead of throwing.
  */
 export function ListViewCreateDocumentModal(props: {
@@ -41,7 +47,7 @@ export function ListViewCreateDocumentModal(props: {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  if (!collection) {
+  if (!collection || collection.disableCreate) {
     return null;
   }
 

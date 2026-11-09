@@ -11,6 +11,7 @@ import {
   TABLE_SLUG_HEADERS,
   TABLE_SLUG_LEADS,
   TABLE_SLUG_PAGES,
+  TABLE_SLUG_POSTS,
   TABLE_SLUG_PRODUCTS,
   TABLE_SLUG_TESTIMONIALS,
   TABLE_SLUG_THEMES,
@@ -53,7 +54,7 @@ const THEME_PRESETS = [
       cardForeground: "oklch(13.7% 0 0)",
       popover: "oklch(100% 0 0)",
       popoverForeground: "oklch(13.7% 0 0)",
-      primary: "oklch(60.5% 0.175 42)",
+      primary: "oklch(54% 0.175 42)",
       primaryForeground: "oklch(100% 0 0)",
       secondary: "oklch(98% 0 0)",
       secondaryForeground: "oklch(13.7% 0 0)",
@@ -61,7 +62,7 @@ const THEME_PRESETS = [
       mutedForeground: "oklch(50.5% 0 0)",
       accent: "oklch(96% 0.025 42)",
       accentForeground: "oklch(52% 0.180 40)",
-      destructive: "oklch(57.7% 0.198 27)",
+      destructive: "oklch(54% 0.198 27)",
       destructiveForeground: "oklch(98% 0 0)",
       border: "oklch(85% 0 0)",
       input: "oklch(54.6% 0 0)",
@@ -634,13 +635,21 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
           { label: "Docs", href: "https://docs.vexcms.dev" },
           { label: "Quickstart", href: "https://docs.vexcms.dev/guides/quickstart/" },
           { label: "Admin demo", href: "/admin" },
+          { label: "Discussions", href: "https://github.com/ianyimi/vex/discussions" },
+          { label: "Release emails", href: "https://buttondown.com/vexcms" },
+          { label: "Sponsor", href: "https://github.com/sponsors/ianyimi" },
+          { label: "Buy Me a Coffee", href: "https://buymeacoffee.com/zaye" },
+          { label: "Brand", href: "/brand" },
           { label: "npm", href: "https://www.npmjs.com/package/@vexcms/core" },
           { label: "Licence", href: "https://github.com/ianyimi/vex/blob/master/LICENSE" },
+          { label: "Privacy", href: "/privacy" },
+          { label: "Accessibility", href: "/accessibility" },
           { label: "Convex", href: "https://convex.dev" },
           { label: "Convex docs", href: "https://docs.convex.dev" },
         ],
         socialLinks: [
           { platform: "GitHub", href: "https://github.com/ianyimi/vex", icon: "Github" },
+          { platform: "GitHub Sponsors", href: "https://github.com/sponsors/ianyimi", icon: "Heart" },
         ],
       },
     ],
@@ -960,7 +969,7 @@ export const featuredPosts = query({
         id: "home-faq",
         heading: "Questions we keep getting.",
         subheading: "",
-        supportLink: "https://github.com/ianyimi/vex/issues",
+        supportLink: "https://github.com/ianyimi/vex/discussions",
         items: [
           {
             question: "What is VexCMS?",
@@ -1000,7 +1009,12 @@ export const featuredPosts = query({
           {
             question: "What does it cost?",
             answer:
-              "The core is Apache-2.0 and stays that way: every field type, the admin panel, the CLI, RBAC, drafts, live preview, and hooks, plus localization and presence when they land. You pay Convex for usage, and Convex has a free tier. Paid enterprise add-ons come later: real-time co-editing, environment branching, SSO, approval workflows, and audit logs, as separate packages under a flat annual licence. Nothing free today becomes paid later.",
+              "The core is Apache-2.0 and stays that way: every field type, the admin panel, the CLI, RBAC, drafts, live preview, and hooks. You pay Convex for usage, and Convex has a free tier. Paid add-ons may come later, as separate packages, after the free roadmap. The core stays Apache-2.0, and nothing free becomes paid.",
+          },
+          {
+            question: "Who builds VexCMS?",
+            answer:
+              "VexCMS is built and maintained by one developer, @ianyimi, in their free time. New issues are triaged within a week; how fast a fix lands depends on its severity and on sponsorship. Sponsorship pays for time on the free core: faster bug fixes first, then the free roadmap.",
           },
         ],
       },
@@ -1352,9 +1366,9 @@ export const testimonials = defineTable({
         id: "roadmap-hero",
         variant: ["compact"],
         badgeText: "Roadmap",
-        heading: "What's shipped, what's next, and what's still an idea.",
+        heading: "What's shipped, what's next, and what's not planned.",
         subheading:
-          "VexCMS is in public alpha. Ten specs stand between the current alpha and the 0.1.0 tag, and they ship in the order below. This page itself is edited in the admin panel, not in a source file.",
+          "VexCMS is in public alpha, built in the open. This page is edited right here in the admin panel, not in a source file.",
         primaryCtaLabel: "Get started",
         primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
       },
@@ -1364,22 +1378,20 @@ export const testimonials = defineTable({
         id: "roadmap-stats",
         items: [
           {
-            value: "11",
-            label: "shipped",
-            description:
-              "Field types, codegen, the admin panel, globals, media, RBAC, themes, auth, SEO, the CLI, and the test kit",
+            value: "16",
+            label: "field types",
+            description: "From text and select to blocks, relationships and richtext",
           },
           {
-            value: "10",
-            label: "specs to v0.1.0",
-            description:
-              "Each spec consumes what the last one built. The mobile pass is the final gate",
+            value: "8",
+            label: "packages",
+            description: "core, react, next, cli, better-auth, file-storage-convex, richtext-plate, create-vexcms",
           },
           {
-            value: "0.1.0-alpha.16",
+            value: "0.1.0-alpha",
             label: "on npm today",
             description:
-              "Published from the dev branch. The whole track lands before anything is tagged 0.1.0",
+              "0.1.0 tags when the launch checklist is done. The free roadmap keeps shipping after it",
           },
         ],
       },
@@ -1392,9 +1404,9 @@ export const testimonials = defineTable({
           "Shipped means it is in the published packages and running in this site. Planned means it is committed to 0.1.0, listed in the order it ships. Everything past that is an intention, not a promise.",
         items: [
           {
-            feature: "12 Field Types",
+            feature: "16 Field Types",
             description:
-              "text, url, color, number, checkbox, date, select, relationship, array, group, blocks, and upload.",
+              "text, number, checkbox, select, date, url, email, textarea, json, relationship, upload, array, group, blocks, color, and richtext.",
             status: ["shipped"],
           },
           {
@@ -1452,22 +1464,16 @@ export const testimonials = defineTable({
             status: ["shipped"],
           },
           {
-            feature: "React Test Kit",
-            description:
-              "@vexcms/react/testing exports the contract suites we run against every field input. Your own custom fields can be held to them too.",
-            status: ["shipped"],
-          },
-          {
             feature: "Data-Table Integrity & Config Honesty",
             description:
-              "First in the launch track. Every key under admin.view gets a consumer or gets deleted. No README documents a flag that does nothing.",
+              "Every key under admin.view has a consumer. No documented flag does nothing.",
             status: ["shipped"],
           },
           {
             feature: "Public API Honesty Pass",
             description:
-              "Nothing exported may lie about what it does. The auto-migration stubs leave the public surface. The localization model gets decided before anyone has data to migrate.",
-            status: ["planned"],
+              "Nothing exported may lie about what it does. Every documented flag has a consumer, and every consumer is documented.",
+            status: ["shipped"],
           },
           {
             feature: "Lifecycle Hooks & Server-Side Validation",
@@ -1514,8 +1520,8 @@ export const testimonials = defineTable({
           {
             feature: "Responsive & Mobile Pass",
             description:
-              "The final gate. Every admin and marketing surface audited at seven widths, from 375 to 1536. No clipped controls, and every primary action reachable on a phone.",
-            status: ["planned"],
+              "Every admin and marketing surface audited at seven widths, from 375 to 1536. No clipped controls, and every primary action reachable on a phone.",
+            status: ["shipped"],
           },
           {
             feature: "JSON, Email & Textarea Fields",
@@ -1542,52 +1548,52 @@ export const testimonials = defineTable({
             status: ["shipped"],
           },
           {
-            feature: "Content Scheduling",
+            feature: "Plugin System",
             description:
-              "publishAt on a document, promoted by a Convex scheduled function. The scheduling Convex already has, put to work on content.",
-            status: ["future"],
+              "After 0.1.0, phase 1: the extension points 0.1.0 ships become a supported plugin API for collections, fields, hooks, access rules and admin views.",
+            status: ["planned"],
           },
           {
-            feature: "Team Management & API Keys",
+            feature: "Localization",
             description:
-              "A UI for inviting people and assigning roles. Scoped read-only tokens for anything that reads your content from outside.",
-            status: ["future"],
+              "After 0.1.0, phase 2 (unordered, demand-driven): per-field locale values, opted into per collection and per field, with locale-aware drafts.",
+            status: ["planned"],
+          },
+          {
+            feature: "Scheduled Publishing",
+            description:
+              "After 0.1.0, phase 2 (unordered, demand-driven): publish and unpublish at a set time, on Convex's scheduler.",
+            status: ["planned"],
           },
           {
             feature: "TanStack Start Adapter",
             description:
-              "The data layer already works with any Convex client. This is the admin panel and the caching helpers on a second framework.",
-            status: ["future"],
-          },
-          {
-            feature: "S3, R2 & Vercel Blob Adapters",
-            description:
-              "Storage adapters beside the Convex one, for teams whose assets have to live somewhere specific.",
-            status: ["future"],
+              "After 0.1.0, phase 2 (unordered, demand-driven): the admin panel and the caching helpers on a second framework.",
+            status: ["planned"],
           },
           {
             feature: "Form Builder",
             description:
-              "defineFormCollection: fields for collecting input rather than editing content. Generated validation, stored submissions.",
-            status: ["future"],
+              "After 0.1.0, phase 2 (unordered, demand-driven): collect input from site visitors, with generated validation and stored submissions.",
+            status: ["planned"],
           },
           {
-            feature: "Plugin System",
+            feature: "Outbound Webhooks",
             description:
-              "Third-party extensions over collections, fields, and admin views, including custom field types. The panel grows without forking.",
-            status: ["future"],
+              "After 0.1.0, phase 2 (unordered, demand-driven): notify other services when content changes.",
+            status: ["planned"],
           },
           {
-            feature: "Enterprise Add-Ons",
+            feature: "API Keys & Team Management",
             description:
-              "Real-time co-editing (live cursors, per-field indicators, collaborative rich text), content branching between environments, SAML and OIDC SSO, approval workflows, and a retained audit log. Separate paid packages on a flat annual licence. The core stays Apache-2.0, and nothing free today moves behind it.",
-            status: ["exploring"],
+              "After 0.1.0, phase 2 (unordered, demand-driven): invite people, assign roles, and issue scoped keys for reading content from outside.",
+            status: ["planned"],
           },
           {
-            feature: "Multi-Component Workspaces",
+            feature: "Brownfield Adoption",
             description:
-              "defineComponent, per-component schema generation, and workspace routing. This is where support for the wider Convex component ecosystem starts.",
-            status: ["exploring"],
+              "After 0.1.0, phase 3: add VexCMS to an existing Convex app table by table, without migrating the data it already holds.",
+            status: ["planned"],
           },
         ],
       },
@@ -1616,6 +1622,272 @@ export const testimonials = defineTable({
   } else {
     await ctx.db.insert(TABLE_SLUG_PAGES, roadmapPageDoc)
     created.push("page:roadmap")
+  }
+
+  const existingPrivacyPage = await ctx.db
+    .query(TABLE_SLUG_PAGES)
+    .withIndex("by_slug", (q) => q.eq("slug", "privacy"))
+    .filter((q) => q.neq(q.field("vex_status"), "draft"))
+    .first()
+  const privacyPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = {
+    title: "Privacy",
+    slug: "privacy",
+    vex_status: "published",
+    blocks: [
+      {
+        blockType: BLOCK_SLUG_HERO,
+        blockName: "Hero",
+        id: "privacy-hero",
+        variant: ["compact"],
+        badgeText: "Privacy",
+        heading: "What this site collects, and what it doesn't.",
+        subheading:
+          "VexCMS runs the analytics, the live demo, and the CLI telemetry described below. This page lists exactly what each one sends.",
+      },
+      {
+        blockType: BLOCK_SLUG_FAQ,
+        blockName: "FAQ",
+        id: "privacy-faq",
+        heading: "Privacy FAQ",
+        subheading: "",
+        supportLink: "",
+        items: [
+          {
+            question: "What does this site collect?",
+            answer:
+              "Anonymous, aggregated analytics through Vercel Web Analytics and Vercel Speed Insights. Browsing the site, reading the docs and opening the read-only live demo need no account.",
+          },
+          {
+            question: "Does this site use cookies?",
+            answer:
+              "Not for analytics: Vercel Web Analytics and Speed Insights are cookieless. The admin panel keeps two preference cookies scoped to /admin (layout and list-view settings; see https://docs.vexcms.dev/guides/admin-cookies/), and signing in sets a session cookie. Your light or dark theme choice is kept in your browser's local storage.",
+          },
+          {
+            question: "What does Vercel Web Analytics collect?",
+            answer:
+              "Vercel Web Analytics identifies visitors by a hash of the incoming request that resets every 24 hours, not a cookie or your IP address. Per page view it records the event timestamp, URL, dynamic path, referrer, filtered query parameters, country/region/city, device and browser, device type, and script version. Full policy: https://vercel.com/docs/analytics/privacy-policy.",
+          },
+          {
+            question: "What does Speed Insights collect?",
+            answer:
+              "Vercel Speed Insights samples 5% of page views on this site and records anonymous Web Vitals — route, network speed, browser, device, country, and the vital's value — none of it tied to an individual visitor or IP address. Full policy: https://vercel.com/docs/speed-insights/privacy-policy.",
+          },
+          {
+            question: "What happens in the live demo?",
+            answer:
+              "The demo opens the admin panel read-only, with no account and no session: you can browse every collection, but nothing you do is saved. Sign-up and anonymous sign-in requests are rate-limited using a salted one-way hash of your IP address, and the raw IP address is never stored. Anonymous accounts created through the auth API are deleted 24 hours after they're created.",
+          },
+          {
+            question: "Does the CLI send telemetry?",
+            answer:
+              "create-vexcms and vex collect anonymous usage telemetry by default — no personal data, no IP address, no project content. Opt out at any time with vex telemetry disable, DO_NOT_TRACK=1, or VEX_TELEMETRY_DISABLED=1. Full field list: https://docs.vexcms.dev/guides/telemetry/.",
+          },
+          {
+            question: "Do you send email?",
+            answer:
+              "Release emails: if you subscribe, your email address is stored by Buttondown, which runs the list and sends one email per release. Buttondown's privacy policy: https://buttondown.com/legal/privacy",
+          },
+          {
+            question: "Who do I contact about this?",
+            answer: "Questions about privacy or this page: hello@vexcms.dev.",
+          },
+        ],
+      },
+    ],
+  }
+  if (existingPrivacyPage) {
+    if (mode === "patch") {
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingPrivacyPage._id, privacyPageDoc)
+      patched.push("page:privacy")
+    } else {
+      skipped.push("page:privacy")
+    }
+  } else {
+    await ctx.db.insert(TABLE_SLUG_PAGES, privacyPageDoc)
+    created.push("page:privacy")
+  }
+
+  const existingBrandPage = await ctx.db
+    .query(TABLE_SLUG_PAGES)
+    .withIndex("by_slug", (q) => q.eq("slug", "brand"))
+    .filter((q) => q.neq(q.field("vex_status"), "draft"))
+    .first()
+  const brandPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = {
+    title: "Brand",
+    slug: "brand",
+    vex_status: "published",
+    blocks: [
+      {
+        blockType: BLOCK_SLUG_HERO,
+        blockName: "Hero",
+        id: "brand-hero",
+        variant: ["compact"],
+        badgeText: "Brand",
+        heading: "Logos, wordmark, and brand assets.",
+        subheading:
+          "The VexCMS wordmark and mark, in light and dark, plus 1024px PNG exports. Use them unmodified — don't recolor, stretch, or add effects.",
+      },
+      {
+        blockType: BLOCK_SLUG_CTA,
+        blockName: "Call to Action",
+        id: "brand-downloads",
+        heading: "Download",
+        subheading: "SVG for print and the web, PNG for everything else.",
+        actions: [
+          { label: "Logo (light), SVG", href: "/brand/vexcms-logo-light.svg" },
+          { label: "Logo (dark), SVG", href: "/brand/vexcms-logo-dark.svg" },
+          { label: "Mark only, SVG", href: "/brand/vexcms-mark.svg" },
+          { label: "Logo (light), PNG", href: "/brand/vexcms-logo-light.png" },
+          { label: "Logo (dark), PNG", href: "/brand/vexcms-logo-dark.png" },
+          { label: "Mark only, PNG", href: "/brand/vexcms-mark.png" },
+          { label: "Mark only, 240px PNG", href: "/brand/vexcms-mark-240.png" },
+        ],
+      },
+    ],
+  }
+  if (existingBrandPage) {
+    if (mode === "patch") {
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingBrandPage._id, brandPageDoc)
+      patched.push("page:brand")
+    } else {
+      skipped.push("page:brand")
+    }
+  } else {
+    await ctx.db.insert(TABLE_SLUG_PAGES, brandPageDoc)
+    created.push("page:brand")
+  }
+
+  const existingAccessibilityPage = await ctx.db
+    .query(TABLE_SLUG_PAGES)
+    .withIndex("by_slug", (q) => q.eq("slug", "accessibility"))
+    .filter((q) => q.neq(q.field("vex_status"), "draft"))
+    .first()
+  const accessibilityPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = {
+    title: "Accessibility",
+    slug: "accessibility",
+    vex_status: "published",
+    blocks: [
+      {
+        blockType: BLOCK_SLUG_HERO,
+        blockName: "Hero",
+        id: "accessibility-hero",
+        variant: ["compact"],
+        badgeText: "Accessibility",
+        heading: "VexCMS aims for WCAG 2.2 AA, plus a stronger focus indicator.",
+        subheading:
+          "This page states our conformance target, how we test it, and every known gap, so you always know exactly where this site stands.",
+      },
+      {
+        blockType: BLOCK_SLUG_FAQ,
+        blockName: "FAQ",
+        id: "accessibility-faq",
+        heading: "Accessibility FAQ",
+        subheading: "",
+        supportLink: "",
+        items: [
+          {
+            question: "What's the conformance target?",
+            answer:
+              "WCAG 2.2 Level AA in full — every Level A and AA success criterion — plus 2.4.13 Focus Appearance, which is normally a Level AAA criterion. We hold the focus indicator to that AAA bar everywhere on this site.",
+          },
+          {
+            question: "How is this tested?",
+            answer:
+              "Automated: axe-core 4.14 (via Playwright, tagged for WCAG 2.2 A/AA), the Nu Html Checker, Lighthouse CI's accessibility category, and eslint-plugin-jsx-a11y. We also ran a full keyboard-only sweep of every page. A VoiceOver and 200%-zoom/reflow pass hasn't run yet; this statement will be updated once it has, with no date promised.",
+          },
+          {
+            question: "When was this last tested?",
+            answer: "2026-11-08.",
+          },
+          {
+            question: "What doesn't conform yet?",
+            answer:
+              "One: selecting, resizing, or choosing a table size in the richtext editor's image and table tools needs a pointer — there's no keyboard equivalent yet (WCAG 2.1.1 Keyboard, 2.5.7 Dragging Movements). Every other issue found during testing has been fixed.",
+          },
+          {
+            question: "Who do I contact about this?",
+            answer: "Questions about privacy or this page: hello@vexcms.dev.",
+          },
+        ],
+      },
+    ],
+  }
+  if (existingAccessibilityPage) {
+    if (mode === "patch") {
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingAccessibilityPage._id, accessibilityPageDoc)
+      patched.push("page:accessibility")
+    } else {
+      skipped.push("page:accessibility")
+    }
+  } else {
+    await ctx.db.insert(TABLE_SLUG_PAGES, accessibilityPageDoc)
+    created.push("page:accessibility")
+  }
+
+  // ── Posts ──────────────────────────────────────────────────────────────
+  // Seeded as a draft (Design Decision 21): published from the admin on D1
+  // morning. Unlike `pages`, a draft-only row has no published twin to find,
+  // so the locator cannot filter on `vex_status: "published"` the way the
+  // page locators above do — collect by slug and prefer a non-draft row, the
+  // same preference order `getBySlugPreview` already uses.
+  const announcementRows = await ctx.db
+    .query(TABLE_SLUG_POSTS)
+    .withIndex("by_slug", (q) => q.eq("slug", "vexcms-0-1-0"))
+    .collect()
+  const existingAnnouncementPost =
+    announcementRows.find((row) => row.vex_status !== "draft") ?? announcementRows[0]
+  const announcementPostDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_POSTS>> = {
+    title: "VexCMS 0.1.0",
+    slug: "vexcms-0-1-0",
+    excerpt: "VexCMS is Apache-2.0 licensed, built and maintained by one developer.",
+    vex_status: "draft",
+    body: [
+      { type: "h2", children: [{ text: "VexCMS 0.1.0" }] },
+      { type: "p", children: [{ text: "VexCMS is Apache-2.0 licensed." }] },
+      { type: "h2", children: [{ text: "What's next" }] },
+      {
+        type: "p",
+        children: [
+          {
+            text: "Everything below is free and lands in the Apache-2.0 core. It ships in this order.",
+          },
+        ],
+      },
+      { type: "h2", children: [{ text: "Who builds this" }] },
+      {
+        type: "p",
+        children: [
+          {
+            text:
+              "VexCMS is built and maintained by one developer, @ianyimi (https://github.com/ianyimi), " +
+              "in their free time. New issues are triaged within a week; how fast a fix lands depends " +
+              "on its severity and on sponsorship.",
+          },
+        ],
+      },
+      { type: "h2", children: [{ text: "Follow" }] },
+      {
+        type: "p",
+        children: [
+          {
+            text:
+              "Release emails: one email per release, nothing else — subscribe at " +
+              "https://buttondown.com/vexcms.",
+          },
+        ],
+      },
+    ],
+  }
+  if (existingAnnouncementPost) {
+    if (mode === "patch") {
+      await ctx.db.patch(TABLE_SLUG_POSTS, existingAnnouncementPost._id, announcementPostDoc)
+      patched.push("post:vexcms-0-1-0")
+    } else {
+      skipped.push("post:vexcms-0-1-0")
+    }
+  } else {
+    await ctx.db.insert(TABLE_SLUG_POSTS, announcementPostDoc)
+    created.push("post:vexcms-0-1-0")
   }
 
   // ── Testimonials ──────────────────────────────────────────────────────

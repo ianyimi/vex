@@ -8,16 +8,21 @@
  * @module
  */
 
+import type * as auth_anonymousUsers from "../auth/anonymousUsers.js";
 import type * as auth_api from "../auth/api.js";
 import type * as auth_db from "../auth/db.js";
 import type * as auth_index from "../auth/index.js";
 import type * as auth_options from "../auth/options.js";
 import type * as auth_plugins_index from "../auth/plugins/index.js";
+import type * as auth_rateLimits from "../auth/rateLimits.js";
 import type * as auth_sessions from "../auth/sessions.js";
+import type * as crons from "../crons.js";
 import type * as footers from "../footers.js";
 import type * as headers from "../headers.js";
 import type * as http from "../http.js";
+import type * as images from "../images.js";
 import type * as pages from "../pages.js";
+import type * as posts from "../posts.js";
 import type * as seed from "../seed.js";
 import type * as siteSettings from "../siteSettings.js";
 import type * as theme from "../theme.js";
@@ -34,16 +39,21 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "auth/anonymousUsers": typeof auth_anonymousUsers;
   "auth/api": typeof auth_api;
   "auth/db": typeof auth_db;
   "auth/index": typeof auth_index;
   "auth/options": typeof auth_options;
   "auth/plugins/index": typeof auth_plugins_index;
+  "auth/rateLimits": typeof auth_rateLimits;
   "auth/sessions": typeof auth_sessions;
+  crons: typeof crons;
   footers: typeof footers;
   headers: typeof headers;
   http: typeof http;
+  images: typeof images;
   pages: typeof pages;
+  posts: typeof posts;
   seed: typeof seed;
   siteSettings: typeof siteSettings;
   theme: typeof theme;
@@ -80,4 +90,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
+};
