@@ -1,5 +1,46 @@
 # @vexcms/core
 
+## 0.1.0-alpha.33
+
+### Patch Changes
+
+- 8cf0b32: Moves `disableCreate?: boolean` from `admin.disableCreate` to the top level of a collection's
+  config (`CollectionConfigInput`/`CollectionConfig`) — hides every admin-authored create entry
+  point for that collection (the list view's "+ New" action, `?createNew=true`'s create-document
+  modal, and a relationship field's picker Create tab/trigger when the collection is the target),
+  and now also makes the `vex:create` Convex endpoint (`collectionsApi`) reject with a `ConvexError`.
+  `create()` imported directly from `@vexcms/core/server` is unaffected. Moving it out from under
+  `admin` lets it survive `mergeAuthCollections`.
+
+  `mergeAuthCollections` now merges the auth adapter's and the project's collection generically
+  instead of letting the project's resolved `admin` object replace the adapter's whole-sale (which
+  silently dropped adapter-only settings like `disableCreate` in every real project). It recovers
+  both sides' raw `defineCollection()` input via the newly-exported `COLLECTION_INPUT` symbol and
+  deep-merges every key but `fields` (which keeps its existing locked-field rule): a plain object on
+  both sides merges key-by-key, recursively — so `admin.view.where`/`admin.view.sort` compose instead
+  of one side replacing the other whole — while an array, function, class instance, or primitive is
+  replaced wholesale by the project's value, and a project value of `undefined` never overwrites. A
+  collection assembled by spreading a resolved `CollectionConfig` rather than calling
+  `defineCollection()` on the modified input now throws, naming the slug.
+
+- 8cf0b32: Thread optional `width`/`height` through `createMediaDocument`'s full args chain —
+  `api.vex.media.createMediaDocument`'s Convex mutation args, `CreateMediaDocumentServerArgs`/
+  `CreateMediaDocumentClientArgs`/`VexMediaCreateMediaDocumentArgs`, and the
+  `StorageAdapterBaseInterface`/`StorageAdapterPresignedUrl` `createMediaDocument` contract
+  every storage adapter implements — so a client that measures an uploaded image's pixel
+  dimensions can pass them through to the adapter. Previously there was no way to get
+  dimensions to the storage layer at all.
+
+  `width`/`height` are omitted entirely from the field-permission `changes` object and the
+  adapter call when not provided, rather than passed as `undefined`-valued keys — the latter
+  would count as a denied field against any existing field-permission map that doesn't
+  happen to list `width`/`height`, rejecting every media upload for roles whose map predates
+  this change.
+
+- 8cf0b32: `update` now finds media collections. The admin edit view saves a media document (an image's
+  `alt`, say) through `vex:update`, which only searched `config.collections`, so every media edit
+  threw `No collection registered with slug "images"` and the form kept the old value.
+
 ## 0.1.0-alpha.32
 
 ### Patch Changes
