@@ -205,3 +205,17 @@ Run: `node scripts/template-diff.mjs --app apps/www` / `--app apps/test` plus a 
 | `src/components/providers/convex.tsx` | base-nextjs | **template-only lint fix** | `() => {}` → `() => undefined`, dropped an unnecessary `as string \| undefined`; scaffold `pnpm lint` failed on both. **Same errors exist in `apps/www` and `apps/test`** (reported, not edited) |
 | `src/components/ThemeLive.tsx`, `src/lib/useSitePreviewMode.ts` | marketing-site | **template-only lint fix** | two unnecessary assertions dropped; preview flag read through `useSyncExternalStore` (server snapshot `false`) instead of `setState` in an effect. **Same errors in `apps/www`** (reported, not edited) |
 | `*.test.ts(x)` (`dialog`, `MediaImage`, `images`), `e2e/**`, `playwright.config.ts`, `lighthouserc.cjs`, `audit/**` | — | do not add | templates ship no tests or audit tooling |
+
+## Re-sync 2026-11-09 — LI-22 fixes (developer D1–D7)
+
+| Path | Template | Disposition | Reason |
+|---|---|---|---|
+| `src/proxy.ts` | marketing-site | **synced** (copy of `apps/www`) | a verified `?vexLivePreview=1` request is handed to `/api/vex/live-preview` instead of setting the cookie itself (D3) |
+| `src/app/api/vex/live-preview/route.ts` | marketing-site | **added** | `createVexDraftModeRoute({ getToken })` from `@vexcms/next/livePreview` enables Draft Mode (D3) |
+| `src/app/(frontend)/(site)/[slug]/page.tsx` | marketing-site | **synced (branch only)** | skip `notFound()` when Draft Mode is on; the template keeps its own reachable/unreachable split |
+| `src/components/ThemeScript.tsx` | base-nextjs (marketing inherits) | **added** (copy of `apps/www`) | client wrapper around `buildThemeInitScript`: SSR emits the script, client renders null, so `next dev` stops warning "Encountered a script tag" |
+| `src/app/layout.tsx` | both | **import switched** | `ThemeScript` now from `~/components/ThemeScript` |
+| `src/components/providers/convex.tsx`, `src/lib/useSitePreviewMode.ts` | base / marketing | unchanged | templates already carried the lint fixes; the apps now match (comment-only differences remain) |
+| `src/app/api/vex/live-preview` | base-nextjs | do not add | base ships no previewable collection |
+| Marketing VexCMS copy (hero, header, footer, CTA, roadmap, FAQ) | marketing-site | keep | developer D1, 2026-11-09 (amends cross-spec decision 6) |
+| `src/proxy.ts`, `src/app/api/vex/live-preview/route.ts` (re-sync after polish) | marketing-site | **synced** (copy of `apps/www`) | hand-off skipped only when the marker and `__prerender_bypass` cookies are both present; the route also disables Draft Mode |

@@ -4,7 +4,7 @@ import { AdminField, CollectionFieldMeta, commitTs, getDataFields } from "../fie
 import { ComponentHKT, resolveComponentContributions, SLOT_IDS } from "../components";
 import { CollectionSlug } from "../types";
 import { toTitleCase } from "../utils";
-import { COLLECTION_SYSTEM_FIELDS, CollectionSystemField } from "./constants";
+import { COLLECTION_SYSTEM_FIELDS, CollectionSystemField, COLLECTION_INPUT } from "./constants";
 import {
   AdminCollectionConfig,
   CollectionConfig,
@@ -250,6 +250,7 @@ export function defineCollection<
   const collection = {
     interfaceName: slugToPascalCase({ slug: input.slug }) + "Document",
     ...input,
+    disableCreate: input.disableCreate ?? false,
     // `populateCollectionFieldMeta`'s return widens to `Record<string, AdminField<...>>`;
     // `TFields` is the caller's literal fields-record type, structurally unrelated
     // to that widened shape from TS's point of view even though the runtime value
@@ -407,6 +408,16 @@ export function defineCollection<
   // reserved `"default"`), `where`/sort/searchField/columns — also runs here,
   // inside `validateSavedListViewConfig`, over
   validateSavedListViewConfig({ collection });
+
+  // Attached non-enumerably — never shows up in `Object.keys`/JSON/an
+  // ordinary spread (`{ ...collection }`), only a reader that names this
+  // symbol explicitly (`mergeAuthCollections`'s generic merge) recovers it.
+  Object.defineProperty(collection, COLLECTION_INPUT, {
+    value: input,
+    enumerable: false,
+    writable: false,
+    configurable: false,
+  });
 
   return collection;
 }

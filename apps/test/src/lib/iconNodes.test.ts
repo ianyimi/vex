@@ -12,6 +12,6 @@ describe("collectIconNames", () => {
       { footer: { links: [{ icon: 42 }, { nested: { icon: "FileText" } }] } },
     ]
 
-    expect(collectIconNames({ documents })).toEqual(new Set(["LayoutGrid", "Grid2x2", "FileText"]))
+    expect(collectIconNames({ documents })).toEqual(new Set(["FileText", "Grid2x2", "LayoutGrid"]))
   })
 })

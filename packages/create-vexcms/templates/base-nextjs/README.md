@@ -13,23 +13,18 @@ pnpm install
 ### 2. Start Convex
 
 ```bash
-npx convex dev
+npx convex dev --once
 ```
 
-On first run this creates (or links) a Convex project and prints your
-deployment's URL and site URL.
+On first run this creates (or links) a Convex project and writes its
+`NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` and `CONVEX_DEPLOYMENT`
+into `.env.local`, replacing the placeholder Convex URLs.
 
-### 3. Fill in your environment variables
+### 3. Set the deployment's environment variables
 
 `.env.local` already has a generated `BETTER_AUTH_SECRET` and a
 `http://localhost:3010` `SITE_URL`/`NEXT_PUBLIC_SITE_URL` pair, so the app
-builds and typechecks immediately. Replace the placeholder Convex URLs with the
-real ones `npx convex dev` printed:
-
-```env
-NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
-NEXT_PUBLIC_CONVEX_SITE_URL=https://your-deployment.convex.site
-```
+builds and typechecks immediately.
 
 `next.config.ts` reads `NEXT_PUBLIC_CONVEX_URL` at build/start time and adds that
 deployment's hostname to `images.remotePatterns` automatically, so `next/image` can serve
@@ -57,11 +52,19 @@ pnpm vex:dev
 pnpm dev
 ```
 
+If you scaffolded the marketing-site starter (no `--bare`), seed its starter
+content once while `pnpm vex:dev` is running:
+
+```bash
+pnpm seed
+```
+
 ### 5. Create your admin account
 
-Visit `http://localhost:3010`, click "Create Admin Account", and sign up. The
-first user to sign up on a fresh project is automatically promoted to admin —
-see `convex/vex/firstUser.ts`. From there, "Go to Admin Panel" opens `/admin`.
+Visit `http://localhost:3010` and sign up — the "Create Admin Account" button on
+a `--bare` project, or "Sign in" → "Sign up" in the marketing site's header. The
+first user to sign up on a fresh project is automatically promoted to admin and
+sent to `/admin` — see `convex/vex/firstUser.ts`.
 
 <!-- {{OAUTH_SETUP_GUIDE}} -->
 

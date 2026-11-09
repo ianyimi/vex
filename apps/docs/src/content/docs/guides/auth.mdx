@@ -28,7 +28,9 @@ user-defined collections via `mergeAuthCollections`.
 
 ## Merge behavior
 
-Auth collections merge with user-defined collections following these rules:
+Auth collections merge with user-defined collections field by field, not
+whole-object replacement — a project's own `users.ts` combines with the
+adapter's resolved collection rather than overwriting it:
 
 1. **Protected collections** — auth collections marked as `protected` cannot be
    overridden by user-defined collections with the same slug. Attempting to do
@@ -36,10 +38,53 @@ Auth collections merge with user-defined collections following these rules:
 2. **Locked fields** — fields on auth collections with `meta.locked: true` are
    preserved during merge. User-defined fields with the same key are ignored.
 3. **Unlocked fields** — user-defined fields override or extend auth fields.
-4. **User-only collections** — user-defined collections with no matching auth
+4. **Every other key** (including top-level adapter settings like
+   `disableCreate`) — combined key by key: plain values and functions from the
+   project's `users.ts` replace the adapter's, and arrays replace the adapter's
+   (not concatenated). Objects merge key by key all the way down, including
+   `admin.view.where` and `admin.view.sort`: a project `sort` with only `order`
+   keeps the adapter's `field`, and two `where` filters are **not** combined
+   with AND — matching keys take the project's value. Set the whole `where`
+   yourself when you need a specific filter.
+5. **User-only collections** — user-defined collections with no matching auth
    collection are added as-is.
-5. **Auth-only collections** — auth collections with no matching user
+6. **Auth-only collections** — auth collections with no matching user
    collection are appended at the end.
+
+### `disableCreate`
+
+A collection's top-level `disableCreate?: boolean` (default `false`) hides the
+list view's "+ New" action (toolbar and empty state), blocks the
+`?createNew=true` create-document modal and endpoint outright — even a
+hand-typed URL param — and hides create affordances for this collection as a
+relationship target. Calling `create()` directly (e.g. from a script or a
+custom admin page) still works; `disableCreate` only gates the admin panel's
+own create entry points.
+
+The auth adapter sets `disableCreate: true` on every auth collection it
+produces (`user`, `session`, `account`, `verification`, etc.) — those rows
+only ever come from an external write path (sign-up, sign-in, token issuance),
+never an admin-authored create form.
+
+**Escape hatch.** A project's own `users.ts` can set `disableCreate: false` to
+bring the "+ New" button back on the user collection. This re-enables the
+generic admin-authored create form (`ListViewCreateDocumentForm`) — which
+collects whatever fields the merged collection has, not Better Auth's
+`/sign-up/email` flow — so a user created this way gets a document with no
+hashed password, no verified session, and no way to sign in until something
+else sets those up. Prefer Better Auth's admin plugin `createUser` (see
+below) for admins who actually need to create working logins.
+
+### Creating users as an admin
+
+Use Better Auth's [admin plugin](https://www.better-auth.com/docs/plugins/admin)
+`createUser` API (`auth.api.createUser({ body: { email, password, name, role } })`
+server-side, or the client's `authClient.admin.createUser(...)`) to create a
+user with a real, working login — it hashes the password and wires up
+everything `/sign-up/email` would, without going through the admin panel's
+generic create form. VexCMS does not provide its own admin-UI affordance for
+this; it is deferred (see `.agent/docs/product/backlog.md`).
+
 
 ## Better Auth
 

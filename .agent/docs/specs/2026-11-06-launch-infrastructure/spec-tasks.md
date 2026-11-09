@@ -207,7 +207,7 @@ Verify: `node scripts/template-diff.mjs --app apps/www` and `--app apps/test` li
   - the `posts` collection and `/posts/[slug]`, and every post document (`base-nextjs` already has posts; `@vexcms/richtext-plate` stays out of the marketing template)
   - the `privacy`, `accessibility`, `brand` and `launch-week` pages, and `/tour`
   - the Privacy, Accessibility, Brand, Discussions, Release emails, Sponsor and Buy Me a Coffee footer links, and the Sponsors `socialLinks` entry
-  - the roadmap and FAQ copy, replaced with generic template copy (no `public-copy.md` strings)
+  - the roadmap and FAQ copy keeps VexCMS's own copy (developer D1, 2026-11-09; was "generic template copy"); no `public-copy.md` strings
 - [x] Both templates keep the step 4 bootstrap fix and the step 1 `input: false`
 - [x] Prepare the `template-sync` skill's banned-pattern update (`richtext(`, `livePreview`, `vex_status` have shipped); step 21 applies it
 - [x] `n-sync.md`: every ORPHANED/CHANGED/MISSING entry, with its disposition
@@ -220,24 +220,24 @@ Verify: `node scripts/verify-scaffold.mjs` exits 0; `node scripts/scaffold-smoke
 ## Step 19 — N: Run-through per template on a fresh Convex deployment [agent] — BLOCKED on step 18 (and everything it waits for)
 Why: launch plan N. Install, typecheck and build don't prove a stranger can sign in and edit content. Public-presence step 17 (README quick start) waits for this step.
 Verify: `n-runthrough.md` has every check below marked pass for both templates
-- [ ] `[dev]` Create a fresh Convex project per template; start `vex dev` + `next dev` in each scaffold
-- [ ] `[agent]` With the browser tool:
+- [x] `[dev]` Create a fresh Convex project per template; start `vex dev` + `next dev` in each scaffold (delegated; done under a scoped P-024 exception, 2026-11-09)
+- [x] `[agent]` With the browser tool:
   - first-user signup becomes admin
   - sign-up with `roles: ["admin"]` via `curl` stores `["user"]`
   - create / edit / publish in every collection
   - live preview and media upload
   - the marketing scaffold shows no vexcms-specific content
   - `next build`
-- [ ] Fix every failure in the template and its source app
+- [x] Fix every failure in the template and its source app
 
 ## Step 20 — N: create-vexcms README + quickstart match the CLI [agent] — BLOCKED on step 19 (and everything it waits for)
 Why: launch plan N. The first page a stranger reads.
 Verify: every prompt and output line quoted in `packages/create-vexcms/README.md` and `apps/docs/src/content/docs/guides/quickstart.mdx` appears in a captured `create-vexcms` run
-- [ ] Update both files from a captured run
+- [x] Update both files from a captured run
 
 ## Step 21 — Bookkeeping [agent]
 Why: plan and backlog stay the source of truth (cross-spec decision 8). This step edits them directly; handoffs to sibling specs were already applied in the 2026-11-07 review.
 Verify: launch plan item 15 and the S, P and N task lists are ticked with commit refs; the four backlog entries exist; `harness doctor` clean
-- [ ] `.agent/docs/product/v0.1.0-launch-plan.md`: tick item 15 and the S/P/N tasks with commit refs; annotate S task 1 (Admin button mints no session; purge + limits cover the public endpoints) and record the roles fix; add the release-notes security note to § Release mechanics
-- [ ] `.agent/docs/product/backlog.md`: `/sign-in/email` brute-force limiting on Convex, telemetry-receiver rate limit, O(1) `isBootstrapped`, PostHog trigger
-- [ ] `.agent/docs/standards/anti-patterns.md` (Better Auth `input: false` AP), `.agent/docs/product/tech-stack.md`, the `template-sync` skill sweep, `harness struct`, `harness tasks`, `sync-spec`
+- [x] `.agent/docs/product/v0.1.0-launch-plan.md`: tick item 15 and the S/P/N tasks with commit refs; annotate S task 1 (Admin button mints no session; purge + limits cover the public endpoints) and record the roles fix; add the release-notes security note to § Release mechanics
+- [x] `.agent/docs/product/backlog.md`: `/sign-in/email` brute-force limiting on Convex, telemetry-receiver rate limit, O(1) `isBootstrapped`, PostHog trigger, plus four 2026-11-09 run-through findings
+- [x] `.agent/docs/standards/anti-patterns.md` (Better Auth `input: false` AP-027), `.agent/docs/product/tech-stack.md`, the `template-sync` skill sweep, `harness struct`, `harness tasks`, `sync-spec`

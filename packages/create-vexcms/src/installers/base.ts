@@ -196,7 +196,8 @@ export abstract class VexFrameworkInstaller {
 
   /**
    * Configure the dev server port.
-   * Updates package.json dev script and creates .env.local with NEXT_PUBLIC_SITE_URL.
+   * Updates package.json dev script, creates .env.local with NEXT_PUBLIC_SITE_URL,
+   * and rewrites README.md's `http://localhost:3010` setup lines to the chosen port.
    *
    * @param port - Dev server port number to write into the `dev` script and `.env.local`.
    */
@@ -230,6 +231,15 @@ export abstract class VexFrameworkInstaller {
       '',
     ].join('\n');
     await fs.writeFile(envLocalPath, envContent);
+
+    // The README's setup steps (`SITE_URL` on the Convex deployment, the URL to
+    // open) are written for the default port; a stranger who picked another one
+    // would otherwise set a SITE_URL that doesn't match `.env.local`.
+    const readmePath = path.join(this.targetPath, 'README.md');
+    if (await fs.pathExists(readmePath)) {
+      const readme = await fs.readFile(readmePath, 'utf-8');
+      await fs.writeFile(readmePath, readme.replaceAll('http://localhost:3010', siteUrl));
+    }
   }
 
   /**
@@ -648,16 +658,18 @@ export abstract class VexFrameworkInstaller {
       }
     }
 
-    // Step 10: Initialize Git repository (optional; --monorepo defers to the host repo)
-    if (options.initGit && !options.monorepo) {
-      await this.initGitRepo();
-    }
-
-    // Step 11: Install dependencies (optional; --monorepo defers to the host's install)
+    // Step 10: Install dependencies (optional; --monorepo defers to the host's install)
     if (options.installDependencies && !options.monorepo) {
       await this.installDependencies();
       await this.lintCode();
       await this.formatCode();
+    }
+
+    // Step 11: Initialize Git repository (optional; --monorepo defers to the host repo).
+    // Last, so the initial commit holds the linted, formatted tree; committing first
+    // left a fresh project with ~37 modified files.
+    if (options.initGit && !options.monorepo) {
+      await this.initGitRepo();
     }
   }
 }

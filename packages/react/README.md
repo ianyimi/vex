@@ -86,7 +86,7 @@ import { RenderBlocks } from "@vexcms/react"
 
 ## UI Primitives
 
-Reusable UI primitives re-exported from `@vexcms/react`, including `Accordion`, `Badge`, `Button`, `Card`, `Checkbox`, `Dialog`, `DropdownMenu`, `Input`, `Label`, `Popover`, `ScrollArea`, `Select`, `Separator`, `Sheet`, `Sidebar`, `Skeleton`, `Table`, `Tabs`, `Tooltip`, `VexLink`, and `VexImage`, plus a `DataTable` (TanStack Table integration), date/time pickers, drag-and-drop helpers, and `Icon`/theme utilities (`ThemeProvider`, `ThemeToggle`). `ThemeScript` is server-renderable and lives in the `@vexcms/react/server` entry.
+Reusable UI primitives re-exported from `@vexcms/react`, including `Accordion`, `Badge`, `Button`, `Card`, `Checkbox`, `Dialog`, `DropdownMenu`, `Input`, `Label`, `Popover`, `ScrollArea`, `Select`, `Separator`, `Sheet`, `Sidebar`, `Skeleton`, `Table`, `Tabs`, `Tooltip`, `VexLink`, and `VexImage`, plus a `DataTable` (TanStack Table integration), date/time pickers, drag-and-drop helpers, and `Icon`/theme utilities (`ThemeProvider`, `ThemeToggle`). `ThemeScript` is server-renderable and lives in the `@vexcms/react/server` entry, beside `buildThemeInitScript` — the same inline script as a string, for a layout that emits it from its own `"use client"` wrapper (the scaffolded apps do this to avoid React's dev-only script-tag warning).
 
 ## Config Helpers
 
@@ -94,7 +94,7 @@ Reusable UI primitives re-exported from `@vexcms/react`, including `Accordion`, 
 
 ## Roadmap
 
-Versioning and drafts are not yet implemented — see the [roadmap](https://docs.vexcms.dev) for status. Live preview ships: mount `VexConfigProvider` at the app root and wrap the tree in `<LivePreviewProvider>` (it takes no props), then overlay your own query with `useLivePreview`, `useLivePreviewQuery`, or `useLivePreviewDocumentQuery`.
+Versioning and drafts ship (draft/publish, autosave, version history, restore, unpublish) — see the [roadmap](https://docs.vexcms.dev) for what's next. Live preview ships: mount `VexConfigProvider` at the app root and wrap the tree in `<LivePreviewProvider>` (it takes no props), then overlay your own query with `useLivePreview`, `useLivePreviewQuery`, or `useLivePreviewDocumentQuery`. To preview a page that has never been published, enable Next.js Draft Mode with `createVexDraftModeRoute` from `@vexcms/next/livePreview`.
 
 ## Peer Dependencies
 

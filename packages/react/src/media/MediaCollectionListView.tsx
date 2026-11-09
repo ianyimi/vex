@@ -298,10 +298,21 @@ function MediaCollectionListViewData(props: {
             entityName={collection.labels.plural}
             isDeleting={deleteMediaMutation.isPending}
             onConfirm={async () => {
-              await deleteMediaMutation.mutateAsync({
-                ids: selectedDocs.map((doc) => doc._id),
-                collection: collection.slug,
-              });
+              try {
+                await deleteMediaMutation.mutateAsync({
+                  ids: selectedDocs.map((doc) => doc._id),
+                  collection: collection.slug,
+                });
+              } catch {
+                // `deleteMediaMutation`'s own `useVexMutation` `onError`
+                // already shows the generic "Request failed" toast —
+                // swallowed here only so the rejection never reaches
+                // `AlertDialogAction`'s `onClick={onConfirm}` wiring
+                // (`DataTableBulkDeleteModal`), which has no catch of its
+                // own and would otherwise surface as an unhandled promise
+                // rejection. The modal stays open so the user can retry.
+                return;
+              }
               setDeleteModalOpen(false);
               props.setSelectedIds([]);
             }}

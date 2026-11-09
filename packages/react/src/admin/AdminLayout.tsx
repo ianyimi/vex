@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, use, useEffect, type ReactNode } from "react";
+import { icons } from "lucide-react";
 import {
   LIST_VIEW_CONFIG_COOKIES,
   listChipsVisibleCookieName,
@@ -15,6 +16,7 @@ import {
   type FrameworkComponents,
 } from "../config/useFrameworkComponents";
 import { useVexConfig } from "../config/VexConfigContext";
+import { IconComponentsProvider } from "../ui/Icon";
 import { VexAuthProvider } from "../auth";
 import { AppSidebar } from "./AdminSidebar";
 import {
@@ -213,7 +215,9 @@ export function AdminLayout(props: AdminLayoutProps) {
   );
 
   return (
-    <>
+    // The admin pays for lucide's full icon set so every icon renders in the
+    // server HTML: on-demand loading made all admin icons flash on refresh.
+    <IconComponentsProvider icons={icons}>
       <a
         className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-3 focus-visible:z-100 focus-visible:rounded-sm focus-visible:border focus-visible:border-border focus-visible:bg-card focus-visible:px-3 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium focus-visible:text-foreground"
         href="#main"
@@ -240,7 +244,7 @@ export function AdminLayout(props: AdminLayoutProps) {
         </ThemeProvider>
       </FrameworkComponentsContext.Provider>
       <Toaster />
-    </>
+    </IconComponentsProvider>
   );
 }
 

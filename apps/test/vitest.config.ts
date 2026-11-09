@@ -45,6 +45,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "~": fileURLToPath(new URL("./src", import.meta.url)),
+      // Needed so a server component importing `@convex/_generated/api` (e.g.
+      // `[slug]/page.tsx`) resolves under Vitest the same way it does under
+      // `next build`'s own `tsconfig.json` path mapping. Mirrors
+      // `apps/www/vitest.config.ts`'s identical alias.
+      "@convex": fileURLToPath(new URL("./convex", import.meta.url)),
     },
   },
 });

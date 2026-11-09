@@ -12,11 +12,15 @@ import { ANONYMOUS_USER_MAX_AGE_MS, ANONYMOUS_USER_PURGE_BATCH_SIZE, TABLE_SLUG_
  * Better Auth's own tables are written through raw internal mutations, never
  * `vexMutation` triggers.
  *
- * Scans at most `ANONYMOUS_USER_PURGE_BATCH_SIZE` candidate users per run,
- * ordered by `by_creation_time`. When the batch is full, schedules another
- * run of itself immediately (`ctx.scheduler.runAfter(0, ...)`) so a large
- * backlog drains over consecutive runs instead of blocking the cron's own
- * schedule.
+ * Each run scans `by_creation_time` and filters to anonymous users, reading
+ * every older row — including non-anonymous ones the filter discards — until
+ * it has collected `ANONYMOUS_USER_PURGE_BATCH_SIZE` matches or runs out of
+ * older rows. `take(ANONYMOUS_USER_PURGE_BATCH_SIZE)` bounds the number of
+ * *matches*, not the number of rows read per run (backlogged:
+ * `.agent/docs/product/backlog.md`, "Purge scan cost for long-lived users").
+ * When the batch is full, schedules another run of itself immediately
+ * (`ctx.scheduler.runAfter(0, ...)`) so a large backlog drains over
+ * consecutive runs instead of blocking the cron's own schedule.
  *
  * @returns `{ deleted, rescheduled }` — `deleted` is the number of user rows
  * removed this run; `rescheduled` is whether another run was scheduled

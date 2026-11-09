@@ -2,11 +2,11 @@ import type { Metadata } from "next"
 
 import "./globals.css"
 
-import { ThemeScript } from "@vexcms/react/server"
 import { Geist, Geist_Mono } from "next/font/google"
 
 import ClientProviders from "~/components/providers/client"
 import ServerProviders from "~/components/providers/server"
+import { ThemeScript } from "~/components/ThemeScript"
 
 const geistSans = Geist({
   subsets: ["latin"],

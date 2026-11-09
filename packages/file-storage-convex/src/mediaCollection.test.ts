@@ -17,6 +17,19 @@ describe("defineMediaCollection", () => {
     expect(collection.fields).toHaveProperty("height");
   });
 
+  it("gives every injected base field a human-readable label instead of leaving the admin UI to fall back to the raw key", () => {
+    const collection = defineMediaCollection({ slug: "images" });
+    expect(collection.fields.filename?.label).toBe("Filename");
+    expect(collection.fields.alt?.label).toBe("Alt text");
+    expect(collection.fields.mimeType?.label).toBe("MIME type");
+    expect(collection.fields.size?.label).toBe("Size");
+    expect(collection.fields.storageId?.label).toBe("Storage ID");
+    expect(collection.fields.src?.label).toBe("URL");
+    expect(collection.fields.width?.label).toBe("Width");
+    expect(collection.fields.height?.label).toBe("Height");
+    expect(collection.fields.deleted?.label).toBe("Deleted");
+  });
+
   it("preserves user-defined fields", () => {
     const collection = defineMediaCollection({
       slug: "images",

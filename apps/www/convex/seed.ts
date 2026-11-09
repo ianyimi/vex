@@ -1518,6 +1518,12 @@ export const testimonials = defineTable({
             status: ["shipped"],
           },
           {
+            feature: "Responsive & Mobile Pass",
+            description:
+              "Every admin and marketing surface audited at seven widths, from 375 to 1536. No clipped controls, and every primary action reachable on a phone.",
+            status: ["shipped"],
+          },
+          {
             feature: "JSON, Email & Textarea Fields",
             description:
               "Cheap leaf fields: email() with format validation, textarea() with a character counter, and json() backed by a CodeMirror editor.",

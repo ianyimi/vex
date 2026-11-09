@@ -151,6 +151,8 @@ export interface StorageAdapterBaseInterface {
       mimeType: string;
       size: number;
       alt?: string;
+      width?: number;
+      height?: number;
       adapterFields?: Record<string, unknown>;
     },
   ): Promise<string>;
@@ -314,6 +316,8 @@ export abstract class StorageAdapterPresignedUrl implements StorageAdapterPresig
       mimeType: string;
       size: number;
       alt?: string;
+      width?: number;
+      height?: number;
       adapterFields?: Record<string, unknown>;
     },
   ): Promise<string>;

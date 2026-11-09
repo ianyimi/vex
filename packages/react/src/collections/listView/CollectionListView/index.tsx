@@ -174,11 +174,12 @@ export function CollectionListView<
     writeListViewPeekTabCookie({ basePath: config.basePath, tab: next });
   };
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const canCreate = usePermission({
-    resource: collection.slug,
-    action: CRUD_ACTIONS.create,
-    scope: PERMISSION_SCOPES.any,
-  });
+  const canCreate =
+    usePermission({
+      resource: collection.slug,
+      action: CRUD_ACTIONS.create,
+      scope: PERMISSION_SCOPES.any,
+    }) && !collection.disableCreate;
   const canDelete = usePermission({
     resource: collection.slug,
     action: CRUD_ACTIONS.delete,

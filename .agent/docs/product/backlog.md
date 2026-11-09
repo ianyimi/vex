@@ -1504,3 +1504,309 @@ single CI runs.
 
 **Why deferred.** It's a design change across every block and the site layout, separate
 from making the gate measure honestly.
+
+---
+
+## Brute-force limiting for `/sign-in/email` on Convex
+
+**What.** A per-IP limit on password sign-in for `apps/www` and the templates.
+**Why.** Better Auth's built-in limiter uses `memory` storage, which is per Convex isolate and shares nothing across concurrent executions, so its default `/sign-in/email` rule (3 per 10 s) doesn't hold on Convex.
+**Lift.** Small: one more `authRateLimiter` limit name and path in `apps/www/convex/auth/rateLimits.ts`, reusing the proxy-attested IP.
+**Blocked by.** Nothing.
+**Why deferred.** Only the admin signs in to www, and the launch risk was user-table growth, not credential stuffing.
+**Where.** `2026-11-06-launch-infrastructure` decision 5, `sources.md` §6, §14.
+
+---
+
+## Rate limiting the telemetry receiver
+
+**What.** A limit on `POST /telemetry/events`.
+**Why.** The receiver has no limiter and no attested IP, so a script can fill its tables.
+**Lift.** Small once its deployment is fixed: the same `@convex-dev/rate-limiter` component, keyed globally or per hashed IP.
+**Blocked by.** M step 10 (the receiver's final home).
+**Why deferred.** Out of the launch-infrastructure spec's scope.
+**Where.** `2026-10-26-build-time-telemetry`, `2026-11-06-launch-infrastructure` decision 5.
+
+---
+
+## O(1) `isBootstrapped` / `promoteFirstAdmin`
+
+**What.** Read "an admin exists" from an indexed flag instead of `ctx.db.query(user).collect()`.
+**Why.** Both still scan the whole user table; the per-visitor subscription is gone, but every signed-in bootstrap check and promotion attempt pays the scan.
+**Lift.** Medium: a schema field or `siteSettings` flag, both apps and both templates, regenerated artifacts.
+**Blocked by.** Nothing.
+**Why deferred.** After the session-gated `"skip"`, only signed-in users run it.
+**Where.** `apps/www/convex/vex/firstUser.ts`, `2026-11-06-launch-infrastructure` decision 7.
+
+---
+
+## PostHog for vexcms.dev
+
+**What.** Product analytics (funnels, replay) beside Vercel Web Analytics.
+**Why.** Measures conversions once there are any to measure.
+**Lift.** Small to wire; a consent banner unless run cookieless.
+**Blocked by.** A hosted product with signup.
+**Why deferred.** The conversion that matters today (`create-vexcms`) happens in a terminal and is measured by telemetry and npm downloads.
+**Where.** `v0.1.0-launch-plan.md` § P.
+
+---
+
+## Admin "New User" dialog needs an auth-collection-aware create form
+
+**What.** The admin "New User" dialog for the `user` collection (a Better Auth-backed auth collection) asks for `emailVerified`/`createdAt`/`updatedAt`, shows "This field is required" on a filled-in email, and its form overflows the dialog panel.
+**Why.** The generic create form was built for ordinary collections; auth collections have framework-owned fields (`emailVerified`, `createdAt`, `updatedAt`) that a human should never set by hand, and the dialog's layout was never checked against the user collection's field count.
+**Lift.** Unassessed. Needs a design decision on how an admin should create an auth user at all — whether the dialog hides framework-owned fields, or whether user creation goes through a different flow (e.g. an invite) entirely.
+**Blocked by.** Nothing technically; needs the design decision above first.
+**Why deferred.** Found during the `2026-11-06-launch-infrastructure` N run-through (2026-11-09); edit already works, so it did not block the run-through's pass/fail on create.
+**Where.** `.agent/docs/specs/2026-11-06-launch-infrastructure/n-runthrough.md`, base-nextjs run-through, "Create / edit — `user`".
+
+---
+
+## First "Create" click in the new-page dialog does nothing
+
+**What.** In `marketing-site`'s new-page dialog, the first click on "Create" does nothing; a second click creates the page.
+**Why.** Unknown — not diagnosed during the run-through, only reproduced.
+**Lift.** Unassessed. Needs a repro + stack trace to find the swallowed first click (a submit-handler race or a disabled/pending state resolving one tick late are both plausible, neither confirmed).
+**Blocked by.** Nothing.
+**Why deferred.** Found during the `2026-11-06-launch-infrastructure` N run-through (2026-11-09); the second click unblocks a stranger, so it did not fail the run-through, but it is a bad first impression.
+**Where.** `.agent/docs/specs/2026-11-06-launch-infrastructure/n-runthrough.md`, marketing-site run-through, "Create / edit / publish — `pages`".
+
+---
+
+## Live preview of a never-published draft page shows "Page not found"
+
+**What.** Opening live preview on a `pages` document that has never been published renders "Page not found" instead of the draft content.
+**Why.** The preview route resolves through `getBySlugPreview`, which presumably still requires a published base row to overlay the draft onto; a document with no publish history has none.
+**Lift.** Unassessed. Needs the preview read path checked against a draft-only (never-published) document.
+**Blocked by.** Nothing.
+**Why deferred.** Found during the `2026-11-06-launch-infrastructure` N run-through (2026-11-09); previewing an already-published page's edits works, so it did not fail the run-through's pass/fail on live preview.
+**Where.** `.agent/docs/specs/2026-11-06-launch-infrastructure/n-runthrough.md`, marketing-site run-through, "Live preview".
+
+---
+
+## Base scaffold's `images` collection shows raw field names and zeroed dimensions
+
+**What.** In the `base-nextjs` scaffold, the admin's `images` collection list/edit labels show raw field names (`filename`, `mimeType`) instead of human labels, and `width`/`height` stay `0` after upload.
+**Why.** The base scaffold's `images` collection config was never given `admin.label`s for its upload-derived fields, and whatever populates `width`/`height` from the uploaded file is not wired for this collection (or the upload path never writes them).
+**Lift.** Unassessed. Needs the `images` collection config and its upload handler checked against `apps/test`'s dogfood media collection, which presumably gets this right.
+**Blocked by.** Nothing.
+**Why deferred.** Found during the `2026-11-06-launch-infrastructure` N run-through (2026-11-09); upload and edit both still functionally pass, so it did not fail the run-through, but it is a bad first impression for a default scaffold.
+**Where.** `.agent/docs/specs/2026-11-06-launch-infrastructure/n-runthrough.md`, base-nextjs run-through, "Create / edit — `images`".
+
+---
+
+## Purge scan cost for long-lived users
+
+**What.** `anonymousUsers.ts#purgeExpired`'s `.withIndex("by_creation_time", ...).filter(isAnonymous).take(ANONYMOUS_USER_PURGE_BATCH_SIZE)` bounds the number of *matches* it collects per run, not the number of rows it reads — it walks every older row, including non-anonymous ones the filter discards, until it finds `ANONYMOUS_USER_PURGE_BATCH_SIZE` anonymous matches or runs out of older rows.
+**Why.** Once a project accumulates a large population of long-lived, non-anonymous users older than the anonymous-user cutoff, every cron run pays the cost of reading past all of them before reaching (or failing to reach) the batch of anonymous rows it actually deletes — a cost that scales with total user count, not with the anonymous backlog the purge exists to drain.
+**Lift.** Unassessed. Needs either a compound index that lets the query filter on `isAnonymous` directly (avoiding the post-fetch `.filter`), or a design that caps rows read per run independent of matches found.
+**Blocked by.** Nothing technically; needs the index/approach decided first.
+**Why deferred.** Developer decision D5 (`2026-11-06-launch-infrastructure` N run-through, 2026-11-09): the JSDoc's claim was wrong, not the behavior — no project has hit this cost yet — so the fix is correcting the doc now and deferring the scan-cost work itself.
+**Where.** `apps/www/convex/auth/anonymousUsers.ts`, `purgeExpired` JSDoc.
+
+---
+
+## Upgrade the Better Auth stack (oidc-provider deprecation)
+
+**What.** Bump `@convex-dev/better-auth` and `better-auth` to versions that drop the deprecated `oidc-provider` dependency path currently surfacing a deprecation warning.
+**Why.** The current pinned versions pull in `oidc-provider` in a way upstream has since deprecated; staying on the old versions keeps the warning around and leaves the project on an aging auth dependency chain.
+**Lift.** Target `@convex-dev/better-auth@0.13.0` (latest on npm, checked 2026-11-09; repo is on 0.11.5): its `convex()` plugin no longer routes through `oidc-provider`, per `.agent/docs/specs/2026-11-07-pre-launch-dependency-upgrades/spec.md`. After the bump, delete the two warning filters added as stopgaps: `packages/cli/src/lib/loadConfig.ts` (around the config import) and the templates'/apps' `convex/http.ts`. Check the changelog for breaking changes to the auth component API this repo's `convex/auth/*` uses.
+**Blocked by.** Nothing technically; needs the version bump scheduled.
+**Why deferred.** Developer decision D4 (`2026-11-06-launch-infrastructure` N run-through, 2026-11-09): auth stack upgrade is scoped for after launch, not inside this run-through's fix pass.
+**Where.** `packages/better-auth`, `apps/www/convex/auth/*`.
+
+---
+
+## Repo transfer: `ianyimi/vex` → the `vexcms` org
+
+**What.** Transfer the repository into the `vexcms` GitHub organisation (claimed, not
+transferred into, by step 2 of this spec) so the repo URL matches the `@vexcms` npm scope.
+
+**Why.** Developer decision (Design Decision 19): name protection now, transfer later, so
+the move doesn't collide with other in-flight repo changes.
+
+**Lift.** Unassessed beyond the known checklist: 9 `package.json#repository` fields point at
+`git+https://github.com/ianyimi/vex.git` today (`packages/{core,react,next,cli,better-auth,
+file-storage-convex,richtext-plate,create-vexcms,telemetry}/package.json`) and need the new
+org slug; the Vercel git integration for `apps/www`'s deployment needs re-pointing; CI/release
+secrets (`.github/workflows/release.yml`'s publish token) need re-checking under the new owner;
+every changeset changelog link (`@changesets/cli/changelog`, which writes GitHub compare URLs)
+needs the new URL going forward. GitHub redirects the old URL, but these four classes of
+reference do not follow a redirect automatically.
+
+**Blocked by.** Nothing technically; the checklist above needs working through deliberately,
+not folded into an unrelated spec's commit.
+
+**Why deferred.** A deliberate post-launch move, not a technical blocker: the transfer touches
+9 `package.json#repository` fields, the Vercel git integration and release secrets, all of
+which need re-pointing together in one pass rather than drifting across whatever else lands
+between now and launch. Out of scope for this spec per its own Out of Scope list.
+
+**Where.** `2026-11-06-public-presence/spec.md` Design Decision 19 and Out of Scope.
+
+---
+
+## Inline newsletter form (Buttondown)
+
+**What.** An inline Buttondown subscribe form on `apps/www` and/or the docs footer, instead
+of the plain hosted-page link this spec ships (Design Decision 10).
+
+**Why.** An inline form saves visitors a click — no navigating away to a hosted subscribe
+page — but needs `form-action https://buttondown.com` added to the CSP (flagged in this
+spec's Handoff to quality pass) and a `/privacy` update saying the form posts the address to
+Buttondown from the site itself. The hosted-page link this spec ships needs no CSP origin and
+no script; `/privacy` carries one line on it, `public-copy.md` § Release emails privacy entry
+(Design Decision 9, `sources.md` §2).
+
+**Lift.** Unassessed — a `<form>` POSTing to Buttondown's API, a CSP `form-action` directive
+added in whichever spec owns the CSP by then, and an edit to the § Release emails privacy entry.
+
+**Blocked by.** Nothing technically; needs the CSP-owning spec identified first.
+
+**Why deferred.** Launch day is the highest-traffic day this project will see for a while;
+the hosted page (free, zero code, mandatory double opt-in) is the lower-risk choice for it.
+Explicit Out of Scope item in `2026-11-06-public-presence`.
+
+**Where.** `2026-11-06-public-presence/spec.md` Design Decision 10 and Handoff section.
+
+---
+
+## Stop per-package GitHub Releases (`createGithubReleases: false`)
+
+**What.** Set `createGithubReleases: false` on the `changesets/action` step in
+`.github/workflows/release.yml:89-92`, so `changeset version`/publish stops creating one
+GitHub Release per package per version (8 releases per tag today).
+
+**Why.** `gh api repos/ianyimi/vex/releases/latest` resolves to `@vexcms/cli@0.0.20` today
+because the per-package releases outnumber and outdate any single `vX.Y.Z` release — this
+spec works around it by publishing a standalone `v0.1.0` Release marked `--latest` (Design
+Decision 24) rather than stopping the per-package releases, so the workaround and the root
+cause both exist after this ships.
+
+**Lift.** One line in `.github/workflows/release.yml`'s `with:` block. Needs confirming
+nothing downstream (dependabot, a package-specific release-notification subscriber) depends
+on the per-package release objects before turning them off.
+
+**Blocked by.** Nothing technically.
+
+**Why deferred.** Explicit Out of Scope item in `2026-11-06-public-presence` — the fix is
+small, but changing release automation is a separate, deliberate change from shipping a
+stop-gap "Latest" marker.
+
+**Where.** `2026-11-06-public-presence/spec.md` Design Decision 24 and Out of Scope.
+
+---
+
+## Generated sponsors image for the README
+
+**What.** A generated SVG/image showing current Sponsors avatars in the README (sponsorkit-
+style), instead of (or alongside) the static $50/$250 name listing this spec ships (Design
+Decision 8).
+
+**Why.** Vite and tRPC both run a generated sponsors image in CI (refreshed on a schedule),
+which keeps the README current without a manual edit per new sponsor; this spec's static
+listing needs a hand edit each time a $50+ tier sponsor joins.
+
+**Lift.** Unassessed — a GitHub Action that queries the Sponsors API (or runs a tool like
+`sponsorkit`) and commits/caches a generated SVG, plus wiring it into the README.
+
+**Blocked by.** Nothing technically.
+
+**Why deferred.** Not part of the interview; the static listing is enough at zero sponsors.
+Revisit once there are sponsors to show.
+
+**Where.** `2026-11-06-public-presence/spec.md` Design Decision 8.
+
+---
+
+## Admin UI for creating users (Better Auth `createUser`)
+
+**What.** A dedicated "Create user" affordance in the admin panel for the auth user
+collection, backed by Better Auth's admin plugin `createUser` API instead of the generic
+`ListViewCreateDocumentForm` every other collection uses.
+
+**Why.** The generic create form persists whatever fields the merged `user` collection
+has, with no hashed password and no verified session — a document created that way has no
+working login. `createUser` hashes the password and wires up everything `/sign-up/email`
+would, but there is no UI for it today; an admin who needs to create a user must call
+Better Auth's API directly (server-side `auth.api.createUser` or client-side
+`authClient.admin.createUser`).
+
+**Lift.** Unassessed. Needs a collection-specific create form (distinct from the generic
+field-driven one), a server action/endpoint that calls `createUser` instead of the normal
+`create()` mutation, and a decision about which `authSchema`-declared `additionalFields`
+(e.g. `roles`) the form exposes.
+
+**Blocked by.** Nothing technically — `disableCreate`'s escape hatch
+(`disableCreate: false` on a project's own `users.ts`) already proves the generic form can
+be re-enabled on this collection; this is about replacing it with a form that produces a
+working login, not about unblocking the button.
+
+**Why deferred.** Not part of this change — out of scope for the `disableCreate`
+top-level-flag/merge-generalization fix. The escape hatch plus "use Better Auth's admin
+plugin" is the documented workaround (see the auth guide's "Creating users as an admin").
+
+**Where.** `apps/docs/src/content/docs/guides/auth.mdx`, "Creating users as an admin".
+
+---
+
+## Admin delete on auth collections leaves sessions/accounts behind
+
+**What.** Deleting a `user` document through the admin panel's standard delete action
+(`ListViewRowDeleteAction`/`ListViewBulkDeleteAction`) removes only that document — it does
+not cascade to the user's `session`, `account`, or other Better Auth rows that reference it.
+
+**Why.** The auth collections the adapter produces are relational in a way ordinary
+collections are not: a `session`/`account` row with no matching `user` is an orphan Better
+Auth itself never produces (it always deletes them together), so an admin-panel delete can
+put the database in a state Better Auth's own code never has to handle. The orphaned rows
+are inert (no live session can authenticate against a user document that no longer exists)
+but persist indefinitely, and a slug reused by a later sign-up could collide with stale
+data depending on how IDs are generated.
+
+**Lift.** Unassessed. Needs either a cascade delete wired into the auth adapter interface
+(so every adapter can declare which other collections to clean up on a user delete) or a
+narrower fix scoped to Better Auth's own `user`/`session`/`account`/`verification` shape.
+
+**Blocked by.** Nothing technically — the generic delete action has no concept of
+cross-collection cascade today; this would be the first consumer of one.
+
+**Why deferred.** Found while documenting `disableCreate`'s merge behavior for the auth
+guide; not part of that change's scope. No report of this causing a real problem yet —
+orphaned rows are inert, not actively harmful, until something depends on a `session`
+always having a `user`.
+
+**Where.** No existing detail doc; found during the 2026-11-08 `disableCreate` top-level
+merge session.
+
+
+## Docs guide: server-resolved icons (`resolveIconNodes` + `IconNodeProvider`)
+
+**What.** A docs guide showing how a public page renders `<Icon name="…">` with only the
+icons it uses, from the server HTML and with no flash:
+1. A server component collects the icon names the page renders.
+2. It calls `resolveIconNodes({ names })` from `@vexcms/react/server`.
+3. It wraps the page in `IconNodeProvider` from `@vexcms/react`.
+4. `Icon` inside the provider paints synchronously.
+
+The guide should also cover:
+- Nested providers merge, and the inner one wins on a shared name.
+- An icon whose name wasn't collected falls back to on-demand loading and flashes until it
+  arrives.
+- Collecting names is the app's job: the example `collectIconNames` only finds string
+  properties named `icon`.
+- The admin is different: `AdminLayout` ships lucide's full set via the internal
+  `IconComponentsProvider`, so admin icons never flash.
+
+**Why.** Today these APIs appear only in the generated API reference. The only worked
+examples are `apps/www/src/lib/iconNodes.ts` (used by the site `layout.tsx` and
+`PageContent.tsx`) and the marketing-site template's copy. Users can't discover the
+pattern from the guides.
+
+**Lift.** Small: one guide page, adapted from the www example.
+
+**When.** With launch-plan item 17's step L (final review), as part of updating all docs.
+Developer request, 2026-11-09.
+
+**Where.** Explained in the 2026-11-09 LI session after the admin icon revert (changeset
+`admin-static-icons`).

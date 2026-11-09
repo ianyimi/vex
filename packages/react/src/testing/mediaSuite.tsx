@@ -658,6 +658,40 @@ function describeMediaUploadDropzone(access: VexAccessConfig | undefined) {
       ]);
     });
 
+    it("measures and persists image width/height on the stored media document", async () => {
+      const onUploadComplete = vi.fn();
+      const { utils, t } = renderDropzone(onUploadComplete);
+      const root = utils.container.querySelector('[role="presentation"]') as HTMLElement;
+      const file = makeFile("cover.png", "image/png");
+
+      vi.stubGlobal(
+        "createImageBitmap",
+        vi.fn().mockResolvedValue({ width: 1920, height: 1080, close: vi.fn() }),
+      );
+      try {
+        fireEvent.drop(root, { dataTransfer: { files: [file], types: ["Files"] } });
+        await waitFor(() => expect(onUploadComplete).toHaveBeenCalledTimes(1));
+      } finally {
+        vi.unstubAllGlobals();
+      }
+
+      expect(await uploadedMedia(t)).toMatchObject([{ filename: "cover.png", width: 1920, height: 1080 }]);
+    });
+
+    it("does not set width/height on the stored media document for a non-image upload", async () => {
+      const onUploadComplete = vi.fn();
+      const { utils, t } = renderDropzone(onUploadComplete);
+      const root = utils.container.querySelector('[role="presentation"]') as HTMLElement;
+      const file = makeFile("manual.pdf", "application/pdf");
+
+      fireEvent.drop(root, { dataTransfer: { files: [file], types: ["Files"] } });
+
+      await waitFor(() => expect(onUploadComplete).toHaveBeenCalledTimes(1));
+      const [row] = await uploadedMedia(t);
+      expect(row).not.toHaveProperty("width");
+      expect(row).not.toHaveProperty("height");
+    });
+
     it("uploads a legitimate document file (application/pdf)", async () => {
       const onUploadComplete = vi.fn();
       const { utils, t } = renderDropzone(onUploadComplete);

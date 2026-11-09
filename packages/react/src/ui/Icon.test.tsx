@@ -1,6 +1,7 @@
 import { render, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { Icon, IconNodeProvider, isIconName, type IconNodeMap } from "./Icon";
+import { icons } from "lucide-react";
+import { Icon, IconComponentsProvider, IconNodeProvider, isIconName, type IconNodeMap } from "./Icon";
 
 describe("Icon", () => {
   it("renders a placeholder svg carrying the final icon's width/height/className, then resolves", async () => {
@@ -57,5 +58,16 @@ describe("Icon", () => {
       </IconNodeProvider>,
     );
     expect(container.querySelector("svg")!.getAttribute("class")).toBe("size-4");
+  });
+
+  it("renders the real icon on first render under IconComponentsProvider (admin: no placeholder flash)", () => {
+    const { container } = render(
+      <IconComponentsProvider icons={icons}>
+        <Icon className="size-4" name="FileText" />
+      </IconComponentsProvider>,
+    );
+    const svg = container.querySelector("svg")!;
+    expect(svg.getAttribute("class")).toContain("lucide-file-text");
+    expect(svg.getAttribute("class")).toContain("size-4");
   });
 });

@@ -46,6 +46,8 @@ const access = defineAccess({
           filename: true,
           mimeType: true,
           size: true,
+          width: true,
+          height: true,
         }),
       },
     },
@@ -64,15 +66,31 @@ const access = defineAccess({
         }),
       },
     },
+    // Permits every field EXCEPT width/height — proves an omitted (not
+    // `undefined`-valued) width/height never trips `deniedFieldIn` for a
+    // role whose map simply never mentions them.
+    noDimensions: {
+      images: {
+        create: () => ({
+          "*": false,
+          adapterFields: true,
+          alt: true,
+          filename: true,
+          mimeType: true,
+          size: true,
+        }),
+      },
+    },
   },
   resources: [images],
-  roles: ["uploader", "altDenied"] as const,
+  roles: ["uploader", "altDenied", "noDimensions"] as const,
   userCollectionSlug: "users",
   userRolesField: "roles",
 });
 
 const uploader = { _id: "u1", roles: "uploader" };
 const altDeniedCaller = { _id: "u2", roles: "altDenied" };
+const noDimensionsCaller = { _id: "u3", roles: "noDimensions" };
 
 function makeConfig(adapter: VexStorageAdapter): VexConfig {
   return { access, storage: { adapters: [adapter] } } as unknown as VexConfig;
@@ -108,6 +126,61 @@ describe("createMediaDocument — quantified call site", () => {
       size: 1024,
       storageId: "storage_1",
     });
+  });
+
+  it("passes width/height through to the adapter when provided", async () => {
+    const adapter = makeAdapter();
+
+    await createMediaDocument({
+      adapter: "convex",
+      alt: "A photo",
+      auth: { user: uploader },
+      collection: "images",
+      config: makeConfig(adapter),
+      ctx,
+      filename: "photo.jpg",
+      mimeType: "image/jpeg",
+      size: 1024,
+      storageId: "storage_1",
+      width: 1920,
+      height: 1080,
+    });
+
+    expect(adapter.createMediaDocument).toHaveBeenCalledWith(ctx, {
+      adapterFields: undefined,
+      alt: "A photo",
+      collectionSlug: "images",
+      filename: "photo.jpg",
+      mimeType: "image/jpeg",
+      size: 1024,
+      storageId: "storage_1",
+      width: 1920,
+      height: 1080,
+    });
+  });
+
+  it("omits width/height from the adapter call (not as undefined keys) when not provided, so a field map that never lists them still permits the write", async () => {
+    const adapter = makeAdapter();
+
+    // `noDimensions`'s own map permits adapterFields/alt/filename/mimeType/size
+    // but never mentions width/height — this must still succeed, proving an
+    // unmeasured width/height is never checked against the field map.
+    await createMediaDocument({
+      adapter: "convex",
+      alt: "A manual",
+      auth: { user: noDimensionsCaller },
+      collection: "images",
+      config: makeConfig(adapter),
+      ctx,
+      filename: "manual.pdf",
+      mimeType: "application/pdf",
+      size: 2048,
+      storageId: "storage_2",
+    });
+
+    const call = vi.mocked(adapter.createMediaDocument).mock.calls[0];
+    expect(call?.[1]).not.toHaveProperty("width");
+    expect(call?.[1]).not.toHaveProperty("height");
   });
 
   it("rejects the write when the map denies a field it writes, and writes nothing", async () => {

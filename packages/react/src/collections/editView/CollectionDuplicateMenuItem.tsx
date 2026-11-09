@@ -22,7 +22,10 @@ import { useDuplicateCollectionDocument } from "./useDuplicateCollectionDocument
  * `CollectionDuplicateAction` in here. Offered on
  * non-media collections only (`props.slug` is always a non-media `CollectionConfig`
  * here, `config.collections` already excludes media), gated on
- * {@link useDuplicateCollectionDocument}'s create permission.
+ * {@link useDuplicateCollectionDocument}'s create permission and on
+ * `collection.disableCreate` — a collection with no admin-authored create
+ * workflow (the auth user collection, decision D2) has nothing for "Duplicate"
+ * to create into either.
  *
  * On a rejected create, opens the all-fields fallback dialog through
  * `useEditActionsMenuDialog().open(...)` — it cannot own that dialog itself, since the rejection
@@ -30,7 +33,8 @@ import { useDuplicateCollectionDocument } from "./useDuplicateCollectionDocument
  * every item in it the instant the dropdown closes on select).
  *
  * @param props - `EditSlotProps` — `{ kind: "collection", slug }`.
- * @returns The Duplicate menu item, or `null` for a global or an unresolvable slug.
+ * @returns The Duplicate menu item, or `null` for a global, an unresolvable slug, or a
+ *   `disableCreate` collection.
  */
 export function CollectionDuplicateMenuItem(props: EditSlotProps) {
   const config = useVexConfig();
@@ -73,7 +77,7 @@ export function CollectionDuplicateMenuItem(props: EditSlotProps) {
     },
   });
 
-  if (props.kind !== "collection" || !collection) return null;
+  if (props.kind !== "collection" || !collection || collection.disableCreate) return null;
 
   return (
     <EditActionsMenuItem
