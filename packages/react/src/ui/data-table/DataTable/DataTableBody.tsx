@@ -1,6 +1,7 @@
 "use client";
 
 import { flexRender, type HeaderGroup, type Table } from "@tanstack/react-table";
+import type { ListDensity } from "@vexcms/core";
 import { Fragment, type ComponentProps } from "react";
 import { cn } from "../../../utils/cn";
 import { Button } from "../../button";
@@ -45,6 +46,8 @@ export interface DataTableBodyProps<TData extends { _id: string }> {
    */
   knownRowCount?: number | null;
   rowClass: string;
+  /** Row density; exposed as `data-density` so cell content can match the row height. */
+  density: ListDensity;
   pinnedLeftIds: string[];
   pinnedRightIds: string[];
   isRefetching: boolean;
@@ -73,6 +76,7 @@ export function DataTableBody<TData extends { _id: string }>({
   pageSize,
   knownRowCount,
   rowClass,
+  density,
   pinnedLeftIds,
   pinnedRightIds,
   isRefetching,
@@ -285,7 +289,13 @@ export function DataTableBody<TData extends { _id: string }>({
                     ),
                   }}
                 >
-                  {isSelectColumn || isActionsColumn ? cellContent : <div className="min-w-0 truncate">{cellContent}</div>}
+                  {isSelectColumn || isActionsColumn ? cellContent : (
+                    // Clips long text sideways only (`truncate` also clipped the top and bottom,
+                    // which cut off the title link's 44px tap area).
+                    <div className="min-w-0 overflow-x-clip overflow-y-visible text-ellipsis whitespace-nowrap" data-density={density}>
+                      {cellContent}
+                    </div>
+                  )}
                   {isResizable && !isSpacerGripColumn && !isSuppressedByBoundaryGrip && (
                     <div
                       aria-hidden="true"
