@@ -1481,7 +1481,9 @@ phone on fixed hardware. Most of it is script evaluation in the React DOM / Next
 chunk (~770 ms on `/privacy` at the mid-tier slowdown), with the page's own client components
 next (~230 ms long task). That's the cost of hydrating the page, not CMS or admin code: the
 per-module split already keeps those off site pages. Performance (≥ 0.9) and LCP (≤ 2500 ms)
-pass in CI at 4× and are gated.
+pass in CI at 4× and are gated, except LCP on `/tour`. That page's screenshot is its LCP
+element, and Lighthouse charges it the ~500 KB of JS requested before it paints (simulated
+1.8–4.4 s, observed ~200 ms), so it warns until this lands.
 
 **Why.** Real mid-tier phones see this blocking time. The `quality` workflow reports TBT
 as a warning (`apps/www/lighthouserc.cjs`; per-route table in the job summary) because it
