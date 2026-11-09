@@ -493,3 +493,19 @@ describe("GlobalEditView — responsive header collapse", () => {
     expect(await utils.findByRole("menuitem", { name: "Cancel" })).toBeInTheDocument();
   });
 });
+
+describe("GlobalEditView — not found", () => {
+  const t = convexTest(schema, testModules);
+
+  it("shows the global not-found state when the global slug does not resolve", () => {
+    const utils = renderView(
+      createElement(GlobalEditView, {
+        global: "does-not-exist" as (typeof testClientConfig.globals)[number]["slug"],
+      }),
+      { convex: t },
+    );
+    expect(utils.getByText("Global not found")).toBeInTheDocument();
+    expect(utils.getByText(`Global "does-not-exist" doesn't exist.`)).toBeInTheDocument();
+    expect(utils.getByRole("button", { name: "Back to dashboard" })).toBeInTheDocument();
+  });
+});

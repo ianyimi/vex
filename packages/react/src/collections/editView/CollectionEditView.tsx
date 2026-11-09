@@ -50,6 +50,8 @@ import { changedValues } from "../../forms/changedValues";
 import { useVexConfig } from "../../config/VexConfigContext";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../../ui/resizable";
 import { InlineQueryError } from "../../ui/InlineQueryError";
+import { AdminNotFound } from "../../admin/AdminNotFound";
+import { adminHref } from "../../admin/adminHref";
 import { useIsMobile } from "../../hooks/use-mobile";
 import {
   useLivePreviewPanelMinSize,
@@ -113,8 +115,14 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
   const collection = config.collections.find((c) => c.slug === props.collection);
 
   if (!collection) {
-    // TODO: add proper not found component or screen
-    return <p>Collection not found.</p>;
+    return (
+      <AdminNotFound
+        variant="collection"
+        detail={`Collection "${props.collection}" doesn't exist.`}
+        backHref={adminHref({ type: "dashboard" }, config.basePath)}
+        backLabel="Back to dashboard"
+      />
+    );
   }
 
   // The row the editor is currently looking at. Seeded from the prop, so a
@@ -131,8 +139,14 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
     // `skip: true` contract meant "no id" always resolved to "not found" here (new-document
     // mode isn't wired up yet, same `TODO` as the collection-not-found branch above) — no
     // document to fetch, so no `<Suspense>` boundary is needed for this case at all.
-    // TODO: add proper not found component or screen
-    return <p>Document not found.</p>;
+    return (
+      <AdminNotFound
+        variant="document"
+        detail={`No document in "${props.collection}" to show.`}
+        backHref={adminHref({ type: "collection", slug: collection.slug }, config.basePath)}
+        backLabel={`Back to ${collection.labels.plural}`}
+      />
+    );
   }
 
   return (
@@ -177,6 +191,7 @@ function CollectionEditViewData(
     setActiveDocumentId: Dispatch<SetStateAction<VexDocument["_id"]>>;
   },
 ) {
+  const config = useVexConfig();
   const { document: currentDocument, error, refetch } = useVexDocQuery({
     collection: props.collection.slug,
     id: props.activeDocumentId,
@@ -192,8 +207,14 @@ function CollectionEditViewData(
   }
 
   if (!currentDocument) {
-    // TODO: add proper not found component or screen
-    return <p>Document not found.</p>;
+    return (
+      <AdminNotFound
+        variant="document"
+        detail={`Document "${props.activeDocumentId}" doesn't exist.`}
+        backHref={adminHref({ type: "collection", slug: props.collection.slug }, config.basePath)}
+        backLabel={`Back to ${props.collection.labels.plural}`}
+      />
+    );
   }
 
   return (

@@ -70,6 +70,8 @@ import {
   DocumentCancelAction,
 } from "../documents";
 import { LivePreviewToggleAction } from "../livePreview/LivePreviewToggleAction";
+import { AdminNotFound } from "../admin/AdminNotFound";
+import { adminHref } from "../admin/adminHref";
 
 /**
  * Global document edit form.
@@ -96,8 +98,14 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   // genuinely be `undefined` — deferring the check would dereference `.slug` on `undefined`
   // inside the data-fetching half below.
   if (!global) {
-    // TODO: add proper not found component or screen
-    return <p>Global document not found.</p>;
+    return (
+      <AdminNotFound
+        variant="global"
+        detail={`Global "${props.global}" doesn't exist.`}
+        backHref={adminHref({ type: "dashboard" }, config.basePath)}
+        backLabel="Back to dashboard"
+      />
+    );
   }
 
   return (

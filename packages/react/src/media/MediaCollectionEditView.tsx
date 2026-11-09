@@ -10,6 +10,8 @@ import type {
 import { AppForm } from "../forms";
 import { Button } from "../ui";
 import { InlineQueryError } from "../ui/InlineQueryError";
+import { AdminNotFound } from "../admin/AdminNotFound";
+import { adminHref } from "../admin/adminHref";
 import { RenderFields } from "../fields/RenderFields";
 import { applyFieldPermissionReadOnly } from "../fields/applyFieldPermissionReadOnly";
 import { useFieldsForm } from "../fields/useFieldsForm";
@@ -60,8 +62,14 @@ export function MediaCollectionEditView<
   const collection = config.mediaCollections.find((c) => c.slug === props.collection);
 
   if (!collection) {
-    // TODO: add proper not found component or screen
-    return <p>Collection not found.</p>;
+    return (
+      <AdminNotFound
+        variant="collection"
+        detail={`Collection "${props.collection}" doesn't exist.`}
+        backHref={adminHref({ type: "dashboard" }, config.basePath)}
+        backLabel="Back to dashboard"
+      />
+    );
   }
 
   return (
@@ -90,6 +98,7 @@ function MediaCollectionEditViewData<TCollectionSlug extends MediaCollectionSlug
     collection: MediaCollectionConfig;
   },
 ) {
+  const config = useVexConfig();
   const { document: currentDocument, error, refetch } = useVexDocQuery<VexMediaDocument>({
     collection: props.collection.slug,
     id: props.documentId,
@@ -105,8 +114,14 @@ function MediaCollectionEditViewData<TCollectionSlug extends MediaCollectionSlug
   }
 
   if (!currentDocument) {
-    // TODO: add proper not found component or screen
-    return <p>Document not found.</p>;
+    return (
+      <AdminNotFound
+        variant="document"
+        detail={`Document "${props.documentId}" doesn't exist.`}
+        backHref={adminHref({ type: "collection", slug: props.collection.slug }, config.basePath)}
+        backLabel={`Back to ${props.collection.labels.plural}`}
+      />
+    );
   }
 
   return <MediaCollectionEditForm collection={props.collection} currentDocument={currentDocument} />;
