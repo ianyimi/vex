@@ -517,6 +517,7 @@ export function DataTable<TData extends VexDocument>({
               pageSize={pageSize}
               knownRowCount={totalCount}
               rowClass={rowClass}
+              density={density}
               pinnedLeftIds={pinnedLeftIds}
               pinnedRightIds={pinnedRightIds}
               isRefetching={isRefetching}

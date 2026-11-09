@@ -30,6 +30,8 @@ export function TextFieldCell<TData extends TDocument = TDocument>(
   if (props.isTitleField) {
     // The touch-target box is an inner span, so VexLink keeps its framework Link,
     // classes, and ref. Clicks on the span's extra height bubble up to the anchor.
+    // In compact density (36px rows) the box is capped at the row height via the
+    // `data-density` attribute set by DataTableBody's cell wrapper.
     return (
       <VexLink
         href={adminHref(
@@ -37,7 +39,7 @@ export function TextFieldCell<TData extends TDocument = TDocument>(
           config.basePath,
         )}
       >
-        <span className="-my-3.5 inline-flex min-h-11 items-center">
+        <span className="-my-3.5 inline-flex min-h-11 items-center [[data-density=compact]_&]:min-h-9">
           <span className="font-bold" title={props.value}>
             {props.value.length > 77 ? `${props.value.slice(0, 77)}...` : props.value}
           </span>
