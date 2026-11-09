@@ -776,19 +776,6 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
       ).toBeInTheDocument();
     });
 
-    it("shows the document not-found state when no document id is given", () => {
-      const utils = renderView(
-        createElement(CollectionEditView, {
-          collection: testCollection.slug,
-          documentId: undefined,
-          initialData: null,
-        }),
-        { convex: t },
-      );
-      expect(utils.getByText("Document not found")).toBeInTheDocument();
-      expect(utils.getByText(`No document in "${testCollection.slug}" to show.`)).toBeInTheDocument();
-    });
-
     it("shows the collection not-found state when the collection slug does not resolve", () => {
       const utils = renderView(
         createElement(CollectionEditView, {

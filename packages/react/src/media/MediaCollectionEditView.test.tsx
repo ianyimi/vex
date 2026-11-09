@@ -140,7 +140,7 @@ describe("MediaCollectionEditView — not found", () => {
     const utils = renderView(
       createElement(MediaCollectionEditView, {
         collection: "does-not-exist" as (typeof testClientConfig.mediaCollections)[number]["slug"],
-        documentId: undefined,
+        documentId: "missing-doc" as never,
         initialData: null,
       }),
       { convex: t },
