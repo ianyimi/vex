@@ -31,9 +31,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint && pnpm --filter www --filter test lint
-
       - name: Build Packages
         # `apps/test` runs `next build`, which needs env at two points: the
         # `@t3-oss/env-nextjs` parse when `next.config.ts` loads, and the Convex
@@ -57,6 +54,13 @@ jobs:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
           NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+
+      # After Build, as in ci.yml: the app lint is type-aware, and packages
+      # without a `source` export condition (`@vexcms/richtext-plate`) only
+      # have types once `dist/` exists — before it, `plateEditor()` in
+      # apps/www's vex.config.ts lints as an unresolved `error` type.
+      - name: Lint
+        run: pnpm lint && pnpm --filter www --filter test lint
 
       - name: Typecheck Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" typecheck
