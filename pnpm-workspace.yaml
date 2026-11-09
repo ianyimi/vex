@@ -121,7 +121,7 @@ catalog:
   vitest-axe: 1.0.0-pre.5
   vnu-jar: 26.11.4
   yaml: 2.9.0
-  zod: 4.4.3
+  zod: 4.6.6
 
 catalogs:
   # Consumed exclusively by `peerDependencies`. These are permanent published
