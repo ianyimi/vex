@@ -474,3 +474,27 @@ The developer approved applying the polish review's accessibility, correctness a
 | F-140 | B/I/U/S mark buttons (`MARK_META.bold/italic/underline/strikethrough`), `HeadingDropdown` H1–H6, `CodeBlockButton` (`"{ }"`), `InsertLink` (🔗), `InsertTable` (▦), horizontal rule (―), bullet list (•) | dark | 2.5.3 Label in Name | live axe (`apps/test/audit/admin-axe.json`, posts edit view, dark) | Checked per Main's follow-up ("check every other glyph button"): all clean, 0 occurrences in the live run. Single letters (B/I/U/S) and `displayLabel` (H/H1–H6) already appear as real word tokens inside their names (`"Bold (Ctrl+B)"`, `"Heading level: H2"`); the remaining glyphs (`{ }`, 🔗, ▦, ―, •) are pure symbols with no letters/digits, so axe's own `isLabelContainedInName` short-circuits via its "not human-interpretable" check and never flags them — no change needed. | n/a | n/a (verified clean, no change needed) |
 | F-141 | `apps/{www,test}/e2e/settlePage.ts` | all / dark | — (test-tooling) | polish follow-up (live admin axe) | The admin's database theme lands after hydration and starts 150 ms `transition-all` colour fades; `settlePage` checked running animations once, so axe could catch a badge mid-fade (`#cdcdcd` on `#c74a00` 2.99:1, `#484848` on `#e66a17` 2.8:1 — settled value is `oklch(0.137)` on `oklch(0.72 0.175 50)`, ≈ 6.7:1) and list rows dimmed by `aria-busy` refetching (`#656565`/`#292929` on `#080808`). This is the real mechanism behind F-089. Settle now requires 500 ms with nothing `aria-busy` and no finite animation running; two consecutive full `adminAxe` runs then gave identical results (7 light contrast + 1 label-in-name, both handled below) | fix | fixed (polish) |
 | F-142 | Admin create modal helper text (`?createNew=true` on articles, case_studies, changelog, comments, testimonials) — F-090 | desktop / light | 1.4.3 | live axe + `elementsFromPoint` probe | axe reports `#656565` on `#DADADA` (4.16:1): it composites the modal backdrop over the modal. The browser's hit test puts the text on top of the white (`oklch(1 0 0)`) modal surface, so the real pair is `#656565` on `#FFFFFF` ≈ 5.9:1. axe stacking-order false positive for equal-z portals | n/a | n/a (false positive: axe backdrop compositing) |
+
+## Step 8 preview check + Step 10 gates (2026-11-08)
+
+Preview `https://vex-rie106emg-isaiah-1652.vercel.app` (deployment of `dev@6548e55`), bypass header.
+
+- **Headers** (`curl -sI` on `/`, `/admin`, `/brand`, `/accessibility`, `/privacy`): all five carry `Content-Security-Policy` (`default-src 'self'; script-src 'self' 'unsafe-inline'; …` with the Convex host), `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: geolocation=(), camera=(), microphone=()`. Local `next dev` sends none (production-only, as designed). Caching: ISR pages `cache-control: public, max-age=0, must-revalidate` with `x-vercel-cache: HIT`; `/admin` `private, no-store`.
+- **CSP in the browser**: zero CSP violations or page errors on `/`, `/features`, `/roadmap`, `/privacy`, `/brand`, `/accessibility`, `/tour`, `/auth/sign-in`, `/unauthorized`, `/admin` (signed-out demo), and the two 404s. `/_vercel/insights/script.js` and `/_vercel/speed-insights/script.js` both 200. `/launch/*.mp4` doesn't exist yet (LK-8), so its `media-src` check waits for that media.
+- **F-106 on the production build**: `/a-page-that-does-not-exist`, `/launch-week`, `/posts/vexcms-0-1-0` with `vex-theme=dark` — 404, no error shell, `<html class="dark">`, body `oklch(0.95)` on `oklch(0.137)`. Fixed in production as well as dev.
+- **axe** (`axe.e2e.ts`, `CI` unset so drafts included, `QUALITY_BASE_URL` = preview): 34/34 passed, zero violations.
+- **Lighthouse** (mobile, median of 3, from this Mac — CI's runner is slower on TBT, see `lighthouserc.cjs`):
+
+  | Route | Perf | A11y | BP | SEO | LCP ms | CLS | TBT ms |
+  |---|---|---|---|---|---|---|---|
+  | `/` | 100 | 100 | 100 | 66 | 1071 | 0.000 | 57 |
+  | `/features` | 100 | 100 | 100 | 66 | 1070 | 0.000 | 24 |
+  | `/roadmap` | 100 | 100 | 100 | 66 | 955 | 0.000 | 18 |
+  | `/privacy` | 100 | 100 | 100 | 66 | 919 | 0.000 | 19 |
+  | `/accessibility` | 100 | 100 | 100 | 66 | 914 | 0.000 | 20 |
+  | `/brand` | 100 | 100 | 100 | 66 | 927 | 0.000 | 37 |
+  | `/tour` | 94 | 100 | 100 | 66 | 3029 | 0.000 | 15 |
+  | `/auth/sign-in` | 100 | 100 | 100 | 63 | 920 | 0.000 | 8 |
+
+  SEO is capped by Vercel's `x-robots-tag: noindex` on every non-production deployment (`is-crawlable`); `lighthouserc.cjs` turns that category off for previews. `/tour`'s LCP is its screenshot and warns rather than gates (developer's `lighthouserc.cjs` change, `6548e55`).
+- **CI**: `quality` workflow on `dev@6548e55` (run 42537594188) — `quality / axe` success, `quality / lighthouse` success; also green on `master@a73d3f8` and `changeset-release/master@6bef551`.
