@@ -75,6 +75,13 @@
         "better-call": "2",
         "typescript": "6"
       }
+    },
+    "packageExtensions": {
+      "@hookform/resolvers@5": {
+        "peerDependencies": {
+          "zod": ">=3.25.0"
+        }
+      }
     }
   }
 }
