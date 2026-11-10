@@ -1,7 +1,9 @@
 name: PR checks
 
-# Cheap checks that must re-run when a pull request is edited (title or base
-# branch changed), which ci.yml deliberately doesn't trigger on.
+# Contributor-policy checks for pull requests from forks. Same-repo pull
+# requests (the maintainer's, Dependabot's, the release PR) skip both jobs.
+# Runs on `edited` too, so a title fix or a retarget re-runs them; ci.yml
+# deliberately doesn't trigger on that.
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
@@ -19,6 +21,7 @@ permissions:
 jobs:
   title:
     name: PR title
+    if: github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,10 +36,11 @@ jobs:
 
   base:
     name: Base branch
+    if: github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Fork pull requests target dev
-        if: github.event.pull_request.head.repo.full_name != github.repository && github.event.pull_request.base.ref == 'master'
+        if: github.event.pull_request.base.ref == 'master'
         run: |
           echo "::error title=Base branch::Pull requests from forks go to dev, not master. Edit the pull request, change the base branch to dev, and see CONTRIBUTING.md."
           exit 1

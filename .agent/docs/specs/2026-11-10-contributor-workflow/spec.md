@@ -141,6 +141,12 @@ Discussions were reviewed.
     `../agents` symlink. Its main-module guard compares `realpathSync(process.argv[1])`, because
     Node resolves symlinks for `import.meta.url` but not for `argv`.
 
+20. **Amended 2026-11-10 (after PR #87): `PR title`, `Base branch` and the labeler run only on
+    fork pull requests.** Each job carries `if: github.event.pull_request.head.repo.full_name !=
+    github.repository`, so the developer's own PRs, Dependabot's and the release PR skip them
+    (shown as skipped; none is a required check). Why: #87 (`dev` → `master`, titled
+    `release: …`) failed `PR title`; the policy binds contributors, not the maintainer's flow.
+
 ## Out of Scope
 
 - Changing the default branch, `changesets` `baseBranch`, or the Release workflow.
