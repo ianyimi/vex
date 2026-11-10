@@ -1827,3 +1827,13 @@ these two configs are never loaded by CI.
 **Lift.** Either declare the ESLint packages as `devDependencies` of both packages, or delete the
 two package-level configs and rely on the root one. Found in the pre-launch dependency upgrade
 polish (2026-11-10).
+
+---
+
+## Upgrade to Changesets CLI 3 + changesets/action v2
+
+**What.** Move `@changesets/cli` 2.30 → 3.x and `changesets/action` v1.9.0 → v2 together (v2 refuses CLI 2; a Dependabot bump to v2 broke the release job on 2026-11-10). Then drop the `changesets/action` major-update `ignore` rule in `.github/dependabot.yml`.
+
+**Why deferred.** CLI 3 migrates prerelease state from `pre.json` to `.changeset/pre/` on its first run; doing that mid-alpha, right before `changeset pre exit`, risks the 0.1.0 versions and changelog. After 0.1.0 there is no pre state to migrate.
+
+**Lift.** Root `release` script: `changeset tag` → `changeset git-tag`. `release.yml`: action v2 input renames (`version-script`, `publish-script`, `pr-title`, `commit-message`, `github-token` = the release app token). Decide `privatePackages` (v3 stops versioning private `www`). Confirm `onlyUpdatePeerDependentsWhenOutOfRange` and the `@changesets/cli/changelog` generator still work in v3. Rehearse `changeset status`/`version` in a throwaway copy before merging; the first `master` run is the real check.
