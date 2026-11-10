@@ -49,7 +49,8 @@
       "@daveyplate/better-auth-ui@3.4.0": "patches/@daveyplate__better-auth-ui@3.4.0.patch"
     },
     "overrides": {
-      "@better-auth/passkey": "1.7.18"
+      "@better-auth/passkey": "1.7.18",
+      "get-uri>basic-ftp": "6.2.6"
     },
     "peerDependencyRules": {
       "allowedVersions": {
