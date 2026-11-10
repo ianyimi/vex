@@ -8,9 +8,9 @@ import { TABLE_SLUG_ORGANIZATIONS, TABLE_SLUG_SESSIONS, TABLE_SLUG_USERS } from 
 import config from "~/vex.config.server"
 
 /**
- * Bound server API — `config`/`getAuth` are threaded once here so
- * `convex/pages.ts`, `convex/headers.ts`, and `convex/footers.ts` can import
- * `find` directly instead of repeating the wiring in every file.
+ * Bound server API — `config`/`getAuth` are threaded once here so any
+ * `convex/*.ts` function can import `find`/`get`/`create`/etc. directly
+ * instead of repeating the wiring in every file.
  *
  * Mirrors `apps/test/src/vexcms/api.ts`'s `vexServerApi` binding.
  */

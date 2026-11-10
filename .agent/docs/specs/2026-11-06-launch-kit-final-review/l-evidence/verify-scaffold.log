@@ -1,0 +1,345 @@
+verify-scaffold: packed-tarball demo gate
+
+Packing 8 publishable package(s)...
+  ✓ @vexcms/better-auth → /var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-pack-vwIQqn/better-auth/vexcms-better-auth-0.1.0-alpha.36.tgz
+  ✓ @vexcms/cli → /var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-pack-vwIQqn/cli/vexcms-cli-0.1.0-alpha.36.tgz
+  ✓ @vexcms/core → /var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-pack-vwIQqn/core/vexcms-core-0.1.0-alpha.36.tgz
+  ✓ create-vexcms → /var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-pack-vwIQqn/create-vexcms/create-vexcms-0.1.0-alpha.36.tgz
+  ✓ @vexcms/file-storage-convex → /var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-pack-vwIQqn/file-storage-convex/vexcms-file-storage-convex-0.1.0-alpha.36.tgz
+  ✓ @vexcms/next → /var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-pack-vwIQqn/next/vexcms-next-0.1.0-alpha.36.tgz
+  ✓ @vexcms/react → /var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-pack-vwIQqn/react/vexcms-react-0.1.0-alpha.36.tgz
+  ✓ @vexcms/richtext-plate → /var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-pack-vwIQqn/richtext-plate/vexcms-richtext-plate-0.1.0-alpha.36.tgz
+
+=== templates/base-nextjs (--bare) ===
+  → scaffold (create-vexcms --yes)
+
+  create-vexcms
+
+
+- Copying template files...
+✔ Template files copied
+- Configuring project...
+✔ Project configured
+- Configuring authentication...
+✔ Authentication configuration updated
+- Configuring OAuth UI...
+✔ OAuth UI placeholders cleaned up
+- Updating .env.example...
+✔ .env.example placeholders cleaned up
+- Updating typed env configuration...
+✔ Typed env placeholders cleaned up
+- Updating README...
+✔ README placeholders cleaned up
+- Configuring organizations...
+✔ Organizations placeholders cleaned up
+- Generating auth secret...
+✔ Auth secret generated
+- Initializing Git repository...
+✔ Git repository initialized
+
+
+✓ Successfully created project 'base-nextjs' at /private/var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-scaffold-gmD5Kx/base-nextjs
+
+  ✓ scaffold (create-vexcms --yes) (317ms)
+  ✓ verify-hooks-wiring (1ms)
+  ✓ inject pnpm.overrides (0ms)
+  → pnpm install
+Progress: resolved 1, reused 0, downloaded 0, added 0
+ WARN  deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+Progress: resolved 205, reused 197, downloaded 6, added 0
+Progress: resolved 792, reused 687, downloaded 6, added 0
+ WARN  20 deprecated subdependencies found: @react-email/body@0.3.0, @react-email/button@0.2.1, @react-email/code-block@0.2.1, @react-email/code-inline@0.0.6, @react-email/column@0.0.14, @react-email/components@1.0.12, @react-email/container@0.0.16, @react-email/font@0.0.10, @react-email/head@0.0.13, @react-email/heading@0.0.16, @react-email/hr@0.0.12, @react-email/html@0.0.12, @react-email/img@0.0.12, @react-email/link@0.0.13, @react-email/markdown@0.0.18, @react-email/preview@0.0.14, @react-email/row@0.0.13, @react-email/section@0.0.17, @react-email/tailwind@2.0.7, @react-email/text@0.1.6
+Packages: +779
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 875, reused 774, downloaded 6, added 140
+Progress: resolved 875, reused 774, downloaded 6, added 532
+Progress: resolved 875, reused 774, downloaded 6, added 716
+Progress: resolved 875, reused 774, downloaded 6, added 776
+Progress: resolved 875, reused 774, downloaded 6, added 779, done
+
+dependencies:
++ @base-ui/react 1.9.0
++ @better-auth/api-key 1.7.18 (1.7.19 is available)
++ @convex-dev/better-auth 0.13.0
++ @convex-dev/react-query 0.1.0
++ @daveyplate/better-auth-ui 3.4.0
++ @t3-oss/env-nextjs 0.13.11
++ @tanstack/react-form 1.33.5
++ @tanstack/react-query 5.106.1 (5.107.1 is available)
++ @vexcms/better-auth 0.1.0-alpha.36
++ @vexcms/core 0.1.0-alpha.36
++ @vexcms/file-storage-convex 0.1.0-alpha.36
++ @vexcms/next 0.1.0-alpha.36
++ @vexcms/react 0.1.0-alpha.36
++ better-auth 1.7.18 (1.7.19 is available)
++ class-variance-authority 0.7.1
++ clsx 2.1.1
++ convex 1.49.0
++ convex-helpers 0.1.134
++ lucide-react 0.577.0 (1.70.0 is available)
++ next 16.4.5 (16.4.6 is available)
++ nuqs 2.10.2
++ react 19.2.9 (19.3.1 is available)
++ react-dom 19.2.9 (19.3.1 is available)
++ tailwind-merge 3.7.0
++ zod 4.6.7
+
+devDependencies:
++ @convex-dev/eslint-plugin 1.2.2 (5.0.1 is available)
++ @tailwindcss/postcss 4.3.4 (4.3.5 is available)
++ @types/node 20.19.43 (26.6.6 is available)
++ @types/react 19.2.18 (19.3.0 is available)
++ @types/react-dom 19.2.7 (19.3.0 is available)
++ @vexcms/cli 0.1.0-alpha.36
++ babel-plugin-react-compiler 1.0.0
++ eslint 9.39.5 (10.14.0 is available) deprecated
++ eslint-config-next 16.4.5 (16.4.6 is available)
++ eslint-plugin-import-x 4.17.1 (4.18.1 is available)
++ eslint-plugin-jsx-a11y 6.10.2
++ eslint-plugin-perfectionist 5.13.0
++ eslint-plugin-react-hooks 7.1.1
++ prettier 3.9.10
++ shadcn 4.23.0
++ tailwindcss 4.3.4 (4.3.5 is available)
++ tw-animate-css 1.4.0
++ typescript 6.0.3 (7.0.2 is available)
++ typescript-eslint 8.72.1 (8.72.2 is available)
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: core-js@3.51.0, esbuild@0.27.0.                     │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 7.1s using pnpm v10.30.2
+  ✓ pnpm install (7299ms)
+  → pnpm typecheck
+
+> base-nextjs@0.1.0 typecheck /private/var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-scaffold-gmD5Kx/base-nextjs
+> tsc --noEmit
+
+  ✓ pnpm typecheck (3566ms)
+  → pnpm build
+
+> base-nextjs@0.1.0 build /private/var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-scaffold-gmD5Kx/base-nextjs
+> next build
+
+▲ Next.js 16.4.5 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 144ms
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 6.5s
+  Running TypeScript ...
+  Finished TypeScript in 3.1s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/5) ...
+  Generating static pages using 11 workers (1/5) 
+  Generating static pages using 11 workers (2/5) 
+  Generating static pages using 11 workers (3/5) 
+✓ Generating static pages using 11 workers (5/5) in 361ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /(.)auth/[pathname]
+├ ƒ /admin/[[...path]]
+├ ƒ /api/auth/[...all]
+├ ƒ /api/vex/revalidate
+├ ƒ /auth/[pathname]
+└ ○ /unauthorized
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+  ✓ pnpm build (11679ms)
+  → route-table + SEO-route assertions
+    ✓ / is prerendered
+    ✓ /unauthorized is prerendered
+
+=== templates/marketing-site (full) ===
+  → scaffold (create-vexcms --yes)
+
+  create-vexcms
+
+
+- Copying template files...
+✔ Template files copied
+- Applying marketing site template...
+✔ Marketing site template applied
+- Configuring project...
+✔ Project configured
+- Configuring authentication...
+✔ Authentication configuration updated
+- Configuring OAuth UI...
+✔ OAuth UI placeholders cleaned up
+- Updating .env.example...
+✔ .env.example placeholders cleaned up
+- Updating typed env configuration...
+✔ Typed env placeholders cleaned up
+- Updating README...
+✔ README placeholders cleaned up
+- Configuring organizations...
+✔ Organizations placeholders cleaned up
+- Generating auth secret...
+✔ Auth secret generated
+- Initializing Git repository...
+✔ Git repository initialized
+
+
+✓ Successfully created project 'marketing-site' at /private/var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-scaffold-gmD5Kx/marketing-site
+
+  ✓ scaffold (create-vexcms --yes) (426ms)
+  ✓ verify-hooks-wiring (0ms)
+  ✓ inject pnpm.overrides (0ms)
+  → pnpm install
+Progress: resolved 1, reused 0, downloaded 0, added 0
+ WARN  deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+Progress: resolved 231, reused 224, downloaded 0, added 0
+Progress: resolved 860, reused 764, downloaded 0, added 0
+ WARN  20 deprecated subdependencies found: @react-email/body@0.3.0, @react-email/button@0.2.1, @react-email/code-block@0.2.1, @react-email/code-inline@0.0.6, @react-email/column@0.0.14, @react-email/components@1.0.12, @react-email/container@0.0.16, @react-email/font@0.0.10, @react-email/head@0.0.13, @react-email/heading@0.0.16, @react-email/hr@0.0.12, @react-email/html@0.0.12, @react-email/img@0.0.12, @react-email/link@0.0.13, @react-email/markdown@0.0.18, @react-email/preview@0.0.14, @react-email/row@0.0.13, @react-email/section@0.0.17, @react-email/tailwind@2.0.7, @react-email/text@0.1.6
+Packages: +824
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 920, reused 825, downloaded 0, added 276
+Progress: resolved 920, reused 825, downloaded 0, added 538
+Progress: resolved 920, reused 825, downloaded 0, added 720
+Progress: resolved 920, reused 825, downloaded 0, added 784
+Progress: resolved 920, reused 825, downloaded 0, added 824, done
+
+dependencies:
++ @base-ui/react 1.9.0
++ @better-auth/api-key 1.7.18 (1.7.20 is available)
++ @convex-dev/better-auth 0.13.0
++ @convex-dev/react-query 0.1.0
++ @daveyplate/better-auth-ui 3.4.0
++ @t3-oss/env-nextjs 0.13.11
++ @tanstack/react-form 1.33.5
++ @tanstack/react-query 5.106.1 (5.107.1 is available)
++ @vexcms/better-auth 0.1.0-alpha.36
++ @vexcms/core 0.1.0-alpha.36
++ @vexcms/file-storage-convex 0.1.0-alpha.36
++ @vexcms/next 0.1.0-alpha.36
++ @vexcms/react 0.1.0-alpha.36
++ better-auth 1.7.18 (1.7.19 is available)
++ class-variance-authority 0.7.1
++ clsx 2.1.1
++ convex 1.49.0
++ convex-helpers 0.1.134
++ lucide-react 0.577.0 (1.70.0 is available)
++ next 16.4.5 (16.4.6 is available)
++ nuqs 2.10.2
++ react 19.2.9 (19.3.1 is available)
++ react-dom 19.2.9 (19.3.1 is available)
++ shiki 4.6.0
++ tailwind-merge 3.7.0
++ zod 4.6.7
+
+devDependencies:
++ @convex-dev/eslint-plugin 1.2.2 (5.0.1 is available)
++ @tailwindcss/postcss 4.3.4 (4.3.5 is available)
++ @types/node 20.19.43 (26.6.6 is available)
++ @types/react 19.2.18 (19.3.0 is available)
++ @types/react-dom 19.2.7 (19.3.0 is available)
++ @vexcms/cli 0.1.0-alpha.36
++ babel-plugin-react-compiler 1.0.0
++ eslint 9.39.5 (10.14.0 is available) deprecated
++ eslint-config-next 16.4.5 (16.4.6 is available)
++ eslint-plugin-import-x 4.17.1 (4.18.1 is available)
++ eslint-plugin-jsx-a11y 6.10.2
++ eslint-plugin-perfectionist 5.13.0
++ eslint-plugin-react-hooks 7.1.1
++ prettier 3.9.10
++ shadcn 4.23.0
++ tailwindcss 4.3.4 (4.3.5 is available)
++ tw-animate-css 1.4.0
++ typescript 6.0.3 (7.0.2 is available)
++ typescript-eslint 8.72.1 (8.72.2 is available)
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: core-js@3.51.0, esbuild@0.27.0.                     │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 7.2s using pnpm v10.30.2
+  ✓ pnpm install (7320ms)
+  → pnpm typecheck
+
+> marketing-site@0.1.0 typecheck /private/var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-scaffold-gmD5Kx/marketing-site
+> tsc --noEmit
+
+  ✓ pnpm typecheck (4104ms)
+  → pnpm build
+
+> marketing-site@0.1.0 build /private/var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-scaffold-gmD5Kx/marketing-site
+> next build
+
+▲ Next.js 16.4.5 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 129ms
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 7.1s
+  Running TypeScript ...
+  Finished TypeScript in 3.3s ...
+  Collecting page data using 13 workers ...
+  Generating static pages using 13 workers (0/8) ...
+  Generating static pages using 13 workers (2/8) 
+  Generating static pages using 13 workers (4/8) 
+  Generating static pages using 13 workers (6/8) 
+✓ Generating static pages using 13 workers (8/8) in 1301ms
+  Finalizing page optimization ...
+
+Route (app)                Revalidate  Expire
+┌ ○ /                              1h      1y
+├ ○ /_not-found
+├ ƒ /(.)auth/[pathname]
+├ ● /[slug]
+├ ƒ /admin/[[...path]]
+├ ƒ /api/auth/[...all]
+├ ƒ /api/vex/live-preview
+├ ƒ /api/vex/revalidate
+├ ƒ /auth/[pathname]
+├ ○ /robots.txt
+├ ○ /sitemap.xml
+└ ○ /unauthorized
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+
+  ✓ pnpm build (13716ms)
+  → route-table + SEO-route assertions
+    ✓ / is prerendered
+    ✓ /sitemap.xml returns 200
+    ✓ /sitemap.xml is a well-formed urlset
+    ✓ /robots.txt returns 200
+    ✓ /robots.txt names a user-agent and a sitemap
+
+Summary:
+  ✓ templates/base-nextjs (--bare) — all steps green
+  ✓ templates/marketing-site (full) — all steps green
+
+--keep: preserved /var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-pack-vwIQqn and /var/folders/6j/65gmhg_92wq518p0w2vtwt6c0000gn/T/vex-verify-scaffold-gmD5Kx
+EXIT 0

@@ -112,9 +112,13 @@ pnpm secret:create     # Generate a Better Auth secret
 
 ## Deployment
 
-1. `npx convex deploy`
-2. In the Convex Dashboard, set `SITE_URL` to your production domain (keep
-   `BETTER_AUTH_SECRET` the same, or rotate it and update both places).
-3. Deploy the Next.js app (e.g. Vercel) with `NEXT_PUBLIC_CONVEX_URL`,
-   `NEXT_PUBLIC_CONVEX_SITE_URL`, `NEXT_PUBLIC_SITE_URL`, and
-   `BETTER_AUTH_SECRET` set to their production values.
+See the [deployment guide](https://docs.vexcms.dev/guides/deployment/) for the full walkthrough
+(production Convex env, Vercel env vars, build command). Short version:
+
+```bash
+pnpm vex:deploy
+```
+
+pushes your schema and deploys to Convex production. Then deploy this app to Vercel with the
+build command `pnpm vex:deploy --cmd 'pnpm build'`, and `CONVEX_DEPLOY_KEY` set to a
+**Production**-scoped deploy key.

@@ -1,4 +1,4 @@
-import { execSync, spawn, type ChildProcess } from "node:child_process";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { logger } from "./logger.js";
@@ -223,24 +223,56 @@ function pushSchemaStandalone(cwd: string): boolean {
 }
 
 /**
- * Run `convex deploy` to push to production.
- * @param cwd - Directory to run the `convex deploy` command in.
+ * Run `convex deploy` to push to production. Runs with no timeout — unlike
+ * every other `convex` command vex runs — because a caller-passed `--cmd`
+ * makes the deploy also run the project's own build, which can take
+ * much longer than the standard 120-second ceiling.
+ * @param props - Input props.
+ * @param props.cwd - Directory to run the `convex deploy` command in.
+ * @param props.convexArgs - Extra flags forwarded verbatim to `convex
+ * deploy` (e.g. `--cmd`, `--preview-create`).
  * @returns `true` if the deploy succeeded, `false` otherwise.
  */
-export function deployToProduction(cwd: string): boolean {
-  return runConvexCommand(cwd, ["deploy"]);
+export function deployToProduction(props: { cwd: string; convexArgs?: string[] }): boolean {
+  return runConvexCommand(props.cwd, ["deploy", ...(props.convexArgs ?? [])], { timeoutMs: null });
 }
 
-function runConvexCommand(cwd: string, convexArgs: string[]): boolean {
-  const pm = detectPackageManager(cwd);
-  const cmd = [pm.cmd, ...pm.args, "convex", ...convexArgs].join(" ");
+/**
+ * Strip `--cmd` and `--cmd-url-env-var-name` (and their values) from
+ * `convexArgs`, preserving the order of everything else. Used for `vex
+ * deploy`'s auto-migration interim pushes so a caller-passed build command
+ * runs exactly once, on the final deploy, not on every interim schema push.
+ * @param convexArgs - Flags as collected by `parseCliArgs`.
+ * @returns `convexArgs` with every `--cmd`/`--cmd-url-env-var-name` pair removed.
+ */
+export function stripCmdFlags(convexArgs: string[]): string[] {
+  const stripped: string[] = [];
+  for (let i = 0; i < convexArgs.length; i++) {
+    const arg = convexArgs[i];
+    if (arg === "--cmd" || arg === "--cmd-url-env-var-name") {
+      i++; // also skip the flag's value
+      continue;
+    }
+    stripped.push(arg);
+  }
+  return stripped;
+}
 
-  logger.info(`Running: ${cmd}`);
+function runConvexCommand(
+  cwd: string,
+  convexArgs: string[],
+  options?: { timeoutMs?: number | null },
+): boolean {
+  const pm = detectPackageManager(cwd);
+  const argv = [...pm.args, "convex", ...convexArgs];
+  const timeoutMs = options?.timeoutMs === undefined ? 120_000 : options.timeoutMs;
+
+  logger.info(`Running: ${pm.cmd} ${argv.join(" ")}`);
   try {
-    execSync(cmd, {
+    execFileSync(pm.cmd, argv, {
       cwd,
       stdio: "inherit",
-      timeout: 120_000,
+      ...(timeoutMs === null ? {} : { timeout: timeoutMs }),
     });
     logger.success("Convex command succeeded");
     return true;
@@ -253,3 +285,4 @@ function runConvexCommand(cwd: string, convexArgs: string[]): boolean {
     return false;
   }
 }
+

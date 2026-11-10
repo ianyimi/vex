@@ -165,7 +165,7 @@ export interface GenericQueryServerParams<
    * The resolved `VexConfig`. Required alongside `depth`; passed
    * from the `queryApi` factory closure so the Convex handler has schema info.
    */
-  config?: [TPopulate] extends [Record<string, never>] ? VexConfig : never;
+  config: [TPopulate] extends [Record<string, never>] ? VexConfig : never;
 }
 
 /**

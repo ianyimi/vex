@@ -22,7 +22,7 @@ import { images, users } from "~/vexcms/collections"
  * page ships no `og:image`. Narrow it with a `constraints` rule if some media
  * must stay private; do not remove it.
  *
- * @see https://vexcms.dev/docs/access-control
+ * @see https://docs.vexcms.dev/guides/access-control/
  */
 export const access = defineAccess({
   anonRole: USER_ROLES.user,

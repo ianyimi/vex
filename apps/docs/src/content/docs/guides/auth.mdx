@@ -82,9 +82,29 @@ Use Better Auth's [admin plugin](https://www.better-auth.com/docs/plugins/admin)
 server-side, or the client's `authClient.admin.createUser(...)`) to create a
 user with a real, working login — it hashes the password and wires up
 everything `/sign-up/email` would, without going through the admin panel's
-generic create form. VexCMS does not provide its own admin-UI affordance for
-this; it is deferred (see `.agent/docs/product/backlog.md`).
+generic create form. VexCMS has no admin-panel control for this yet.
 
+
+### Creating accounts from a script
+
+A server-to-server call to `/api/auth/sign-up/email` — a seed script, a demo-account
+bootstrap, anything that isn't a browser `fetch` — needs an explicit `Origin` header
+matching `SITE_URL`/`trustedOrigins`:
+
+```ts
+const response = await fetch(`${SITE_URL}/api/auth/sign-up/email`, {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    origin: SITE_URL,
+  },
+  body: JSON.stringify({ email, password, name }),
+});
+```
+
+Without it, Better Auth rejects the request with `403 MISSING_OR_NULL_ORIGIN` — a browser
+sets `Origin` on every cross-origin request itself, but Node's `fetch` doesn't, and
+`trustedOrigins` requires one either way.
 
 ## Better Auth
 
@@ -317,7 +337,11 @@ export default defineConfig({
 ```
 
 Locked fields (email, emailVerified, createdAt, etc.) are preserved. Your
-unlocked fields (`bio`, `publicProfile`) are merged in.
+unlocked fields (`bio`, `publicProfile`) are merged in, and reach the
+generated Convex schema with no second edit: `convex/schema.ts` imports the
+`user` table from `convex/vex.schema.ts`, so `bio` lands in `Doc<"user">` and
+the deployed schema the moment you regenerate — never redeclare the `user`
+table by hand.
 
 ### Admin UI behavior
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at_sha": "262fedb2a66c6f3ffaaa91633e496d5d3aa6147f",
+  "generated_at_sha": "e49d7ac3fbbc61c09e78e931c9effba1d57562b1",
   "entries": [
     {
       "path": ".agent/context-rules.yaml",
@@ -60,6 +60,12 @@
       "path": ".omp/agents/document.md",
       "kind": "generated",
       "target_or_hash": "ce671f8ab640f5458d0e31237e944435a778eb1bc9c9b7207038c4a7f2e58125",
+      "platform": "omp"
+    },
+    {
+      "path": ".omp/agents/github-review.md",
+      "kind": "generated",
+      "target_or_hash": "d8086e785af8cb032ee1427a9ffcef0efa1c5d447e9e5c36741d8fa44ea23be0",
       "platform": "omp"
     },
     {
@@ -966,6 +972,12 @@
       "path": ".omp/prompts/document.md",
       "kind": "generated",
       "target_or_hash": "a992be48cf6ee3df0f4b5ea15b27e69768a218c61d6af7dc2bf0ed89bf10b3cb",
+      "platform": "omp"
+    },
+    {
+      "path": ".omp/prompts/github-review.md",
+      "kind": "generated",
+      "target_or_hash": "d137446e1474359b4f24a61b3997a1214194359c4275400fb43e44e4d79f067c",
       "platform": "omp"
     },
     {

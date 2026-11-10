@@ -25,6 +25,7 @@ prompt_version: 1
 > **Binding:** `.agent/docs/product/launch-cross-spec-decisions.md` (2026-11-07). "Cross-spec decision N" refers to its table.
 > **Order:** steps 1–7 can start now. Steps 8–11 wait on other specs (marked; step 8 on quality-pass steps 6–7). Steps 12–22 (L) run after every surface-changing spec has landed (items 14, 15, 16, and steps 1–11 here), directly before Release. Nothing changes after step 22 except the Release version bumps and `copy-flip.patch`.
 > **Scope change (developer, 2026-11-09; spec.md Design Decision 25):** a new step 24 "Example posts" runs **before step 6** (numbered 24 so steps 6–23 keep the numbers the board, sibling specs and cross-spec decisions cite). L excludes JSDoc and TypeDoc API pages; it covers the public docs pages, www, GitHub (README, community files, issue forms, starter issues, Discussions), npm READMEs, template output, the launch posts and the release notes. L runs as a review-and-iterate loop: the developer gives feedback in the session, the agent applies it to every surface it affects and logs it in `standards/docs/voice-and-wording.md` (or `anti-patterns.md`). Step 8's shot list is owned by the demo spec; step 8's checks run against that version.
+> **Contributor workflow (developer, 2026-11-10; spec.md Design Decision 26):** the `planned` issues are deleted before launch, so no post or surface links them or asks for a 👍 on one; posts link the roadmap page. CONTRIBUTING, the PR template, issue `config.yml`, SECURITY, CODE_OF_CONDUCT, `labels.yml` and the docs Development pages join L (docs in step 14, GitHub in step 19); the matrix gains "contributor flow" and "PR response window". The workflows and the `github-review` skill get findings only.
 > **Release blocker found while writing this spec (handed to Release, item 18; still open):** the root `release` script publishes with `--tag alpha`, and every published package has `publishConfig.tag: "alpha"`. `create-vexcms`'s `latest` is still `0.0.20`, so without a fix the post-flip `pnpm create vexcms` installs the old scaffolder. Step 23 writes the fix into the launch plan's § Release mechanics tasks at the latest. See spec.md § Handoffs.
 > **Re-seeding:** `seed:reinit` (patch mode) in every verify and re-seed instruction (cross-spec decision 9).
 > **Out of scope:** Reddit, X, Bluesky, Lobsters, AlternativeTo, Convex showcase outreach, a "coming from Payload" guide, a live-build video, a posts index/RSS, launch metrics reporting, Launch itself (item 19 runs `launch-kit.md`), edits to other specs, and the unstaged telemetry work.
@@ -111,7 +112,7 @@ Verify: the kit's dates table is filled. The PH launch shows "Scheduled" for D2 
 
 ## Step 11 — Pre-stage the release-day copy flip [dev]
 Why: public-presence step 18 flips alpha wording after L. Staging it as a patch lets L review the exact diff that Release applies (decision 13).
-Verify: `git apply --check .agent/docs/specs/2026-11-06-launch-kit-final-review/copy-flip.patch` passes on `dev` HEAD. In a scratch worktree with the patch applied, the alpha rg in spec.md prints nothing outside the excluded paths
+Verify: `git apply --check .agent/docs/specs/2026-11-06-launch-kit-final-review/copy-flip.patch` passes on the reviewed tree (the `dev` working tree until the developer commits it). In a scratch worktree with the patch applied, the alpha rg in spec.md prints nothing outside the excluded paths
 - [ ] `copy-flip.patch`: every alpha string the spec's scope command finds on a public surface, not only the files public-presence step 18 names (step 21 checks coverage against step 13's sweep)
 - [ ] The announcement stays a draft in the patch; it is published on D1 (handoff to public-presence step 18)
 
@@ -151,7 +152,7 @@ Verify: every demo row is marked pass or links a finding, on desktop and phone
 Why: `create-vexcms` output is the product people keep.
 Verify: every template row is marked pass or links a finding, for both templates
 - [ ] Prompts and terminal output, scaffolded README, first-run screens, seeded content, against N's run-through Convex projects
-- [ ] `marketing-site` excludes the vexcms-specific set (cross-spec decision 6): `launch-week` and every post document, the `posts` collection and `/posts/[slug]`, `privacy`/`accessibility`/`brand` pages, `/tour`, the vexcms-only footer links and the Sponsors `socialLinks` entry; roadmap and FAQ are generic template copy
+- [ ] `marketing-site` excludes the vexcms-specific set (cross-spec decision 6, as amended by LI's D1 on 2026-11-09: the starter keeps VexCMS roadmap/FAQ copy): `launch-week` and every post document, the `posts` collection and `/posts/[slug]`, `privacy`/`accessibility`/`brand` pages, `/tour`, the vexcms-only footer links and the Sponsors `socialLinks` entry
 
 ## Step 19 — L: GitHub and external profiles [dev]
 Why: repo settings are live now, and files on `dev` go live at the Release merge.

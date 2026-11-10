@@ -147,8 +147,11 @@ Hard rules:
 - "Don't use fake or extra accounts. Every account should belong to one real person." —
   `sources.md` §2.4.
 - "We only feature products that are currently available." / "We only feature products that
-  are ready for use" — `sources.md` §2.8. The scaffolder and demo must work end-to-end before
-  scheduling.
+  are ready for use or have a clear path to launch." — `sources.md` §2.8 (wording re-fetched
+  2026-11-10). The scaffolder and demo must work end-to-end before scheduling.
+- New on re-fetch (2026-11-10): "We don't feature … Waitlisted products (unless immediate access
+  is provided)" — `sources.md` Re-fetch log. The demo and `pnpm create vexcms` are open, so no
+  waitlist wording anywhere in the listing.
 - "We do not feature: ... Templates, Boilerplates" — `sources.md` §2.8. Frame VexCMS as a
   working CMS app, not a code template, given `create-vexcms` is a scaffolder.
 
@@ -188,13 +191,18 @@ Purpose/day: D1–D5, one post every day (the announcement, then each feature po
 recap), each with that day's clip (silent H.264 MP4, ≤60s, ≤10MB, `apps/www/public/launch/`)
 uploaded natively — "Silent → no caption track; post text describes the clip."
 
-Hard rules: no official LinkedIn length or link-card limit was found —
-"`sources.md` §5.17: no official length or link-card limit found... None was found, so this
-channel has no quotable rule for the launch spec." Keep the clip native, the link in the post
-body, and since the clip carries no audio or captions, the post text must describe what it
-shows.
+Hard rules (`sources.md` Re-fetch log, §5.17, official LinkedIn Help article found 2026-11-10):
 
-Limits: none quoted (`sources.md` §5.17, [UNVERIFIED]).
+- "If your post exceeds 3000 characters, you can instead write an article using LinkedIn's
+  Publishing Platform" — standard posts cap at 3,000 characters.
+- "If we detect excessive post creation that indicates inauthentic activity, or the use of an
+  automation tool, we may limit the visibility of those posts." — post by hand, once a day; no
+  scheduler or cross-posting tool.
+
+Keep the clip native, the link in the post body, and since the clip carries no audio or
+captions, the post text must describe what it shows.
+
+Limits: 3,000 characters per post (`sources.md` Re-fetch log, §5.17).
 
 What each post must contain: a link to that day's canonical URL (announcement, feature post,
 or recap) and a description of the attached clip.
@@ -396,7 +404,7 @@ specifies which.
 
 ### Packages
 
-Eight published packages, all at `0.1.0-alpha.29` with `publishConfig.tag: "alpha"` today
+Eight published packages, all at `0.1.0-alpha.36` with `publishConfig.tag: "alpha"` today (re-read 2026-11-10)
 (re-check in step 13 — Release's `changeset pre exit` moves every one to `0.1.0` before the
 kit goes live):
 
@@ -421,7 +429,7 @@ could move before Release.
 
 | Requirement                        | Floor         | Source                                                                                                                                                                                                                       |
 | ---------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Node                               | `>=20.0.0`    | `package.json#engines` (repo root)                                                                                                                                                                                           |
+| Node                               | `>=22.0.0` scaffolds; `>=22.18.0` to work on the repo | `packages/create-vexcms/templates/base-nextjs/package.json#engines` (scaffolded projects); `package.json#engines` (repo root, DEP-2); `dev/contributing.mdx` says 22.18. The 8 packed manifests declare no `engines` |
 | Next.js                            | `>=15.0.0`    | `pnpm-workspace.yaml` `catalogs.peers.next`; declared by `packages/react/package.json#peerDependencies.next` and `packages/next/package.json#peerDependencies.next`                                                          |
 | React / react-dom                  | `>=18.0.0`    | `pnpm-workspace.yaml` `catalogs.peers.react`/`react-dom`; declared by `packages/react/package.json#peerDependencies` and `packages/next/package.json#peerDependencies`                                                       |
 | Convex                             | `>=1.44.0 <2` | `pnpm-workspace.yaml` `catalogs.peers.convex`; declared by `packages/core/package.json#peerDependencies.convex`, `packages/react/package.json#peerDependencies.convex`, `packages/next/package.json#peerDependencies.convex` |
@@ -442,10 +450,9 @@ could move before Release.
 
 VexCMS 0.1.0's shipped feature list (16 field types, versioning and drafts, Convex schema +
 type codegen, the real-time admin panel, RBAC with indexed rules, live preview, lifecycle
-hooks and server-side validation, the CLI and `create-vexcms`) — `apps/docs/src/content/docs/roadmap.md:10-44`
-("Shipped" section; re-check in step 13 — public-presence rewrites this page's shape to
-Shipped/After-0.1.0/Not-planned before launch). Funding line and `planned`-issue links belong
-in this post — `public-copy.md` "Funding" and its `planned` issues table.
+hooks and server-side validation, the CLI and `create-vexcms`) — `apps/docs/src/content/docs/roadmap.md`
+§ Shipped. The Funding line belongs in this post (`public-copy.md` § Funding). Roadmap items
+have no issues or discussions to link (Design Decision 26): point at the roadmap page instead.
 
 Docs: https://docs.vexcms.dev/roadmap/
 
@@ -629,6 +636,9 @@ severity and on sponsorship." — `public-copy.md` § Who builds this.
 "Reports are acknowledged within a week. Supported versions: the latest 0.1.x release." —
 `public-copy.md` § Security response window.
 
+"I give every pull request a first review within a week." — `public-copy.md` § Pull request
+response window.
+
 #### Links
 
 - https://github.com/ianyimi/vex/discussions
@@ -710,7 +720,7 @@ summarizing from memory.
 #### Facts
 
 - VexCMS ships `0.1.0` at this launch (`packages/*/package.json#version`, re-check in
-  step 13 — the version shown here is pre-Release `0.1.0-alpha.29`).
+  step 13 — the version shown here is pre-Release `0.1.0-alpha.36`).
   `packages/create-vexcms/README.md`'s warning banner describes the pre-0.1.0 posture:
   "pre-release software... Use it for experiments and evaluation only; the projects it
   scaffolds should not carry production traffic or real user data." (re-check in step 13 —
@@ -761,6 +771,11 @@ inherits, not something this repo builds or supports directly.
 ## Posts
 
 Every slot below is empty — filled by the developer in step 6. Nothing here is prose.
+
+**For the developer (2026-11-10, Design Decision 26):** no slot links a `planned` issue or asks
+readers to 👍 one — those issues are deleted before launch and roadmap items have no issue or
+discussion. Link https://docs.vexcms.dev/roadmap/ instead. Feature ideas go to Discussions →
+Ideas (VW-016); contributing lines quote the PR response window verbatim.
 
 ### D1 — www announcement
 
@@ -906,12 +921,13 @@ Discussions reply, or a `backlog.md` entry — never only in memory. New issues 
 within a week, matching `public-copy.md` § Who builds this.
 
 1. GitHub issues labelled `status: needs-triage` — triage into a `type:`/`area:` label set, or
-   reply and leave `needs-repro`. → labelled issue.
-2. GitHub Discussions (Q&A, Ideas, Show and tell) — answer Q&A, mark accepted Ideas
-   `type: feature` and file an issue for them. → Discussions reply + issue, where accepted.
+   reply and leave `status: needs-repro`. Pull requests: a first review within a week
+   (`public-copy.md` § Pull request response window). → labelled issue; PR review.
+2. GitHub Discussions (Q&A, Ideas, Show and tell) — answer Q&A; label the Ideas you'll take
+   `accepted` (VW-016: no issue is filed for an idea). → Discussions reply, `accepted` label.
 3. The Show HN thread (D1–D3 only, while live) — reply within the blocked time block; every
    reply hand-written (Design Decision 2). → no artifact beyond the thread itself; file an
-   issue for any bug or feature request raised in it.
+   issue for any bug raised in it, and point feature ideas to Discussions → Ideas.
 4. Product Hunt comments (D2–D3 only, while live) — same reply discipline as Show HN. → issue
    for anything actionable.
 5. dev.to and Hashnode comments on the cross-posts. → issue or Discussions reply.

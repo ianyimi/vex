@@ -10,7 +10,7 @@ path between them — please upgrade to the latest release before reporting.
 Please don't open a public issue for a security report.
 
 1. **Preferred:** use [private vulnerability reporting](https://github.com/ianyimi/vex/security/advisories/new)
-   on this repo. It opens a private draft advisory only you and the maintainer can see.
+   on this repo. It opens a private draft advisory only you and I can see.
 2. **If that isn't an option:** email `security@vexcms.dev`.
 
 Reports are acknowledged within a week.
@@ -18,5 +18,5 @@ Reports are acknowledged within a week.
 ## Disclosure
 
 Once a fix is ready, the report is disclosed through a published GitHub Security Advisory, crediting
-the reporter (unless you ask not to be credited). We'll coordinate the disclosure timeline with you
+the reporter (unless you ask not to be credited). I'll coordinate the disclosure timeline with you
 before publishing.

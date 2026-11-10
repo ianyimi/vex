@@ -43,6 +43,11 @@ export const env = createEnv({
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
    * useful for Docker builds.
+   *
+   * Also skipped inside the Convex runtime: `convex/vex.ts` imports the admin config, which
+   * can reach this module through registered admin components, and a Convex push never sets
+   * `NEXT_PUBLIC_*` (only Next does). `CONVEX_CLOUD_URL` is set by Convex and never by Next, so
+   * its presence is a reliable signal we are inside a Convex function/push, not a Next process.
    */
-  skipValidation: !!process.env.SKIP_ENV_VALIDATION,
+  skipValidation: !!process.env.SKIP_ENV_VALIDATION || !!process.env.CONVEX_CLOUD_URL,
 })

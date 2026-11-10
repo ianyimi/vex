@@ -34,6 +34,27 @@ describe("buildThemeCss", () => {
     expect(css).not.toContain(".dark :root");
   });
 
+  it("emits a region scope at the given selector", () => {
+    const css = buildThemeCss({
+      theme: THEME,
+      scope: { selector: '[data-vex-theme="downtown"]' },
+    });
+
+    expect(css).toBe(
+      `[data-vex-theme="downtown"] {
+  --background: oklch(96.1% 0 0);
+  --primary: oklch(60.5% 0.175 42);
+  --radius: 4px;
+  --font-sans: Inter, sans-serif;
+}
+
+.dark [data-vex-theme="downtown"] {
+  --background: oklch(13.7% 0 0);
+  --primary: oklch(72% 0.175 50);
+}`,
+    );
+  });
+
   it("skips empty and non-string values rather than emitting them", () => {
     const css = buildThemeCss({
       theme: { light: { background: "", primary: 42, accent: "oklch(96% 0.025 42)" } },

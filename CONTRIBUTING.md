@@ -9,47 +9,81 @@ sponsorship.
 | You have...                   | Goes to                                                                                                                                               |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A question about using VexCMS | [Discussions → Q&A](https://github.com/ianyimi/vex/discussions/categories/q-a)                                                                        |
-| An idea for a new feature     | [Discussions → Ideas](https://github.com/ianyimi/vex/discussions/categories/ideas) — a 👍'd idea becomes a tracked issue                              |
+| An idea for a new feature     | [Discussions → Ideas](https://github.com/ianyimi/vex/discussions/categories/ideas) — 👍 the ideas you want; I label the ones I'll take `accepted`     |
 | A reproducible bug            | [an issue](https://github.com/ianyimi/vex/issues/new/choose)                                                                                          |
 | A docs correction             | [an issue](https://github.com/ianyimi/vex/issues/new/choose)                                                                                          |
 | A security vulnerability      | [private vulnerability reporting](https://github.com/ianyimi/vex/security/advisories/new) (preferred) or `security@vexcms.dev` — never a public issue |
 
-## Dev setup
+Issues are for things that are broken. A feature request opened as an issue is closed with a
+pointer to Ideas.
 
-```bash
-git clone https://github.com/ianyimi/vex.git
-cd vex
-pnpm install
-```
+## Before you write code
 
-The root scripts run everything through [Turborepo](https://turbo.build):
+Every pull request starts from one of these:
 
-| Command                       | What it does                                          |
-| ----------------------------- | ----------------------------------------------------- |
-| `pnpm build`                  | Builds every package and app                          |
-| `pnpm typecheck`              | Typechecks the whole workspace                        |
-| `pnpm test`                   | Runs Vitest in every package that has tests           |
-| `pnpm lint` / `pnpm lint:fix` | ESLint over `packages/*/src/**/*.{ts,tsx}`            |
-| `pnpm changeset`              | Records a changeset entry for your change (see below) |
+- **A bug fix** links its issue. Comment on the issue to say you're taking it. On a
+  `good first issue`, wait until I assign it to you, so two people don't build the same fix.
+- **A feature** links an Ideas discussion labeled `accepted`. If it changes a public API,
+  touches more than one package, adds a field type, or adds a dependency, post a plan in that
+  discussion first — what changes, the public API, and the alternatives you considered — and
+  wait for my OK before you write code.
+- **A typo or broken-link fix** needs neither. Open the pull request directly.
 
-To target one package or app, use `pnpm --filter <name> <script>` — e.g. `pnpm --filter @vexcms/core test`.
+A pull request without one of these is closed with a pointer back here.
 
-`apps/www` and `apps/test` need their own Convex deployment to run or build (`npx convex dev` inside
-the app directory, same as the [quick start](README.md#quick-start)), so `pnpm build` fails on them
-in a fresh clone. Working on `packages/*` doesn't need one: `pnpm build --filter='./packages/*'`
-builds just the packages, and they test and typecheck standalone.
+## Opening a pull request
 
-## Changesets
+- Fork the repo, branch off `dev`, and open the pull request against `dev`, not `master`.
+  `master` only receives releases.
+- Title it `type(scope): description`, in [Conventional Commits](https://www.conventionalcommits.org/)
+  form — for example `fix(react): show a toast when a media upload fails`. Commits inside the
+  pull request can be anything: I squash-merge, so the title becomes the commit.
+- Put `Fixes #123` in the description, or the link to the accepted discussion.
+- Leave **Allow edits by maintainers** on.
+- Keep the diff scoped to the issue. Unrelated cleanups make review slower, not faster.
 
-Every PR that changes published package behavior needs a changeset:
+The [contributing workflow](https://docs.vexcms.dev/dev/contributing/) covers dev setup, running
+the checks, changesets, and how a merged change reaches a release.
 
-```bash
-pnpm changeset
-```
+## What a pull request needs
 
-Pick the packages your change touches and `patch` as the bump — VexCMS is pre-1.0, so every release is
-a patch (there's no `minor`/`major` distinction yet). Write a one-line summary; it becomes a line in
-the package's CHANGELOG.
+- **A changeset**, if it changes a published package (`packages/*`): `pnpm changeset`, then
+  `patch`. Every change is a `patch`, breaking ones included; describe a breaking change under
+  **Breaking:** with migration steps, and I set the final version bump. Docs-only and
+  `apps/*`-only changes need none.
+- **Tests** for the behavior it changes. A bug fix comes with a regression test that fails
+  without the fix.
+- **A browser check** for a UI change. Unit tests run in jsdom, which has no layout, so they
+  can't prove sizes, clipping, or overflow. Say what you checked and at which widths.
+- **Docs** (`apps/docs`), if it changes a public API or documented behavior.
+- **Code that follows** the [naming conventions](https://docs.vexcms.dev/dev/naming-conventions/)
+  and the [testing and code style](https://docs.vexcms.dev/dev/testing-and-code-style/) rules.
+  Reviews check both.
+- **Your own verification.** Run every check you mention in the description. AI tools are
+  welcome, and the bar is the same for every line however it was written: you ran it, you
+  checked it, and you can explain it.
+
+## Review
+
+- CI must pass. On your first contribution, CI waits until I approve the run.
+- I check UI changes in a browser on the pull request's Vercel preview, which I approve after
+  reading the diff.
+- I give every pull request a first review within a week. After you push changes, I review again
+  within a week.
+
+## Stale pull requests
+
+If I've asked for changes and there's been no reply for 30 days, I add the `stale` label and
+leave a comment. After 14 more days without a reply, I close the pull request; you can reopen it
+any time.
+
+When a stale fix is close and the issue matters, I may finish it myself, either by pushing to
+your branch or by opening a new pull request that credits you with a `Co-authored-by:` trailer.
+
+## Licensing
+
+Your contribution is licensed under Apache-2.0, the same as the rest of VexCMS (section 5 of the
+[Apache License](LICENSE)). There's no CLA to sign and no sign-off line to add.
 
 ## Reproduction bar
 
@@ -65,33 +99,3 @@ and see the bug," not "there's a hosted repo."
 | `status: needs-repro`    | Reported but missing a reproduction link or clear steps   |
 | `status: verified`       | Reproduced by a maintainer                                |
 | `status: cant-reproduce` | A maintainer could not reproduce it from the report given |
-
-## Before you open a PR
-
-- Check for an existing issue or discussion first — a PR without one may be closed and asked to start there.
-- Keep the diff scoped to the issue. Unrelated cleanups make review slower, not faster.
-- Follow the [naming conventions](https://docs.vexcms.dev/dev/naming-conventions/) — file names, export
-  shapes, and test placement are checked in review.
-
-## PR checklist
-
-- [ ] A changeset is added (`pnpm changeset`, `patch`)
-- [ ] Tests added or updated for the behavior you changed
-- [ ] Docs updated (`apps/docs`), if this changes a public API or documented behavior
-- [ ] `pnpm typecheck && pnpm test && pnpm lint` pass locally
-
-## Repo map
-
-| Path                           | What's there                                                      |
-| ------------------------------ | ----------------------------------------------------------------- |
-| `packages/core`                | Field system, collections, access control, schema/type generation |
-| `packages/react`               | The admin panel UI                                                |
-| `packages/next`                | The Next.js framework adapter                                     |
-| `packages/cli`                 | `vex` — `dev`, `deploy`, `generate`                               |
-| `packages/better-auth`         | The Better Auth integration                                       |
-| `packages/file-storage-convex` | The Convex file-storage adapter                                   |
-| `packages/richtext-plate`      | The richtext field's Plate.js editor                              |
-| `packages/create-vexcms`       | `pnpm create vexcms` scaffolder and its templates                 |
-| `apps/www`                     | vexcms.dev, built on VexCMS itself                                |
-| `apps/docs`                    | docs.vexcms.dev (Astro + Starlight)                               |
-| `scripts/`                     | Repo-wide checks and sync scripts, run from root `package.json`   |

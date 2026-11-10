@@ -18,6 +18,7 @@ const fixtureConfig: VexConfig = {
       slug: "posts",
       fields: {
         title: { type: "text" },
+        featured: { type: "checkbox" },
         author: { type: "relationship", collection: { slug: "authors" } },
         cover: { type: "upload", to: "images" },
       },
@@ -46,6 +47,7 @@ describe("search (server)", () => {
       }
       return search({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         query: "",
         searchIndexName: "search_title",
@@ -64,6 +66,7 @@ describe("search (server)", () => {
       }
       return search({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         query: "",
         searchIndexName: "search_title",
@@ -82,6 +85,7 @@ describe("search (server)", () => {
         await ctx.db.insert("posts", { title: "Hello world", slug: "hello" });
         return search({
           ctx,
+          config: fixtureConfig,
           collection: "posts",
           query: "hello",
           searchIndexName: "search_title",
@@ -102,6 +106,7 @@ describe("search (server)", () => {
       await ctx.db.insert("posts", { title: "C", slug: "c", featured: true });
       return search({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         query: "",
         searchIndexName: "search_title",
@@ -121,6 +126,7 @@ describe("search (server)", () => {
       await ctx.db.insert("posts", { title: "C", slug: "c", featured: true });
       return search({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         query: "",
         searchIndexName: "search_title",
@@ -321,6 +327,7 @@ describe("search (server) — depth auto-populate", () => {
       }
       return search({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         query: "", // Empty query (list mode)
         searchIndexName: "search_title",
@@ -344,6 +351,7 @@ describe("search (server) — depth auto-populate", () => {
         }
         const firstPage = await search({
           ctx,
+          config: fixtureConfig,
           collection: "posts",
           query: "",
           searchIndexName: "search_title",
@@ -352,6 +360,7 @@ describe("search (server) — depth auto-populate", () => {
         });
         const secondPage = await search({
           ctx,
+          config: fixtureConfig,
           collection: "posts",
           query: "",
           searchIndexName: "search_title",
@@ -375,6 +384,7 @@ describe("search (server) — depth auto-populate", () => {
       await ctx.db.insert("posts", { title: "Goodbye", slug: "bye" });
       return search({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         query: "Hello", // Search term
         searchIndexName: "search_title",

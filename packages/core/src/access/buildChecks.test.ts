@@ -22,6 +22,31 @@ const posts = defineCollection({
   },
 });
 
+const postsWithAutoIndex = defineCollection({
+  slug: "postsWithAutoIndex",
+  fields: {
+    title: text(),
+    editor: relationship({ collection: { slug: "authors" } }),
+  },
+});
+
+const postsWithCustomIndexName = defineCollection({
+  slug: "postsWithCustomIndexName",
+  fields: {
+    title: text(),
+    reviewer: relationship({ collection: { slug: "authors" }, index: "by_reviewer_custom" }),
+  },
+});
+
+const postsWithCollectionIndex = defineCollection({
+  slug: "postsWithCollectionIndex",
+  fields: {
+    title: text(),
+    editor: relationship({ collection: { slug: "authors" } }),
+  },
+  indexes: [{ name: "editorIdx", fields: ["editor"] }],
+});
+
 /** Stub index builder whose `eq` is observable. */
 function stubQuery() {
   const eq = vi.fn((field: string, value: unknown) => ({ field, value }));
@@ -103,6 +128,36 @@ describe("indexedOwnerCheck", () => {
 
     expect(first.eq).toHaveBeenCalledWith("slug", "u1");
     expect(second.eq).toHaveBeenCalledWith("slug", "u2");
+  });
+
+  it("resolves a relationship field's automatic by_<field> index with no explicit index declared", () => {
+    const check = indexedOwnerCheck({ field: "editor" as never, resource: postsWithAutoIndex });
+    const { eq, ix } = stubQuery();
+    const { name, range } = withIndexOf(check, { user: { _id: "u1" } });
+    range(ix);
+
+    expect(name).toBe("by_editor");
+    expect(eq).toHaveBeenCalledWith("editor", ["u1"]);
+  });
+
+  it("an explicit index name on a relationship field still wins over the automatic name", () => {
+    const check = indexedOwnerCheck({ field: "reviewer" as never, resource: postsWithCustomIndexName });
+    const { eq, ix } = stubQuery();
+    const { name, range } = withIndexOf(check, { user: { _id: "u1" } });
+    range(ix);
+
+    expect(name).toBe("by_reviewer_custom");
+    expect(eq).toHaveBeenCalledWith("reviewer", ["u1"]);
+  });
+
+  it("a collection-level index entry resolves before the automatic relationship index", () => {
+    const check = indexedOwnerCheck({ field: "editor" as never, resource: postsWithCollectionIndex });
+    const { eq, ix } = stubQuery();
+    const { name, range } = withIndexOf(check, { user: { _id: "u1" } });
+    range(ix);
+
+    expect(name).toBe("editorIdx");
+    expect(eq).toHaveBeenCalledWith("editor", ["u1"]);
   });
 });
 

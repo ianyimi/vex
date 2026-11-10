@@ -877,6 +877,8 @@ export const posts = defineTable({
         codeLanguage: ["ts"],
         code: `import { find } from "@vexcms/core/server"
 
+import config from "~/vex.config.server"
+
 import { query } from "./_generated/server"
 
 // An ordinary Convex query. Because it is an ordinary Convex
@@ -887,6 +889,7 @@ export const featuredPosts = query({
   handler: async (ctx) =>
     find({
       ctx,
+      config,
       collection: "posts",
       withIndex: { name: "by_featured", range: (q) => q.eq("featured", true) },
       access: { bypass: true },

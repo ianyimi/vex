@@ -34,6 +34,7 @@ Never hand-edit a GENERATED file — run its command instead.
 | A dependency insight | `docs/research/` (research/learn skills) |
 | A required env var | `env.manifest.md` |
 | What happened this session | `harness log append` |
+| A GitHub PR / issue / Discussion review | `docs/github/` — `ledger.json` + `reviews/<kind>-<n>.md`, written by the `github-review` skill |
 | A harness change made from developer feedback | `docs/harness-changelog.md` (one line: date, file, change, trigger quote) + relay to the developer |
 
 ## The code map

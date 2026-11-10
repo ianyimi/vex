@@ -59,8 +59,14 @@ export const THEME_SHARED_TOKENS = {
   fontFamily: "--font-sans",
 } as const;
 
-/** Where a theme's CSS applies. */
-export type ThemeScope = "admin" | "site";
+/**
+ * Where a theme's CSS applies. `"site"` emits `:root`, `"admin"` emits
+ * `:root:root` one specificity rung higher. `{ selector }` scopes the theme
+ * to one region of the page — its own wrapper element — instead of
+ * competing for `:root` at all, for a page that carries a different theme
+ * than the rest of the site.
+ */
+export type ThemeScope = "admin" | "site" | { selector: string };
 
 /**
  * Stark × Ember — this repo's house palette, lifted verbatim from the `:root`
@@ -165,33 +171,55 @@ function buildDeclarations(props: {
  * Values are written through verbatim — a `color()` field storing
  * `oklch(60.5% 0.175 42)` needs no conversion, because custom properties accept
  * any colour notation. `.dark` is assumed to sit on `<html>`, which *is*
- * `:root`, so the dark selector is a compound, never a descendant.
+ * `:root`, so the dark selector is a compound for `"site"`/`"admin"`, never a
+ * descendant.
  *
- * The two scopes form a specificity ladder that no injection order can upset:
- * site light `:root` (0,1,0) < site dark `.dark` (0,1,0, later) < admin light
- * `:root:root` (0,2,0) < admin dark `.dark:root:root` (0,3,0). Emit the site
- * theme once for the whole document and the admin theme from the admin route
- * only, and the admin block wins exactly where it renders.
+ * The two built-in scopes form a specificity ladder that no injection order
+ * can upset: site light `:root` (0,1,0) < site dark `.dark` (0,1,0, later) <
+ * admin light `:root:root` (0,2,0) < admin dark `.dark:root:root` (0,3,0).
+ * Emit the site theme once for the whole document and the admin theme from
+ * the admin route only, and the admin block wins exactly where it renders.
+ *
+ * `{ selector }` instead scopes the theme to one region of the page — its own
+ * wrapper element, e.g. `[data-vex-theme="downtown"]` — rather than
+ * competing for `:root` at all. A page-level theme applied this way can't be
+ * outranked by a later `:root` write, because it never targets `:root` in the
+ * first place. The dark variant is a descendant selector (`.dark ${selector}`)
+ * since the wrapper sits inside `<html>`, not on it.
  *
  * @param props - Input props.
  * @param props.theme - The theme document — `light`/`dark` colour groups plus
  * root-level `radius` and `fontFamily`, i.e. the shape `themeColorFields`
  * stores.
- * @param props.scope - `"site"` emits `:root`; `"admin"` emits `:root:root`.
+ * @param props.scope - `"site"` emits `:root`; `"admin"` emits `:root:root`;
+ * `{ selector }` emits that selector and `.dark ${selector}`.
  * @returns The stylesheet text, or `""` when the theme sets nothing.
  *
  * @example
  * ```ts
  * const css = buildThemeCss({ theme, scope: "site" });
  * // ":root {\n  --background: oklch(96.1% 0 0);\n  …\n}\n\n.dark {\n  …\n}"
+ *
+ * const regionCss = buildThemeCss({ theme, scope: { selector: '[data-vex-theme="downtown"]' } });
+ * // "[data-vex-theme=\"downtown\"] {\n  …\n}\n\n.dark [data-vex-theme=\"downtown\"] {\n  …\n}"
  * ```
  */
 export function buildThemeCss(props: {
   theme: Record<string, unknown>;
   scope: ThemeScope;
 }): string {
-  const selector = props.scope === "admin" ? ":root:root" : ":root";
-  const darkSelector = props.scope === "admin" ? ".dark:root:root" : ".dark";
+  const selector =
+    typeof props.scope === "object"
+      ? props.scope.selector
+      : props.scope === "admin"
+        ? ":root:root"
+        : ":root";
+  const darkSelector =
+    typeof props.scope === "object"
+      ? `.dark ${props.scope.selector}`
+      : props.scope === "admin"
+        ? ".dark:root:root"
+        : ".dark";
 
   const light = [
     buildDeclarations({

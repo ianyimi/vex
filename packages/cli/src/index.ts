@@ -3,27 +3,9 @@ import { devCommand } from "./commands/dev.js";
 import { generateCommand } from "./commands/generate.js";
 import { telemetryCommand } from "./commands/telemetry.js";
 import { logger } from "./lib/logger.js";
+import { parseCliArgs } from "./lib/parseArgs.js";
 
-const args = process.argv.slice(2);
-const command = args[0];
-
-// Parse flags
-let once = false;
-let json = false;
-let cwd: string | undefined;
-let telemetryAction: string | undefined;
-
-for (let i = 1; i < args.length; i++) {
-  if (args[i] === "--once") {
-    once = true;
-  } else if (args[i] === "--json") {
-    json = true;
-  } else if (args[i] === "--cwd" && args[i + 1]) {
-    cwd = args[++i];
-  } else if (command === "telemetry" && telemetryAction === undefined && !args[i]?.startsWith("--")) {
-    telemetryAction = args[i];
-  }
-}
+const { command, once, json, cwd, telemetryAction, convexArgs } = parseCliArgs(process.argv.slice(2));
 
 switch (command) {
   case "dev":
@@ -34,7 +16,7 @@ switch (command) {
     break;
 
   case "deploy":
-    deployCommand().catch((err) => {
+    deployCommand({ cwd, convexArgs }).catch((err) => {
       logger.error("Fatal error", err);
       process.exit(1);
     });
@@ -63,7 +45,10 @@ Commands:
                       collection config changes. Run your app server (e.g.
                       next dev) in a separate terminal.
   deploy [options]    Generate schema, auto-migrate if enabled, and deploy
-                      to production. Replaces \`convex deploy\` in CI.
+                      to production. Replaces \`convex deploy\` in CI. Any
+                      flag vex doesn't own (--cmd, --preview-create, ...)
+                      forwards straight through to the final \`convex
+                      deploy\` call.
   generate [options]  Regenerate vex.types.ts from the vex config.
   telemetry <action>  Manage anonymous CLI telemetry: enable, disable, or
                       status [--json].

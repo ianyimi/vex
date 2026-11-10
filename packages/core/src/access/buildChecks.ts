@@ -9,7 +9,9 @@ import type {
   AccessResourceRef,
 } from "./types";
 import type { AuthUserDocument } from "../types/generated";
+import type { AdminField } from "../fields";
 import { ADMIN_FIELDS } from "../fields/constants";
+import { resolveCollectionIndexes } from "../collections/resolveCollectionIndexes";
 
 /**
  * Builders for the common composable access checks.
@@ -55,9 +57,15 @@ function indexNameFor<S extends string, F>(
   resource: AccessResourceRef<S>,
   field: F & string,
 ): AccessIndexNameFor<S, F> {
-  const declared = resource.fields[field]?.index;
-  const name = typeof declared === "string" ? declared : declared?.name;
-  if (name) return name as AccessIndexNameFor<S, F>;
+  const resolved = resolveCollectionIndexes({
+    collection: {
+      slug: resource.slug,
+      fields: resource.fields as unknown as Record<string, AdminField>,
+      indexes: resource.indexes,
+    },
+  });
+  const match = resolved.find((index) => index.fields[0] === field);
+  if (match) return match.name as AccessIndexNameFor<S, F>;
   throw new Error(
     `[vexcms] "${field}" on "${resource.slug}" leads no declared index; ` +
       `an indexed access check cannot narrow on it.`,

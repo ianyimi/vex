@@ -119,3 +119,50 @@ selecting a result replaces the current value; when `hasMany: true`, results
 are added to the selection list and can be removed individually. In the
 list-view table, each referenced document row shows the target collection's
 `admin.icon` beside its preview component (or title field as a fallback).
+
+## Querying by a relationship
+
+Every `relationship` field is stored as `v.array(v.id("slug"))`, whether `hasMany` is `true`
+or `false` — a single relationship is a one-element array, not a bare `Id`. Keep that in mind
+anywhere you compare against it: in a `find`/`get` call's `where`, in an access rule's
+`withIndex`/`where`, or in a plain JS predicate.
+
+**A single relationship (`hasMany: false`) matches an exact value with an array literal,**
+and is index-pushable through the field's auto-generated `by_<fieldKey>` index:
+
+```ts
+find({
+  ctx,
+  collection: "posts",
+  withIndex: { name: "by_author", range: (q) => q.eq("author", [authorId]) },
+});
+```
+
+The same shape works unwrapped inside a `where` callback — `find`'s `where` builder (and an
+access rule's `where`) normalizes a bare value against a list field for you, so
+`q.eq("author", authorId)` also matches. `withIndex`'s raw range callback bypasses that
+normalization, so wrap the value yourself there, as above.
+
+**`hasMany` membership — "does this array contain this id" — can't use an index.** An index
+range matches a field's whole stored value, not "one of the elements in it," so checking
+whether a `hasMany` relationship *contains* a given id needs a `filter`/`where` predicate
+instead of `withIndex`:
+
+```ts
+find({
+  ctx,
+  collection: "posts",
+  where: (q) => q.eq("tags", tagId), // single-select equivalent only — see above
+});
+
+// "contains" membership on a hasMany field — not index-pushable
+find({
+  ctx,
+  collection: "posts",
+}).then((rows) => rows.filter((row) => row.tags.includes(tagId)));
+```
+
+See the [Access control guide](/guides/access-control/) for the same rule written as an
+access check (`indexedOwnerCheck`/`ownerPredicateCheck` get the wrapping right for you
+there).
+

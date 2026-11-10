@@ -137,9 +137,9 @@ side-effect and its own helper widgets (`EmptyInput`/`FilledInput`,
 
 Colocate `validator.test.ts` + `inputSchema.test.ts` next to the core files,
 and `Field.test.tsx`/`Cell.test.tsx`/`columnDef.test.ts` next to the react
-files. Most field types need no server-side test of their own — the shared
-`convex-test` setup used where one is needed is documented in
-`.agent/docs/standards/testing/convex-integration-testing.md`.
+files. Most field types need no server-side test of their own; when one does, the shared
+`convex-test` setup is described in
+[Testing and code style](/dev/testing-and-code-style/#convex-backed-tests).
 
 ```bash
 pnpm --filter @vexcms/core typecheck

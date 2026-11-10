@@ -1,0 +1,624 @@
+diff --git a/.github/ISSUE_TEMPLATE/1-bug_report.yml b/.github/ISSUE_TEMPLATE/1-bug_report.yml
+index d1660bd5..557d3c02 100644
+--- a/.github/ISSUE_TEMPLATE/1-bug_report.yml
++++ b/.github/ISSUE_TEMPLATE/1-bug_report.yml
+@@ -13,8 +13,8 @@ body:
+     id: versions
+     attributes:
+       label: Versions
+-      description: "The `@vexcms/*` package versions, `convex`, and `next`, e.g. `@vexcms/core@0.1.0-alpha.11, convex@1.44.0, next@16.4.3`"
+-      placeholder: "@vexcms/core@0.1.0-alpha.x, convex@x.x.x, next@x.x.x"
++      description: "The `@vexcms/*` package versions, `convex`, and `next`, e.g. `@vexcms/core@0.1.0, convex@1.44.0, next@16.4.3`"
++      placeholder: "@vexcms/core@0.1.x, convex@x.x.x, next@x.x.x"
+     validations:
+       required: true
+ 
+@@ -45,7 +45,7 @@ body:
+     id: steps
+     attributes:
+       label: Steps to reproduce
+-      description: Numbered steps from a fresh `pnpm create vexcms@alpha` (or your own setup) to the bug.
++      description: Numbered steps from a fresh `pnpm create vexcms` (or your own setup) to the bug.
+       placeholder: |
+         1. ...
+         2. ...
+diff --git a/README.md b/README.md
+index ac42c54b..43f5d299 100644
+--- a/README.md
++++ b/README.md
+@@ -1,14 +1,5 @@
+ # VexCMS
+ 
+-> [!WARNING]
+-> VexCMS is pre-release software, published only under the `alpha` npm dist-tag
+-> (`0.1.0-alpha.x`) — the `latest` tag on npm still points at an old, unrelated
+-> `0.0.20` line, so installs must use an explicit tag: `pnpm create vexcms@alpha`.
+-> Use it for experiments and evaluation only; do not put it behind production
+-> traffic or real user data. Breaking changes land between alpha releases without
+-> deprecation cycles, and there is no migration path between alphas. See the
+-> [roadmap](https://docs.vexcms.dev/roadmap/) for what is and is not shipped.
+-
+ [![npm version](https://img.shields.io/npm/v/@vexcms/core)](https://www.npmjs.com/package/@vexcms/core)
+ [![CI](https://github.com/ianyimi/vex/actions/workflows/ci.yml/badge.svg)](https://github.com/ianyimi/vex/actions/workflows/ci.yml)
+ [![License](https://img.shields.io/github/license/ianyimi/vex)](https://github.com/ianyimi/vex/blob/master/LICENSE)
+@@ -27,7 +18,7 @@ Next.js admin panel for editing content.
+ Scaffold a complete Next.js + Convex + Vex project (answer "yes" to installing dependencies):
+ 
+ ```bash
+-pnpm create vexcms@alpha my-site
++pnpm create vexcms my-site
+ cd my-site
+ npx convex dev --once
+ npx convex env set SITE_URL http://localhost:3010
+diff --git a/SECURITY.md b/SECURITY.md
+index b63898fd..bff9261c 100644
+--- a/SECURITY.md
++++ b/SECURITY.md
+@@ -2,8 +2,7 @@
+ 
+ ## Supported versions
+ 
+-Only the latest `0.1.x` release is supported. VexCMS is pre-1.0 and alphas don't carry a migration
+-path between them — please upgrade to the latest release before reporting.
++Only the latest `0.1.x` release is supported. Please upgrade to the latest release before reporting.
+ 
+ ## Reporting a vulnerability
+ 
+diff --git a/apps/docs/astro.config.mjs b/apps/docs/astro.config.mjs
+index c57583c1..a69e2375 100644
+--- a/apps/docs/astro.config.mjs
++++ b/apps/docs/astro.config.mjs
+@@ -38,7 +38,7 @@ export default defineConfig({
+ 					details: [
+ 						'Important notes for interpreting these docs:',
+ 						'',
+-						'- VexCMS ships as `0.1.0-alpha`; `/roadmap` lists what shipped in 0.1.0, what ships next (in order), and what is not planned.',
++						'- VexCMS ships as `0.1.0`; `/roadmap` lists what shipped in 0.1.0, what ships next (in order), and what is not planned.',
+ 						'- Config is split in two: `vex.config.ts` is client-safe and imported by the browser, `vex.config.server.ts` layers on the auth adapter and storage adapters. Server-only values never appear on the client half.',
+ 						'- The Convex schema and TypeScript types are GENERATED from the config by `vex dev` / `vex generate`; never hand-edit `convex/vex.schema.ts` or `src/vex.types.ts`.',
+ 						'- `/api/**` pages are generated from source TSDoc by TypeDoc. They are the precise signatures; the guides and field pages carry the intent.',
+diff --git a/apps/docs/src/content/docs/dev/contributing.mdx b/apps/docs/src/content/docs/dev/contributing.mdx
+index 2b57d489..07583469 100644
+--- a/apps/docs/src/content/docs/dev/contributing.mdx
++++ b/apps/docs/src/content/docs/dev/contributing.mdx
+@@ -140,8 +140,8 @@ Path-based `area:` and `adapter:` labels are added automatically.
+    request runs CI again, plus the `axe` and Lighthouse checks against a Vercel preview. Once it
+    merges, the `Fixes #123` in your commit closes the issue.
+ 3. The merge to `master` starts the Release workflow, which opens a
+-   `chore: version packages (alpha)` pull request from the queued changesets.
+-4. Merging that pull request publishes the packages to npm under the `alpha` tag.
++   `chore: version packages` pull request from the queued changesets.
++4. Merging that pull request publishes the packages to npm.
+ 
+ ## Repo map
+ 
+diff --git a/apps/docs/src/content/docs/guides/quickstart.mdx b/apps/docs/src/content/docs/guides/quickstart.mdx
+index 3a4c7eaf..3156b984 100644
+--- a/apps/docs/src/content/docs/guides/quickstart.mdx
++++ b/apps/docs/src/content/docs/guides/quickstart.mdx
+@@ -11,7 +11,7 @@ panel, and (by default) a marketing site starter — ready to run.
+ ## Scaffold a project
+ 
+ ```bash
+-pnpm create vexcms@alpha my-site
++pnpm create vexcms my-site
+ ```
+ 
+ By default this includes the full marketing-site starter: pages, headers, footers, themes, and a
+diff --git a/apps/test/convex/seed.ts b/apps/test/convex/seed.ts
+index a08cfaee..e0103932 100644
+--- a/apps/test/convex/seed.ts
++++ b/apps/test/convex/seed.ts
+@@ -681,8 +681,8 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
+         blockName: "Hero",
+         id: "home-hero",
+         variant: ["full"],
+-        installCommand: "pnpm create vexcms@alpha",
+-        badgeText: "Public alpha — now on npm",
++        installCommand: "pnpm create vexcms",
++        badgeText: "0.1.0 — now on npm",
+         badgeLink: "https://www.npmjs.com/package/@vexcms/core",
+         heading: "The content backend for everything Convex.",
+         subheading:
+@@ -701,7 +701,7 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
+             value: "1",
+             label: "command to a running CMS",
+             description:
+-              "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel in one step",
++              "pnpm create vexcms scaffolds Next.js, Convex, auth, and the admin panel in one step",
+           },
+           {
+             value: "0",
+@@ -937,7 +937,7 @@ export const featuredPosts = query({
+             icon: "Terminal",
+             title: "Scaffold the project",
+             description:
+-              "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
++              "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
+           },
+           {
+             icon: "Code",
+@@ -995,7 +995,7 @@ export const featuredPosts = query({
+           {
+             question: "Is it production ready?",
+             answer:
+-              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation and live preview have landed; the big ones left are versioning and drafts, and the richtext field. The roadmap page has the full list.",
++              "0.1.0 is the first release on npm's default tag. It is early: APIs can still change between 0.x minor releases, and every breaking change ships with migration notes in the changelog. The roadmap page lists what shipped and what comes next.",
+           },
+           {
+             question: "Which frameworks does it support?",
+@@ -1364,7 +1364,7 @@ export const testimonials = defineTable({
+         badgeText: "Roadmap",
+         heading: "What's shipped, what's next, and what's still an idea.",
+         subheading:
+-          "VexCMS is in public alpha. Ten specs stand between the current alpha and the 0.1.0 tag, and they ship in the order below. This page itself is edited in the admin panel, not in a source file.",
++          "VexCMS is built in the open. This page itself is edited in the admin panel, not in a source file.",
+         primaryCtaLabel: "Get started",
+         primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
+       },
+@@ -1386,10 +1386,10 @@ export const testimonials = defineTable({
+               "Each spec consumes what the last one built. The mobile pass is the final gate",
+           },
+           {
+-            value: "0.1.0-alpha.16",
++            value: "0.1.0",
+             label: "on npm today",
+             description:
+-              "Published from the dev branch. The whole track lands before anything is tagged 0.1.0",
++              "The first release. The free roadmap keeps shipping after it",
+           },
+         ],
+       },
+diff --git a/apps/test/src/vexcms/blocks/FAQ/config.ts b/apps/test/src/vexcms/blocks/FAQ/config.ts
+index 9f2464eb..ededa280 100644
+--- a/apps/test/src/vexcms/blocks/FAQ/config.ts
++++ b/apps/test/src/vexcms/blocks/FAQ/config.ts
+@@ -60,7 +60,7 @@ export const faqBlock = defineBlock({
+         {
+           question: "How do I get started?",
+           answer:
+-            "Run `npx create-vexcms@alpha` to scaffold a new project with Vex CMS pre-configured. The CLI sets up your Next.js app, Convex backend, authentication, and admin panel in under a minute.",
++            "Run `npx create-vexcms` to scaffold a new project with Vex CMS pre-configured. The CLI sets up your Next.js app, Convex backend, authentication, and admin panel in under a minute.",
+         },
+       ],
+     }),
+diff --git a/apps/test/src/vexcms/blocks/Hero/config.ts b/apps/test/src/vexcms/blocks/Hero/config.ts
+index 28d51c2c..9de558e2 100644
+--- a/apps/test/src/vexcms/blocks/Hero/config.ts
++++ b/apps/test/src/vexcms/blocks/Hero/config.ts
+@@ -18,7 +18,7 @@ export const heroBlock = defineBlock({
+     }),
+     badgeText: text({
+       label: "Badge Text",
+-      defaultValue: "v0.1.0-alpha — now on npm",
++      defaultValue: "0.1.0 — now on npm",
+       description:
+         "Announcement pill on the full variant; the uppercase eyebrow on the compact one.",
+     }),
+@@ -39,7 +39,7 @@ export const heroBlock = defineBlock({
+     }),
+     installCommand: text({
+       label: "Install Command",
+-      defaultValue: "pnpm create vexcms@alpha",
++      defaultValue: "pnpm create vexcms",
+       description:
+         "Optional. Renders a copy-to-clipboard command row under the CTAs. Full variant only.",
+     }),
+diff --git a/apps/test/src/vexcms/blocks/HowItWorks/config.ts b/apps/test/src/vexcms/blocks/HowItWorks/config.ts
+index d50dd1a7..1bc361f0 100644
+--- a/apps/test/src/vexcms/blocks/HowItWorks/config.ts
++++ b/apps/test/src/vexcms/blocks/HowItWorks/config.ts
+@@ -35,7 +35,7 @@ export const howItWorksBlock = defineBlock({
+           icon: "Terminal",
+           title: "Scaffold your project",
+           description:
+-            "Run npx create-vexcms@alpha to get a Next.js app with Convex, authentication, and the admin panel pre-configured.",
++            "Run npx create-vexcms to get a Next.js app with Convex, authentication, and the admin panel pre-configured.",
+         },
+         {
+           icon: "Code",
+diff --git a/apps/www/convex/seed.ts b/apps/www/convex/seed.ts
+index f5aae949..d0f526d3 100644
+--- a/apps/www/convex/seed.ts
++++ b/apps/www/convex/seed.ts
+@@ -685,8 +685,8 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
+         blockName: "Hero",
+         id: "home-hero",
+         variant: ["full"],
+-        installCommand: "pnpm create vexcms@alpha",
+-        badgeText: "Public alpha — now on npm",
++        installCommand: "pnpm create vexcms",
++        badgeText: "0.1.0 — now on npm",
+         badgeLink: "https://www.npmjs.com/package/@vexcms/core",
+         heading: "The content backend for everything Convex.",
+         subheading:
+@@ -705,7 +705,7 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
+             value: "1",
+             label: "command to a running CMS",
+             description:
+-              "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel in one step",
++              "pnpm create vexcms scaffolds Next.js, Convex, auth, and the admin panel in one step",
+           },
+           {
+             value: "0",
+@@ -941,7 +941,7 @@ export const featuredPosts = query({
+             icon: "Terminal",
+             title: "Scaffold the project",
+             description:
+-              "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
++              "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
+           },
+           {
+             icon: "Code",
+@@ -999,7 +999,7 @@ export const featuredPosts = query({
+           {
+             question: "Is it production ready?",
+             answer:
+-              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation, live preview, versioning and drafts, the richtext/json/email/textarea fields, the edit-view and list-view overhauls, and the field input consistency pass have all landed; the remaining big one is a responsive pass. The roadmap page has the full list.",
++              "0.1.0 is the first release on npm's default tag. It is early: APIs can still change between 0.x minor releases, and every breaking change ships with migration notes in the changelog. The roadmap page lists what shipped and what comes next.",
+           },
+           {
+             question: "Which frameworks does it support?",
+@@ -1368,7 +1368,7 @@ export const testimonials = defineTable({
+         badgeText: "Roadmap",
+         heading: "What's shipped, what's next, and what's not planned.",
+         subheading:
+-          "VexCMS is in public alpha, built in the open. This page is edited right here in the admin panel, not in a source file.",
++          "VexCMS is built in the open. This page is edited right here in the admin panel, not in a source file.",
+         primaryCtaLabel: "Get started",
+         primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
+       },
+@@ -1388,10 +1388,10 @@ export const testimonials = defineTable({
+             description: "core, react, next, cli, better-auth, file-storage-convex, richtext-plate, create-vexcms",
+           },
+           {
+-            value: "0.1.0-alpha",
++            value: "0.1.0",
+             label: "on npm today",
+             description:
+-              "0.1.0 tags when the launch checklist is done. The free roadmap keeps shipping after it",
++              "The first release. The free roadmap keeps shipping after it",
+           },
+         ],
+       },
+diff --git a/apps/www/package.json b/apps/www/package.json
+index 93dc3e69..f127c00c 100644
+--- a/apps/www/package.json
++++ b/apps/www/package.json
+@@ -18,7 +18,7 @@
+     "typecheck": "tsc --noEmit",
+     "vex:dev": "vex dev",
+     "vex:generate": "vex dev --once",
+-    "vex:update": "npm install @vexcms/core@alpha @vexcms/react@alpha @vexcms/next@alpha @vexcms/better-auth@alpha @vexcms/file-storage-convex@alpha @vexcms/cli@alpha"
++    "vex:update": "npm install @vexcms/core @vexcms/react @vexcms/next @vexcms/better-auth @vexcms/file-storage-convex @vexcms/cli"
+   },
+   "dependencies": {
+     "@base-ui/react": "catalog:",
+diff --git a/apps/www/src/vexcms/blocks/FAQ/config.ts b/apps/www/src/vexcms/blocks/FAQ/config.ts
+index 9f2464eb..ededa280 100644
+--- a/apps/www/src/vexcms/blocks/FAQ/config.ts
++++ b/apps/www/src/vexcms/blocks/FAQ/config.ts
+@@ -60,7 +60,7 @@ export const faqBlock = defineBlock({
+         {
+           question: "How do I get started?",
+           answer:
+-            "Run `npx create-vexcms@alpha` to scaffold a new project with Vex CMS pre-configured. The CLI sets up your Next.js app, Convex backend, authentication, and admin panel in under a minute.",
++            "Run `npx create-vexcms` to scaffold a new project with Vex CMS pre-configured. The CLI sets up your Next.js app, Convex backend, authentication, and admin panel in under a minute.",
+         },
+       ],
+     }),
+diff --git a/apps/www/src/vexcms/blocks/Hero/config.ts b/apps/www/src/vexcms/blocks/Hero/config.ts
+index 28d51c2c..9de558e2 100644
+--- a/apps/www/src/vexcms/blocks/Hero/config.ts
++++ b/apps/www/src/vexcms/blocks/Hero/config.ts
+@@ -18,7 +18,7 @@ export const heroBlock = defineBlock({
+     }),
+     badgeText: text({
+       label: "Badge Text",
+-      defaultValue: "v0.1.0-alpha — now on npm",
++      defaultValue: "0.1.0 — now on npm",
+       description:
+         "Announcement pill on the full variant; the uppercase eyebrow on the compact one.",
+     }),
+@@ -39,7 +39,7 @@ export const heroBlock = defineBlock({
+     }),
+     installCommand: text({
+       label: "Install Command",
+-      defaultValue: "pnpm create vexcms@alpha",
++      defaultValue: "pnpm create vexcms",
+       description:
+         "Optional. Renders a copy-to-clipboard command row under the CTAs. Full variant only.",
+     }),
+diff --git a/apps/www/src/vexcms/blocks/HowItWorks/config.ts b/apps/www/src/vexcms/blocks/HowItWorks/config.ts
+index d50dd1a7..1bc361f0 100644
+--- a/apps/www/src/vexcms/blocks/HowItWorks/config.ts
++++ b/apps/www/src/vexcms/blocks/HowItWorks/config.ts
+@@ -35,7 +35,7 @@ export const howItWorksBlock = defineBlock({
+           icon: "Terminal",
+           title: "Scaffold your project",
+           description:
+-            "Run npx create-vexcms@alpha to get a Next.js app with Convex, authentication, and the admin panel pre-configured.",
++            "Run npx create-vexcms to get a Next.js app with Convex, authentication, and the admin panel pre-configured.",
+         },
+         {
+           icon: "Code",
+diff --git a/packages/core/README.md b/packages/core/README.md
+index cb5d79ac..ef70e530 100644
+--- a/packages/core/README.md
++++ b/packages/core/README.md
+@@ -9,7 +9,7 @@ The foundational package for [VEX CMS](https://github.com/ianyimi/vex) — a hea
+ The easiest way to get started is with the `create-vexcms` CLI:
+ 
+ ```bash
+-pnpm create vexcms@alpha
++pnpm create vexcms
+ ```
+ 
+ This scaffolds a complete project with all `@vexcms/*` packages, authentication, and an admin panel. See the [create-vexcms README](https://www.npmjs.com/package/create-vexcms) for full setup instructions.
+@@ -17,9 +17,9 @@ This scaffolds a complete project with all `@vexcms/*` packages, authentication,
+ ### Manual Installation
+ 
+ ```bash
+-pnpm add @vexcms/core@alpha @vexcms/cli@alpha @vexcms/next@alpha @vexcms/react@alpha @vexcms/better-auth@alpha @vexcms/file-storage-convex@alpha
++pnpm add @vexcms/core @vexcms/cli @vexcms/next @vexcms/react @vexcms/better-auth @vexcms/file-storage-convex
+ # Rich text editor package — attaches to a `richtext()` field via `editor: plateEditor()`
+-pnpm add @vexcms/richtext-plate@alpha
++pnpm add @vexcms/richtext-plate
+ ```
+ 
+ ## Features
+diff --git a/packages/create-vexcms/README.md b/packages/create-vexcms/README.md
+index 059d64bf..784fcdf6 100644
+--- a/packages/create-vexcms/README.md
++++ b/packages/create-vexcms/README.md
+@@ -1,15 +1,5 @@
+ # create-vexcms
+ 
+-> [!WARNING]
+-> `create-vexcms` is pre-release software, published only under the `alpha` npm
+-> dist-tag (`0.1.0-alpha.x`) — the `latest` tag on npm still points at an old,
+-> unrelated `0.0.20` line, so always scaffold with an explicit tag:
+-> `pnpm create vexcms@alpha`. Use it for experiments and evaluation only; the
+-> projects it scaffolds should not carry production traffic or real user data.
+-> Breaking changes land between alpha releases without deprecation cycles, and
+-> there is no migration path between alphas. See the
+-> [roadmap](https://docs.vexcms.dev) for what is and is not shipped.
+-
+ Scaffolding CLI for [VexCMS](https://github.com/ianyimi/vex) projects. Creates a complete
+ Next.js application with a Convex backend, Better Auth authentication, and a self-hosted admin
+ panel — ready to run.
+@@ -17,19 +7,19 @@ panel — ready to run.
+ ## Usage
+ 
+ ```bash
+-pnpm create vexcms@alpha
++pnpm create vexcms
+ ```
+ 
+ Or with a project name:
+ 
+ ```bash
+-pnpm create vexcms@alpha my-project
++pnpm create vexcms my-project
+ ```
+ 
+ Supports relative paths, including scaffolding straight into a monorepo app directory:
+ 
+ ```bash
+-pnpm create vexcms@alpha apps/website
++pnpm create vexcms apps/website
+ ```
+ 
+ ## Flags
+@@ -43,16 +33,16 @@ pnpm create vexcms@alpha apps/website
+ 
+ ```bash
+ # Empty project, no pre-built collections
+-pnpm create vexcms@alpha my-app --bare
++pnpm create vexcms my-app --bare
+ 
+ # Project with multi-tenant organizations
+-pnpm create vexcms@alpha my-app --orgs
++pnpm create vexcms my-app --orgs
+ 
+ # Non-interactive, defaults only
+-pnpm create vexcms@alpha my-app --yes
++pnpm create vexcms my-app --yes
+ 
+ # Inside a pnpm workspace, catalog-aware
+-pnpm create vexcms@alpha my-app --monorepo --yes
++pnpm create vexcms my-app --monorepo --yes
+ ```
+ 
+ ## Interactive prompts
+@@ -178,7 +168,7 @@ Run from inside an existing pnpm workspace to scaffold a new app under it instea
+ standalone project:
+ 
+ ```bash
+-pnpm create vexcms@alpha my-app --monorepo --yes
++pnpm create vexcms my-app --monorepo --yes
+ ```
+ 
+ The installer walks up from the current directory for the nearest `pnpm-workspace.yaml`, targets
+@@ -196,13 +186,11 @@ always off in CI. Every field sent is listed in the
+ 
+ ## Versioning
+ 
+-`create-vexcms` is versioned alongside every `@vexcms/*` package. Running
+-`pnpm create vexcms@alpha` always scaffolds with the newest pre-release. The npm
+-`latest` tag still points at an old, unrelated `0.0.20` line, so `@alpha` — or an
+-exact version — is the only way to get the current API:
++`create-vexcms` is versioned alongside every `@vexcms/*` package. `pnpm create vexcms` scaffolds with
++the newest release; to pin one, pass its exact version:
+ 
+ ```bash
+-pnpm create vexcms@0.1.0-alpha.10
++pnpm create vexcms@0.1.0
+ ```
+ 
+ The scaffolded project's `@vexcms/*` dependencies match the version of `create-vexcms` used to
+diff --git a/packages/create-vexcms/templates/marketing-site/convex/seed.ts b/packages/create-vexcms/templates/marketing-site/convex/seed.ts
+index edb0ad84..2b9ce0e3 100644
+--- a/packages/create-vexcms/templates/marketing-site/convex/seed.ts
++++ b/packages/create-vexcms/templates/marketing-site/convex/seed.ts
+@@ -618,8 +618,8 @@ export const init = internalMutation({
+             blockName: "Hero",
+             id: "home-hero",
+             variant: ["full"],
+-            installCommand: "pnpm create vexcms@alpha",
+-            badgeText: "v0.1.0-alpha — now on npm",
++            installCommand: "pnpm create vexcms",
++            badgeText: "0.1.0 — now on npm",
+             badgeLink: "https://www.npmjs.com/package/@vexcms/core",
+             heading: "The CMS that thinks in types.",
+             subheading:
+@@ -655,7 +655,7 @@ export const init = internalMutation({
+                 value: "1",
+                 label: "command to start",
+                 description:
+-                  "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel",
++                  "pnpm create vexcms scaffolds Next.js, Convex, auth, and the admin panel",
+               },
+             ],
+           },
+@@ -781,7 +781,7 @@ export const articles = defineTable({
+                 icon: "Terminal",
+                 title: "Scaffold your project",
+                 description:
+-                  "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
++                  "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
+               },
+               {
+                 icon: "Code",
+@@ -809,7 +809,7 @@ export const articles = defineTable({
+             id: "home-roadmap",
+             heading: "Roadmap",
+             subheading:
+-              "What we've shipped and what's coming next. VexCMS is actively developed and everything ships as 0.1.0-alpha.",
++              "What we've shipped and what's coming next.",
+             items: [
+               {
+                 feature: "12 Field Types",
+@@ -947,7 +947,7 @@ export const articles = defineTable({
+               {
+                 question: "Is it production ready?",
+                 answer:
+-                  "No. Everything ships as 0.1.0-alpha. Versioning, drafts, and live preview are in progress. There are 12 field types today; richtext, json, tabs, and ui are planned, not built. See the roadmap.",
++                  "0.1.0 is the first release on npm's default tag. It is early: APIs can still change between 0.x minor releases, and every breaking change ships with migration notes in the changelog. The roadmap page lists what shipped and what comes next.",
+               },
+               {
+                 question: "Which frameworks does it support?",
+@@ -1040,7 +1040,7 @@ export const articles = defineTable({
+                 icon: "Terminal",
+                 title: "Scaffold your project",
+                 description:
+-                  "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
++                  "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
+               },
+               {
+                 icon: "Code",
+@@ -1098,7 +1098,7 @@ export const articles = defineTable({
+             variant: ["compact"],
+             heading: "Shipped, in progress, and being explored.",
+             subheading:
+-              "VexCMS is under active development. Everything ships as 0.1.0-alpha until the core feature set is stable enough for a v0.1.0 release. This page is edited from the admin panel, not from a source file.",
++              "VexCMS is built in the open. This page is edited from the admin panel, not from a source file.",
+             primaryCtaLabel: "Read the docs",
+             primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
+           },
+@@ -1108,7 +1108,7 @@ export const articles = defineTable({
+             id: "roadmap-roadmap",
+             heading: "Roadmap",
+             subheading:
+-              "What we've shipped and what's coming next. VexCMS is actively developed and everything ships as 0.1.0-alpha.",
++              "What we've shipped and what's coming next.",
+             items: [
+               {
+                 feature: "12 Field Types",
+diff --git a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/FAQ/config.ts b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/FAQ/config.ts
+index 818302ed..ee8cf40f 100644
+--- a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/FAQ/config.ts
++++ b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/FAQ/config.ts
+@@ -60,7 +60,7 @@ export const faqBlock = defineBlock({
+         {
+           question: "How do I get started?",
+           answer:
+-            "Run `npx create-vexcms@alpha` to scaffold a new project with Vex CMS pre-configured. The CLI sets up your Next.js app, Convex backend, authentication, and admin panel in under a minute.",
++            "Run `npx create-vexcms` to scaffold a new project with Vex CMS pre-configured. The CLI sets up your Next.js app, Convex backend, authentication, and admin panel in under a minute.",
+         },
+       ],
+     }),
+diff --git a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/Hero/config.ts b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/Hero/config.ts
+index 28d51c2c..9de558e2 100644
+--- a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/Hero/config.ts
++++ b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/Hero/config.ts
+@@ -18,7 +18,7 @@ export const heroBlock = defineBlock({
+     }),
+     badgeText: text({
+       label: "Badge Text",
+-      defaultValue: "v0.1.0-alpha — now on npm",
++      defaultValue: "0.1.0 — now on npm",
+       description:
+         "Announcement pill on the full variant; the uppercase eyebrow on the compact one.",
+     }),
+@@ -39,7 +39,7 @@ export const heroBlock = defineBlock({
+     }),
+     installCommand: text({
+       label: "Install Command",
+-      defaultValue: "pnpm create vexcms@alpha",
++      defaultValue: "pnpm create vexcms",
+       description:
+         "Optional. Renders a copy-to-clipboard command row under the CTAs. Full variant only.",
+     }),
+diff --git a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/HowItWorks/config.ts b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/HowItWorks/config.ts
+index d50dd1a7..1bc361f0 100644
+--- a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/HowItWorks/config.ts
++++ b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/HowItWorks/config.ts
+@@ -35,7 +35,7 @@ export const howItWorksBlock = defineBlock({
+           icon: "Terminal",
+           title: "Scaffold your project",
+           description:
+-            "Run npx create-vexcms@alpha to get a Next.js app with Convex, authentication, and the admin panel pre-configured.",
++            "Run npx create-vexcms to get a Next.js app with Convex, authentication, and the admin panel pre-configured.",
+         },
+         {
+           icon: "Code",
+diff --git a/packages/next/README.md b/packages/next/README.md
+index 5937d7d8..a2321301 100644
+--- a/packages/next/README.md
++++ b/packages/next/README.md
+@@ -5,7 +5,7 @@ The Next.js adapter for [VEX CMS](https://github.com/ianyimi/vex). Provides the
+ ## Installation
+ 
+ ```bash
+-pnpm add @vexcms/next@alpha
++pnpm add @vexcms/next
+ ```
+ 
+ ## Quick Setup
+diff --git a/packages/react/README.md b/packages/react/README.md
+index 9fe2075f..79e2f7b7 100644
+--- a/packages/react/README.md
++++ b/packages/react/README.md
+@@ -5,7 +5,7 @@ React admin components and hooks for [VexCMS](https://github.com/ianyimi/vex). P
+ ## Installation
+ 
+ ```bash
+-pnpm add @vexcms/react@alpha
++pnpm add @vexcms/react
+ ```
+ 
+ ## Field Components
+diff --git a/packages/richtext-plate/README.md b/packages/richtext-plate/README.md
+index badf74db..a7068334 100644
+--- a/packages/richtext-plate/README.md
++++ b/packages/richtext-plate/README.md
+@@ -9,7 +9,7 @@ Install `@vexcms/richtext-plate` alongside a `richtext()` field: register
+ ## Installation
+ 
+ ```bash
+-pnpm add @vexcms/richtext-plate@alpha
++pnpm add @vexcms/richtext-plate
+ ```
+ 
+ ## Exports

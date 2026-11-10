@@ -1,5 +1,51 @@
 # create-vexcms
 
+## 0.1.0-alpha.37
+
+### Patch Changes
+
+- `base-nextjs` (and the `marketing-site` overlay, which inherits its `package.json`) now ships a
+  `vex:deploy` script (`vex deploy`) instead of only documenting `npx convex deploy` in the
+  README. The scaffold README's `## Deployment` section and the root `create-vexcms` README now
+  point at the new [deployment guide](https://docs.vexcms.dev/guides/deployment/) and the
+  `pnpm vex:deploy --cmd 'pnpm build'` Vercel build command instead of a three-step
+  `npx convex deploy` recipe.
+- The template's `src/env.mjs` now skips validation inside the Convex runtime too, not just
+  under `SKIP_ENV_VALIDATION`: `convex/vex.ts` bundles registered admin components into the
+  Convex deployment, and a Convex push never sets `NEXT_PUBLIC_*`, so every `vex dev`/`vex
+deploy` push failed with "Invalid environment variables" the moment a project registered one.
+  Detected via `CONVEX_CLOUD_URL`, a Convex-only variable Next never sets.
+
+  Scaffolder hygiene fixes:
+
+  - A custom `--port` now rewrites `.env.example`'s placeholder origin too, not just
+    `.env.local`/`README.md` — a cloned project's committed template pointed at the wrong origin
+    otherwise.
+  - The generated Better Auth secret now lands only in `.env.local`; `.env.example` (committed to
+    version control) keeps `BETTER_AUTH_SECRET=""` rather than a real secret.
+  - The template `.gitignore`'s `.env.*` rule now carries the same `!.env.example` negation as
+    root/apps, so the committed placeholder file is no longer silently gitignored.
+  - `package.json` now carries a `packageManager` field (Corepack `pm@version`) when
+    `npm_config_user_agent` actually identifies one; omitted rather than guessed when it doesn't,
+    since a wrong guess breaks the next install under a different package manager's Corepack check.
+  - The `@better-auth/passkey` version pin (needed to avoid an `npm install` ERESOLVE against
+    `@daveyplate/better-auth-ui`) is now mirrored into top-level `overrides` (npm) and
+    `resolutions` (yarn), not just `pnpm.overrides`.
+  - `--bare` no longer ships a `"seed": "convex run seed:init"` script with no `convex/seed.ts`
+    to run it against; the marketing overlay adds the script back since it ships the seed file.
+
+- `convex/schema.ts` imports the `user` table from the generated
+  `convex/vex.schema.ts` instead of redeclaring it by hand, in `apps/www`,
+  `apps/test` and both `create-vexcms` templates (`base-nextjs`,
+  `marketing-site`). A field added to the `users`/`user` collection now reaches
+  `Doc<"user">` and the deployed schema with no second edit — previously it
+  reached the generated schema but not the hand-written table.
+
+  The generated `user` tables in `apps/www`/`apps/test` were also missing the
+  `by_email_name`/`by_name`/`by_userId` indexes Better Auth needs (the adapter's
+  collection definition already computes them; the checked-in files had not
+  been regenerated since that indexing landed).
+
 ## 0.1.0-alpha.36
 
 ### Patch Changes

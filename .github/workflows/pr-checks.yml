@@ -1,0 +1,42 @@
+name: PR checks
+
+# Cheap checks that must re-run when a pull request is edited (title or base
+# branch changed), which ci.yml deliberately doesn't trigger on.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+    branches:
+      - dev
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    name: PR title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the title
+        run: node scripts/check-pr-title.mjs
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+
+  base:
+    name: Base branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fork pull requests target dev
+        if: github.event.pull_request.head.repo.full_name != github.repository && github.event.pull_request.base.ref == 'master'
+        run: |
+          echo "::error title=Base branch::Pull requests from forks go to dev, not master. Edit the pull request, change the base branch to dev, and see CONTRIBUTING.md."
+          exit 1

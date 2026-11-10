@@ -3,6 +3,7 @@ name: CI
 on:
   pull_request:
     branches:
+      - dev
       - master
 
 concurrency:
@@ -71,8 +72,8 @@ jobs:
         # Build everything else; generate apps/test's Next route types (normally a
         # side effect of `next build`) so Typecheck Packages still covers it.
         # SKIP_ENV_VALIDATION only lets next.config.ts load for typegen, which
-        # makes no Convex calls. The Release workflow (push to master, with
-        # secrets) builds apps/test in full once the PR merges.
+        # makes no Convex calls. The dev → master pull request (same repo, with
+        # secrets) builds apps/test in full before anything is released.
         if: env.FORK_PR == 'true'
         run: |
           echo "::notice::Fork PR: secrets are unavailable, so the apps/test production build and Site Bundle Budget are skipped."

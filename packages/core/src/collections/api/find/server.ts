@@ -194,6 +194,10 @@ export async function find<
  * means more matching documents exist beyond the cap and `totalDocs`
  * equals `countLimit`, a floor rather than an exact count.
  *
+ * Prefer calling this through `vexServerApi()`'s bound `find`, which threads
+ * `config` (and a resolved `auth`) for you — a raw call omitting `config` is a
+ * type error, and a raw call omitting `auth` runs as `anonRole`.
+ *
  * @param args - Find arguments including filters, sort, pagination, and count options
  * @returns Array of documents, or a `PaginationResult` (`{ page,
  *   continueCursor, isDone }`, plus `totalDocs`/`totalDocsCapped` when the
@@ -202,11 +206,12 @@ export async function find<
  * @example
  * ```ts
  * // Without pagination
- * const docs = await find({ ctx, collection: "posts" });
+ * const docs = await find({ ctx, config, collection: "posts" });
  *
  * // With pagination
  * const result = await find({
  *   ctx,
+ *   config,
  *   collection: "posts",
  *   paginationOpts: { numItems: 100, cursor: null },
  * });
@@ -215,6 +220,7 @@ export async function find<
  * // With pagination and a first-page count
  * const result = await find({
  *   ctx,
+ *   config,
  *   collection: "posts",
  *   paginationOpts: { numItems: 100, cursor: null, totalDocs: true },
  * });

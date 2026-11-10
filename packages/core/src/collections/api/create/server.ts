@@ -51,11 +51,13 @@ export interface CreateServerArgs<
  * Inserts a document into a VexCMS collection and returns its ID.
  * Server-side only — call inside a Convex mutation handler.
  *
- * Import from `@vexcms/core/server`.
+ * Import from `@vexcms/core/server`. Prefer `vexServerApi()`'s bound
+ * `create`, which threads `config` for you — a raw call omitting it is a
+ * type error.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
  * @typeParam TCollectionSlug - Collection slug.
- * @param args - `{ ctx, collection, data }`. `ctx` must be a mutation context.
+ * @param args - `{ ctx, config, collection, data }`. `ctx` must be a mutation context.
  * @returns Promise resolving to the new document's ID as a string.
  * @example
  * ```ts
@@ -63,7 +65,7 @@ export interface CreateServerArgs<
  *
  * export const createPost = mutation({
  *   args: { data: v.any() },
- *   handler: (ctx, args) => create({ ctx, collection: "posts", data: args.data }),
+ *   handler: (ctx, args) => create({ ctx, config, collection: "posts", data: args.data }),
  * });
  * ```
  */

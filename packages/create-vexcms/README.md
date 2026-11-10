@@ -171,6 +171,7 @@ automatically promoted to admin and redirected into `/admin`.
 | `pnpm typecheck` | Type-check the project |
 | `pnpm seed` | Run the marketing-site seed mutation (marketing-site only) |
 | `pnpm secret:create` | Generate a random 32-character secret and copy it to the clipboard |
+| `pnpm vex:deploy` | Generate schema/types and deploy to Convex production |
 
 ## Monorepo mode (`--monorepo`)
 
@@ -185,6 +186,12 @@ The installer walks up from the current directory for the nearest `pnpm-workspac
 `apps/my-app`, rewrites every `@vexcms/*` dependency to `workspace:*` and any dependency also
 present in the host workspace's catalog to `catalog:` (other dependencies keep literal
 versions), and skips both `git init` and dependency install — the root workspace owns them.
+
+## Deployment
+
+See the [deployment guide](https://docs.vexcms.dev/guides/deployment/) — Convex production via
+`pnpm vex:deploy`, then a Vercel production deploy with the build command
+`pnpm vex:deploy --cmd 'pnpm build'`.
 
 ## Telemetry
 

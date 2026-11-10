@@ -585,3 +585,23 @@ describe("generateVexSchema — globals", () => {
     expect(globalsBlock).toContain('.index("by_published", ["vex_publishedId"])');
   });
 });
+
+describe("generateVexSchema — Better Auth user collection extension", () => {
+  it("a field added to the merged user collection reaches the generated user export, with no second declaration needed", () => {
+    const user = defineCollection({
+      slug: "user",
+      fields: {
+        name: text({ required: true }),
+        email: text({ required: true }),
+        roles: text({ required: true }),
+        bio: textarea(),
+      },
+      indexes: [{ name: "by_email", fields: ["email"] }],
+    });
+    const config = defineConfig({ collections: [user] });
+    const { contents } = generateVexSchema({ config });
+    expect(contents).toContain("export const user = defineTable({");
+    expect(contents).toContain("bio: v.optional(v.string()),");
+    expect(contents).toContain('.index("by_email", ["email"])');
+  });
+});

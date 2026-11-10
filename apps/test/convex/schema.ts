@@ -1,7 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-import { TABLE_SLUG_ACCOUNTS, TABLE_SLUG_USERS } from "~/db/constants";
+import { TABLE_SLUG_ACCOUNTS } from "~/db/constants";
 
 import {
   apikey,
@@ -17,6 +17,7 @@ import {
   team,
   teamMember,
   themes,
+  user,
   verification,
   vex_globals,
   articles,
@@ -59,27 +60,7 @@ export default defineSchema({
   footers,
   themes,
   pages,
-
-  [TABLE_SLUG_USERS]: defineTable({
-    name: v.string(),
-    banExpires: v.optional(v.number()), // admin plugin
-    banned: v.optional(v.boolean()), // admin plugin
-    banReason: v.optional(v.string()), // admin plugin
-    createdAt: v.number(),
-    displayUsername: v.optional(v.union(v.null(), v.string())),
-    email: v.string(),
-    emailVerified: v.boolean(),
-    image: v.optional(v.string()),
-    isAnonymous: v.optional(v.union(v.null(), v.boolean())),
-    phoneNumber: v.optional(v.union(v.null(), v.string())),
-    phoneNumberVerified: v.optional(v.union(v.null(), v.boolean())),
-    role: v.optional(v.string()), // admin plugin — single string in BA 1.5
-    roles: v.array(v.string()), // our multi-role field via additionalFields
-    twoFactorEnabled: v.optional(v.union(v.null(), v.boolean())),
-    updatedAt: v.number(),
-    userId: v.optional(v.union(v.null(), v.string())),
-    username: v.optional(v.union(v.null(), v.string())),
-  }).index("by_email", ["email"]),
+  user,
 
   [TABLE_SLUG_ACCOUNTS]: defineTable({
     accessToken: v.optional(v.string()),

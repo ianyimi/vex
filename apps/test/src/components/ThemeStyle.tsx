@@ -1,5 +1,5 @@
 import { api } from "@convex/_generated/api";
-import { buildThemeCss, type ThemeScope } from "@vexcms/core";
+import { buildThemeCss } from "@vexcms/core";
 
 import { vex } from "~/lib/vex";
 
@@ -35,7 +35,7 @@ import { vex } from "~/lib/vex";
  * reads `adminTheme` with a fallback to the site theme.
  * @returns A `<style>` element, or `null`.
  */
-export async function ThemeStyle(props: { scope?: ThemeScope }) {
+export async function ThemeStyle(props: { scope?: "admin" | "site" }) {
   const scope = props.scope ?? "site";
 
   let theme: null | Record<string, unknown> = null;

@@ -93,3 +93,26 @@ so the checks ran on a throwaway copy of `apps/www` inside the workspace (delete
   the layout sits above that boundary. In a real outage the page's redirect to `/tour` wins first,
   so visitors are covered; the boundary only applies to render errors while Convex is up.
   Reported (backlog), not fixed.
+
+## alpha.36 (2026-11-10, DEP dependency upgrades)
+
+Fresh `pnpm create vexcms@alpha` scaffolds (same answers, driven by `expect`), on the same Convex
+projects; transcripts `/tmp/create-base-a36.log`, `/tmp/create-marketing-a36.log` (deleted in the
+cleanup below). Installed: every `@vexcms/*` `0.1.0-alpha.36`, `next` 16.4.5, `react` 19.2.9,
+`convex` 1.49.0, `better-auth` 1.7.18. npm alpha = master `e49d7ac3` = 0.1.0-alpha.36 (dev was one
+version-bump commit behind, no source diff). The `user`/`session`/`account` tables of both
+deployments were emptied first with a throwaway internal mutation (deleted after use), so the
+sign-up below is a genuine first user; this also removed the `d7@runthrough.test` users.
+
+| Row | base-nextjs | marketing-site |
+|---|---|---|
+| First-user signup becomes admin | **pass**: "Create Admin Account" → sign-up modal → `/admin`; stored `["user","admin"]` | **pass**: `/auth/sign-up` → `/admin`; stored `["user","admin"]` |
+| `curl` sign-up with `"roles":["admin"]` | **pass**: 200, stored `["user"]` | **pass**: 200, stored `["user"]` |
+| Create / edit / publish | `user` create disabled by design (`disableCreate`); media edit (alt text) saves | **pass**: new page created on the first Create click (draft), CTA block added, Publish → public `/a36-page` 200 with the heading; `themes`, `footers`, `headers` edit + save persist after reload |
+| Live preview | n/a (no live-preview collection) | **pass**: the unsaved CTA heading appeared in the preview iframe |
+| Media upload | **pass**: 320×200 PNG stored with width/height; list renders after an edit (alpha.34 fix holds); delete works | **pass** |
+| `next build` | **pass** | **pass**; `/features`, `/roadmap`, `/runthrough-page`, `/a36-page` prerendered (●) |
+
+One transient: a navigation right after sign-up on base hit `UND_ERR_CONNECT_TIMEOUT` to Convex
+and redirected to `/unauthorized`; the same navigation succeeded on retry. Network, not a defect.
+Nothing needs alpha.37.

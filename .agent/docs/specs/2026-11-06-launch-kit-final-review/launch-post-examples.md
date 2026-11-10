@@ -938,7 +938,7 @@ Constraints: `[Title Case Name](link) - Description.`, capital start, full stop 
 ## post:real-time-admin-and-live-preview
 
 Slot purpose: D2 feature post on the real-time admin panel + live preview, with a silent clip, a docs link, and a link back to the D1 announcement.
-Constraints: slot format `title: …`, `excerpt: …`, blank line, markdown body (kit header). Step 9 transcribes the body into Plate JSON, and only `##` headings, paragraphs, **bold**, links and flat bullet/numbered lists map; tables, images, code fences and nested lists stop the transcription for a decision (spec step 9). Each post links its clip (`/launch/<slug>.mp4`), the fact sheet's docs page, the week's earlier posts, the `public-copy.md` Funding line and the `planned` issues (Design Decision 12; step 6).
+Constraints: slot format `title: …`, `excerpt: …`, blank line, markdown body (kit header). Step 9 transcribes the body into Plate JSON, and only `##` headings, paragraphs, **bold**, links and flat bullet/numbered lists map; tables, images, code fences and nested lists stop the transcription for a decision (spec step 9). Each post links its clip (`/launch/<slug>.mp4`), the fact sheet's docs page, the week's earlier posts, the `public-copy.md` Funding line and the roadmap page; no `planned`-issue links or 👍 asks (Design Decisions 12, 26; step 6).
 
 ### Examples (ranked)
 1. **Supabase — "Realtime: Multiplayer Edition"** — https://supabase.com/blog/supabase-realtime-multiplayer-general-availability — 2022-08-18 — tier 1
@@ -969,7 +969,7 @@ Constraints: slot format `title: …`, `excerpt: …`, blank line, markdown body
 ## post:one-config-schema-and-types
 
 Slot purpose: D3 feature post on one `vex.config.ts` → Convex schema + generated types, with a silent clip, a docs link, and links to earlier posts.
-Constraints: slot format `title: …`, `excerpt: …`, blank line, markdown body (kit header). Step 9 transcribes the body into Plate JSON, and only `##` headings, paragraphs, **bold**, links and flat bullet/numbered lists map; tables, images, code fences and nested lists stop the transcription for a decision (spec step 9). Each post links its clip (`/launch/<slug>.mp4`), the fact sheet's docs page, the week's earlier posts, the `public-copy.md` Funding line and the `planned` issues (Design Decision 12; step 6).
+Constraints: slot format `title: …`, `excerpt: …`, blank line, markdown body (kit header). Step 9 transcribes the body into Plate JSON, and only `##` headings, paragraphs, **bold**, links and flat bullet/numbered lists map; tables, images, code fences and nested lists stop the transcription for a decision (spec step 9). Each post links its clip (`/launch/<slug>.mp4`), the fact sheet's docs page, the week's earlier posts, the `public-copy.md` Funding line and the roadmap page; no `planned`-issue links or 👍 asks (Design Decisions 12, 26; step 6).
 
 ### Examples (ranked)
 1. **Supabase — "Supabase CLI v2: Config as Code"** — https://supabase.com/blog/cli-v2-config-as-code — 2024-12-04 (Launch Week 13, Day 1) — tier 1
@@ -994,7 +994,7 @@ Constraints: slot format `title: …`, `excerpt: …`, blank line, markdown body
 ## post:access-control-hooks-validation
 
 Slot purpose: D4 feature post on RBAC + server-enforced hooks/validation, with a silent clip, a docs link, and links to earlier posts.
-Constraints: slot format `title: …`, `excerpt: …`, blank line, markdown body (kit header). Step 9 transcribes the body into Plate JSON, and only `##` headings, paragraphs, **bold**, links and flat bullet/numbered lists map; tables, images, code fences and nested lists stop the transcription for a decision (spec step 9). Each post links its clip (`/launch/<slug>.mp4`), the fact sheet's docs page, the week's earlier posts, the `public-copy.md` Funding line and the `planned` issues (Design Decision 12; step 6).
+Constraints: slot format `title: …`, `excerpt: …`, blank line, markdown body (kit header). Step 9 transcribes the body into Plate JSON, and only `##` headings, paragraphs, **bold**, links and flat bullet/numbered lists map; tables, images, code fences and nested lists stop the transcription for a decision (spec step 9). Each post links its clip (`/launch/<slug>.mp4`), the fact sheet's docs page, the week's earlier posts, the `public-copy.md` Funding line and the roadmap page; no `planned`-issue links or 👍 asks (Design Decisions 12, 26; step 6).
 
 ### Examples (ranked)
 1. **Directus — "Introducing Policies: A New Approach To Permissions"** — https://directus.com/resources/v11-release-notes — 2024-08-07 — tier 1
@@ -1020,7 +1020,7 @@ Constraints: slot format `title: …`, `excerpt: …`, blank line, markdown body
 ## post:create-vexcms-to-deployed
 
 Slot purpose: D5 feature post on `pnpm create vexcms` → a deployed site, with a silent clip, a docs link, and links to earlier posts.
-Constraints: slot format `title: …`, `excerpt: …`, blank line, markdown body (kit header). Step 9 transcribes the body into Plate JSON, and only `##` headings, paragraphs, **bold**, links and flat bullet/numbered lists map; tables, images, code fences and nested lists stop the transcription for a decision (spec step 9). Each post links its clip (`/launch/<slug>.mp4`), the fact sheet's docs page, the week's earlier posts, the `public-copy.md` Funding line and the `planned` issues (Design Decision 12; step 6).
+Constraints: slot format `title: …`, `excerpt: …`, blank line, markdown body (kit header). Step 9 transcribes the body into Plate JSON, and only `##` headings, paragraphs, **bold**, links and flat bullet/numbered lists map; tables, images, code fences and nested lists stop the transcription for a decision (spec step 9). Each post links its clip (`/launch/<slug>.mp4`), the fact sheet's docs page, the week's earlier posts, the `public-copy.md` Funding line and the roadmap page; no `planned`-issue links or 👍 asks (Design Decisions 12, 26; step 6).
 
 ### Examples (ranked)
 1. **James Mikrut — "Launch HN: Payload (YC S22) — Headless CMS for Developers"** — https://payloadcms.com/ (HN item https://news.ycombinator.com/item?id=32665325) — 2022-08-31 — tier 1

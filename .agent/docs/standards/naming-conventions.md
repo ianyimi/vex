@@ -66,7 +66,7 @@ rules:
     examples: ["interfaceGen.ts", "generateVexTypes.ts", "baseTypes.ts"]
     counter_examples: ["InterfaceGen.ts", "interface_gen.ts"]
   - id: react-testing-kit-camel
-    pattern: '^[a-z][A-Za-z0-9]*\.(ts|tsx)$|^index\.tsx?$'
+    pattern: '^[a-z][A-Za-z0-9]*(\.typecheck)?\.(ts|tsx)$|^index(\.typecheck)?\.tsx?$'
     scope: ["packages/react/src/testing/**"]
     description: The exported testing kit (factories, shared harness, the fixture registry/type) is camelCase — it ships as plain functions, not components, even where a file contains JSX. Per-field-type fixture DATA does not live here; it lives in each field's own fields/<type>/testFixture.ts. See /dev/naming-conventions/#react-testing-kit-camel.
     examples: ["fieldInputContract.ts", "nestedFieldContainer.ts", "harness/accessFixtures.ts", "fixtures/index.ts"]

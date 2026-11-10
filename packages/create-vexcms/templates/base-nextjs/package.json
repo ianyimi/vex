@@ -7,7 +7,7 @@
     "vex:dev": "vex dev",
     "vex:generate": "vex dev --once",
     "vex:update": "pnpm add @vexcms/core@latest @vexcms/react@latest @vexcms/next@latest @vexcms/better-auth@latest @vexcms/file-storage-convex@latest @vexcms/cli@latest",
-    "seed": "convex run seed:init",
+    "vex:deploy": "vex deploy",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -24,11 +24,11 @@
     "@t3-oss/env-nextjs": "0.13.11",
     "@tanstack/react-form": "1.33.5",
     "@tanstack/react-query": "5.106.1",
-    "@vexcms/better-auth": "~0.1.0-alpha.36",
-    "@vexcms/core": "~0.1.0-alpha.36",
-    "@vexcms/file-storage-convex": "~0.1.0-alpha.36",
-    "@vexcms/next": "~0.1.0-alpha.36",
-    "@vexcms/react": "~0.1.0-alpha.36",
+    "@vexcms/better-auth": "~0.1.0-alpha.37",
+    "@vexcms/core": "~0.1.0-alpha.37",
+    "@vexcms/file-storage-convex": "~0.1.0-alpha.37",
+    "@vexcms/next": "~0.1.0-alpha.37",
+    "@vexcms/react": "~0.1.0-alpha.37",
     "better-auth": "1.7.18",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -48,7 +48,7 @@
     "@types/node": "20.19.43",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
-    "@vexcms/cli": "~0.1.0-alpha.36",
+    "@vexcms/cli": "~0.1.0-alpha.37",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.5",
@@ -65,6 +65,12 @@
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "overrides": {
+    "@better-auth/passkey": "1.7.18"
+  },
+  "resolutions": {
+    "@better-auth/passkey": "1.7.18"
   },
   "pnpm": {
     "overrides": {

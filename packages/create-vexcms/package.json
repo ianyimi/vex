@@ -1,6 +1,6 @@
 {
   "name": "create-vexcms",
-  "version": "0.1.0-alpha.36",
+  "version": "0.1.0-alpha.37",
   "description": "Scaffold a new VexCMS project",
   "keywords": [
     "cms",
@@ -48,12 +48,14 @@
     "yaml": "catalog:"
   },
   "devDependencies": {
+    "@t3-oss/env-nextjs": "catalog:",
     "@types/fs-extra": "catalog:",
     "@types/validate-npm-package-name": "catalog:",
     "@vexcms/core": "workspace:*",
     "@vexcms/telemetry": "workspace:*",
     "tsup": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   }
 }

@@ -61,7 +61,7 @@ The research ran first (`sources.md`, every URL fetched 2026-11-06), and it chan
     - Publishing once on D5 means the page never links a post that is still a draft. Resend and Dub both close their weeks with a recap (`sources.md` §4.3b–c).
     - **No footer entry.** Neither the recap page nor anything else in this spec adds a www footer or `socialLinks` entry. If one is ever added, it goes at its position in `2026-11-06-public-presence/public-copy.md` § Footer (cross-spec decision 4), the one canonical ordered list.
 11. **Clips are silent H.264 MP4s, ≤ 60 s and ≤ 10 MB, in `apps/www/public/launch/`.** Posts link them, and LinkedIn gets them as native uploads. Why: same-origin files fall under the quality pass's CSP `'self'` and need no third-party embed or privacy-page entry. With no audio there's no caption track to author; the post text describes what each clip shows. The 10 MB cap matches public-presence's media budget.
-12. **The announcement and each feature post carry the `public-copy.md` Funding line and link the `planned` issues.** Why: the plan asks for the community-funding ask in every post, and the 👍 on `planned` issues is the public roadmap's demand signal.
+12. **The announcement and each feature post carry the `public-copy.md` Funding line and link the `planned` issues.** Why: the plan asks for the community-funding ask in every post, and the 👍 on `planned` issues is the public roadmap's demand signal. *Superseded in part by decision 26 (2026-11-10): the Funding line stays; the `planned`-issue links are dropped.*
 13. **Public-presence step 18's release-day copy flip is pre-staged as `copy-flip.patch` and reviewed inside L.** Its scope is every alpha string on any inventoried public surface. Release applies it unchanged. Why: nothing may change after L unreviewed (hard constraint 9). Step 18's own `rg` covers four paths, but the alpha strings also live in package READMEs, the Hero block defaults and the templates.
 14. **L reads the pre-Release state.** That means the Vercel previews of the reviewed `dev` SHA, the branch files, packed tarballs and live GitHub settings. The kit's launch-morning checklist confirms that live matches what was reviewed. Why: www and docs production deploy from `master` (GitHub deployments "Production – vex-www" at `1d07d23`, the dev → master merge of PR #50); npm shows `0.1.0-alpha.29` until publish; GitHub reads issue forms and community files from `master`. `git diff --stat <reviewed-sha>..origin/master` showing only the Release version bumps and the patch's files is the live = reviewed proof.
 15. **L's first step re-derives the surface inventory with commands, and anything not in this spec's baseline is flagged `new` and given a checklist.** Why: three parallel specs are still adding pages.
@@ -79,6 +79,7 @@ The research ran first (`sources.md`, every URL fetched 2026-11-06), and it chan
     - **L excludes JSDoc and the TypeDoc API pages.** L covers the public docs pages (`apps/docs/src/content/docs/**` outside `api/`, plus `llms.txt`), www (including the `/admin` demo), GitHub (README, community files, issue forms, starter issues, Discussions), the npm READMEs (with the manifest fields npm renders beside them), template output, the launch posts and listings, and the release notes. The docs build still runs in step 13, because the link check reads its HTML, but `dist/api/**` is skipped and TypeDoc output is not a review item. Why: the developer's call; the API reference is generated from code and reviewed with the code.
     - **L is a review-and-iterate loop.** In steps 14–22 the developer reads and gives feedback in this session. The agent applies each item to every surface it affects (found with `rg` over the `voice-and-wording.md` surfaces and step 13's sweeps), records it in `l-findings.md`, logs it as a `VW` entry in `.agent/docs/standards/docs/voice-and-wording.md` (or an `AP` entry in `anti-patterns.md` when it corrects an agent mistake) in the same turn, re-runs the touched evidence, and the developer re-reads. Decision 17's `blocker`/`backlog` classes stay; what changes is that a finding is applied now unless the developer defers it, and only deferred findings become `backlog.md` entries. Why: one pass of feedback reaches every surface that repeats the wording, and the voice log keeps later copy consistent.
     - **Step 8's shot list is owned by the demo spec** named on the coordination board. `media-session.md`'s shot list is superseded by that version; step 8's checks (H.264, ≤ 60 s, ≤ 10 MB, silent, served 200, `/tour` 1280×800 and mirrored into `apps/test`) run against whatever files it lists. Why: the developer moved the media plan into its own spec.
+26. **No `planned`-issue links (developer, 2026-11-10; contributor-workflow spec decision 9).** The 8 `planned` issues (#53, #54, #57, #59–#61, #63, #64) are deleted before launch, and roadmap items have no issue or Discussions thread. Every post links the docs roadmap page instead and asks no one to 👍 an issue; feature ideas go to Discussions → Ideas (VW-016). L's roadmap checks become "no planned-issue link or 👍-the-issue ask anywhere". Two contributor rows join the consistency matrix: "contributor flow" (PRs target `dev`; bug PRs link an issue, feature PRs an `accepted` Ideas discussion; Conventional Commits titles; squash merge; patch-only changesets) and "PR response window" (`public-copy.md` § Pull request response window, byte for byte). The contributor surfaces (CONTRIBUTING, the PR template, issue `config.yml`, SECURITY, CODE_OF_CONDUCT, `labels.yml`, the docs Development pages, `guides/auth.mdx`) join the inventory: docs pages in step 14, GitHub files in step 19. The workflows and the `github-review` skill are not L-editable: wording issues in them are findings only. Why: the developer's contributor-workflow decisions; decision 12's demand signal now lives in Ideas.
 
 ## Out of Scope
 
@@ -618,8 +619,8 @@ VexCMS 0.1.0's shipped feature list (16 field types, versioning and drafts, Conv
 type codegen, the real-time admin panel, RBAC with indexed rules, live preview, lifecycle
 hooks and server-side validation, the CLI and `create-vexcms`) — `apps/docs/src/content/docs/roadmap.md:10-44`
 ("Shipped" section; re-check in step 13 — public-presence rewrites this page's shape to
-Shipped/After-0.1.0/Not-planned before launch). Funding line and `planned`-issue links belong
-in this post — `public-copy.md` "Funding" and its `planned` issues table.
+Shipped/After-0.1.0/Not-planned before launch). The Funding line belongs in this post —
+`public-copy.md` "Funding". No `planned`-issue links (decision 26): point at the roadmap page.
 
 Docs: https://docs.vexcms.dev/roadmap/
 
@@ -1248,7 +1249,7 @@ Write every slot in `launch-kit.md` yourself, working from that channel's brief 
 The www announcement body is public-presence step 14's slot, not this kit's. Make the D1 posts agree with it and link it as the canonical URL.
 
 - [ ] D1 slots: `hn:title`, `hn:text`, `linkedin:d1`, `discord:d1`, `devto:announcement`, `hashnode:announcement`
-- [ ] D2–D5 slots: `post:real-time-admin-and-live-preview`, `post:one-config-schema-and-types`, `post:access-control-hooks-validation`, `post:create-vexcms-to-deployed` (title, excerpt, markdown body; each links its clip, the docs page from the fact sheet, the earlier posts of the week, the Funding line and the `planned` issues), and `linkedin:d2` … `linkedin:d5`
+- [ ] D2–D5 slots: `post:real-time-admin-and-live-preview`, `post:one-config-schema-and-types`, `post:access-control-hooks-validation`, `post:create-vexcms-to-deployed` (title, excerpt, markdown body; each links its clip, the docs page from the fact sheet, the earlier posts of the week, the Funding line and the roadmap page — no `planned`-issue links, decision 26), and `linkedin:d2` … `linkedin:d5`
 - [ ] `page:launch-week` (page title, hero badge, hero heading and subheading, CTA heading and subheading, 5 `action:` lines)
 - [ ] Product Hunt slots: `ph:name`, `ph:tagline`, `ph:description`, `ph:maker-comment`, `ph:tags`. Position VexCMS as a working CMS, not a template or boilerplate, which PH doesn't feature (§2.8)
 - [ ] `devhunt:listing`, `cooperpress:email`, `twir:note`, `jamstack:description`, `awesome-nextjs:line`
@@ -1322,6 +1323,12 @@ const LIMITS = {
   "ph:tagline": 60,
   "ph:description": 500,
   "ph:maker-comment": 5000,
+  // LinkedIn Help a528176, re-fetched 2026-11-10 (sources.md Re-fetch log)
+  "linkedin:d1": 3000,
+  "linkedin:d2": 3000,
+  "linkedin:d3": 3000,
+  "linkedin:d4": 3000,
+  "linkedin:d5": 3000,
 }
 
 const BANNED = /pro tier|agency|enterprise|maprios|\bSSO\b|audit log|co-edit|annual licen|\$[0-9]/i
@@ -2169,7 +2176,7 @@ gh api repos/ianyimi/vex
 gh api repos/ianyimi/vex/community/profile
 gh label list --repo ianyimi/vex --limit 100 --json name,description,color
 gh api graphql -f query='query { repository(owner: "ianyimi", name: "vex") { discussionCategories(first: 20) { nodes { name slug isAnswerable } } } }'
-gh issue list --repo ianyimi/vex --label planned --state all --json number,title,labels,state
+gh issue list --repo ianyimi/vex --label planned --state all --json number,title,labels,state   # expect [] once the planned issues are deleted (decision 26)
 gh issue list --repo ianyimi/vex --label "good first issue" --state all --json number,title,labels,state
 gh release list --repo ianyimi/vex
 gh api repos/ianyimi/vex/private-vulnerability-reporting
@@ -2295,7 +2302,9 @@ should contain.
 | `.github/labels.yml`, issue forms, PR template, `config.yml` | public-presence · step 3–4 | new |
 | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md` | public-presence · step 5 | new |
 | Discussions (4 categories), private vulnerability reporting, social preview | public-presence · step 6 | new |
-| Starter issues (`planned` ×8, `good first issue` ×5+) | public-presence · step 7 | new |
+| Starter issues (`good first issue` ×5+; the 8 `planned` issues are deleted before launch, decision 26) | public-presence · step 7; contributor-workflow | new |
+| `CONTRIBUTING.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/config.yml`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `.github/labels.yml` (rewritten) | contributor-workflow · steps 4, 6 | new |
+| docs `dev/contributing.mdx`, `dev/testing-and-code-style.mdx` (new); `dev/naming-conventions.mdx`, `dev/adding-a-field-type.mdx`, `guides/auth.mdx`, `roadmap.md` (edited) | contributor-workflow · step 5 | new |
 | `.github/FUNDING.yml`, Sponsors profile (4 tiers) | public-presence · step 8 | new |
 | Docs roadmap rewrite | public-presence · step 9 | changed |
 | www roadmap/FAQ/footer copy | public-presence · step 10 | changed |
@@ -2338,7 +2347,7 @@ Checklist, applied per file:
 
 `roadmap.md`:
 - [ ] Does the Shipped / After-0.1.0 (3 phases) / Not-planned grouping match `public-copy.md`'s Roadmap section verbatim, phase order included?
-- [ ] Does every post-0.1.0 item's `planned` issue link resolve to an OPEN issue carrying the `planned` label (`l-prepass.md`'s `gh issue list --label planned` dump)?
+- [ ] Does the page carry no `planned`-issue link and no "👍 the linked issue" ask (decision 26)?
 - [ ] Does the paid line match `public-copy.md`'s Paid-work line byte for byte?
 
 `compare.mdx`:
@@ -2463,7 +2472,7 @@ Repo settings are live now; files committed on `dev` go live at the Release merg
 | Discussions (4 categories + pinned welcome post) |  |  |
 | private vulnerability reporting |  |  |
 | social preview |  |  |
-| starter issues (`planned`, `good first issue`) |  |  |
+| starter issues (`good first issue`; no `planned` issues left) |  |  |
 | GitHub Sponsors profile (4 tiers) |  |  |
 | Buy Me a Coffee |  |  |
 | Buttondown |  |  |
@@ -2476,7 +2485,7 @@ Checklist:
 - [ ] Labels: does `gh label list` match `.github/labels.yml` exactly, no orphaned default label left?
 - [ ] Issue forms: do the version dropdowns list real, current package versions — not a version pinned when the form was drafted?
 - [ ] Discussions: is the pinned welcome post's support-channel line identical to `public-copy.md`'s Support channels section?
-- [ ] Starter issues: does every `planned` table row in `public-copy.md` resolve to an open, `planned`-labelled issue; does every `good first issue` carry acceptance criteria a stranger could act on unprompted?
+- [ ] Starter issues: does `gh issue list --label planned` print nothing (decision 26), and does every `good first issue` carry acceptance criteria a stranger could act on unprompted?
 - [ ] Social preview: paste the repo URL into a link unfurler — does the card show the live 1280×640 image, not a placeholder?
 - [ ] Sponsors: are all 4 tiers' published text byte-identical to `public-copy.md` (tier text is immutable once published)?
 - [ ] DevHunt / PH: does the listing text match `launch-kit.md`'s `devhunt:listing` / `ph:*` slots verbatim? Is the PH launch still "Scheduled" for D2 00:01 PT?
@@ -2501,7 +2510,7 @@ Checklist:
 - [ ] Every fact claimed in a post or fact sheet: does its citation (file or docs URL) still say what the fact sheet claims — re-read the citation itself, not the fact sheet's paraphrase of it?
 - [ ] Every prepared-answer "don't say" list: does it cover every banned term from `l-prepass.md`'s banned-term sweep?
 - [ ] `release-notes.md`: does every highlighted feature actually ship at the reviewed SHA, not a still-queued changeset? Do the upgrade notes match the real breaking changes?
-- [ ] Every post's funding line + planned-issue links: do they match `public-copy.md`'s Funding section and planned-issue table exactly?
+- [ ] Every post's funding line: does it match `public-copy.md`'s Funding section exactly, and does no post link a `planned` issue or ask for a 👍 on one (decision 26)?
 
 ## Consistency matrix (step 21)
 
@@ -2521,7 +2530,9 @@ means "I read both sides and they agree," not "the sweep found nothing."
 | feature claims (real-time, live preview, drafts, richtext, hooks/validation) | shipped list in docs `roadmap.md` |  |  |  |  |  |  |  |  |
 | licence line | `public-copy.md` § Licence line |  |  |  |  |  |  |  |  |
 | paid-work line + no paid tier/price/customer named | `public-copy.md` § Paid-work line |  |  |  |  |  |  |  |  |
-| roadmap order + `planned` issue links | `public-copy.md` § Roadmap — after 0.1.0 |  |  |  |  |  |  |  |  |
+| roadmap order (no issue links, decision 26) | `public-copy.md` § Roadmap — after 0.1.0 |  |  |  |  |  |  |  |  |
+| contributor flow | `CONTRIBUTING.md` + contributor-workflow spec decisions 1, 4, 6, 7 |  |  |  |  |  |  |  |  |
+| PR response window | `public-copy.md` § Pull request response window |  |  |  |  |  |  |  |  |
 | support channel (Discussions, no Discord) | `public-copy.md` § Support channels |  |  |  |  |  |  |  |  |
 | contact addresses | `public-copy.md` § Contact |  |  |  |  |  |  |  |  |
 | funding links (Sponsors, Buy Me a Coffee) | `public-copy.md` § Funding |  |  |  |  |  |  |  |  |

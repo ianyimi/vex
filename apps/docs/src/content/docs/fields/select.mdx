@@ -90,3 +90,14 @@ edit form. With `hasMany: true`, it renders as a tag/badge picker where options
 can be added and removed individually. `badgeColor` is used for the tag background
 color in multi-select mode. In the list-view table, selected values are shown as
 comma-separated labels or coloured badges depending on the admin cell renderer.
+
+## Stored values are always a list
+
+`select()` stores `v.array(v.string())` whether `hasMany` is `true` or `false` — a
+single-select field holds a one-element array, not a bare string. Read it accordingly
+anywhere you compare the stored value: a single-select's current choice is
+`siblingData.tier?.[0]`, not `siblingData.tier`, and checking whether a multi-select
+contains a given value uses `siblingData.tags?.includes("news")`. See the
+[Conditional fields & masks guide](/guides/conditional-fields-and-masks/#conditional-fields)
+for the same rule applied inside `admin.condition`.
+

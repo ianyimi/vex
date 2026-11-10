@@ -164,6 +164,7 @@ export async function search<
  * // With pagination and a first-page count
  * const result = await search({
  *   ctx,
+ *   config,
  *   collection: "posts",
  *   query: "react hooks",
  *   searchIndexName: "search_posts",

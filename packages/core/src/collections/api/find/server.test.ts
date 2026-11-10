@@ -20,6 +20,7 @@ const fixtureConfig: VexConfig = {
       slug: "posts",
       fields: {
         title: { type: "text" },
+        featured: { type: "checkbox" },
         author: { type: "relationship", collection: { slug: "authors" } },
         parent: { type: "relationship", collection: { slug: "posts" } },
         cover: { type: "upload", to: "images" },
@@ -56,7 +57,7 @@ describe("find (server)", () => {
   test("returns empty array for an empty collection", async () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
-      find({ ctx, collection: "posts" }),
+      find({ ctx, config: fixtureConfig, collection: "posts" }),
     );
     expect(docs).toEqual([]);
   });
@@ -66,7 +67,7 @@ describe("find (server)", () => {
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       await ctx.db.insert("posts", { title: "First", slug: "first" });
       await ctx.db.insert("posts", { title: "Second", slug: "second" });
-      return find({ ctx, collection: "posts" });
+      return find({ ctx, config: fixtureConfig, collection: "posts" });
     });
     expect(docs.map((d) => d.title)).toEqual(["First", "Second"]);
   });
@@ -77,7 +78,7 @@ describe("find (server)", () => {
       for (let i = 0; i < 5; i++) {
         await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}` });
       }
-      return find({ ctx, collection: "posts", limit: 3 });
+      return find({ ctx, config: fixtureConfig, collection: "posts", limit: 3 });
     });
     expect(docs).toHaveLength(3);
   });
@@ -94,6 +95,7 @@ describe("find (server)", () => {
 
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         populate: { author: true },
       } as any) as Promise<{ author: unknown; [k: string]: unknown }[]>;
@@ -106,7 +108,7 @@ describe("find (server)", () => {
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       await ctx.db.insert("posts", { title: "First", slug: "first" });
       await ctx.db.insert("posts", { title: "Second", slug: "second" });
-      return find({ ctx, collection: "posts", order: "desc" });
+      return find({ ctx, config: fixtureConfig, collection: "posts", order: "desc" });
     });
     expect(docs.map((d) => d.title)).toEqual(["Second", "First"]);
   });
@@ -126,8 +128,8 @@ describe("find (server)", () => {
       });
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
-
         where: (q: any) => q.eq("featured", true),
       });
     });
@@ -143,6 +145,7 @@ describe("find (server)", () => {
       await ctx.db.insert("posts", { title: "C", slug: "c", featured: true });
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         where: (q: any) => q.or(q.eq("slug", "b"), q.not(q.eq("featured", false))),
       });
@@ -158,6 +161,7 @@ describe("find (server)", () => {
       await ctx.db.insert("posts", { title: "C", slug: "c", featured: true });
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         where: { field: "featured", op: "eq", value: true },
       });
@@ -182,8 +186,8 @@ describe("find (server)", () => {
       });
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
-
         where: (q: any) => q.eq("featured", true),
         limit: 2,
       });
@@ -207,6 +211,7 @@ describe("find (server)", () => {
       });
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         withIndex: {
           name: "by_featured",
@@ -230,6 +235,7 @@ describe("find (server)", () => {
       });
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         withIndex: { name: "by_featured" },
       });
@@ -249,6 +255,7 @@ describe("find (server)", () => {
       await ctx.db.insert("posts", { title: "C", slug: "c", featured: true });
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         withIndex: {
           name: "by_featured",
@@ -282,6 +289,7 @@ describe("find (server)", () => {
       });
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         withIndex: {
           name: "by_featured",
@@ -331,7 +339,7 @@ describe("find (server)", () => {
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       await ctx.db.insert("posts", { title: "First", slug: "first" });
       await ctx.db.insert("posts", { title: "Second", slug: "second" });
-      return find({ ctx, collection: "posts", order: "desc" });
+      return find({ ctx, config: fixtureConfig, collection: "posts", order: "desc" });
     });
     expect(docs.map((d) => d.title)).toEqual(["Second", "First"]);
   });
@@ -345,7 +353,7 @@ describe("find (server)", () => {
       for (let i = 0; i < 5; i++) {
         await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}` });
       }
-      return find({ ctx, collection: "posts", limit });
+      return find({ ctx, config: fixtureConfig, collection: "posts", limit });
     });
     expect(docs).toHaveLength(5);
   });
@@ -549,6 +557,7 @@ describe("find (server) — depth auto-populate", () => {
       }
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         paginationOpts: { numItems: 3, cursor: null },
       });
@@ -572,12 +581,14 @@ describe("find (server) — depth auto-populate", () => {
         // First page
         const firstPage = await find({
           ctx,
+          config: fixtureConfig,
           collection: "posts",
           paginationOpts: { numItems: 3, cursor: null },
         });
         // Second page using continueCursor
         const secondPage = await find({
           ctx,
+          config: fixtureConfig,
           collection: "posts",
           paginationOpts: { numItems: 3, cursor: firstPage.continueCursor },
         });
@@ -599,6 +610,7 @@ describe("find (server) — depth auto-populate", () => {
       }
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         paginationOpts: { numItems: 10, cursor: null },
       });
@@ -622,6 +634,7 @@ describe("find (server) — depth auto-populate", () => {
       }
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         paginationOpts: { numItems: 2, cursor: null },
         populate: { author: true },
@@ -644,6 +657,7 @@ describe("find (server) — depth auto-populate", () => {
       }
       return find({
         ctx,
+        config: fixtureConfig,
         collection: "posts",
         order: "desc",
 
