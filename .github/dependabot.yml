@@ -42,6 +42,10 @@ updates:
           - "patch"
   - package-ecosystem: "github-actions"
     directory: "/"
+    ignore:
+      # v2 requires @changesets/cli 3 (catalog is on 2); move both together.
+      - dependency-name: "changesets/action"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: "weekly"
       day: "monday"
