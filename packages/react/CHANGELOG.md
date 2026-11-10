@@ -1,5 +1,47 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.35
+
+### Patch Changes
+
+- 61982b1: The list view filter builder's add buttons read "AND" and "OR" instead of "AND condition" and
+  "OR conditions".
+- 67c7dec: List view filter builder fixes:
+
+  - **Scrolling works.** The panel used to have a scrollbar that did nothing, and conditions spilled
+    past the bottom of the panel. It now scrolls normally and stops growing once it shows the OR
+    button plus about 3.25 single-condition OR groups.
+  - **It lines up with the table.** The panel opens 8px below the Filter button, level with the
+    top of the table.
+  - **New OR groups go on top.** The OR button is now above the groups. Each new group appears
+    first, just under the button, and the existing groups move down.
+  - **The last condition can't be removed.** When only one condition is left, its × clears the
+    condition instead of removing it, and is disabled while the condition is still empty. The
+    open builder always shows at least one condition.
+
+  `DataTableResponsiveMenu` gains an optional `sideOffset` prop for the desktop popover's distance
+  from its trigger (default `4`).
+
+- 61982b1: Same-major dependency refresh. `@vexcms/react`: `@codemirror/view` 6.43.14 → 6.43.15,
+  `@tanstack/react-form` 1.33.1 → 1.33.5, `@uiw/react-color-sketch` 2.9.6 → 2.10.3,
+  `tailwind-merge` 3.5.0 → 3.7.0, `use-mask-input` 3.14.2 → 3.14.3, `@base-ui/react` 1.2.0 →
+  1.9.0; no import or prop changes. `@vexcms/react`'s testing setup (`@vexcms/react/testing`)
+  now polyfills `window.PointerEvent` when jsdom has none, since Base UI 1.9's keyboard
+  activation dispatches a real `PointerEvent` before the synthetic click.
+  `create-vexcms`: `fs-extra` 11.3.6 → 11.4.1, `yaml` 2.9.0 → 2.9.1, and new projects scaffold
+  with `convex` 1.49.0, React 19.2.9, TanStack Query 5.106.1 and Form 1.33.5, `convex-helpers`
+  0.1.134, `nuqs` 2.10.2, `@base-ui/react` 1.9.0 and (marketing scaffolds) `shiki` 4.6.0.
+  `convex` 1.49 requires Node.js 22 or newer.
+- 61982b1: Security: `zod` 4.4.3 → 4.6.7 (GHSA-mrhx-c7xc-m3w5, memory exhaustion validating oversized
+  constrained collections, fixed in 4.6.6). New projects scaffold with `next` 16.4.5 instead of
+  16.3.3, which carried critical remote-code-execution advisories in the image optimizer,
+  `use cache` functions and `next/og`.
+- Updated dependencies [61982b1]
+- Updated dependencies [61982b1]
+- Updated dependencies [61982b1]
+  - @vexcms/better-auth@0.1.0-alpha.35
+  - @vexcms/core@0.1.0-alpha.35
+
 ## 0.1.0-alpha.34
 
 ### Patch Changes

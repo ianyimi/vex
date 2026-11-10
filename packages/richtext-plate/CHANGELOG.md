@@ -1,5 +1,7 @@
 # @vexcms/richtext
 
+## 0.1.0-alpha.35
+
 ## 0.1.0-alpha.34
 
 ## 0.1.0-alpha.33
