@@ -123,6 +123,7 @@
     "select-scroll-lock-and-admin-gate",
     "seo-prerendering-and-revalidation",
     "session-hint-centered-not-found",
+    "shadcn-4",
     "stale-saved-view-fallback",
     "sticky-global-edit-header",
     "template-build-only-dev-deps",
