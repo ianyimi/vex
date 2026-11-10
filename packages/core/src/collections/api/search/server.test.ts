@@ -179,6 +179,20 @@ describe("search (server) — commitTs ms conversion", () => {
     expect(typeof result.updatedAt).toBe("number");
     expect(result.updatedAt).toBe(1_700_000_000_000);
   });
+
+  // Regression (D7 run-through, 2026-11-09): the admin media list reads through
+  // `find`/`search`, which only searched `config.collections` — an edited
+  // image's `bigint` `updatedAt` crashed the list's date cell.
+  test("converts a media collection's commitTs field to ms", async () => {
+    const t = convexTest(schema, modules);
+    const resolvedNs = BigInt(1_700_000_000_000) * BigInt(1_000_000);
+    const mediaOnly = { collections: [], mediaCollections: commitTsConfig.collections } as unknown as VexConfig;
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Hello", slug: "hello", updatedAt: resolvedNs });
+      return search({ ctx, collection: "posts", config: mediaOnly, query: "", searchIndexName: "search_title", searchField: "title" });
+    });
+    expect((docs[0] as unknown as Record<string, unknown>).updatedAt).toBe(1_700_000_000_000);
+  });
 });
 
 describe("search (server) — depth auto-populate", () => {

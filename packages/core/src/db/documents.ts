@@ -117,6 +117,32 @@ export function resolveCollectionSlug<DataModel extends GenericDataModel>(props:
 }
 
 /**
+ * Finds a collection's resolved config by slug across BOTH `config.collections`
+ * and `config.mediaCollections`.
+ *
+ * `defineConfig` keeps the two as separate arrays, and media documents travel
+ * through the same `find`/`get`/`search`/`update` paths and `populateDocs` as
+ * every other collection. A lookup over `collections` alone silently treats a
+ * media slug as unknown: `update` threw for every image edit, and the read paths
+ * skipped the `commitTs` ns→ms conversion, so an edited image's `updatedAt`
+ * reached the media list as a `bigint` and crashed its date cell
+ * (`Cannot convert a BigInt value to a number`).
+ *
+ * @param props.config - The resolved `VexConfig`; `undefined` finds nothing.
+ * @param props.slug - The collection slug to look up.
+ * @returns The matching collection or media collection config, or `undefined`.
+ */
+export function findCollectionConfig(props: {
+  config: VexConfig | undefined;
+  slug: string;
+}): VexConfig["collections"][number] | VexConfig["mediaCollections"][number] | undefined {
+  return (
+    props.config?.collections.find((c) => c.slug === props.slug) ??
+    props.config?.mediaCollections?.find((c) => c.slug === props.slug)
+  );
+}
+
+/**
  * The per-document read pass `find` and `search` share: `hasPermission`, then the
  * caller's field permissions, then stripping denied fields.
  *

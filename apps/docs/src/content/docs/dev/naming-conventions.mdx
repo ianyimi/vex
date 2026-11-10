@@ -393,9 +393,10 @@ a colocated `.test.tsx`.
 Host-app `components/providers/` is a fixed-role folder, like `auth/` — one
 file per provider concern (client-only context providers, server-rendered
 wrappers, auth session provider, Convex client provider), composed in
-`app/layout.tsx`. Not a dumping ground for arbitrary components.
+`app/layout.tsx`, each optionally with a colocated `.test.tsx`. Not a dumping
+ground for arbitrary components.
 
-- **OK:** `providers/client.tsx`, `providers/convex.tsx`
+- **OK:** `providers/client.tsx`, `providers/convex.tsx`, `providers/convex.test.tsx`
 - **Not OK:** `providers/Providers.tsx`, `providers/AppProviders.tsx`
 
 #### host-app-lib-camel

@@ -6,7 +6,7 @@ import type { CollectionSlug } from "../types/generated";
 import type { Populated, PopulateShape } from "./types";
 import { VERSION_STATUSES, VERSION_SYSTEM_FIELDS } from "../versions/constants";
 import type { VexConfig } from "../config";
-import { convertCommitTsFieldsToMs, resolveCollectionSlug } from "./documents";
+import { convertCommitTsFieldsToMs, findCollectionConfig, resolveCollectionSlug } from "./documents";
 import { ADMIN_FIELDS } from "../fields";
 
 /**
@@ -119,7 +119,7 @@ export async function populateDocs<
           id: ids[0] as GenericId<CollectionSlug>,
         });
         const targetCollection = targetSlug
-          ? config.collections.find((c) => c.slug === targetSlug)
+          ? findCollectionConfig({ config, slug: targetSlug })
           : undefined;
         if (targetCollection) {
           const commitTsKeys = Object.entries(targetCollection.fields)

@@ -1613,6 +1613,7 @@ from making the gate measure honestly.
 **Lift.** Target `@convex-dev/better-auth@0.13.0` (latest on npm, checked 2026-11-09; repo is on 0.11.5): its `convex()` plugin no longer routes through `oidc-provider`, per `.agent/docs/specs/2026-11-07-pre-launch-dependency-upgrades/spec.md`. After the bump, delete the two warning filters added as stopgaps: `packages/cli/src/lib/loadConfig.ts` (around the config import) and the templates'/apps' `convex/http.ts`. Check the changelog for breaking changes to the auth component API this repo's `convex/auth/*` uses.
 **Blocked by.** Nothing technically; needs the version bump scheduled.
 **Why deferred.** Developer decision D4 (`2026-11-06-launch-infrastructure` N run-through, 2026-11-09): auth stack upgrade is scoped for after launch, not inside this run-through's fix pass.
+**Conflict to resolve (2026-11-09).** D4 conflicts with `2026-11-07-pre-launch-dependency-upgrades` step 3, which does this upgrade before launch: better-auth 1.6.x carries critical GHSA-965c-763c-88jm (fixed only in ≥1.7.7, confirmed again by the Dependabot triage), and `catalogs.peers.better-auth` `<1.7.0` stops `@vexcms/better-auth` consumers from taking the fix. Decide which one stands; see `.agent/docs/research/pre-launch-dependency-review.md` § Dependabot triage.
 **Where.** `packages/better-auth`, `apps/www/convex/auth/*`.
 
 ---
@@ -1810,3 +1811,15 @@ Developer request, 2026-11-09.
 
 **Where.** Explained in the 2026-11-09 LI session after the admin icon revert (changeset
 `admin-static-icons`).
+
+## Admin error boundary unreachable while Convex is down
+
+**What.** `apps/www/src/app/(vexcms)/admin/error.tsx` (retry + "View the tour") never renders
+during a Convex outage: `AdminLayout`'s auth promise rejects ("fetch failed") in the layout, which
+sits above that boundary, so Next shows its global error page instead.
+
+**Impact.** Low: in an outage the admin page redirects to `/tour` before rendering, so visitors
+never hit it. Only a render error that coincides with an outage reaches the global page.
+
+**Lift.** Catch the rejected auth promise in the sidebar (render the skeleton or a sign-in
+prompt), or move a boundary above the layout. Found in the LI-22 D7 run (2026-11-09).

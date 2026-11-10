@@ -815,4 +815,18 @@ describe("get (server) — commitTs ms conversion", () => {
     expect(typeof result.updatedAt).toBe("number");
     expect(result.updatedAt).toBe(1_700_000_000_000);
   });
+
+  // Regression (D7 run-through, 2026-11-09): `get` only searched
+  // `config.collections`, so a media document's `updatedAt` reached the admin
+  // as a raw `bigint` after its first edit.
+  test("converts a media collection's commitTs field to ms", async () => {
+    const t = convexTest(schema, modules);
+    const resolvedNs = BigInt(1_700_000_000_000) * BigInt(1_000_000);
+    const mediaOnly = { collections: [], mediaCollections: commitTsConfig.collections } as unknown as VexConfig;
+    const doc = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", { title: "Hello", slug: "hello", updatedAt: resolvedNs });
+      return get({ ctx, id, collection: "posts", config: mediaOnly });
+    });
+    expect((doc as unknown as Record<string, unknown>).updatedAt).toBe(1_700_000_000_000);
+  });
 });

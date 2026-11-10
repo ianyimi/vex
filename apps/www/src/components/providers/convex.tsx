@@ -9,35 +9,52 @@ import { ConvexReactClient } from "convex/react";
 import { AuthTransitionProvider, useAuthTransition } from "@vexcms/react";
 
 import { authClient } from "~/auth/client";
-import { AUTH_COOKIE_PREFIX } from "~/db/constants";
 import { env } from "~/env.mjs";
 
 /**
- * Whether this browser is carrying an existing Better Auth session cookie
- * for this app (`<prefix>.session_token`, or `__Secure-<prefix>.session_token`
- * over https — see `AUTH_COOKIE_PREFIX`). A synchronous `document.cookie`
- * check, not a session fetch: it only needs to be right about "a session
- * might exist," not decode or validate the cookie.
+ * Whether this request's SSR HTML already told us a Better Auth session
+ * exists, via the `<meta name="vex-session" content="1" />` tag a signed-in
+ * server render emits (`(vexcms)/admin/layout.tsx`, and the site's
+ * `posts/[slug]`/`[slug]` pages while Draft Mode is active). A synchronous
+ * DOM check, not a session fetch: it only needs to be right about "a
+ * session might exist," not decode or validate anything.
+ *
+ * Replaces a `document.cookie` read for `<prefix>.session_token`: Better
+ * Auth sets that cookie `httpOnly`, so it was never actually visible to
+ * `document.cookie` — the old check always returned `false`, even for a
+ * signed-in admin, letting this module's Convex socket start unpaused and
+ * send its first `ModifyQuerySet` anonymously, well before `setAuth()` ever
+ * ran.
+ *
+ * SECURITY: the hint is a timing hint only, never an auth signal. Its sole
+ * effect is `expectAuth` (hold queries until the auth handshake). It carries
+ * no token, user or role, and anyone able to put markup in the page can forge
+ * it; a forged hint just delays queries until `useResumeIfStaleSessionHint`
+ * releases the socket anonymously. Never use it to show signed-in UI, gate a
+ * route, or decide access: read the session (`authClient.useSession()` /
+ * server `getToken()`) for that. Every Convex query is authorized from the
+ * JWT sent in `Authenticate`, independent of this hint.
  */
-function hasSessionCookie() {
+export function hasSessionHint() {
   if (typeof document === "undefined") {
     return false;
   }
-  const name = `${AUTH_COOKIE_PREFIX}.session_token`;
-  return new RegExp(`(?:^|;\\s*)(?:__Secure-)?${name}=`).test(document.cookie);
+  return document.querySelector('meta[name="vex-session"]') !== null;
 }
 
 /**
- * Releases an `expectAuth`-paused socket for a visitor whose session cookie
- * turned out to be stale (deleted/expired server-side, but still present in
- * the browser — e.g. the proxy no longer deletes it on an invalid session).
- * `ConvexProviderWithAuth` (convex/react) only ever calls `client.setAuth()`
- * — the only thing that calls the sync layer's `resumeSocket()` — when it
- * resolves an AUTHENTICATED session; for "Better Auth has definitively
- * resolved: no session," it never calls anything, so an `expectAuth`-paused
- * socket stays paused forever (same hang `hasSessionCookie` exists to avoid
- * for the common no-cookie-at-all case, reached here instead via a cookie
- * that exists but doesn't resolve).
+ * Releases an `expectAuth`-paused socket for a visitor whose SSR session
+ * hint turned out to be stale — Better Auth resolves to no session by the
+ * time this hook runs, even though the server render that produced the
+ * `vex-session` meta tag saw one (e.g. a sign-out in another tab, or a
+ * session the proxy hasn't invalidated server-side yet but Better Auth no
+ * longer honors). `ConvexProviderWithAuth` (convex/react) only ever calls
+ * `client.setAuth()` — the only thing that calls the sync layer's
+ * `resumeSocket()` — when it resolves an AUTHENTICATED session; for "Better
+ * Auth has definitively resolved: no session," it never calls anything, so
+ * an `expectAuth`-paused socket stays paused forever (same hang
+ * `hasSessionHint` exists to avoid for the common no-hint-at-all case,
+ * reached here instead via a hint that doesn't resolve).
  *
  * `client.setAuth(fetchToken, onChange)` → convex's
  * `AuthenticationManager.setConfig()` calls `resumeSocket()` unconditionally
@@ -47,7 +64,7 @@ function hasSessionCookie() {
  * `setAndReportAuthFailed(onAuthChange)`, which invokes it unconditionally.
  *
  * Fires at most once per client (`resumed` ref): if a REAL session later
- * appears (the cookie wasn't stale after all, or the visitor signs in),
+ * appears (the hint wasn't stale after all, or the visitor signs in),
  * `ConvexProviderWithAuth` calls `client.setAuth(realFetchAccessToken, ...)`
  * itself — a fresh `setConfig()` call `resetAuthState()`s and bumps
  * convex's internal `configVersion`, which supersedes this call's
@@ -55,7 +72,7 @@ function hasSessionCookie() {
  * Without the ref guard this would also re-fire on every later sign-out,
  * needlessly pausing+resuming an already-unpaused, already-live socket.
  */
-function useResumeIfStaleSessionCookie(convex: ConvexReactClient, startedPaused: boolean) {
+function useResumeIfStaleSessionHint(convex: ConvexReactClient, startedPaused: boolean) {
   const { data: session, isPending } = authClient.useSession();
   const resumed = useRef(false);
   useEffect(() => {
@@ -114,14 +131,15 @@ function makeClients() {
   // frames ever sent). apps/test doesn't hit this because its anon demo
   // flow still mints a real (if anonymous) session.
   //
-  // `document.cookie` is checked synchronously (not a session fetch, and
-  // never server-side — SSR here always gets a fresh client whose
-  // websocket is never used for live queries anyway) so a visitor who
-  // already has a session keeps the pre-auth pause — avoiding a flash of
-  // anon-role query results before `setAuth` re-subscribes with their real
-  // identity (zero-layout-shift) — while a visitor with no cookie at all
-  // starts unpaused and gets live queries immediately.
-  const startedPaused = hasSessionCookie();
+  // `hasSessionHint()` is checked synchronously (not a session fetch, and
+  // never server-side — SSR here always gets a fresh client whose websocket
+  // is never used for live queries anyway) so a visitor whose signed-in
+  // server render emitted the `vex-session` meta tag keeps the pre-auth
+  // pause — avoiding a flash of anon-role query results before `setAuth`
+  // re-subscribes with their real identity (zero-layout-shift) — while a
+  // visitor with no hint at all starts unpaused and gets live queries
+  // immediately.
+  const startedPaused = hasSessionHint();
   const convex = new ConvexReactClient(env.NEXT_PUBLIC_CONVEX_URL, {
     expectAuth: startedPaused,
   });
@@ -159,7 +177,7 @@ let browserClients: ReturnType<typeof makeClients> | undefined;
  */
 export default function ConvexClientProvider({ children }: { children: ReactNode }) {
   const { convex, queryClient, startedPaused } = getClients();
-  useResumeIfStaleSessionCookie(convex, startedPaused);
+  useResumeIfStaleSessionHint(convex, startedPaused);
   return (
     <AuthTransitionProvider>
       <ConvexBetterAuthProvider authClient={authClient} client={convex}>

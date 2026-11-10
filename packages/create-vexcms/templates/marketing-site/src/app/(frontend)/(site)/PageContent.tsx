@@ -2,6 +2,7 @@
 
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
+import { keepPreviousData } from "@tanstack/react-query"
 import { IconNodeProvider, RenderBlocks, useLivePreviewQuery } from "@vexcms/react"
 
 import type { CodeHighlightMap } from "~/lib/highlight"
@@ -26,14 +27,25 @@ export interface PageContentProps {
    */
   iconNodes?: IconNodeMap
   /**
-   * Server-fetched `pages.getBySlug` result, hydrated as the query's initial
-   * data. Always the published copy — `useSitePreviewMode` cannot resolve
-   * until after mount (see its docstring), so the server-rendered pass is
-   * never the preview branch.
+   * Server-fetched `pages.getBySlug`/`pages.getBySlugPreview` result, hydrated as
+   * the query's initial data. Published-only outside Draft Mode —
+   * `useSitePreviewMode` cannot resolve until after mount (see its docstring), so
+   * the server-rendered pass is never the client preview branch on its own;
+   * `draftMode` below covers the Draft Mode case instead.
    */
   initialData?: PagesDocument[]
   /** URL slug to render. Omit (or empty) for the home page. */
   slug?: string
+  /**
+   * True when `page.tsx` server-rendered this page from `pages.getBySlugPreview`
+   * (Draft Mode is active for this request — the live-preview iframe reaches this
+   * route carrying the editor's session). Forces the preview query on this
+   * component's FIRST client render too, matching the server's choice: without
+   * it, the first client render would pick `getBySlug` — a hydration mismatch
+   * against the server's `getBySlugPreview` render, which briefly flashed
+   * `WelcomePage` for a draft-only page before `useSitePreviewMode` caught up.
+   */
+  draftMode?: boolean
 }
 
 /**
@@ -44,14 +56,20 @@ export interface PageContentProps {
  * Calls `pages.getBySlug` (published-only, `access.bypass`) outside live
  * preview and `pages.getBySlugPreview` (session-authenticated, gated on the
  * `readDrafts` action) once `useSitePreviewMode` confirms an active preview
- * session — the live-preview base-layer swap. Both always return an array
+ * session OR the server already rendered the preview layer (`draftMode`
+ * prop) — the live-preview base-layer swap. Both always return an array
  * (empty when no match — the same shape every collection query returns);
  * `useLivePreviewQuery` performs the `[0]` narrowing itself and overlays any
  * unsaved editor values for this document on top of whichever base layer ran.
+ *
+ * `placeholderData: keepPreviousData` keeps the last-shown document on
+ * screen while a newly-keyed query (a slug change, or the published→preview
+ * swap once `useSitePreviewMode` resolves client-side) is still loading,
+ * instead of flipping to `undefined` mid-flight and flashing `WelcomePage`.
  */
-export function PageContent({ codeHighlights, iconNodes, slug, initialData }: PageContentProps) {
+export function PageContent({ codeHighlights, iconNodes, slug, initialData, draftMode }: PageContentProps) {
   const normalizedSlug = slug && slug.length > 0 ? slug : "home"
-  const previewModeActive = useSitePreviewMode()
+  const previewModeActive = useSitePreviewMode() || Boolean(draftMode)
 
   const { data: page } = useLivePreviewQuery(
     {
@@ -59,6 +77,7 @@ export function PageContent({ codeHighlights, iconNodes, slug, initialData }: Pa
         slug: normalizedSlug,
       }),
       initialData,
+      placeholderData: keepPreviousData,
     },
     "pages",
   )

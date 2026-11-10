@@ -150,10 +150,10 @@ rules:
     examples: ["ui/button.tsx", "ui/field.tsx"]
     counter_examples: ["ui/Button.tsx"]
   - id: host-app-providers-fixed-roles
-    pattern: '^(client|server|auth|convex)\.tsx$'
+    pattern: '^(client|server|auth|convex)(\.test)?\.tsx$'
     scope: ["apps/test/src/components/providers/*.tsx", "apps/www/src/components/providers/*.tsx", "packages/create-vexcms/templates/*/src/components/providers/*.tsx"]
-    description: Host-app `components/providers/` is a fixed-role folder, like auth/ — one file per provider concern (client-only context providers, server-rendered wrappers, auth session provider, Convex client provider), composed in app/layout.tsx. Not a dumping ground for arbitrary components. See /dev/naming-conventions/#host-app-providers-fixed-roles.
-    examples: ["providers/client.tsx", "providers/server.tsx", "providers/auth.tsx", "providers/convex.tsx"]
+    description: Host-app `components/providers/` is a fixed-role folder, like auth/ — one file per provider concern (client-only context providers, server-rendered wrappers, auth session provider, Convex client provider), composed in app/layout.tsx, each optionally with a colocated `.test.tsx` (tests-colocated). Not a dumping ground for arbitrary components. See /dev/naming-conventions/#host-app-providers-fixed-roles.
+    examples: ["providers/client.tsx", "providers/server.tsx", "providers/auth.tsx", "providers/convex.tsx", "providers/convex.test.tsx"]
     counter_examples: ["providers/Providers.tsx", "providers/AppProviders.tsx"]
   - id: host-app-lib-camel
     pattern: '^[a-z][A-Za-z0-9.-]*\.ts$'

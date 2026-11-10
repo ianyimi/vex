@@ -35,6 +35,19 @@ describe("remove (server)", () => {
     });
   });
 
+  // Regression (D7 run-through, 2026-11-09): the admin media list's bulk
+  // delete calls `vex:remove`, which only searched `config.collections` and
+  // threw "No collection registered with slug" for every media document.
+  test("deletes a document in a media collection", async () => {
+    const t = convexTest(schema, modules);
+    const mediaOnly = { collections: [], mediaCollections: [postsResource] } as unknown as VexConfig;
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", { title: "Doomed", slug: "d" });
+      await remove({ ctx, ids: [id], collection: "posts", config: mediaOnly });
+      expect(await ctx.db.get(id)).toBeNull();
+    });
+  });
+
   test("bulk deletes multiple documents", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {

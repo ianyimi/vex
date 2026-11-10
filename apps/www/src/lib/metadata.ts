@@ -28,11 +28,71 @@ function firstNonBlank(...candidates: unknown[]): string | undefined {
 }
 
 /**
+ * Builds the `Metadata` shared shape for one document (page or post): title
+ * (with site fallback and `TITLE_SUFFIX`), description, canonical path, OG
+ * tags, and the conditional `twitter` card.
+ *
+ * Extracted from `generatePageMetadata`/`generatePostMetadata`, which differ
+ * only in which collection they query and how they derive `canonicalPath` —
+ * everything below is byte-identical between the two.
+ *
+ * @param props - Resolved inputs; `title`/`description`/`ogImageId` are the
+ *   document-level overrides (already picked from whichever fields that
+ *   collection exposes), falling back to `settings` the same way in both callers.
+ * @returns Metadata with `title`, `description`, `metadataBase`,
+ *   `alternates.canonical`, `openGraph`, and `twitter` (when an image or
+ *   handle resolved).
+ */
+async function buildDocumentMetadata(props: {
+  canonicalPath: string
+  description?: unknown
+  ogImageId?: string
+  settings: Record<string, unknown>
+  title?: unknown
+}): Promise<Metadata> {
+  const siteName = firstNonBlank(props.settings.name)
+  const title = (firstNonBlank(props.title, props.settings.metaTitle, siteName) ?? "Untitled") + TITLE_SUFFIX
+  const description = firstNonBlank(props.description, props.settings.metaDescription, props.settings.description)
+
+  const siteOgImageId = (props.settings.ogImage as string[] | undefined)?.[0]
+  const ogImageId = props.ogImageId ?? siteOgImageId
+  const ogImageUrl = ogImageId ? await resolveMediaUrl(ogImageId) : undefined
+
+  const twitterHandle = firstNonBlank(props.settings.twitterHandle)
+
+  const metadata: Metadata = {
+    alternates: { canonical: props.canonicalPath },
+    description,
+    metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
+    openGraph: {
+      description,
+      title,
+      ...(ogImageUrl ? { images: [{ url: ogImageUrl }] } : {}),
+    },
+    title,
+  }
+
+  // Discord, Slack and X pick the large-image layout from `twitter:card`, not
+  // from `og:image` alone — and Next auto-fills `card: "summary"` (a small
+  // thumbnail) whenever `twitter` is omitted. So the card type must be emitted
+  // whenever an image resolved, independently of whether a handle exists.
+  if (ogImageUrl || twitterHandle) {
+    metadata.twitter = {
+      card: ogImageUrl ? "summary_large_image" : "summary",
+      ...(twitterHandle ? { site: twitterHandle } : {}),
+    }
+  }
+
+  return metadata
+}
+
+/**
  * Generate Next.js Metadata for a page.
  *
  * Fetches site settings and, when a slug is given, the matching page
- * document, then merges them — page-level `metaTitle`/`metaDescription`/
- * `ogImage` win over the site's defaults from `siteSettings`.
+ * document, then merges them via `buildDocumentMetadata` — page-level
+ * `metaTitle`/`metaDescription`/`ogImage` win over the site's defaults from
+ * `siteSettings`.
  *
  * `title`, `description`, `metadataBase` and `alternates.canonical` are always
  * emitted; only the OG image is conditional. Previously the whole `openGraph`
@@ -62,51 +122,15 @@ export async function generatePageMetadata(props: { slug?: string }): Promise<Me
     // `metaDescription` in the admin panel is an empty string. `??` only falls
     // through on null/undefined, so a blank override used to win over a real
     // site-level value and Next then omitted the tag entirely.
-    const pageTitle = firstNonBlank(pageData?.metaTitle, pageData?.title)
-    const siteName = firstNonBlank(settings.name)
-    const title =
-      (firstNonBlank(pageTitle, settings.metaTitle, siteName) ?? "Untitled") + TITLE_SUFFIX
-    const description = firstNonBlank(
-      pageData?.metaDescription,
-      settings.metaDescription,
-      settings.description,
-    )
-
-    // `upload()` fields always store an array of media ids — the first entry
-    // is the selection. Page-level ogImage wins over the site default.
-    const pageOgImageId = (pageData?.ogImage as string[] | undefined)?.[0]
-    const siteOgImageId = (settings.ogImage as string[] | undefined)?.[0]
-    const ogImageId = pageOgImageId ?? siteOgImageId
-    const ogImageUrl = ogImageId ? await resolveMediaUrl(ogImageId) : undefined
-
-    const twitterHandle = firstNonBlank(settings.twitterHandle)
-
     const canonicalPath = props.slug && props.slug !== "home" ? `/${props.slug}` : "/"
 
-    const metadata: Metadata = {
-      alternates: { canonical: canonicalPath },
-      description,
-      metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
-      openGraph: {
-        description,
-        title,
-        ...(ogImageUrl ? { images: [{ url: ogImageUrl }] } : {}),
-      },
-      title,
-    }
-
-    // Discord, Slack and X pick the large-image layout from `twitter:card`, not
-    // from `og:image` alone — and Next auto-fills `card: "summary"` (a small
-    // thumbnail) whenever `twitter` is omitted. So the card type must be emitted
-    // whenever an image resolved, independently of whether a handle exists.
-    if (ogImageUrl || twitterHandle) {
-      metadata.twitter = {
-        card: ogImageUrl ? "summary_large_image" : "summary",
-        ...(twitterHandle ? { site: twitterHandle } : {}),
-      }
-    }
-
-    return metadata
+    return await buildDocumentMetadata({
+      canonicalPath,
+      description: pageData?.metaDescription,
+      ogImageId: (pageData?.ogImage as string[] | undefined)?.[0],
+      settings,
+      title: firstNonBlank(pageData?.metaTitle, pageData?.title),
+    })
   } catch {
     // Convex not available — return minimal metadata
     return { title: "Vex CMS" }
@@ -139,39 +163,13 @@ export async function generatePostMetadata(props: { slug: string }): Promise<Met
       return { title: (firstNonBlank(settings.metaTitle, siteName) ?? "Untitled") + TITLE_SUFFIX }
     }
 
-    const siteName = firstNonBlank(settings.name)
-    const title = (firstNonBlank(postData.title, settings.metaTitle, siteName) ?? "Untitled") + TITLE_SUFFIX
-    const description = firstNonBlank(postData.excerpt, settings.metaDescription, settings.description)
-
-    const postOgImageId = (postData.ogImage as string[] | undefined)?.[0]
-    const siteOgImageId = (settings.ogImage as string[] | undefined)?.[0]
-    const ogImageId = postOgImageId ?? siteOgImageId
-    const ogImageUrl = ogImageId ? await resolveMediaUrl(ogImageId) : undefined
-
-    const twitterHandle = firstNonBlank(settings.twitterHandle)
-
-    const canonicalPath = `/posts/${props.slug}`
-
-    const metadata: Metadata = {
-      alternates: { canonical: canonicalPath },
-      description,
-      metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
-      openGraph: {
-        description,
-        title,
-        ...(ogImageUrl ? { images: [{ url: ogImageUrl }] } : {}),
-      },
-      title,
-    }
-
-    if (ogImageUrl || twitterHandle) {
-      metadata.twitter = {
-        card: ogImageUrl ? "summary_large_image" : "summary",
-        ...(twitterHandle ? { site: twitterHandle } : {}),
-      }
-    }
-
-    return metadata
+    return await buildDocumentMetadata({
+      canonicalPath: `/posts/${props.slug}`,
+      description: postData.excerpt,
+      ogImageId: (postData.ogImage as string[] | undefined)?.[0],
+      settings,
+      title: postData.title,
+    })
   } catch {
     return { title: "Vex CMS" }
   }
