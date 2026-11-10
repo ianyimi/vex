@@ -47,3 +47,49 @@ still carries the defect until the next alpha.
 | Media upload | upload through the media library | completes | **pass** |
 | vexcms-specific content absent | sidebar, footer, routes | no posts; none of the excluded links; routes 404 | **pass**: footer `Features, Roadmap, Docs, Quickstart, Admin demo, npm, Licence, Convex`; `/posts/x`, `/privacy`, `/brand`, `/launch-week`, `/tour`, `/accessibility` all 404 |
 | `next build` | `pnpm build` | Exits 0; seeded routes prerender | **pass** (`/`, `/features`, `/roadmap`, `/runthrough-page` prerendered) |
+
+## D7 re-run on alpha.33 (2026-11-09, LI-22)
+
+**How.** Re-scaffolded with `pnpm create vexcms@alpha` (the same interactive answers, driven by
+`expect`) rather than upgrading: a user upgrading would get the new packages, but not the
+template fixes (`ThemeScript`, the live-preview route, the proxy hand-off, the seed), which only a
+fresh scaffold carries. The alpha.32 folders were kept as `~/tmp/vex-runthrough-*-20261109-alpha32`;
+the new scaffolds reuse their `.env.local`, so they run against the same Convex projects
+(`careful-firefly-157`, `little-mosquito-494`). Transcripts: `/tmp/create-base-a33.log`,
+`/tmp/create-marketing-a33.log`. Every `@vexcms/*` resolved to `0.1.0-alpha.33` from npm
+(`@vexcms/react@0.1.0-alpha.33` was missing from the registry for the first ~10 minutes after the
+Release run, then appeared). Admin rows were run as a fresh `d7@runthrough.test` account on each
+deployment, granted `admin` with a throwaway internal mutation that was deleted afterwards.
+
+| Row (fixed in LI-22) | Preset | Result |
+|---|---|---|
+| Scaffold: README port, `git init` after install/lint/format | both | **pass**: README says `localhost:3100` / `3110`; one clean "Initial commit from create-vexcms" |
+| Sign-up modal (`@auth` intercept) | base | **pass**: the modal renders the real Sign In / Sign Up forms; sign-up redirects home |
+| Seeded pages visible | marketing | **pass**: `/` renders the seeded home (`h1` "The CMS that thinks in types.") |
+| Auth "New" hidden (D2, top-level `disableCreate`) | base | **pass**: no "+ New" on `user`, `session`, `account`, `apikey`; `?createNew=true` opens no dialog; the user edit view has no Duplicate |
+| User list default columns | base | **pass**: Name, email, roles, role, banned, createdAt |
+| Media labels | base | **pass**: Filename, Alt text, MIME type, Size, Storage ID, Deleted, URL, Width, Height |
+| Media width/height measured on upload | base | **pass**: a 320×200 PNG stored `width: 320`, `height: 200` |
+| Media edit saves | base | **pass**: alt text saved |
+| Media list after an edit | base | **fail → fixed**: the list crashed with "Cannot convert a BigInt value to a number". `find`/`get`/`search` only looked up `config.collections`, so an edited image's `updatedAt` skipped the ns→ms conversion. Fixed in `@vexcms/core` (`findCollectionConfig`, also used by `populateDocs`, `update`, `remove`); re-verified in the scaffold with a packed core. **Needs alpha.34.** |
+| Media delete | base | **fail → fixed**: "No collection registered with slug \"images\"" (same lookup in `remove`); re-verified. **Needs alpha.34.** |
+| Upload failure shows one toast | base | **pass**: storage upload forced to 500 → one "Upload failed" toast |
+| Save error surfaced | base | **not exercised**: deleting the document from a second tab made the open edit view show "Document not found" before Save could fail; covered by the unit test only |
+| Create dialog (fields scroll, read-only excluded) | marketing | **pass**: new Page dialog shows only Title and Slug and fits (400 px of an 800 px viewport) |
+| First-Create no-op | marketing | **not reproduced**: the first Create click created the draft (`vex_status: "draft"`), closed the dialog and posted `/api/vex/revalidate` 200 (the Convex mutation itself rides the WebSocket, so network capture shows the revalidate call, not the mutation) |
+| Preview of a never-published page (D3) | marketing | **pass**: public `/d7-draft-page` is 404; with `?vexLivePreview=1` signed in, the route sets `__prerender_bypass` + `vex-live-preview` and the page renders; the edit view's preview iframe loads it |
+| Draft Mode disable | marketing | **pass**: `/api/vex/live-preview?disable=1&redirect=/` lands on `/` with both cookies cleared |
+| Script-tag error on 404 | both | **pass**: no console warnings or errors on a 404 page; the `dark` class is still applied |
+| oidc-provider warning (D4) | marketing | **pass**: `vex generate` prints no oidc line |
+
+**LI-10 `[dev]` checks.** `next dev` refuses a second dev server in `apps/www` while :3030 runs,
+so the checks ran on a throwaway copy of `apps/www` inside the workspace (deleted afterwards) on
+:3299 with `NEXT_PUBLIC_CONVEX_URL=https://unreachable-d7.invalid`.
+- `/admin` with Convex unreachable → **pass**: lands on `/tour` showing "The live demo is
+  temporarily unavailable" and the four screenshots.
+- Error boundary `/tour` link → **not verifiable under an outage**: with a render error forced in
+  the admin page, Next showed its global "This page couldn't load" instead of `admin/error.tsx`,
+  because the admin **layout**'s auth fetch also fails ("fetch failed", `AdminLayout.tsx:171`) and
+  the layout sits above that boundary. In a real outage the page's redirect to `/tour` wins first,
+  so visitors are covered; the boundary only applies to render errors while Convex is up.
+  Reported (backlog), not fixed.

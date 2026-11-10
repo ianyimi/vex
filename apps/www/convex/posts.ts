@@ -20,9 +20,7 @@ import { query } from "./_generated/server"
  * @returns Array containing the matching `Post` document, or empty if not found.
  */
 export const getBySlug = query({
-  args: v.object({
-    slug: v.string(),
-  }),
+  args: { slug: v.string() },
   handler: async (ctx, { slug }) => {
     return await find({
       ctx,

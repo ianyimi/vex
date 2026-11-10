@@ -6,6 +6,8 @@ import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../../access";
 import { resolveAccessCall } from "../../../access/resolveAccessCall";
 import { findDraftRow, listVersions } from "../../../versions/model";
+import { findCollectionConfig } from "../../../db/documents";
+import type { CollectionConfig } from "../../types";
 
 /**
  * Server-side args for `remove`.
@@ -111,7 +113,13 @@ export async function remove<
       return await args.ctx.db.patch(args.collection, id, { [args.softDelete as never]: true });
     }
 
-    const collection = args.config.collections.find((c) => c.slug === args.collection);
+    // `findCollectionConfig` searches media collections too: the admin media
+    // list's bulk delete calls `vex:remove`.
+    // A media collection is a `CollectionConfig` with media `meta`; widening to
+    // the base type keeps `hooks.beforeDelete` callable on the union.
+    const collection = findCollectionConfig({ config: args.config, slug: args.collection }) as
+      | CollectionConfig
+      | undefined;
     if (!collection) {
       throw new ConvexError(`No collection registered with slug "${args.collection}"`);
     }

@@ -14,6 +14,10 @@
  *   `.github/ISSUE_TEMPLATE/*.yml` that isn't in the file — the silent-skip
  *   GitHub documents for a form label the repo doesn't have.
  *
+ * Exit codes: `0` clean/success; `1` drift found under `--check`; `2` `gh`
+ * is not installed, or a `gh` call failed (e.g. not authenticated/no repo
+ * access).
+ *
  * Repo target: `process.env.GITHUB_REPOSITORY`, or `gh repo view --json
  * nameWithOwner` when unset (local runs outside CI).
  */
@@ -27,6 +31,36 @@ import { parse as parseYaml } from "yaml";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const labelsPath = path.join(root, ".github/labels.yml");
 const issueTemplateDir = path.join(root, ".github/ISSUE_TEMPLATE");
+
+/**
+ * Runs a `gh` subcommand, exiting `2` with a one-line diagnostic when `gh`
+ * is missing or the call itself fails (auth, access, etc).
+ *
+ * @param {string} cmdLabel - human-readable command, e.g. `"gh label list"`.
+ * @param {string[]} args - argv passed to `gh`.
+ * @param {{ repo?: string } & import("node:child_process").ExecFileSyncOptions} [opts]
+ * @returns {string | Buffer}
+ */
+function runGh(cmdLabel, args, { repo, ...execOpts } = {}) {
+  try {
+    return execFileSync("gh", args, {
+      cwd: root,
+      encoding: "utf-8",
+      ...execOpts,
+    });
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      console.error(
+        "sync-labels: gh is not installed — https://cli.github.com",
+      );
+      process.exit(2);
+    }
+    console.error(
+      `sync-labels: gh failed (${cmdLabel}): run \`gh auth login\` and check access to ${repo ?? "this repo"}`,
+    );
+    process.exit(2);
+  }
+}
 
 /**
  * Reads and parses `.github/labels.yml`.
@@ -45,10 +79,7 @@ function readLabelsFile() {
  */
 function resolveRepoSlug() {
   if (process.env.GITHUB_REPOSITORY) return process.env.GITHUB_REPOSITORY;
-  const out = execFileSync("gh", ["repo", "view", "--json", "nameWithOwner"], {
-    cwd: root,
-    encoding: "utf-8",
-  });
+  const out = runGh("gh repo view", ["repo", "view", "--json", "nameWithOwner"]);
   return JSON.parse(out).nameWithOwner;
 }
 
@@ -59,8 +90,8 @@ function resolveRepoSlug() {
  * @returns {Array<{ name: string, description: string, color: string }>}
  */
 function fetchRepoLabels(repo) {
-  const out = execFileSync(
-    "gh",
+  const out = runGh(
+    "gh label list",
     [
       "label",
       "list",
@@ -71,7 +102,7 @@ function fetchRepoLabels(repo) {
       "--json",
       "name,description,color",
     ],
-    { cwd: root, encoding: "utf-8" },
+    { repo },
   );
   return JSON.parse(out);
 }
@@ -85,8 +116,8 @@ function fetchRepoLabels(repo) {
  */
 function upsertLabels(repo, labels) {
   for (const label of labels) {
-    execFileSync(
-      "gh",
+    runGh(
+      "gh label create",
       [
         "label",
         "create",
@@ -99,7 +130,7 @@ function upsertLabels(repo, labels) {
         label.color,
         "--force",
       ],
-      { cwd: root, stdio: "inherit" },
+      { repo, stdio: "inherit" },
     );
   }
 }
@@ -115,10 +146,10 @@ function pruneLabels(repo, fileLabels, repoLabels) {
   const fileNames = new Set(fileLabels.map((l) => l.name));
   for (const repoLabel of repoLabels) {
     if (fileNames.has(repoLabel.name)) continue;
-    execFileSync(
-      "gh",
+    runGh(
+      "gh label delete",
       ["label", "delete", repoLabel.name, "--repo", repo, "--yes"],
-      { cwd: root, stdio: "inherit" },
+      { repo, stdio: "inherit" },
     );
   }
 }

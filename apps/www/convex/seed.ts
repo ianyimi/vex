@@ -1839,11 +1839,20 @@ export const testimonials = defineTable({
   const announcementPostDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_POSTS>> = {
     title: "VexCMS 0.1.0",
     slug: "vexcms-0-1-0",
-    excerpt: "VexCMS is Apache-2.0 licensed, built and maintained by one developer.",
+    excerpt:
+      "PLACEHOLDER — replace before D1: VexCMS is Apache-2.0 licensed, built and maintained by one developer.",
     vex_status: "draft",
     body: [
       { type: "h2", children: [{ text: "VexCMS 0.1.0" }] },
       { type: "p", children: [{ text: "VexCMS is Apache-2.0 licensed." }] },
+      {
+        type: "p",
+        children: [
+          {
+            text: "PLACEHOLDER — replace before D1: the real announcement copy for this release goes here.",
+          },
+        ],
+      },
       { type: "h2", children: [{ text: "What's next" }] },
       {
         type: "p",
@@ -1851,6 +1860,14 @@ export const testimonials = defineTable({
           {
             text: "Everything below is free and lands in the Apache-2.0 core. It ships in this order.",
           },
+        ],
+      },
+      {
+        type: "ol",
+        children: [
+          { type: "li", children: [{ text: "Plugin system" }] },
+          { type: "li", children: [{ text: "Free features, as demand appears" }] },
+          { type: "li", children: [{ text: "Brownfield adoption" }] },
         ],
       },
       { type: "h2", children: [{ text: "Who builds this" }] },
@@ -1878,10 +1895,25 @@ export const testimonials = defineTable({
       },
     ],
   }
+  // D1 publish guard: `reinit` reconciles every other seeded document
+  // unconditionally, but once an admin has published this post from the
+  // panel, blind-patching it back to this file's hard-coded `draft` status
+  // would silently unpublish the live announcement and overwrite its real
+  // body with this skeleton. Only skip when the LOCATED row is the
+  // published twin (`existingAnnouncementPost.vex_status !== "draft"`,
+  // same predicate the locator above uses) and this file still says
+  // `draft` — the inverse (seed flips to `"published"` on D1, cross-spec
+  // decision 1) is allowed to patch through normally.
+  const announcementPublishedInAdmin =
+    existingAnnouncementPost !== undefined && existingAnnouncementPost.vex_status !== "draft"
   if (existingAnnouncementPost) {
     if (mode === "patch") {
-      await ctx.db.patch(TABLE_SLUG_POSTS, existingAnnouncementPost._id, announcementPostDoc)
-      patched.push("post:vexcms-0-1-0")
+      if (announcementPublishedInAdmin && announcementPostDoc.vex_status === "draft") {
+        skipped.push("post:vexcms-0-1-0 (published in admin; seed is draft)")
+      } else {
+        await ctx.db.patch(TABLE_SLUG_POSTS, existingAnnouncementPost._id, announcementPostDoc)
+        patched.push("post:vexcms-0-1-0")
+      }
     } else {
       skipped.push("post:vexcms-0-1-0")
     }

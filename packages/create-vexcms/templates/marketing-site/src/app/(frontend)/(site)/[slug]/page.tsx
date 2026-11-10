@@ -1,10 +1,12 @@
 import { api } from "@convex/_generated/api"
 import { vexStaticParams } from "@vexcms/next/seo"
+import { fetchQuery } from "convex/nextjs"
 import { draftMode } from "next/headers"
 import { notFound } from "next/navigation"
 
 import type { PagesDocument } from "~/vex.types"
 
+import { getToken } from "~/auth/server"
 import { generatePageMetadata } from "~/lib/metadata"
 import { highlightPageBlocks } from "~/lib/highlight"
 import { resolveDocumentIconNodes } from "~/lib/iconNodes"
@@ -33,9 +35,58 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return generatePageMetadata({ slug: slug && slug.length > 0 ? slug : "home" })
 }
 
+/**
+ * Draft Mode (the live-preview iframe) fetches through `pages.getBySlugPreview`
+ * with the editor's own token instead of `getBySlug` — the published-only query
+ * always resolved to `[]` for a never-published page, and `PageContent` used to
+ * start on the published query (its SSR snapshot of `useSitePreviewMode` is
+ * always `false`), flashing `WelcomePage` before the client-side preview query
+ * swapped in. Passing `draftMode` down makes `PageContent`'s FIRST client render
+ * agree with this server render too. The `<meta name="vex-session">` hint lets
+ * `components/providers/convex.tsx`'s `hasSessionHint()` see, synchronously at
+ * hydration, that the iframe's Convex socket should start paused for auth.
+ *
+ * `draftMode().isEnabled` is read here because Draft Mode is enabled exclusively
+ * by the session-verified `/api/vex/live-preview` route handler, so this stays
+ * safe to read unconditionally without widening the route's own static/dynamic
+ * contract: outside Draft Mode the published branch below never reads cookies.
+ */
 export default async function PublicPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const normalized = slug && slug.length > 0 ? slug : "home"
+
+  const draft = await draftMode()
+  if (draft.isEnabled) {
+    const token = await getToken()
+    let initialData: PagesDocument[] | undefined
+    try {
+      initialData = await fetchQuery(
+        api.pages.getBySlugPreview,
+        { slug: normalized },
+        token ? { token } : undefined,
+      )
+    } catch {
+      initialData = undefined
+    }
+
+    const [codeHighlights, iconNodes] = await Promise.all([
+      highlightPageBlocks(initialData?.[0]?.blocks),
+      resolveDocumentIconNodes({ documents: initialData ?? [] }),
+    ])
+
+    return (
+      <>
+        <meta name="vex-session" content="1" />
+        <PageContent
+          codeHighlights={codeHighlights}
+          iconNodes={iconNodes}
+          initialData={initialData}
+          slug={normalized}
+          draftMode
+        />
+      </>
+    )
+  }
 
   // The two failure modes are deliberately NOT the same:
   //
@@ -45,10 +96,6 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
   // - The query SUCCEEDS and returns `[]`: the deployment answered, and this
   //   page genuinely does not exist. That must be a real 404, not an empty
   //   200 — an empty 200 gets the URL indexed as a live, blank page.
-  //   Exception: in a live-preview session (Draft Mode, enabled by
-  //   `/api/vex/live-preview`), a never-published page has no published row
-  //   yet; skip the 404 so the client preview layer (`getBySlugPreview`) can
-  //   render the draft. Outside Draft Mode the route stays prerendered.
   let initialData: PagesDocument[] | undefined
   let reachable = true
   try {
@@ -58,10 +105,7 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
   }
 
   if (reachable && (!initialData || initialData.length === 0)) {
-    const draft = await draftMode()
-    if (!draft.isEnabled) {
-      notFound()
-    }
+    notFound()
   }
 
   const [codeHighlights, iconNodes] = await Promise.all([

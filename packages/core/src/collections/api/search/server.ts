@@ -40,7 +40,7 @@ import {
   type VexWhere,
   type VexWhereNode,
 } from "../../../db/queryArgs";
-import { readableDocuments } from "../../../db/documents";
+import { findCollectionConfig, readableDocuments } from "../../../db/documents";
 import { resolveAccessCall } from "../../../access/resolveAccessCall";
 import { canonicalRowFilter, requiresPublishedOnly, VERSION_STATUSES } from "../../../versions";
 import { resolveWhereFields } from "../../query/resolveWhereFields";
@@ -191,7 +191,7 @@ export async function search<
       message: `search: collection "${args.collection}" was called with "sort" while searching. Search results are relevance-ordered — clear "sort" to search, or clear the search query to sort.`,
     });
   }
-  const collectionConfig = args.config?.collections.find((c) => c.slug === args.collection);
+  const collectionConfig = findCollectionConfig({ config: args.config, slug: args.collection });
   const where = normalizeArrayStoredWhere({
     where: convertCommitTsWhereToNs({
       where: args.where as VexWhereNode<string> | undefined,

@@ -11,7 +11,7 @@ import type { CollectionSlug } from "../../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS } from "../../../access";
 import { prepareEdit } from "../../../db/prepareEdit";
-import { stampCommitTsFields } from "../../../db/documents";
+import { findCollectionConfig, stampCommitTsFields } from "../../../db/documents";
 import { TDocument } from "../../../documents/types";
 import { createVersion, removeVexFields, VERSION_STATUSES } from "../../../versions";
 
@@ -73,10 +73,8 @@ export async function update<
 >(args: UpdateServerArgs<DataModel, TCollectionSlug>): Promise<void> {
   // Media collections (`config.mediaCollections`) are edited through the same
   // mutation as every other collection — the admin edit view for an image calls
-  // `vex:update` — so both lists are searched.
-  const collection =
-    args.config.collections.find((c) => c.slug === args.collection) ??
-    args.config.mediaCollections?.find((c) => c.slug === args.collection);
+  // `vex:update` — so `findCollectionConfig` searches both lists.
+  const collection = findCollectionConfig({ config: args.config, slug: args.collection });
   if (!collection) {
     throw new ConvexError(`No collection registered with slug "${args.collection}"`);
   }

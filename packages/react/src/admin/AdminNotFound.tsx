@@ -31,8 +31,11 @@ const TITLES: Record<AdminNotFoundVariant, string> = {
 
 /**
  * Shared not-found state, in {@link ListViewEmptyState}'s own visual style
- * (icon, title, detail line, one action button — `flex flex-col items-center gap-2 py-12
- * text-center`) — replaces every "TODO: add not found view" text block.
+ * (icon, title, detail line, one action button) — replaces every "TODO: add not
+ * found view" text block. `h-full flex-col items-center justify-center`: fills and
+ * centers within its content area's own definite height (`NextAdminPage.tsx`'s
+ * `renderAdminShell` wraps every branch's content in a `flex-1 min-h-0` wrapper),
+ * rather than sitting flush against the top like the rest of the form content.
  *
  * Exported from `@vexcms/react`'s main entry, NOT `@vexcms/react/server`
  * (found via a production build — moved back here after a round trip through the server entry):
@@ -64,7 +67,7 @@ const TITLES: Record<AdminNotFoundVariant, string> = {
  */
 export function AdminNotFound(props: AdminNotFoundProps) {
   return (
-    <div className="flex flex-col items-center gap-2 py-12 text-center">
+    <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
       <Icon name="FileQuestionMark" className="mb-2 size-10 text-muted-foreground" />
       <h3 className="font-medium">{TITLES[props.variant]}</h3>
       <p className="max-w-sm text-sm text-muted-foreground">{props.detail}</p>

@@ -34,7 +34,7 @@ import {
   type VexWhereNode,
   type VexWithIndex,
 } from "../../../db/queryArgs";
-import { readableDocuments } from "../../../db/documents";
+import { findCollectionConfig, readableDocuments } from "../../../db/documents";
 import { resolveReadCall } from "../../../access/resolveReadCall";
 import { canonicalRowFilter, composeStatusQueryConstraint } from "../../../versions";
 import { resolveQueryIndex } from "../../query/resolveQueryIndex";
@@ -254,7 +254,7 @@ export async function find<
     resource,
     action,
   });
-  const collectionConfig = args.config?.collections.find((c) => c.slug === args.collection);
+  const collectionConfig = findCollectionConfig({ config: args.config, slug: args.collection });
   const where = normalizeArrayStoredWhere({
     where: convertCommitTsWhereToNs({
       where: args.where as VexWhereNode<string> | undefined,
