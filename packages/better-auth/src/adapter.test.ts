@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { betterAuthAdapter } from "./adapter";
-import { admin } from "better-auth/plugins";
+import { oauthProvider } from "@better-auth/oauth-provider";
+import { admin, deviceAuthorization } from "better-auth/plugins";
 import { getDataFields, type AdminDataField } from "@vexcms/core";
 
 describe("betterAuthAdapter", () => {
@@ -187,6 +188,81 @@ describe("betterAuthAdapter", () => {
     expect(bio?.type).toBe("text");
     expect(bio?.required).toBe(true);
     expect(bio?.defaultValue).toBe("Hello");
+  });
+});
+
+describe("betterAuthAdapter — indexes", () => {
+  it("builds account/session compound indexes with alphabetically sorted fields", () => {
+    const adapter = betterAuthAdapter();
+    const account = adapter.collections.find((c) => c.slug === "account");
+    const session = adapter.collections.find((c) => c.slug === "session");
+    const accountIndexNames = (account?.indexes ?? []).map((i) => i.name);
+    const sessionIndexNames = (session?.indexes ?? []).map((i) => i.name);
+
+    expect(accountIndexNames).toEqual(
+      expect.arrayContaining([
+        "by_accountId",
+        "by_accountId_providerId",
+        "by_accountId_providerId_userId",
+        "by_providerId_userId",
+      ]),
+    );
+    expect(account?.indexes?.find((i) => i.name === "by_accountId_providerId")?.fields).toEqual([
+      "accountId",
+      "providerId",
+    ]);
+
+    expect(sessionIndexNames).toEqual(
+      expect.arrayContaining(["by_expiresAt", "by_userId_expiresAt"]),
+    );
+  });
+
+  it("drops a core-list candidate naming a field the table doesn't have (user's \"userId\" entry)", () => {
+    const adapter = betterAuthAdapter();
+    const user = adapter.collections.find((c) => c.slug === "user");
+    const userIndexNames = (user?.indexes ?? []).map((i) => i.name);
+
+    expect(userIndexNames).toEqual(expect.arrayContaining(["by_name", "by_email_name"]));
+    expect(userIndexNames.some((name) => name.includes("userId"))).toBe(false);
+  });
+
+  it("adds compound/plugin-declared indexes deviceAuthorization and oauthProvider need (deviceCode, oauthClientResource)", () => {
+    const adapter = betterAuthAdapter({
+      config: {
+        plugins: [deviceAuthorization(), oauthProvider({ loginPage: "/sign-in", consentPage: "/consent" })],
+      },
+    });
+    const deviceCode = adapter.collections.find((c) => c.slug === "deviceCode");
+    const oauthClientResource = adapter.collections.find((c) => c.slug === "oauthClientResource");
+
+    expect((deviceCode?.indexes ?? []).map((i) => i.name)).toEqual(
+      expect.arrayContaining(["by_deviceCode", "by_userCode"]),
+    );
+    expect((oauthClientResource?.indexes ?? []).map((i) => i.name)).toContain("by_clientId_resourceId");
+    expect(
+      oauthClientResource?.indexes?.find((i) => i.name === "by_clientId_resourceId")?.fields,
+    ).toEqual(["clientId", "resourceId"]);
+  });
+
+  it("never emits duplicate index names on any adapter collection", () => {
+    const adapter = betterAuthAdapter({
+      config: {
+        plugins: [deviceAuthorization(), oauthProvider({ loginPage: "/sign-in", consentPage: "/consent" })],
+      },
+    });
+    for (const collection of adapter.collections) {
+      const names = (collection.indexes ?? []).map((i) => i.name);
+      expect(new Set(names).size).toBe(names.length);
+    }
+  });
+
+  it("skips rateLimit.key as a duplicate of its own field-level unique index, keeping lastRequest", () => {
+    const adapter = betterAuthAdapter({ config: { rateLimit: { storage: "database" } } });
+    const rateLimit = adapter.collections.find((c) => c.slug === "rateLimit");
+    const indexNames = (rateLimit?.indexes ?? []).map((i) => i.name);
+    expect(indexNames).not.toContain("by_key");
+    expect(indexNames).toContain("by_lastRequest");
+    expect((rateLimit?.fields.key as { index?: string } | undefined)?.index).toBe("by_key");
   });
 });
 

@@ -77,6 +77,11 @@
   description: A maintainer wants help on this one
   color: "008672"
 
+# automation (GitHub's own default for the Dependabot label)
+- name: dependencies
+  description: Pull requests that update a dependency file
+  color: 0366D6
+
 # resolution (gray family, darkens with finality)
 - name: duplicate
   description: Already reported or requested elsewhere

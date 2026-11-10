@@ -11,6 +11,8 @@ touches:
   - apps/www/e2e/routes.ts
   - .agent/docs/product/v0.1.0-launch-plan.md
   - .agent/docs/product/backlog.md
+  - .agent/docs/standards/docs/voice-and-wording.md
+  - .agent/docs/standards/anti-patterns.md
 prompt_version: 1
 ---
 
@@ -22,6 +24,7 @@ prompt_version: 1
 > **Wording source:** `2026-11-06-public-presence/public-copy.md`, quoted verbatim. Nothing public names a paid tier, a paid feature, a price or a customer.
 > **Binding:** `.agent/docs/product/launch-cross-spec-decisions.md` (2026-11-07). "Cross-spec decision N" refers to its table.
 > **Order:** steps 1–7 can start now. Steps 8–11 wait on other specs (marked; step 8 on quality-pass steps 6–7). Steps 12–22 (L) run after every surface-changing spec has landed (items 14, 15, 16, and steps 1–11 here), directly before Release. Nothing changes after step 22 except the Release version bumps and `copy-flip.patch`.
+> **Scope change (developer, 2026-11-09; spec.md Design Decision 25):** a new step 24 "Example posts" runs **before step 6** (numbered 24 so steps 6–23 keep the numbers the board, sibling specs and cross-spec decisions cite). L excludes JSDoc and TypeDoc API pages; it covers the public docs pages, www, GitHub (README, community files, issue forms, starter issues, Discussions), npm READMEs, template output, the launch posts and the release notes. L runs as a review-and-iterate loop: the developer gives feedback in the session, the agent applies it to every surface it affects and logs it in `standards/docs/voice-and-wording.md` (or `anti-patterns.md`). Step 8's shot list is owned by the demo spec; step 8's checks run against that version.
 > **Release blocker found while writing this spec (handed to Release, item 18; still open):** the root `release` script publishes with `--tag alpha`, and every published package has `publishConfig.tag: "alpha"`. `create-vexcms`'s `latest` is still `0.0.20`, so without a fix the post-flip `pnpm create vexcms` installs the old scaffolder. Step 23 writes the fix into the launch plan's § Release mechanics tasks at the latest. See spec.md § Handoffs.
 > **Re-seeding:** `seed:reinit` (patch mode) in every verify and re-seed instruction (cross-spec decision 9).
 > **Out of scope:** Reddit, X, Bluesky, Lobsters, AlternativeTo, Convex showcase outreach, a "coming from Payload" guide, a live-build video, a posts index/RSS, launch metrics reporting, Launch itself (item 19 runs `launch-kit.md`), edits to other specs, and the unstaged telemetry work.
@@ -33,12 +36,12 @@ Verify: `sources.md` has a URL, fetch date and status for every channel in use. 
 
 ## Step 2 — Accounts, lead time and Convex Discord rules [dev]
 Why: HN and PH both reject brand accounts. HN asks for an account that isn't used "primarily for promotion", and that history takes weeks to build. The Convex Discord rules are behind login. Starting these first hides their lead time behind the rest of the work.
-Verify: the kit's Accounts table lists each account (handle, created date, profile complete, email verified); the Convex Discord pinned rules are pasted into the Convex Discord brief, with the date read
-- [ ] HN account in your own name (not `vexcms`); take part in threads you'd read anyway from now until launch
-- [ ] Product Hunt personal profile: first + last name, photo, headline, unique non-company username, verified email
-- [ ] dev.to and Hashnode accounts
-- [ ] DevHunt: sign in with GitHub (purchase happens in step 10)
-- [ ] Join the Convex Discord; copy the show-and-tell channel's pinned rules into `launch-kit.md`
+Verify: the Accounts table in `launch-kit.md` lists each account (handle, created, profile complete, email verified); the Convex Discord brief records that #show-and-tell has no pinned rules and that D1 is a comment under the developer's existing post (developer, 2026-11-08)
+- [x] HN account in your own name (not `vexcms`); take part in threads you'd read anyway from now until launch
+- [x] Product Hunt personal profile: first + last name, photo, headline, unique non-company username, verified email
+- [x] dev.to and Hashnode accounts
+- [x] DevHunt: sign in with GitHub (purchase happens in step 10)
+- [x] Join the Convex Discord; copy the show-and-tell channel's pinned rules into `launch-kit.md`
 
 ## Step 3 — Launch kit: channel briefs and fact sheet [agent]
 Why: the developer writes every post. A per-channel brief puts the rules, limits, required links and verbatim strings in one place, so writing by hand isn't also research.
@@ -61,6 +64,13 @@ Verify: every day D-1…D5 has timed rows (PT) with channel, artifact, link targ
 - [ ] Launch-morning checklist (T-1 after Release and D1 05:30 PT): production SHAs vs the reviewed SHA, npm dist-tags and pages, GitHub `master` surfaces, the demo, monitors
 - [ ] Post-launch routine: daily sweep for 14 days, plus the feedback log format
 
+## Step 24 — Example posts [agent]
+Why: the developer writes every post (decision 2). Reading strong posts from the same platform and genre first makes that faster without an agent writing a word of it.
+Verify: `launch-post-examples.md` has a `## <slot id>` section for every slot in `launch-kit.md`, each with 3–5 ranked examples (link, date, numbers with a read date or `[UNVERIFIED]`, quoted opening line, why it worked) and a `### Checklist`, plus the slot's constraints from `sources.md`. Every URL in it is in `sources.md` with a fetch date. No post prose for VexCMS anywhere in it
+- [ ] Examples per slot, priority: same platform + similar content (OSS dev tools, CMSs, backend frameworks, Convex ecosystem) → same platform, other dev tools → other platforms
+- [ ] How-to guides: Show HN guidelines + dang's tips, Product Hunt's maker guide, Supabase's launch-week writeups, the best "how to write a launch post" guides
+- [ ] `launch-post-examples.md` organized by slot; `sources.md` § 6 records every URL and fetch date
+
 ## Step 6 — Hand-written posts and listing copy [dev]
 Why: the words are yours on every channel (decision 2). Drafting before the clips and seed work lets the lint and L read them early.
 Verify: every post slot in `launch-kit.md` is filled, and step 7's lint log shows no open item
@@ -78,7 +88,7 @@ Verify: the lint log in `launch-kit.md` lists every check × post with pass/find
 
 ## Step 8 — Shared media session: feature clips, demo media, `/tour` screenshots [dev] [blocked: quality-pass steps 6–7]
 Why: clips, GIFs and screenshots freeze the UI. One session after the admin and www visual fixes covers every frozen image that ships at launch (cross-spec decision 7).
-Verify: 4 clips in `apps/www/public/launch/`, each H.264 MP4, ≤ 60 s, ≤ 10 MB, silent (`ffprobe` shows no audio stream), and `curl -sI http://localhost:3030/launch/<file>.mp4` returns 200. 4 `/tour` PNGs at 1280×800, with `diff -r apps/www/public/tour apps/test/public/tour` printing nothing. Public-presence step 16's own Verify passes on its media
+Verify: 4 clips in `apps/www/public/launch/`, each H.264 MP4, ≤ 60 s, ≤ 10 MB, silent (`ffprobe` shows no audio stream), and `curl -sI http://localhost:3030/launch/<file>.mp4` returns 200. 4 `/tour` PNGs at 1280×800, with `diff -r apps/www/public/tour apps/test/public/tour` printing nothing. Public-presence step 16's own Verify passes on its media. The shot list (file names, counts, contents) is the demo spec's version (Design Decision 25); these checks run against whatever files that version lists
 - [ ] `real-time-admin-and-live-preview.mp4`, `one-config-schema-and-types.mp4`, `access-control-hooks-validation.mp4`, `create-vexcms-to-deployed.mp4`
 - [ ] Public-presence step 16's demo MP4, hero GIF and fixed-size screenshots, recorded in the same session
 - [ ] The 4 `/tour` screenshots recaptured and copied into `apps/www/public/tour/` and `apps/test/public/tour/`
@@ -116,10 +126,11 @@ Why: puts the mechanical evidence (strings, links, manifests, settings, scaffold
 Verify: `l-prepass.md` has a section per matrix row and per check in spec.md, each with the command run and its full output (or an artifact path). The link check covers every URL on every surface
 - [ ] String sweeps, link check, packed manifests and READMEs, GitHub API dumps, `verify-scaffold.mjs --keep`, docs build, launch-kit lint re-run
 
-## Step 14 — L: docs and API reference [dev]
+## Step 14 — L: public docs pages [dev]
 Why: the docs are where a stranger checks whether a claim is real.
 Verify: every docs row in `surface-review.md` is marked pass or links a finding
-- [ ] Every page under `apps/docs/src/content/docs/` against today's code, including roadmap, compare and accessibility; TypeDoc API pages spot-read; llms.txt details
+- [ ] Every page under `apps/docs/src/content/docs/` (outside `api/`) against today's code, including roadmap, compare and accessibility; llms.txt details. JSDoc and the TypeDoc `api/**` pages are out of L's scope (Design Decision 25)
+- [ ] Every L step (14–22) is a review-and-iterate loop: feedback given in the session is applied by the agent to every surface it affects, logged as a VW entry (or AP), and re-read
 
 ## Step 15 — L: READMEs and npm manifests [dev]
 Why: the README and npm pages are the first thing the npm and GitHub crowd reads.
@@ -159,9 +170,9 @@ Verify: every matrix cell is filled (match / finding / n/a); `copy-flip.patch` i
 - [ ] Read `copy-flip.patch` line by line
 
 ## Step 22 — L: findings and sign-off [dev]
-Why: blockers are fixed before Release; everything else is recorded, not lost.
-Verify: `l-findings.md` has no open `blocker`. Each fixed blocker's surface is re-checked and its row re-marked. Each non-blocker names the `backlog.md` entry step 23 writes for it. `surface-review.md` carries the final reviewed SHA and your sign-off line
-- [ ] Fix blockers; re-check the touched surfaces and every matrix row they feed; regenerate `copy-flip.patch` if a fix touched its files
+Why: everything the developer raises is applied before Release unless the developer defers it; deferred items are recorded, not lost.
+Verify: `l-findings.md` has no open `blocker`. Each applied finding's surfaces are re-checked and their rows re-marked. Each deferred finding names the `backlog.md` entry step 23 writes for it. Every wording finding has its VW (or AP) entry. `surface-review.md` carries the final reviewed SHA and your sign-off line
+- [ ] Agent applies each finding in the session to every surface it affects; re-checks the touched surfaces and every matrix row they feed; regenerates `copy-flip.patch` if a fix touched its files
 - [ ] Sign off with the reviewed SHA
 
 ## Step 23 — Launch plan and backlog updates [agent]

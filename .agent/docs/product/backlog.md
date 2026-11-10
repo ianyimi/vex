@@ -1606,18 +1606,6 @@ from making the gate measure honestly.
 
 ---
 
-## Upgrade the Better Auth stack (oidc-provider deprecation)
-
-**What.** Bump `@convex-dev/better-auth` and `better-auth` to versions that drop the deprecated `oidc-provider` dependency path currently surfacing a deprecation warning.
-**Why.** The current pinned versions pull in `oidc-provider` in a way upstream has since deprecated; staying on the old versions keeps the warning around and leaves the project on an aging auth dependency chain.
-**Lift.** Target `@convex-dev/better-auth@0.13.0` (latest on npm, checked 2026-11-09; repo is on 0.11.5): its `convex()` plugin no longer routes through `oidc-provider`, per `.agent/docs/specs/2026-11-07-pre-launch-dependency-upgrades/spec.md`. After the bump, delete the two warning filters added as stopgaps: `packages/cli/src/lib/loadConfig.ts` (around the config import) and the templates'/apps' `convex/http.ts`. Check the changelog for breaking changes to the auth component API this repo's `convex/auth/*` uses.
-**Blocked by.** Nothing technically; needs the version bump scheduled.
-**Why deferred.** Developer decision D4 (`2026-11-06-launch-infrastructure` N run-through, 2026-11-09): auth stack upgrade is scoped for after launch, not inside this run-through's fix pass.
-**Conflict to resolve (2026-11-09).** D4 conflicts with `2026-11-07-pre-launch-dependency-upgrades` step 3, which does this upgrade before launch: better-auth 1.6.x carries critical GHSA-965c-763c-88jm (fixed only in ≥1.7.7, confirmed again by the Dependabot triage), and `catalogs.peers.better-auth` `<1.7.0` stops `@vexcms/better-auth` consumers from taking the fix. Decide which one stands; see `.agent/docs/research/pre-launch-dependency-review.md` § Dependabot triage.
-**Where.** `packages/better-auth`, `apps/www/convex/auth/*`.
-
----
-
 ## Repo transfer: `ianyimi/vex` → the `vexcms` org
 
 **What.** Transfer the repository into the `vexcms` GitHub organisation (claimed, not
@@ -1823,3 +1811,19 @@ never hit it. Only a render error that coincides with an outage reaches the glob
 
 **Lift.** Catch the rejected auth promise in the sidebar (render the skeleton or a sign-in
 prompt), or move a boundary above the layout. Found in the LI-22 D7 run (2026-11-09).
+
+---
+
+## Package lint configs import undeclared ESLint packages
+
+**What.** `packages/next/eslint.config.mjs` and `packages/react/eslint.config.mjs` import
+`eslint-config-next`, `eslint-plugin-import-x`, `eslint-plugin-perfectionist`, `globals` and
+`typescript-eslint`, none of which those packages declare. They resolve only through hoisting,
+so `pnpm exec eslint -c packages/next/eslint.config.mjs packages/next/src` fails from the root.
+
+**Impact.** Low: the root `pnpm lint` (root `eslint.config.mjs`) is the gate for `packages/*/src`;
+these two configs are never loaded by CI.
+
+**Lift.** Either declare the ESLint packages as `devDependencies` of both packages, or delete the
+two package-level configs and rely on the root one. Found in the pre-launch dependency upgrade
+polish (2026-11-10).

@@ -208,6 +208,14 @@ export const PLUGIN_SCHEMAS: Record<string, PluginDBSchema> = {
         "expiresAt": {
           "type": "date",
           "required": false
+        },
+        "alg": {
+          "type": "string",
+          "required": false
+        },
+        "crv": {
+          "type": "string",
+          "required": false
         }
       }
     }
@@ -251,7 +259,21 @@ export const PLUGIN_SCHEMAS: Record<string, PluginDBSchema> = {
           "type": "string",
           "required": false
         }
-      }
+      },
+      "indexes": [
+        {
+          "fields": [
+            "deviceCode"
+          ],
+          "unique": true
+        },
+        {
+          "fields": [
+            "userCode"
+          ],
+          "unique": true
+        }
+      ]
     }
   },
   "jwt": {
@@ -272,85 +294,391 @@ export const PLUGIN_SCHEMAS: Record<string, PluginDBSchema> = {
         "expiresAt": {
           "type": "date",
           "required": false
+        },
+        "alg": {
+          "type": "string",
+          "required": false
+        },
+        "crv": {
+          "type": "string",
+          "required": false
         }
       }
     }
   },
-  "mcp": {
-    "oauthApplication": {
-      "modelName": "oauthApplication",
+  "oauthProvider": {
+    "oauthClient": {
+      "modelName": "oauthClient",
       "fields": {
-        "name": {
-          "type": "string"
-        },
-        "icon": {
-          "type": "string",
-          "required": false
-        },
-        "metadata": {
-          "type": "string",
-          "required": false
-        },
         "clientId": {
           "type": "string",
-          "unique": true
+          "unique": true,
+          "required": true
         },
         "clientSecret": {
           "type": "string",
           "required": false
         },
-        "redirectUrls": {
-          "type": "string"
+        "clientDiscoveryId": {
+          "type": "string",
+          "required": false
         },
-        "type": {
-          "type": "string"
+        "disabled": {
+          "type": "boolean",
+          "defaultValue": false,
+          "required": false
+        },
+        "skipConsent": {
+          "type": "boolean",
+          "required": false
+        },
+        "enableEndSession": {
+          "type": "boolean",
+          "required": false
+        },
+        "subjectType": {
+          "type": "string",
+          "required": false
+        },
+        "scopes": {
+          "type": "string[]",
+          "required": false
+        },
+        "clientCredentialsScopes": {
+          "type": "string[]",
+          "required": false,
+          "defaultValue": []
+        },
+        "userId": {
+          "type": "string",
+          "required": false,
+          "references": {
+            "model": "user",
+            "field": "id"
+          },
+          "index": true
+        },
+        "createdAt": {
+          "type": "date",
+          "required": false
+        },
+        "updatedAt": {
+          "type": "date",
+          "required": false
+        },
+        "name": {
+          "type": "string",
+          "required": false
+        },
+        "uri": {
+          "type": "string",
+          "required": false
+        },
+        "icon": {
+          "type": "string",
+          "required": false
+        },
+        "contacts": {
+          "type": "string[]",
+          "required": false
+        },
+        "tos": {
+          "type": "string",
+          "required": false
+        },
+        "policy": {
+          "type": "string",
+          "required": false
+        },
+        "softwareId": {
+          "type": "string",
+          "required": false
+        },
+        "softwareVersion": {
+          "type": "string",
+          "required": false
+        },
+        "softwareStatement": {
+          "type": "string",
+          "required": false
+        },
+        "redirectUris": {
+          "type": "string[]",
+          "required": true
+        },
+        "postLogoutRedirectUris": {
+          "type": "string[]",
+          "required": false
+        },
+        "backchannelLogoutUri": {
+          "type": "string",
+          "required": false
+        },
+        "backchannelLogoutSessionRequired": {
+          "type": "boolean",
+          "required": false
+        },
+        "tokenEndpointAuthMethod": {
+          "type": "string",
+          "required": false
+        },
+        "applicationType": {
+          "type": "string",
+          "required": false
+        },
+        "jwks": {
+          "type": "string",
+          "required": false
+        },
+        "jwksUri": {
+          "type": "string",
+          "required": false
+        },
+        "grantTypes": {
+          "type": "string[]",
+          "required": false
+        },
+        "responseTypes": {
+          "type": "string[]",
+          "required": false
+        },
+        "requirePKCE": {
+          "type": "boolean",
+          "required": false
+        },
+        "dpopBoundAccessTokens": {
+          "type": "boolean",
+          "required": false,
+          "defaultValue": false
+        },
+        "referenceId": {
+          "type": "string",
+          "required": false
+        },
+        "metadata": {
+          "type": "json",
+          "required": false
+        }
+      }
+    },
+    "oauthResource": {
+      "modelName": "oauthResource",
+      "fields": {
+        "identifier": {
+          "type": "string",
+          "required": true,
+          "unique": true
+        },
+        "name": {
+          "type": "string",
+          "required": true
+        },
+        "accessTokenTtl": {
+          "type": "number",
+          "required": false
+        },
+        "refreshTokenTtl": {
+          "type": "number",
+          "required": false
+        },
+        "signingAlgorithm": {
+          "type": "string",
+          "required": false
+        },
+        "signingKeyId": {
+          "type": "string",
+          "required": false
+        },
+        "allowedScopes": {
+          "type": "string[]",
+          "required": false
+        },
+        "customClaims": {
+          "type": "json",
+          "required": false
+        },
+        "dpopBoundAccessTokensRequired": {
+          "type": "boolean",
+          "required": false,
+          "defaultValue": false
         },
         "disabled": {
           "type": "boolean",
           "required": false,
           "defaultValue": false
         },
-        "userId": {
-          "type": "string",
+        "createdAt": {
+          "type": "date",
+          "required": false
+        },
+        "updatedAt": {
+          "type": "date",
+          "required": false
+        },
+        "policyVersion": {
+          "type": "number",
           "required": false,
+          "defaultValue": 1
+        },
+        "metadata": {
+          "type": "json",
+          "required": false
+        }
+      }
+    },
+    "oauthClientResource": {
+      "modelName": "oauthClientResource",
+      "fields": {
+        "clientId": {
+          "type": "string",
+          "required": true,
           "references": {
-            "model": "user",
-            "field": "id",
+            "model": "oauthClient",
+            "field": "clientId",
             "onDelete": "cascade"
           },
           "index": true
         },
+        "resourceId": {
+          "type": "string",
+          "required": true,
+          "references": {
+            "model": "oauthResource",
+            "field": "identifier",
+            "onDelete": "cascade"
+          },
+          "index": true
+        },
+        "metadata": {
+          "type": "json",
+          "required": false
+        },
+        "createdAt": {
+          "type": "date",
+          "required": false
+        }
+      },
+      "indexes": [
+        {
+          "fields": [
+            "clientId",
+            "resourceId"
+          ],
+          "unique": true
+        }
+      ]
+    },
+    "oauthRefreshToken": {
+      "fields": {
+        "token": {
+          "type": "string",
+          "required": true,
+          "unique": true
+        },
+        "clientId": {
+          "type": "string",
+          "required": true,
+          "references": {
+            "model": "oauthClient",
+            "field": "clientId"
+          },
+          "index": true
+        },
+        "sessionId": {
+          "type": "string",
+          "required": false,
+          "references": {
+            "model": "session",
+            "field": "id",
+            "onDelete": "set null"
+          },
+          "index": true
+        },
+        "userId": {
+          "type": "string",
+          "required": true,
+          "references": {
+            "model": "user",
+            "field": "id"
+          },
+          "index": true
+        },
+        "referenceId": {
+          "type": "string",
+          "required": false
+        },
+        "authorizationCodeId": {
+          "type": "string",
+          "required": false,
+          "index": true
+        },
+        "resources": {
+          "type": "string[]",
+          "required": false
+        },
+        "requestedUserInfoClaims": {
+          "type": "string[]",
+          "required": false
+        },
+        "expiresAt": {
+          "type": "date"
+        },
         "createdAt": {
           "type": "date"
         },
-        "updatedAt": {
-          "type": "date"
+        "revoked": {
+          "type": "date",
+          "required": false
+        },
+        "rotatedAt": {
+          "type": "date",
+          "required": false
+        },
+        "rotationReplayResponse": {
+          "type": "string",
+          "required": false
+        },
+        "rotationReplayExpiresAt": {
+          "type": "date",
+          "required": false
+        },
+        "authTime": {
+          "type": "date",
+          "required": false
+        },
+        "confirmation": {
+          "type": "json",
+          "required": false
+        },
+        "scopes": {
+          "type": "string[]",
+          "required": true
         }
       }
     },
     "oauthAccessToken": {
       "modelName": "oauthAccessToken",
       "fields": {
-        "accessToken": {
+        "token": {
           "type": "string",
           "unique": true
-        },
-        "refreshToken": {
-          "type": "string",
-          "unique": true
-        },
-        "accessTokenExpiresAt": {
-          "type": "date"
-        },
-        "refreshTokenExpiresAt": {
-          "type": "date"
         },
         "clientId": {
           "type": "string",
+          "required": true,
           "references": {
-            "model": "oauthApplication",
-            "field": "clientId",
-            "onDelete": "cascade"
+            "model": "oauthClient",
+            "field": "clientId"
+          },
+          "index": true
+        },
+        "sessionId": {
+          "type": "string",
+          "required": false,
+          "references": {
+            "model": "session",
+            "field": "id",
+            "onDelete": "set null"
           },
           "index": true
         },
@@ -359,19 +687,53 @@ export const PLUGIN_SCHEMAS: Record<string, PluginDBSchema> = {
           "required": false,
           "references": {
             "model": "user",
-            "field": "id",
-            "onDelete": "cascade"
+            "field": "id"
           },
           "index": true
         },
-        "scopes": {
-          "type": "string"
+        "referenceId": {
+          "type": "string",
+          "required": false
+        },
+        "authorizationCodeId": {
+          "type": "string",
+          "required": false,
+          "index": true
+        },
+        "resources": {
+          "type": "string[]",
+          "required": false
+        },
+        "requestedUserInfoClaims": {
+          "type": "string[]",
+          "required": false
+        },
+        "refreshId": {
+          "type": "string",
+          "required": false,
+          "references": {
+            "model": "oauthRefreshToken",
+            "field": "id"
+          },
+          "index": true
+        },
+        "expiresAt": {
+          "type": "date"
         },
         "createdAt": {
           "type": "date"
         },
-        "updatedAt": {
-          "type": "date"
+        "revoked": {
+          "type": "date",
+          "required": false
+        },
+        "confirmation": {
+          "type": "json",
+          "required": false
+        },
+        "scopes": {
+          "type": "string[]",
+          "required": true
         }
       }
     },
@@ -380,80 +742,37 @@ export const PLUGIN_SCHEMAS: Record<string, PluginDBSchema> = {
       "fields": {
         "clientId": {
           "type": "string",
+          "required": true,
           "references": {
-            "model": "oauthApplication",
-            "field": "clientId",
-            "onDelete": "cascade"
+            "model": "oauthClient",
+            "field": "clientId"
           },
           "index": true
         },
         "userId": {
           "type": "string",
+          "required": false,
           "references": {
             "model": "user",
-            "field": "id",
-            "onDelete": "cascade"
+            "field": "id"
           },
           "index": true
+        },
+        "referenceId": {
+          "type": "string",
+          "required": false
+        },
+        "resources": {
+          "type": "string[]",
+          "required": false
+        },
+        "requestedUserInfoClaims": {
+          "type": "string[]",
+          "required": false
         },
         "scopes": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "date"
-        },
-        "updatedAt": {
-          "type": "date"
-        },
-        "consentGiven": {
-          "type": "boolean"
-        }
-      }
-    }
-  },
-  "oidcProvider": {
-    "oauthApplication": {
-      "modelName": "oauthApplication",
-      "fields": {
-        "name": {
-          "type": "string"
-        },
-        "icon": {
-          "type": "string",
-          "required": false
-        },
-        "metadata": {
-          "type": "string",
-          "required": false
-        },
-        "clientId": {
-          "type": "string",
-          "unique": true
-        },
-        "clientSecret": {
-          "type": "string",
-          "required": false
-        },
-        "redirectUrls": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        },
-        "disabled": {
-          "type": "boolean",
-          "required": false,
-          "defaultValue": false
-        },
-        "userId": {
-          "type": "string",
-          "required": false,
-          "references": {
-            "model": "user",
-            "field": "id",
-            "onDelete": "cascade"
-          },
-          "index": true
+          "type": "string[]",
+          "required": true
         },
         "createdAt": {
           "type": "date"
@@ -463,85 +782,12 @@ export const PLUGIN_SCHEMAS: Record<string, PluginDBSchema> = {
         }
       }
     },
-    "oauthAccessToken": {
-      "modelName": "oauthAccessToken",
+    "oauthClientAssertion": {
+      "modelName": "oauthClientAssertion",
       "fields": {
-        "accessToken": {
-          "type": "string",
-          "unique": true
-        },
-        "refreshToken": {
-          "type": "string",
-          "unique": true
-        },
-        "accessTokenExpiresAt": {
-          "type": "date"
-        },
-        "refreshTokenExpiresAt": {
-          "type": "date"
-        },
-        "clientId": {
-          "type": "string",
-          "references": {
-            "model": "oauthApplication",
-            "field": "clientId",
-            "onDelete": "cascade"
-          },
-          "index": true
-        },
-        "userId": {
-          "type": "string",
-          "required": false,
-          "references": {
-            "model": "user",
-            "field": "id",
-            "onDelete": "cascade"
-          },
-          "index": true
-        },
-        "scopes": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "date"
-        },
-        "updatedAt": {
-          "type": "date"
-        }
-      }
-    },
-    "oauthConsent": {
-      "modelName": "oauthConsent",
-      "fields": {
-        "clientId": {
-          "type": "string",
-          "references": {
-            "model": "oauthApplication",
-            "field": "clientId",
-            "onDelete": "cascade"
-          },
-          "index": true
-        },
-        "userId": {
-          "type": "string",
-          "references": {
-            "model": "user",
-            "field": "id",
-            "onDelete": "cascade"
-          },
-          "index": true
-        },
-        "scopes": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "date"
-        },
-        "updatedAt": {
-          "type": "date"
-        },
-        "consentGiven": {
-          "type": "boolean"
+        "expiresAt": {
+          "type": "date",
+          "required": true
         }
       }
     }
@@ -698,6 +944,13 @@ export const PLUGIN_SCHEMAS: Record<string, PluginDBSchema> = {
           "type": "string",
           "required": true
         },
+        "memberCount": {
+          "type": "number",
+          "required": true,
+          "defaultValue": 0,
+          "input": false,
+          "returned": false
+        },
         "organizationId": {
           "type": "string",
           "required": true,
@@ -736,6 +989,13 @@ export const PLUGIN_SCHEMAS: Record<string, PluginDBSchema> = {
             "field": "id"
           },
           "index": true
+        },
+        "membershipKey": {
+          "type": "string",
+          "required": false,
+          "unique": true,
+          "input": false,
+          "returned": false
         },
         "createdAt": {
           "type": "date",

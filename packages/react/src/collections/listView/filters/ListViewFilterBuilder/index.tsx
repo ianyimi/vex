@@ -22,7 +22,10 @@ import {
   type ListViewFilterGroup,
   type ListViewFilterLeaf,
 } from "../listViewFilterGroups";
-import { LIST_VIEW_FILTER_STATUS_FIELD_KEY, listViewFilterOpsForFieldType } from "../listViewFilterOperators";
+import {
+  LIST_VIEW_FILTER_STATUS_FIELD_KEY,
+  listViewFilterOpsForFieldType,
+} from "../listViewFilterOperators";
 import { isFilterRowComplete, ListViewFilterRow, type DraftFilterRow } from "./ListViewFilterRow";
 
 /** One OR-ed group of AND-ed {@link DraftFilterRow}s — the builder's own draft shape, mirroring {@link ListViewFilterGroup} but with an explicit per-row editor op. */
@@ -35,9 +38,15 @@ interface DraftFilterGroup {
  * @param groups - The stored DNF groups from `toListViewFilterGroups(props.where)`.
  * @returns The equivalent draft groups, one draft row per leaf, each carrying its own editor-level `op`.
  */
-function toDraftGroups(groups: readonly ListViewFilterGroup<string>[]): readonly DraftFilterGroup[] {
+function toDraftGroups(
+  groups: readonly ListViewFilterGroup<string>[],
+): readonly DraftFilterGroup[] {
   return groups.map((group) => ({
-    rows: group.rows.map((leaf) => ({ field: leaf.field, op: listFilterOpOf({ leaf }), value: leaf.value })),
+    rows: group.rows.map((leaf) => ({
+      field: leaf.field,
+      op: listFilterOpOf({ leaf }),
+      value: leaf.value,
+    })),
   }));
 }
 
@@ -74,9 +83,13 @@ function emptyFilterValueForType(type: string): unknown {
  * @param groups - The draft groups currently shown in the builder.
  * @returns The `VexWhereNode` equivalent of `groups` with incomplete rows and empty groups filtered out, or `undefined` if no group has any complete row.
  */
-function computeAppliedWhere(groups: readonly DraftFilterGroup[]): VexWhereNode<string> | undefined {
+function computeAppliedWhere(
+  groups: readonly DraftFilterGroup[],
+): VexWhereNode<string> | undefined {
   const appliedGroups = groups
-    .map((group) => ({ rows: group.rows.filter((row) => isFilterRowComplete(row)).map(toStoredFilterLeaf) }))
+    .map((group) => ({
+      rows: group.rows.filter((row) => isFilterRowComplete(row)).map(toStoredFilterLeaf),
+    }))
     .filter((group) => group.rows.length > 0);
   return fromListViewFilterGroups({ groups: appliedGroups });
 }
@@ -219,7 +232,10 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
   function buildNewRow(): DraftFilterRow | undefined {
     const firstFieldKey = Object.keys(dataFields)[0];
     if (firstFieldKey === undefined) return undefined;
-    const firstOp = listViewFilterOpsForFieldType({ type: dataFields[firstFieldKey]!.type, field: firstFieldKey })[0];
+    const firstOp = listViewFilterOpsForFieldType({
+      type: dataFields[firstFieldKey]!.type,
+      field: firstFieldKey,
+    })[0];
     return { field: firstFieldKey, op: firstOp ?? "eq", value: "" };
   }
 
@@ -247,7 +263,7 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
    * the old empty-state "Add filter" button first. The seeded row stays
    * incomplete (`value: ""`) until filled, so `applyDraft` excludes it from
    * `onWhereChange` — opening the builder alone never changes the query or
-   * URL. "Add filter"/"OR conditions" remain for every row/group beyond
+   * URL. "Add filter"/"OR" remain for every row/group beyond
    * this first one.
    * @param next - The overlay's next open state, from the `Popover`'s own `onOpenChange`.
    */
@@ -268,7 +284,11 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
     applyDraft(nextGroups);
   }
 
-  function handleUpdateRow(groupIndex: number, rowIndex: number, patch: Partial<DraftFilterRow>): void {
+  function handleUpdateRow(
+    groupIndex: number,
+    rowIndex: number,
+    patch: Partial<DraftFilterRow>,
+  ): void {
     applyDraft(
       draftGroups.map((group, i) => {
         if (i !== groupIndex) return group;
@@ -365,7 +385,13 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
     );
   } else if (draftGroups.length === 0) {
     body = (
-      <Button variant="outline" size="sm" icon="Plus" onClick={handleAddGroup} disabled={!hasReadableFields}>
+      <Button
+        variant="outline"
+        size="sm"
+        icon="Plus"
+        onClick={handleAddGroup}
+        disabled={!hasReadableFields}
+      >
         Add filter
       </Button>
     );
@@ -401,13 +427,19 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
                 onClick={() => handleAddRow(groupIndex)}
                 disabled={!hasReadableFields}
               >
-                AND condition
+                AND
               </Button>
             </div>
           </div>
         ))}
-        <Button variant="outline" size="sm" icon="Plus" onClick={handleAddGroup} disabled={!hasReadableFields}>
-          OR conditions
+        <Button
+          variant="outline"
+          size="sm"
+          icon="Plus"
+          onClick={handleAddGroup}
+          disabled={!hasReadableFields}
+        >
+          OR
         </Button>
       </div>
     );

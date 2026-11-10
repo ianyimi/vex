@@ -123,8 +123,8 @@ describe("ListViewFilterBuilder", () => {
     );
     const dialog = await openFilterPopover(user);
     expect(within(dialog).getAllByRole("combobox").length).toBeGreaterThanOrEqual(2);
-    expect(within(dialog).getByRole("button", { name: "AND condition" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "OR conditions" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "AND" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "OR" })).toBeInTheDocument();
     // Seeding calls `onWhereChange` with the no-op value the filter already
     // had (`undefined`) — never with a defined where, since the seeded row
     // itself stays incomplete until the user fills it in.
@@ -203,7 +203,7 @@ describe("ListViewFilterBuilder", () => {
     );
     const dialog = await openFilterPopover(user);
     expect(within(dialog).getByText(/can.t be edited here/i)).toBeInTheDocument();
-    expect(within(dialog).queryByRole("button", { name: "AND condition" })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "AND" })).not.toBeInTheDocument();
   });
 
   it("offers the synthetic vex_status field on a versioned collection", async () => {
@@ -409,7 +409,7 @@ describe("ListViewFilterBuilder", () => {
         onWhereChange={onWhereChange}  />,
       );
       // Add a second OR group — stays incomplete (no value yet).
-      await user.click(within(dialog).getByRole("button", { name: "OR conditions" }));
+      await user.click(within(dialog).getByRole("button", { name: "OR" }));
       expect(within(dialog).getAllByRole("combobox", { name: /^Filter field/ })).toHaveLength(2);
       // Adding the group itself re-applies (group 2 contributes nothing,
       // so the VALUE is unchanged) — round-trip it again the same way.
@@ -443,7 +443,7 @@ describe("ListViewFilterBuilder", () => {
       render(<Harness />);
       expect(screen.getByText("Title = eq x")).toBeInTheDocument();
       const dialog = await openFilterPopover(user);
-      await user.click(within(dialog).getByRole("button", { name: "OR conditions" }));
+      await user.click(within(dialog).getByRole("button", { name: "OR" }));
       const fieldSelects = within(dialog).getAllByRole("combobox", { name: /^Filter field/ });
       expect(fieldSelects).toHaveLength(2);
       await user.click(fieldSelects[1]!);

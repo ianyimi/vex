@@ -27,6 +27,9 @@
 - Concurrent-edit conflict detection already assessed — see backlog.md § Concurrent-edit conflict-resolution UX
 - Polish follow-up (list view): `find`'s first-page count reads up to `countLimit + 1` (default 10001) full docs, which hits Convex's 8 MiB query read limit at ~800 B per doc. Documented in pagination.mdx; real fix tracked in backlog.md § Total-count cap for large collections
 - Polish follow-up (list view): `isQueryAffectingViewSwitch` (useListViewUrlState.ts ~450) compares raw URL params, not the effective state, so an external link with an explicit param equal to the target view's default dims once on view switch (P3)
+- Golden use cases — 4 demo examples (spec 2026-11-09-golden-use-cases)
+- Template ships no dependency patches: scaffolded projects miss the @convex-dev/better-auth getToken x-forwarded-host remap (#422, dormant) and the better-auth-ui password-toggle label + footer-link nesting fixes; needs a package-manager-neutral fix or upstream PRs
+- betterAuthAdapter index parity: a custom Better Auth fieldName on an indexed field drops that compound index silently (candidates resolve through tableDef.fields[f].fieldName but adapter fields are keyed by the logical name) — lookups fall back to a full-table scan
 
 ## Recently Done
 - 4. E — Live preview — shipped `b5263dc`, 2026-09-20 (spec 2026-09-18-live-preview; ADR-012, with a dual `postMessage` + `BroadcastChannel` transport and a cookie-gated public route)

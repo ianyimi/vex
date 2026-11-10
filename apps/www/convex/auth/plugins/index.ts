@@ -7,12 +7,6 @@ import { USER_ROLES } from "~/db/constants"
 
 /**
  * Returns a fresh array of Better Auth plugins for each VexCMS auth session.
- *
- * Returns a new array on every call so that plugin initialization — including
- * the `convex()` factory, which internally calls the deprecated oidc-provider
- * plugin — runs inside `createAuth()` rather than at module-eval time. This
- * lets `http.ts`'s console.warn filter suppress the deprecation noise before
- * it fires.
  */
 export const createPlugins = () => [
   admin({

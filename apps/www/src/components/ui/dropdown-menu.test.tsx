@@ -46,6 +46,7 @@ describe("www DropdownMenu", () => {
       </DropdownMenu>,
     )
     await screen.findByRole("menuitem", { name: "Light" })
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus())
     await user.keyboard("{ArrowDown}{Enter}")
     expect(onSelect).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument())

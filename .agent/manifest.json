@@ -39,32 +39,32 @@
   "dependencies": [
     {
       "package": "convex",
-      "version": "1.42.1",
+      "version": "1.49.0",
       "repo": "github.com/get-convex/convex-js"
     },
     {
       "package": "better-auth",
-      "version": "1.6.23",
+      "version": "1.7.18",
       "repo": "github.com/better-auth/better-auth"
     },
     {
       "package": "@convex-dev/better-auth",
-      "version": "0.11.5",
+      "version": "0.13.0",
       "repo": "github.com/get-convex/better-auth"
     },
     {
       "package": "convex-helpers",
-      "version": "0.1.120",
+      "version": "0.1.134",
       "repo": "github.com/get-convex/convex-helpers"
     },
     {
       "package": "platejs",
-      "version": "52.3.21",
+      "version": "53.5.2",
       "repo": "github.com/udecode/plate"
     },
     {
       "package": "@tanstack/react-form",
-      "version": "1.33.1",
+      "version": "1.33.5",
       "repo": "github.com/TanStack/form"
     },
     {
@@ -74,7 +74,7 @@
     },
     {
       "package": "zod",
-      "version": "4.4.3",
+      "version": "4.6.7",
       "repo": "github.com/colinhacks/zod"
     },
     {

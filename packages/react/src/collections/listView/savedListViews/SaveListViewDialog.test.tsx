@@ -41,7 +41,7 @@ describe("SaveListViewDialog", () => {
     await waitFor(() => expect(input).toHaveFocus());
   });
 
-  it("associates each scope radio with its label via id/htmlFor, not nesting alone", () => {
+  it("checks the scope radio matching target and keeps the native input's id/htmlFor association", () => {
     render(
       <SaveListViewDialog
         open
@@ -56,11 +56,9 @@ describe("SaveListViewDialog", () => {
         onSubmit={() => {}}
       />,
     );
-    expect(screen.getByLabelText("Only you")).toHaveAttribute("id", "list-save-view-target-local");
-    expect(screen.getByLabelText("Everyone with access")).toHaveAttribute(
-      "id",
-      "list-save-view-target-shared",
-    );
+    expect(screen.getByRole("radio", { name: "Only you" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Everyone with access" })).not.toBeChecked();
+    expect(document.getElementById("list-save-view-target-local")).toHaveAttribute("type", "radio");
   });
 
   it("submits the trimmed name/description/target in create mode", async () => {

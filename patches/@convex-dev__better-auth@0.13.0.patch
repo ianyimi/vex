@@ -1,17 +1,8 @@
 diff --git a/dist/nextjs/index.js b/dist/nextjs/index.js
-index 0a4e41d5934f5545b9c674d6c9b530732a0cb483..88553e4036606b37f9980b8b9a452f40be2e45f2 100644
+index 5f56e5c807672375f381b195fc0ee2f437f783f2..97a7e09fbc691a1588ce55b3dd5c0fc1b006415e 100644
 --- a/dist/nextjs/index.js
 +++ b/dist/nextjs/index.js
-@@ -29,7 +29,7 @@ const handler = (request, siteUrl) => {
-     const newRequest = new Request(nextUrl, request);
-     newRequest.headers.set("accept-encoding", "application/json");
-     newRequest.headers.set("host", new URL(siteUrl).host);
--    newRequest.headers.set("x-forwarded-host", requestUrl.host);
-+    newRequest.headers.delete("x-forwarded-host");
-     newRequest.headers.set("x-forwarded-proto", requestUrl.protocol.replace(/:$/, ""));
-     newRequest.headers.set("x-better-auth-forwarded-host", requestUrl.host);
-     newRequest.headers.set("x-better-auth-forwarded-proto", requestUrl.protocol.replace(/:$/, ""));
-@@ -50,6 +50,18 @@ export const convexBetterAuthNextJs = (opts) => {
+@@ -67,6 +67,18 @@ export const convexBetterAuthNextJs = (opts) => {
          mutableHeaders.delete("content-length");
          mutableHeaders.delete("transfer-encoding");
          mutableHeaders.set("accept-encoding", "identity");

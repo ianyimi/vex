@@ -34,7 +34,7 @@ import {
  */
 const MARKETING_DEPENDENCIES = {
   /** Render-time syntax highlighting for the CodeShowcase and Split blocks. */
-  shiki: '^4.4.3',
+  shiki: '^4.6.0',
 } as const;
 
 /**

@@ -91,6 +91,84 @@ function getClientWritableUserFields(props: {
 }
 
 /**
+ * Indexes `@convex-dev/better-auth`'s own schema generator adds by hand on
+ * top of what a table's `unique`/`index` field attributes already produce,
+ * keyed by Better Auth table key — the set from its
+ * `dist/client/create-schema.js:13-27` (`indexFields`, not public API).
+ *
+ * Each entry lists its equality fields first, alphabetically, then at most
+ * one range or sort field — the order `convex/utils.ts`'s `findIndex` builds
+ * its prefix in. `session` is `[userId, expiresAt]` (not upstream's sorted
+ * `[expiresAt, userId]`) because Better Auth queries sessions by `userId`
+ * equality plus an `expiresAt` range.
+ */
+const BETTER_AUTH_CORE_TABLE_INDEXES: Readonly<Record<string, readonly (string | readonly string[])[]>> = {
+  account: [
+    "accountId",
+    ["accountId", "providerId"],
+    ["accountId", "providerId", "userId"],
+    ["providerId", "userId"],
+  ],
+  rateLimit: ["key", "lastRequest"],
+  session: ["expiresAt", ["userId", "expiresAt"]],
+  verification: ["expiresAt", "identifier"],
+  user: [["email", "name"], "name", "userId"],
+};
+
+/**
+ * Builds the `indexes` a Better Auth table needs beyond what its fields'
+ * own `index`/`unique` attributes already produce as field-level indexes
+ * (`by_<field>`, set in {@link betterAuthAttrToVexField}).
+ *
+ * Combines {@link BETTER_AUTH_CORE_TABLE_INDEXES}'s entry for `tableKey`
+ * (core tables, kept in their declared equality-then-range order) with
+ * `tableDef.indexes` (plugin-declared uniqueness indexes, e.g.
+ * `deviceAuthorization`'s `deviceCode`/`userCode` and `oauthProvider`'s
+ * `oauthClientResource` pair — equality-only, so their fields are sorted
+ * alphabetically, the order `findIndex` sorts equality fields in). A
+ * single-field candidate is dropped when that field already has a
+ * field-level index of its own, and any candidate naming a field absent from
+ * `fields` (a plugin option that drops the field, or a custom
+ * `fieldName`/schema override) is dropped entirely.
+ *
+ * @param props - Input props.
+ * @param props.tableKey - The table's key in `getAuthTables()`'s result
+ *   (not necessarily its `modelName`).
+ * @param props.tableDef - The table's resolved schema.
+ * @param props.fields - The Vex fields already built for this table, used
+ *   to drop both unknown-field candidates and field-level duplicates.
+ * @returns Deduplicated `indexes` entries for `defineCollection`
+ *   (`by_<f1>_<f2>...`, named in field order).
+ */
+function buildAdapterTableIndexes(props: {
+  tableKey: string;
+  tableDef: { fields: Record<string, DBFieldAttribute>; indexes?: readonly { fields: readonly string[] }[] };
+  fields: AuthCollectionConfig["fields"];
+}): { name: string; fields: string[] }[] {
+  const { tableKey, tableDef, fields } = props;
+  const candidates: string[][] = [
+    ...(BETTER_AUTH_CORE_TABLE_INDEXES[tableKey] ?? []).map((entry) =>
+      typeof entry === "string"
+        ? [tableDef.fields[entry]?.fieldName ?? entry]
+        : entry.map((f) => tableDef.fields[f]?.fieldName ?? f),
+    ),
+    ...(tableDef.indexes ?? []).map((index) =>
+      index.fields.map((f) => tableDef.fields[f]?.fieldName ?? f).sort(),
+    ),
+  ];
+
+  const resolved = new Map<string, { name: string; fields: string[] }>();
+  for (const candidate of candidates) {
+    if (!candidate.every((field) => field in fields)) continue;
+    const singleField = candidate.length === 1 ? fields[candidate[0]!] : undefined;
+    if (singleField !== undefined && "index" in singleField && singleField.index !== undefined) continue;
+    const name = `by_${candidate.join("_")}`;
+    if (!resolved.has(name)) resolved.set(name, { name, fields: candidate });
+  }
+  return [...resolved.values()];
+}
+
+/**
  * Creates a Vex auth adapter from a Better Auth configuration.
  *
  * Introspects Better Auth's full merged schema (base fields + plugin fields
@@ -228,6 +306,8 @@ export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdap
     // fields doesn't request a column nothing populates.
     const userColumns = USER_COLUMN_CANDIDATES.filter((candidate) => candidate in fields);
 
+    const indexes = buildAdapterTableIndexes({ tableKey, tableDef, fields });
+
     collections.push(
       defineCollection<AuthFieldMeta, AuthCollectionMeta>({
         slug: slug as CollectionSlug,
@@ -245,6 +325,7 @@ export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdap
           ...(isUserCollection && userColumns.length > 0 ? { view: { columns: userColumns } } : {}),
         },
         meta: isProtected ? { protected: true } : undefined,
+        ...(indexes.length > 0 ? { indexes } : {}),
       }),
     );
   }

@@ -200,25 +200,7 @@ export async function loadConfig(props: { configPath: string; projectDir: string
   ensureSchemaFileExists(projectDir);
 
   const jiti = createJiti(configPath, createJitiOptions(projectDir));
-
-  // Suppress the oidc-provider deprecation warning that @convex-dev/better-auth's
-  // convex() plugin emits at module-eval time when the config imports it (e.g. via
-  // createAuth()). Mirrors the console.warn filter in convex/http.ts, which covers
-  // the same warning at request time inside the Convex runtime.
-  // Remove once @convex-dev/better-auth migrates to @better-auth/oauth-provider.
-  const originalWarn = console.warn;
-  console.warn = (...args: unknown[]) => {
-    if (typeof args[0] === "string" && args[0].includes("oidc-provider")) {
-      return;
-    }
-    originalWarn(...args);
-  };
-  let mod: VexConfig | { default: VexConfig };
-  try {
-    mod = (await jiti.import(configPath)) as VexConfig | { default: VexConfig };
-  } finally {
-    console.warn = originalWarn;
-  }
+  const mod = (await jiti.import(configPath)) as VexConfig | { default: VexConfig };
 
   const config = "default" in mod ? mod.default : mod;
 

@@ -2,7 +2,7 @@
 
 > Primary sources fetched 2026-11-06 for U (launch kit). Every rule carries its URL, fetch date and a verbatim quote; anything that could not be quoted is marked `[UNVERIFIED]`. Channel rules change (HN added its generated-text rule in 2026), so step 12 re-fetches every URL here within 7 days of launch and records any change.
 >
-> Sections: 1. Hacker News + Lobsters · 2. Product Hunt, DevHunt, AlternativeTo · 3. Reddit · 4. Launch-week formats · 5. Passive channels and cross-post platforms.
+> Sections: 1. Hacker News + Lobsters · 2. Product Hunt, DevHunt, AlternativeTo · 3. Reddit · 4. Launch-week formats · 5. Passive channels and cross-post platforms · 6. Launch-post examples and guides (step 24, fetched 2026-11-09; reading material, not rules).
 >
 > In use at launch (interview 2026-11-06): Show HN (§1), Product Hunt (§2.1–2.8), DevHunt $49 launch (§2.9–2.10), LinkedIn (no official limits doc found, §5.17), Convex Discord (rules not readable logged out, §5.10), dev.to + Hashnode cross-post (§5.13–5.14), Cooperpress newsletters + This Week in React (§5.1–5.2), jamstack.org + awesome-nextjs PRs (§5.4, §5.7). Recorded but not used: Lobsters, Reddit, X, Bluesky, AlternativeTo, Convex Templates/Stack, awesome-react, Bytes.
 
@@ -597,3 +597,242 @@ Status: ok — supersedes the secondary-source corroboration in §5.15
 - Convex Stack and Templates gallery (§5.11–5.12): no self-serve form. Not on the submission list.
 - Convex Discord #show-and-tell (§5.10): rules are behind login. Step 2 records the pinned rules after joining.
 - LinkedIn (§5.17): no official length or link-card limit found. Drafts keep the clip native and the link in the post body.
+
+---
+
+## 6. Launch-post examples and guides (step 24)
+
+> Reading material for `launch-post-examples.md` (spec step 24, Design Decision 25), collected 2026-11-09 by
+> research subagents. Not channel rules: step 12's re-fetch covers §1–§5 only. Per-URL status is in each table;
+> numbers quoted in the examples were read on the date shown there.
+
+### 6.1 Show HN examples and guides
+Fetched: 2026-11-09
+Status: ok
+
+| URL | Fetched | Status |
+|---|---|---|
+| https://hn.algolia.com/api/v1/items/30769044 | 2026-11-09 | ok — (Appwrite thread) |
+| https://hn.algolia.com/api/v1/items/32013330 | 2026-11-09 | ok — (PocketBase thread) |
+| https://hn.algolia.com/api/v1/items/32013394 | 2026-11-09 | ok — (PocketBase author comment) |
+| https://hn.algolia.com/api/v1/items/41322281 | 2026-11-09 | ok — (InstantDB thread) |
+| https://hn.algolia.com/api/v1/search?query=Appwrite&tags=show_hn | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Convex&tags=show_hn | 2026-11-09 | ok (no dedicated Convex-maker launch found; ecosystem projects used instead) |
+| https://hn.algolia.com/api/v1/search?query=Directus&tags=show_hn | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=ElectricSQL&tags=show_hn | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=InstantDB&tags=show_hn | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Keystone&tags=show_hn | 2026-11-09 | ok (no relevant KeystoneJS launch found) |
+| https://hn.algolia.com/api/v1/search?query=Outstatic&tags=show_hn | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Payload%20CMS&tags=show_hn | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Payload&tags=show_hn&numericFilters=points>50 | 2026-11-09 | ok (no Payload CMS maker launch >50 pts found) |
+| https://hn.algolia.com/api/v1/search?query=PocketBase&tags=show_hn | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Refine&tags=show_hn | 2026-11-09 | ok (no relevant devtools Refine launch found) |
+| https://hn.algolia.com/api/v1/search?query=Rocicorp%20Zero&tags=show_hn | 2026-11-09 | ok (0 relevant hits) |
+| https://hn.algolia.com/api/v1/search?query=Strapi&tags=show_hn | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Supabase&tags=show_hn | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Supabase&tags=show_hn&numericFilters=points>100 | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=TinaCMS&tags=show_hn | 2026-11-09 | ok (no strong candidate, low points) |
+| https://hn.algolia.com/api/v1/search?query=Triplit&tags=show_hn | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Zero%20sync&tags=show_hn | 2026-11-09 | ok (no dedicated Rocicorp Zero launch found) |
+| https://hn.algolia.com/api/v1/search_by_date?query=Strapi&tags=show_hn | 2026-11-09 | ok (no genuine Strapi-maker launch found in results) |
+| https://news.ycombinator.com/item?id=22336638 | 2026-11-09 | ok — (dang's tips) |
+| https://news.ycombinator.com/item?id=30769044 | 2026-11-09 | HTTP 200 on re-check |
+| https://news.ycombinator.com/item?id=32013330 | 2026-11-09 | HTTP 200 on re-check |
+| https://news.ycombinator.com/item?id=33306029 | 2026-11-09 | HTTP 200 on re-check |
+| https://news.ycombinator.com/item?id=37584049 | 2026-11-09 | HTTP 200 on re-check |
+| https://news.ycombinator.com/item?id=40788648 | 2026-11-09 | HTTP 200 on re-check |
+| https://news.ycombinator.com/item?id=41322281 | 2026-11-09 | HTTP 200 on re-check |
+| https://news.ycombinator.com/showhn.html | 2026-11-09 | ok |
+| https://www.lucasfcosta.com/blog/hn-launch | 2026-11-09 | ok |
+| https://www.markepear.dev/blog/dev-tool-hacker-news-launch | 2026-11-09 | ok |
+
+### 6.2 Product Hunt examples and guides
+Fetched: 2026-11-09
+Status: partial (18 of 31 URLs blocked, missing or read via a mirror/snippet; see the table)
+
+| URL | Fetched | Status |
+|---|---|---|
+| https://dub.co/blog/product-hunt | 2026-11-09 | ok |
+| https://help.producthunt.com/en/articles/17350772-launch-guide | 2026-11-09 | blocked 404 (superseded by the collection URL above) |
+| https://help.producthunt.com/en/articles/17734341-2-what-kind-of-products-get-featured | 2026-11-09 | ok |
+| https://help.producthunt.com/en/articles/17734397-6-what-to-do-during-and-after-your-launch | 2026-11-09 | ok |
+| https://help.producthunt.com/en/articles/17734646-8-launch-faq-and-myths | 2026-11-09 | ok |
+| https://help.producthunt.com/en/collections/19793093-launch-guide | 2026-11-09 | ok |
+| https://hunted.space/dashboard/295370 | 2026-11-09 | ok — (Payload CMS) |
+| https://hunted.space/dashboard/351816 | 2026-11-09 | ok — (PocketBase) |
+| https://hunted.space/dashboard/appwrite/launches/appwrite-2 | 2026-11-09 | ok |
+| https://hunted.space/dashboard/convex/launches/convex | 2026-11-09 | ok |
+| https://hunted.space/dashboard/directus/launches/directus-9 | 2026-11-09 | ok |
+| https://hunted.space/product/appwrite/launches/appwrite-2 | 2026-11-09 | ok |
+| https://hunted.space/product/directus/launches/directus-9 | 2026-11-09 | ok |
+| https://hunted.space/product/payload-cms | 2026-11-09 | partial ("no data available" — overview template not populated for this product) |
+| https://hunted.space/product/pocketbase | 2026-11-09 | partial ("no data available" — same as above) |
+| https://www.producthunt.com/launch | 2026-11-09 | partial (loaded but content was a live-leaderboard feed, not stable guide text; collection URL used instead) |
+| https://www.producthunt.com/p/convex/convex | 2026-11-09 | blocked 403 (direct fetch) / ok via hunted.space mirror of the same comment text |
+| https://www.producthunt.com/p/directus/directus-9 | 2026-11-09 | blocked 403 |
+| https://www.producthunt.com/p/payload-cms/payload-cms | 2026-11-09 | blocked 403 |
+| https://www.producthunt.com/p/supabase/ama-w-supabase-ceo | 2026-11-09 | via search snippet |
+| https://www.producthunt.com/posts/dub | 2026-11-09 | HTTP 403 on re-check (blocked or bot-walled; the example's numbers came from the researcher's read, see its entry) |
+| https://www.producthunt.com/products/appwrite/launches/appwrite-2 | 2026-11-09 | HTTP 403 on re-check (blocked or bot-walled; the example's numbers came from the researcher's read, see its entry) |
+| https://www.producthunt.com/products/convex/launches/convex | 2026-11-09 | HTTP 403 on re-check (blocked or bot-walled; the example's numbers came from the researcher's read, see its entry) |
+| https://www.producthunt.com/products/directus/launches/directus-9 | 2026-11-09 | HTTP 403 on re-check (blocked or bot-walled; the example's numbers came from the researcher's read, see its entry) |
+| https://www.producthunt.com/products/directus?launch=directus-9 | 2026-11-09 | via search snippet (full thread blocked 403 on direct fetch) — (maker comment opening) |
+| https://www.producthunt.com/products/payload-cms/launches/payload-cms | 2026-11-09 | HTTP 403 on re-check (blocked or bot-walled; the example's numbers came from the researcher's read, see its entry) |
+| https://www.producthunt.com/products/pocketbase | 2026-11-09 | blocked 403 |
+| https://www.producthunt.com/products/resend | 2026-11-09 | via search snippet (hunted.space/product/resend) — (Resend Inboxes) |
+| https://www.producthunt.com/products/supabase | 2026-11-09 | via search snippet (hunted.space/product/supabase/launches/supabase-alpha, /supabase-beta) — (Alpha/Beta launch data) |
+| https://www.producthunt.com/products/trigger-dev | 2026-11-09 | via search snippet (hunted.space) — not used in final ranked examples, kept as backup data only — (v4 and Realtime AI launches) |
+| https://www.producthunt.com/stories/how-we-launch-at-supabase | 2026-11-09 | ok |
+
+### 6.3 LinkedIn and community show-and-tell examples and guides
+Fetched: 2026-11-09
+Status: partial (3 of 18 URLs blocked, missing or read via a mirror/snippet; see the table)
+
+| URL | Fetched | Status |
+|---|---|---|
+| https://discord.com/invite/nk6C2qTeCq | 2026-11-09 | ok (confirms member count/description only; channel contents not crawlable) — (Convex Community invite page) |
+| https://github.com/CrowdStrike/falconpy/discussions/1516 | 2026-11-09 | ok |
+| https://github.com/CrowdStrike/falconpy/discussions/categories/show-and-tell | 2026-11-09 | ok (listing only, used to confirm the serial-release pattern) |
+| https://github.com/orgs/supabase/discussions/51878 | 2026-11-09 | ok |
+| https://github.com/orgs/supabase/discussions/categories/show-and-tell | 2026-11-09 | ok (listing only) |
+| https://github.com/osTicket/roadmap/discussions/72 | 2026-11-09 | ok |
+| https://github.com/pmndrs/jotai/discussions/3209 | 2026-11-09 | ok |
+| https://github.com/tailwindlabs/tailwindcss/discussions/categories/show-and-tell | 2026-11-09 | ok (listing only, not used as a ranked example — near-zero engagement on every visible thread) |
+| https://ligosocial.com/blog/how-to-write-a-linkedin-launch-post-templates-examples-and-best-practices-2025 | 2026-11-09 | via search snippet |
+| https://ourcodeworld.com/articles/read/2407/a-developers-guide-to-publishing-eye-catching-linkedin-posts | 2026-11-09 | via search snippet |
+| https://www.answeroverflow.com/c/1019350475847499849 | 2026-11-09 | blocked 403/429 — rate-limited, not used as a source — (Convex Discord indexed by Answer Overflow) |
+| https://www.launchwake.com/channels/discord-supabase | 2026-11-09 | ok |
+| https://www.linkedin.com/posts/james-mikrut-3202985a_payload-cloud-is-live-activity-7048667132678590467-YofY | 2026-11-09 | ok |
+| https://www.linkedin.com/posts/paulcopplestone_every-few-months-supabase-does-a-launch-activity-7135649105879465984-8Ma_ | 2026-11-09 | ok |
+| https://www.linkedin.com/posts/paulcopplestone_its-supabase-launch-week-yesterday-we-launched-activity-7095347969490657280-GS-Y | 2026-11-09 | ok |
+| https://www.linkedin.com/posts/paulcopplestone_supabase-vector-the-postgres-vector-database-activity-7069800988135624704-5rHN | 2026-11-09 | ok |
+| https://www.linkedin.com/posts/zenorocha_today-were-launching-resend-inboxes-an-activity-7518715636206764033-YWts | 2026-11-09 | ok |
+| https://www.soar.sh/blog/self-promotion-on-discord | 2026-11-09 | ok |
+
+### 6.4 dev.to, Hashnode, launch-week feature posts and recap pages
+Fetched: 2026-11-09
+Status: partial (5 of 60 URLs blocked, missing or read via a mirror/snippet; see the table)
+
+| URL | Fetched | Status |
+|---|---|---|
+| https://aloiacms.com/articles/version-1-0-released | 2026-11-09 | HTTP 200 on re-check |
+| https://authorizer.dev | 2026-11-09 | HTTP 200 on re-check |
+| https://blog.authorizer.dev/introducing-authorizer-10 | 2026-11-09 | ok |
+| https://blog.platformatic.dev/watt-v318-unlocks-nextjs-16s-revolutionary-use-cache-directive-with-redisvalkey | 2026-11-09 | HTTP 200 on re-check |
+| https://dev.to/api/articles/appwrite/everything-new-in-appwrite-10-43o6 | 2026-11-09 | ok |
+| https://dev.to/api/articles/nocobase/major-update-open-source-no-codelow-code-platform-nocobase-v10-officially-released-4edk | 2026-11-09 | ok (not used — self-canonical, 0 engagement) |
+| https://dev.to/api/articles/roelofjanelsinga/aloia-cms-version-1-0-0-has-released-bo8 | 2026-11-09 | ok |
+| https://dev.to/api/articles/supabase/introducing-vector-buckets-3134 | 2026-11-09 | ok |
+| https://dev.to/api/articles?username=appwrite | 2026-11-09 | ok |
+| https://dev.to/api/articles?username=convex | 2026-11-09 | ok |
+| https://dev.to/api/articles?username=directus | 2026-11-09 | ok |
+| https://dev.to/api/articles?username=strapi | 2026-11-09 | ok |
+| https://dev.to/api/articles?username=supabase | 2026-11-09 | ok |
+| https://dev.to/appwrite/everything-new-in-appwrite-10-43o6 | 2026-11-09 | HTTP 200 on re-check |
+| https://dev.to/directus/migrating-from-notion-to-directus-4epm | 2026-11-09 | HTTP 200 on re-check |
+| https://dev.to/roelofjanelsinga/aloia-cms-version-1-0-0-has-released-bo8 | 2026-11-09 | HTTP 200 on re-check |
+| https://dev.to/strapi/introducing-yearly-plans-and-new-limits-for-strapi-cloud-165l | 2026-11-09 | HTTP 200 on re-check |
+| https://dev.to/supabase/introducing-vector-buckets-3134 | 2026-11-09 | HTTP 200 on re-check |
+| https://directus.com/resources/v11-release-notes | 2026-11-09 | ok |
+| https://docs.directus.io/blog/ | 2026-11-09 | HTTP 404 on re-check; cited only as the prefix of Directus's canonical_url pattern |
+| https://dub.co/blog/introducing-webhooks | 2026-11-09 | HTTP 200 on re-check |
+| https://dub.co/blog/launch-week-recap | 2026-11-09 | ok |
+| https://hashnode.com/blog/we-just-open-sourced-passmark-the-ai-regression-testing-framework | 2026-11-09 | ok |
+| https://hashnode.com/posts/introducing-authorizer-10/62fa76cdfffdab933bded2b4 | 2026-11-09 | ok |
+| https://hashnode.com/posts/watt-v318-unlocks-nextjs-16s-revolutionary-use-cache-directive-with-redisvalkey/691c8a1cb2114120150d0c87 | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Directus%2011&tags=story | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Payload%20CMS&tags=story | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=PayloadCMS+Launch+Week&tags=story | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Resend%20launch%20week&tags=story | 2026-11-09 | ok (0 hits — Resend's own launch weeks don't appear to get separately submitted to HN under that phrase; not used) |
+| https://hn.algolia.com/api/v1/search?query=Supabase+Branching&tags=story | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Supabase+CLI+v2+Config+as+Code&tags=story | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Supabase+Realtime+Multiplayer&tags=story | 2026-11-09 | ok |
+| https://hn.algolia.com/api/v1/search?query=Trigger.dev&tags=story | 2026-11-09 | ok |
+| https://launchweek.dev/lw/faq.md | 2026-11-09 | ok |
+| https://launchweek.dev/lw/n/dub.md | 2026-11-09 | ok |
+| https://launchweek.dev/n/product-hunt | 2026-11-09 | blocked 404 |
+| https://launchweek.dev/p/raycast | 2026-11-09 | blocked 404 (not used; correct path is /lw/n/raycast.md, not fetched further — sufficient guide material already found) |
+| https://news.ycombinator.com/item?id=32665325 | 2026-11-09 | HTTP 200 on re-check |
+| https://news.ycombinator.com/item?id=45250720 | 2026-11-09 | HTTP 200 on re-check |
+| https://payloadcms.com/ | 2026-11-09 | HTTP 200 on re-check |
+| https://payloadcms.com/posts/blog/launch-week-day-3 | 2026-11-09 | ok |
+| https://payloadcms.com/posts/blog/payload-30-the-first-cms-that-installs-directly-into-any-nextjs-app | 2026-11-09 | HTTP 200 on re-check |
+| https://resend.com/blog/launch-week-1-wrap-up | 2026-11-09 | ok |
+| https://resend.com/handbook/marketing/how-we-keep-momentum | 2026-11-09 | ok |
+| https://stack.convex.dev/row-level-security | 2026-11-09 | ok |
+| https://strapi.io/blog/introducing-yearly-plans-and-new-limits-for-strapi-cloud | 2026-11-09 | HTTP 200 on re-check |
+| https://supabase.com/blog/cli-v2-config-as-code | 2026-11-09 | ok |
+| https://supabase.com/blog/launch-week-13-top-10 | 2026-11-09 | ok |
+| https://supabase.com/blog/supabase-how-we-launch | 2026-11-09 | ok |
+| https://supabase.com/blog/supabase-local-dev | 2026-11-09 | HTTP 200 on re-check |
+| https://supabase.com/blog/supabase-realtime-multiplayer-general-availability | 2026-11-09 | ok |
+| https://supabase.com/blog/vector-buckets | 2026-11-09 | HTTP 200 on re-check |
+| https://supabase.com/launch-week/13 | 2026-11-09 | ok |
+| https://supabase.com/launch-week/15 | 2026-11-09 | blocked 404 (not used) |
+| https://trigger.dev | 2026-11-09 | HTTP 200 on re-check |
+| https://trigger.dev/launchweek/2 | 2026-11-09 | ok |
+| https://trigger.dev/launchweek/2/preview-branches | 2026-11-09 | ok |
+| https://trigger.dev/launchweek/2/trigger-v4-ga | 2026-11-09 | ok |
+| https://www.strategicnerds.com/blog/using-launch-blog-posts-to-drive-growth-of-developer-products | 2026-11-09 | ok |
+| https://www.strategicnerds.com/blog/writing-the-perfect-launch-blog-post | 2026-11-09 | blocked 410 (not used) |
+
+### 6.5 DevHunt, Cooperpress, This Week in React, jamstack.org, awesome-nextjs
+Fetched: 2026-11-09
+Status: partial (1 of 29 URLs blocked, missing or read via a mirror/snippet; see the table)
+
+| URL | Fetched | Status |
+|---|---|---|
+| https://cooperpress.com/files/cooperpress-media-kit-q4-2026.pdf | 2026-11-09 | via search snippet — ("over 170,000" JS Weekly subscribers) |
+| https://devhunt.org/tool/bcms | 2026-11-09 | ok |
+| https://devhunt.org/tool/bloggr | 2026-11-09 | ok |
+| https://devhunt.org/tool/contentrain | 2026-11-09 | ok |
+| https://devhunt.org/tool/react-bricks | 2026-11-09 | ok |
+| https://devhunt.org/tools/cms | 2026-11-09 | ok |
+| https://genpm.net | 2026-11-09 | HTTP 200 on re-check |
+| https://github.com/ButterCMS/react-cms-blog-with-next-js | 2026-11-09 | HTTP 200 on re-check |
+| https://github.com/PictureElement/nextjs-strapi-portfolio-starter | 2026-11-09 | HTTP 200 on re-check |
+| https://github.com/codelit/courselit | 2026-11-09 | HTTP 200 on re-check |
+| https://github.com/jamstack/jamstack.org | 2026-11-09 | HTTP 200 on re-check |
+| https://github.com/jamstack/jamstack.org/blob/main/src/site/headless-cms/decap-cms.md | 2026-11-09 | ok — (via `gh api`) |
+| https://github.com/jamstack/jamstack.org/blob/main/src/site/headless-cms/directus.md | 2026-11-09 | ok — (via `gh api`) |
+| https://github.com/jamstack/jamstack.org/blob/main/src/site/headless-cms/keystone.md | 2026-11-09 | ok — (via `gh api`) |
+| https://github.com/jamstack/jamstack.org/blob/main/src/site/headless-cms/payload-cms.md | 2026-11-09 | ok — (via `gh api`) |
+| https://github.com/jamstack/jamstack.org/blob/main/src/site/headless-cms/strapi.md | 2026-11-09 | ok — (via `gh api`) |
+| https://github.com/jamstack/jamstack.org/blob/main/src/site/headless-cms/tinacms.md | 2026-11-09 | ok — (via `gh api`) |
+| https://github.com/jamstack/jamstack.org/pull/1057 | 2026-11-09 | ok — (LeadCMS, `gh pr diff`) |
+| https://github.com/loootai/looot-network | 2026-11-09 | HTTP 200 on re-check |
+| https://github.com/unicodeveloper/awesome-nextjs/pull/652 | 2026-11-09 | ok — (`gh pr diff`) |
+| https://github.com/unicodeveloper/awesome-nextjs/pull/725 | 2026-11-09 | ok — (`gh pr diff`) |
+| https://jamstack.org | 2026-11-09 | ok — --state merged --search headless-cms` |
+| https://javascriptweekly.com/issues/809 | 2026-11-09 | ok |
+| https://raw.githubusercontent.com/unicodeveloper/awesome-nextjs/master/CONTRIBUTING.md | 2026-11-06 (`sources.md` §5.7) | ok (prior fetch, reused) |
+| https://raw.githubusercontent.com/unicodeveloper/awesome-nextjs/master/README.md | 2026-11-09 | ok |
+| https://react.statuscode.com/issues/291 | 2026-11-09 | ok |
+| https://thisweekinreact.com/editorial-line | 2026-11-09 | ok |
+| https://thisweekinreact.com/editorial-line, | 2026-11-06 (`sources.md` §5.1–5.2) | ok (prior fetch, reused) — https://cooperpress.com/ (submission/contact stance) |
+| https://thisweekinreact.com/newsletter/231 | 2026-11-09 | ok |
+
+### 6.6 Cross-channel launch-post guides
+Fetched: 2026-11-09
+Status: partial (7 of 18 URLs blocked, missing or read via a mirror/snippet; see the table)
+
+| URL | Fetched | Status |
+|---|---|---|
+| https://help.producthunt.com/en/articles/17350772-launch-guide | 2026-11-09 | blocked 404 |
+| https://help.producthunt.com/en/articles/17734384-5-how-to-promote-your-launch-and-what-to-avoid | 2026-11-09 | ok |
+| https://help.producthunt.com/en/articles/17734397-6-what-to-do-during-and-after-your-launch | 2026-11-09 | ok |
+| https://launchweek.dev/lw/faq.md | 2026-11-09 | ok |
+| https://launchweek.dev/n/product-hunt | 2026-11-09 | blocked 404 |
+| https://launchweek.dev/p/dub(.md) | 2026-11-09 | blocked 404 |
+| https://news.ycombinator.com/item?id=22336638 | 2026-11-09 | ok |
+| https://news.ycombinator.com/yli.html | 2026-11-09 | HTTP 200 on re-check |
+| https://plausible.io/blog/product-hunt-launch | 2026-11-09 | ok — (fetched via websocket.plausible.io mirror) |
+| https://posthog.com/blog/after-the-hn-launch | 2026-11-09 | ok |
+| https://relayto.com/yc-startup-school/how-to-launch-again-and-again-f2id44ijlbkhj | 2026-11-09 | blocked (client-rendered, no text) |
+| https://supabase.com/blog/supabase-how-we-launch | 2026-11-09 | ok |
+| https://vexcms.dev | 2026-11-09 | HTTP 200 on re-check |
+| https://vexcms.dev/posts/vexcms-0-1-0 | 2026-11-09 | HTTP 404 expected: the announcement is a draft until D1 (canonical URL, cited in a constraint) |
+| https://videohighlight.com/v/3xU050kMbHM | 2026-11-09 | ok (third-party transcript summary of the YC talk, used to recover #5's content) |
+| https://www.markepear.dev/blog/dev-tool-hacker-news-launch | 2026-11-09 | ok |
+| https://www.markepear.dev/blog/developer-marketing-guide | 2026-11-09 | partial (read first ~300 of 905 lines; general dev-marketing context, not launch-post-specific, not separately cited) |
+| https://www.ycombinator.com/library/6i-how-to-launch-again-and-again | 2026-11-09 | partial (metadata only, no transcript on page) |

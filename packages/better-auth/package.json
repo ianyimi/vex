@@ -54,6 +54,7 @@
   },
   "devDependencies": {
     "@better-auth/api-key": "catalog:",
+    "@better-auth/oauth-provider": "catalog:",
     "@convex-dev/better-auth": "catalog:",
     "@types/node": "catalog:",
     "@vexcms/core": "workspace:*",

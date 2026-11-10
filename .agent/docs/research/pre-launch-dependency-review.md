@@ -1,5 +1,7 @@
 # Pre-launch dependency review (2026-11-07)
 
+Status: implemented by `.agent/docs/specs/2026-11-07-pre-launch-dependency-upgrades/`.
+
 ## Question
 
 Which pinned dependencies should move before v0.1.0 so new `create-vexcms` projects start on

@@ -95,6 +95,8 @@ export interface JwksDocument extends VexDocument {
   privateKey: string;
   createdAt: number;
   expiresAt?: number;
+  alg?: string;
+  crv?: string;
 }
 
 export interface Image extends VexDocument {
@@ -216,7 +218,7 @@ declare module "@vexcms/core" {
         checkbox: "enabled" | "rateLimitEnabled";
       };
       jwks: {
-        text: "publicKey" | "privateKey";
+        text: "publicKey" | "privateKey" | "alg" | "crv";
         date: "createdAt" | "expiresAt";
       };
       images: {
@@ -228,10 +230,33 @@ declare module "@vexcms/core" {
     };
     GlobalsFieldTypeMap: {};
     IndexFieldsBySlug: {
-      user: { by_email: readonly ["email"] };
-      session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] };
-      account: { by_userId: readonly ["userId"] };
-      verification: { by_identifier: readonly ["identifier"] };
+      user: {
+        by_email_name: readonly ["email", "name"];
+        by_name: readonly ["name"];
+        by_userId: readonly ["userId"];
+        by_email: readonly ["email"];
+      };
+      session: {
+        by_expiresAt: readonly ["expiresAt"];
+        by_userId_expiresAt: readonly ["userId", "expiresAt"];
+        by_token: readonly ["token"];
+        by_userId: readonly ["userId"];
+      };
+      account: {
+        by_accountId: readonly ["accountId"];
+        by_accountId_providerId: readonly ["accountId", "providerId"];
+        by_accountId_providerId_userId: readonly [
+          "accountId",
+          "providerId",
+          "userId",
+        ];
+        by_providerId_userId: readonly ["providerId", "userId"];
+        by_userId: readonly ["userId"];
+      };
+      verification: {
+        by_expiresAt: readonly ["expiresAt"];
+        by_identifier: readonly ["identifier"];
+      };
       apikey: {
         by_configId: readonly ["configId"];
         by_referenceId: readonly ["referenceId"];
