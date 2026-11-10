@@ -146,6 +146,24 @@ describe("ListViewFilterBuilder", () => {
     expect(onWhereChange).toHaveBeenLastCalledWith({ field: "title", op: "eq", value: "hello" });
   });
 
+  it("the only condition's X clears it instead of removing it, and is disabled while it is empty", async () => {
+    const user = userEvent.setup();
+    const onWhereChange = vi.fn();
+    render(<ListViewFilterBuilder collection={collection} where={undefined} onWhereChange={onWhereChange} />);
+    const dialog = await openFilterPopover(user);
+    const clear = () => within(dialog).getByRole("button", { name: "Clear condition" });
+    expect(clear()).toBeDisabled();
+    await user.type(within(dialog).getByRole("textbox"), "hello");
+    expect(clear()).toBeEnabled();
+    await user.click(clear());
+    // Still exactly one (fresh) condition; the applied filter is cleared.
+    expect(within(dialog).getAllByRole("combobox", { name: /^Filter field/ })).toHaveLength(1);
+    expect(within(dialog).getByRole("textbox")).toHaveValue("");
+    // `where` prop was never non-empty here, so the cleared draft reports `undefined` (not `null`).
+    expect(onWhereChange).toHaveBeenLastCalledWith(undefined);
+    expect(clear()).toBeDisabled();
+  });
+
   it("isEmpty maps to eq/undefined and applies with no value input", async () => {
     const user = userEvent.setup();
     const onWhereChange = vi.fn();
@@ -446,7 +464,8 @@ describe("ListViewFilterBuilder", () => {
       await user.click(within(dialog).getByRole("button", { name: "OR" }));
       const fieldSelects = within(dialog).getAllByRole("combobox", { name: /^Filter field/ });
       expect(fieldSelects).toHaveLength(2);
-      await user.click(fieldSelects[1]!);
+      // OR prepends: the new (incomplete) group is first, above the original.
+      await user.click(fieldSelects[0]!);
       await user.click(await screen.findByRole("option", { name: "Views" }));
       // Remove the ORIGINAL chip (title = eq x) — a genuine external change
       // from OUTSIDE the builder, while group 2's row is still open/incomplete.

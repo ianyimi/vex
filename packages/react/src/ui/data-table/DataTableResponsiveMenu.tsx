@@ -18,6 +18,8 @@ export interface DataTableResponsiveMenuProps {
   children: ReactNode;
   /** Desktop `PopoverContent` alignment. Ignored on mobile. @default "end" */
   align?: "start" | "center" | "end";
+  /** Popover offset (gap) from the trigger in px. Ignored on mobile. @default 4 */
+  sideOffset?: number;
   /** Controlled open state. Omitted (`undefined`) leaves the overlay uncontrolled — the common case for a plain menu. `ListViewFilterBuilder` controls this to seed a draft row on open before the overlay paints. */
   open?: boolean;
   /** Pairs with `open` for a controlled overlay. */
@@ -63,7 +65,7 @@ export function DataTableResponsiveMenu(props: DataTableResponsiveMenuProps): Re
   return (
     <Popover open={props.open} onOpenChange={props.onOpenChange}>
       <PopoverTrigger render={props.trigger} />
-      <PopoverContent align={props.align ?? "end"} className={cn(props.className)}>
+      <PopoverContent align={props.align ?? "end"} sideOffset={props.sideOffset ?? 4} className={cn(props.className)}>
         {props.children}
       </PopoverContent>
     </Popover>

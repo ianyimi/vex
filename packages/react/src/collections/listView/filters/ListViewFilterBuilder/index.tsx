@@ -9,7 +9,7 @@ import {
   type CollectionConfig,
   type VexWhereNode,
 } from "@vexcms/core";
-import { Badge, Button, ScrollSection } from "../../../../ui";
+import { Badge, Button } from "../../../../ui";
 import { DataTableResponsiveMenu } from "../../../../ui/data-table/DataTableResponsiveMenu";
 import { useIsMobile } from "../../../../hooks/use-mobile";
 import { useCanReadField } from "../../../../access";
@@ -239,10 +239,11 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
     return { field: firstFieldKey, op: firstOp ?? "eq", value: "" };
   }
 
+  /** Prepends: the OR button sits above the groups, so a new group appears right under it and the existing ones shift down. */
   function handleAddGroup(): void {
     const newRow = buildNewRow();
     if (newRow === undefined) return;
-    applyDraft([...draftGroups, { rows: [newRow] }]);
+    applyDraft([{ rows: [newRow] }, ...draftGroups]);
   }
 
   function handleAddRow(groupIndex: number): void {
@@ -275,7 +276,23 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
     setOpen(next);
   }
 
+  // The builder never shows zero conditions while open: the X on the ONLY
+  // remaining row resets it to a fresh row instead of removing it, and is
+  // disabled while that row is already fresh (nothing to clear).
+  const onlyRow = draftGroups.length === 1 && draftGroups[0]!.rows.length === 1 ? draftGroups[0]!.rows[0]! : undefined;
+  const freshRow = buildNewRow();
+  const onlyRowIsFresh =
+    onlyRow !== undefined &&
+    freshRow !== undefined &&
+    onlyRow.field === freshRow.field &&
+    onlyRow.op === freshRow.op &&
+    (onlyRow.value === "" || onlyRow.value === undefined || onlyRow.value === null);
+
   function handleRemoveRow(groupIndex: number, rowIndex: number): void {
+    if (onlyRow !== undefined) {
+      if (freshRow !== undefined) applyDraft([{ rows: [freshRow] }]);
+      return;
+    }
     const nextGroups = draftGroups
       .map((group, i) =>
         i === groupIndex ? { rows: group.rows.filter((_row, j) => j !== rowIndex) } : group,
@@ -398,6 +415,15 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
   } else {
     body = (
       <div className="flex flex-col gap-3">
+        <Button
+          variant="outline"
+          size="sm"
+          icon="Plus"
+          onClick={handleAddGroup}
+          disabled={!hasReadableFields}
+        >
+          OR
+        </Button>
         {draftGroups.map((group, groupIndex) => (
           <div key={groupIndex}>
             {groupIndex > 0 && (
@@ -418,6 +444,8 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
                   onOpChange={(op) => handleUpdateOp(groupIndex, rowIndex, op)}
                   onValueChange={(value) => handleUpdateRow(groupIndex, rowIndex, { value })}
                   onRemove={() => handleRemoveRow(groupIndex, rowIndex)}
+                  removeMode={onlyRow === undefined ? "remove" : "clear"}
+                  removeDisabled={onlyRowIsFresh}
                 />
               ))}
               <Button
@@ -432,15 +460,6 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
             </div>
           </div>
         ))}
-        <Button
-          variant="outline"
-          size="sm"
-          icon="Plus"
-          onClick={handleAddGroup}
-          disabled={!hasReadableFields}
-        >
-          OR
-        </Button>
       </div>
     );
   }
@@ -450,11 +469,13 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
       trigger={filterTriggerButton}
       title="Filter"
       align="start"
+      sideOffset={8}
       open={open}
       onOpenChange={handleOpenChange}
-      className="w-[520px]"
+      className="w-[520px] p-0"
     >
-      <ScrollSection maxHeight={400}>{body}</ScrollSection>
+      {/* OR button (32px + 12px gap) plus ~3.25 single-row OR groups (106px group + 44px OR divider/gap each) before scrolling. Plain native scroll: Base UI `ScrollArea` inside a popover only takes a `max-height` that never reaches its viewport, so it painted a dead scrollbar over the groups. */}
+      <div className="max-h-[506px] min-h-0 overflow-y-auto overscroll-contain px-3 py-2">{body}</div>
     </DataTableResponsiveMenu>
   );
 }
