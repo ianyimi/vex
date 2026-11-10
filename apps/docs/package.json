@@ -10,16 +10,17 @@
     "preview": "astro preview",
     "astro": "astro"
   },
-  "dependencies": {
+  "devDependencies": {
     "@astrojs/starlight": "catalog:",
+    "@types/node": "catalog:",
     "@vercel/analytics": "catalog:",
     "astro": "catalog:",
     "sharp": "catalog:",
-    "starlight-llms-txt": "catalog:"
-  },
-  "devDependencies": {
+    "starlight-llms-txt": "catalog:",
     "starlight-typedoc": "catalog:",
-    "typedoc": "catalog:",
-    "@types/node": "catalog:"
+    "typedoc": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.23.4"
   }
 }

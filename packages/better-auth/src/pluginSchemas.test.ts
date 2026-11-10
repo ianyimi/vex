@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { apiKey } from "@better-auth/api-key";
+import { oauthProvider } from "@better-auth/oauth-provider";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { describe, expect, it } from "vitest";
 import {
@@ -9,8 +10,6 @@ import {
   anonymous,
   deviceAuthorization,
   jwt,
-  mcp,
-  oidcProvider,
   organization,
   phoneNumber,
   siwe,
@@ -52,7 +51,7 @@ const PROBE_AUTH_CONFIG = {
  * its options contributes one entry per schema-distinct variant, suffixed with
  * the option that selects it (`organization` vs `organization.teams`).
  *
- * `siwe`/`oidcProvider`/`mcp` take required options that do not affect their
+ * `siwe`/`oauthProvider` take required options that do not affect their
  * schema; the values here are inert placeholders.
  */
 const PLUGIN_PROBES: Record<string, () => { schema?: PluginDBSchema | undefined }> = {
@@ -62,8 +61,7 @@ const PLUGIN_PROBES: Record<string, () => { schema?: PluginDBSchema | undefined 
   convex: () => convex({ authConfig: PROBE_AUTH_CONFIG }),
   deviceAuthorization: () => deviceAuthorization(),
   jwt: () => jwt(),
-  mcp: () => mcp({ loginPage: "/sign-in" }),
-  oidcProvider: () => oidcProvider({ loginPage: "/sign-in" }),
+  oauthProvider: () => oauthProvider({ loginPage: "/sign-in", consentPage: "/consent" }),
   organization: () => organization(),
   "organization.teams": () => organization({ teams: { enabled: true } }),
   phoneNumber: () => phoneNumber(),

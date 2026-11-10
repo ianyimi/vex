@@ -85,15 +85,15 @@ export default defineConfig({
 				},
 				{
 					label: 'Guides',
-					autogenerate: { directory: 'guides' },
+					items: [{ autogenerate: { directory: 'guides' } }],
 				},
 				{
 					label: 'Fields',
-					autogenerate: { directory: 'fields' },
+					items: [{ autogenerate: { directory: 'fields' } }],
 				},
 				{
 					label: 'Development',
-					autogenerate: { directory: 'dev' },
+					items: [{ autogenerate: { directory: 'dev' } }],
 				},
 				typeDocSidebarGroup,
 			],

@@ -114,6 +114,29 @@ function deepMergeConfig(authValue: unknown, userValue: unknown): unknown {
 }
 
 /**
+ * Merges two collections' `indexes` arrays by name — a plain `deepMergeConfig`
+ * treats an array as an opaque value and replaces it whole, which would drop
+ * every auth-adapter index a project's own `indexes` didn't repeat.
+ *
+ * @param authIndexes - The auth adapter's `indexes`, if it declared any.
+ * @param userIndexes - The project's `indexes`, if it declared any.
+ * @returns The union, in auth-then-project-only order; `undefined` when
+ *   neither side declared any (so the merged input omits the key, matching
+ *   `defineCollection()`'s own optional `indexes`). On a name collision the
+ *   project's entry wins whole — never a per-entry field merge.
+ */
+function mergeCollectionIndexes(
+  authIndexes: CollectionConfigInput<AuthFieldMeta, {}, CollectionSlug>["indexes"],
+  userIndexes: CollectionConfigInput<AuthFieldMeta, {}, CollectionSlug>["indexes"],
+): CollectionConfigInput<AuthFieldMeta, {}, CollectionSlug>["indexes"] {
+  if (authIndexes === undefined && userIndexes === undefined) return undefined;
+  const merged = new Map<string, NonNullable<typeof authIndexes>[number]>();
+  for (const index of authIndexes ?? []) merged.set(index.name, index);
+  for (const index of userIndexes ?? []) merged.set(index.name, index);
+  return [...merged.values()];
+}
+
+/**
  * Merges one auth collection with the user collection sharing its slug.
  *
  * Reads both sides' RAW `defineCollection()` input back via the
@@ -127,9 +150,11 @@ function deepMergeConfig(authValue: unknown, userValue: unknown): unknown {
  *
  * `fields`: the project's field replaces the auth field whole, unless the
  * auth field is `meta.locked`, in which case the auth field wins (unchanged
- * from before). Every other top-level key — `admin`, `labels`, `meta`,
- * `versions`, `hooks`, `indexes`, `timestamps`, `interfaceName` — goes
- * through the generic {@link deepMergeConfig}.
+ * from before). `indexes` merges by name via {@link mergeCollectionIndexes}
+ * — the project's entry wins on a name collision, but an auth-adapter index
+ * the project never named survives. Every other top-level key — `admin`,
+ * `labels`, `meta`, `versions`, `hooks`, `timestamps`, `interfaceName` —
+ * goes through the generic {@link deepMergeConfig}.
  *
  * @param authCollectionConfig - The auth adapter's collection.
  * @param userCollectionConfig - The project's collection sharing `authCol`'s slug.
@@ -178,18 +203,21 @@ function mergeSingleCollection(
     }
   }
 
-  const { fields: _authFields, ...authRest } = authInput;
-  const { fields: _userFields, ...userRest } = userInput;
+  const indexes = mergeCollectionIndexes(authInput.indexes, userInput.indexes);
+
+  const { fields: _authFields, indexes: _authIndexes, ...authRest } = authInput;
+  const { fields: _userFields, indexes: _userIndexes, ...userRest } = userInput;
   // Trusted output of our own deepMergeConfig above, over two
-  // CollectionConfigInput-shaped objects (minus `fields`, merged separately).
+  // CollectionConfigInput-shaped objects (minus `fields`/`indexes`, merged separately).
   const mergedRest = deepMergeConfig(authRest, userRest) as Omit<
     CollectionConfigInput<AuthFieldMeta, {}, CollectionSlug>,
-    "fields"
+    "fields" | "indexes"
   >;
 
   const mergedInput: CollectionConfigInput<AuthFieldMeta, {}, CollectionSlug> = {
     ...mergedRest,
     fields,
+    ...(indexes !== undefined ? { indexes } : {}),
   };
 
   return defineCollection(mergedInput) as CollectionConfig;

@@ -205,12 +205,12 @@ describe("SavedListViewTabs (prerender)", () => {
     window.localStorage.clear();
   });
 
-  it("never mounts a ResizeObserver for tab overflow", () => {
-    let observed = false;
+  it("measures no tab overflow with a ResizeObserver beyond Base UI's own tab-indicator observers", () => {
+    const observedTargets: Element[] = [];
     const OriginalResizeObserver = globalThis.ResizeObserver;
     class SpyResizeObserver {
-      observe() {
-        observed = true;
+      observe(target: Element) {
+        observedTargets.push(target);
       }
       unobserve() {}
       disconnect() {}
@@ -245,7 +245,8 @@ describe("SavedListViewTabs (prerender)", () => {
       />,
       { wrapper },
     );
-    expect(observed).toBe(false);
+    const baseUiTabParts = '[data-slot="tabs-list"], [data-slot="tabs-trigger"]';
+    expect(observedTargets.filter((target) => !target.matches(baseUiTabParts))).toEqual([]);
     globalThis.ResizeObserver = OriginalResizeObserver;
   });
 });

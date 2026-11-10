@@ -72,8 +72,8 @@ function Button({
    * `justify-between` used to be the default for any labeled icon button,
    * which sprays the icon to one edge and the label to the other the
    * moment a caller makes the button full width — wrong for the vast
-   * majority of full-width buttons (e.g. `ListViewFilterBuilder`'s "AND
-   * condition"/"OR conditions"), which want the icon+label pair centered
+   * majority of full-width buttons (e.g. `ListViewFilterBuilder`'s "AND"/"OR"),
+   * which want the icon+label pair centered
    * together like any other button, just stretched (they're stretched by
    * their OWN flex-column parent's default `align-items: stretch`, not an
    * explicit `w-full` className — this fix applies identically either

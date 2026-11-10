@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { loadConfig } from "./loadConfig";
 
@@ -47,36 +47,4 @@ describe("loadConfig", () => {
     expect(process.env.VEX_TEST_DOTENV).toBe("pre-existing");
   });
 
-  it("suppresses the oidc-provider deprecation warning while importing the config", async () => {
-    mkdirSync(join(projectDir, "src"));
-    const configPath = join(projectDir, "src", "vex.config.server.ts");
-    writeFileSync(
-      configPath,
-      [
-        `console.warn('[Deprecation] The "oidc-provider" plugin is deprecated and will be removed in the next major version. Migrate to @better-auth/oauth-provider. See: https://www.better-auth.com/docs/plugins/oauth-provider');`,
-        "export default { collections: [] };",
-      ].join("\n"),
-    );
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-    await loadConfig({ configPath, projectDir });
-
-    expect(warnSpy).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
-  });
-
-  it("does not suppress other console.warn calls during config import", async () => {
-    mkdirSync(join(projectDir, "src"));
-    const configPath = join(projectDir, "src", "vex.config.server.ts");
-    writeFileSync(
-      configPath,
-      ["console.warn('some other warning');", "export default { collections: [] };"].join("\n"),
-    );
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-    await loadConfig({ configPath, projectDir });
-
-    expect(warnSpy).toHaveBeenCalledWith("some other warning");
-    warnSpy.mockRestore();
-  });
 });

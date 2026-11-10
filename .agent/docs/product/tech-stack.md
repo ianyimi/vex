@@ -1,12 +1,12 @@
 ---
-verified_at: 2e7848153986c40f23b733662f71d3639c4e0c4b
+verified_at: 262fedb2a66c6f3ffaaa91633e496d5d3aa6147f
 ---
 
 # Tech Stack
 
 ## Language + Runtime
 - Language: TypeScript 6.0 (strict; catalog `^6.0.0`, installed 6.0.3)
-- Runtime: Node.js >= 20
+- Runtime: Node.js >= 22
 - Package manager: pnpm 10.30.2 (`packageManager` field)
 
 ## Repo Structure
@@ -21,12 +21,12 @@ dependencies — left unbackticked so they read as repo paths, not literal root 
 | Name | Path | Purpose |
 |------|------|---------|
 | test | apps/test | Next.js 16 dogfood + admin host app (primary dev target, port **3020**; the www name is reserved for WP-3's scaffolded marketing site) |
-| docs | apps/docs | Astro 6 + Starlight docs site (port 4321) |
+| docs | apps/docs | Astro 7 + Starlight docs site (port 4321) |
 | @vexcms/core | packages/core | Framework-agnostic schema, field system, hooks, config, RBAC (`defineCollection`, `defineConfig`, `defineGlobal`, `defineAccess`) |
 | @vexcms/cli | packages/cli | `vex dev` / codegen / Convex schema generation |
 | @vexcms/next | packages/next | Next.js adapter — `NextAdminPage`, `NextAdminLayout`, route handlers |
 | @vexcms/react | packages/react | Framework-agnostic admin UI (Base UI + TanStack Form/Table) |
-| @vexcms/better-auth | packages/better-auth | Better Auth <-> Convex adapter (peer: catalog `^1.5.0`) |
+| @vexcms/better-auth | packages/better-auth | Better Auth <-> Convex adapter (peer: catalog `>=1.7.16 <1.8.0`) |
 | @vexcms/file-storage-convex | packages/file-storage-convex | Convex file-storage adapter |
 | @vexcms/richtext-plate | packages/richtext-plate | Plate-based richtext field |
 | create-vexcms | packages/create-vexcms | `pnpm create vexcms` scaffolder |
@@ -43,8 +43,8 @@ left unbackticked for the same reason as the workspace table above.
 |---------|---------|
 | Next.js 16 | Admin host framework (App Router, React 19) |
 | React 19 | UI runtime (React Compiler via babel plugin) |
-| Convex (catalog 1.44.0, exact) | Real-time DB, serverless functions, file storage |
-| Better Auth ^1.5.0 (+ @convex-dev/better-auth) | Auth (OAuth, sessions) |
+| Convex (catalog 1.49.0, exact) | Real-time DB, serverless functions, file storage |
+| Better Auth >=1.7.16 <1.8.0 (+ @convex-dev/better-auth) | Auth (OAuth, sessions) |
 | TanStack Query (+ @convex-dev/react-query) | Server state with Convex subscriptions |
 | TanStack Form | Form state in admin |
 | TanStack Table | Admin data tables |
@@ -53,8 +53,8 @@ left unbackticked for the same reason as the workspace table above.
 | nuqs | URL query state |
 | Plate 52 (@vexcms/richtext-plate) | Richtext editor |
 | Zod 4 | Input validation / field input schemas |
-| Astro 6 + Starlight (+ starlight-typedoc) | Docs site (apps/docs) |
-| @convex-dev/rate-limiter 0.3.2 | Convex component, www auth rate limits (0.4.x needs `@convex-dev/batch-worker` → `convex-helpers` ≥0.1.127, which peers `convex ^1.46`; the catalog pins `convex` 1.44.0) |
+| Astro 7 + Starlight (+ starlight-typedoc) | Docs site (apps/docs) |
+| @convex-dev/rate-limiter 0.3.2 | Convex component, www auth rate limits (pinned; 0.4.x is now resolvable with `convex` 1.49.0, upgrade owned by the launch-infrastructure spec) |
 | @vercel/speed-insights 2.0.0 | www, sampled Core Web Vitals from real visitors |
 
 ## Dev Tooling

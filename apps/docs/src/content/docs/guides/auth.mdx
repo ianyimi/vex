@@ -234,7 +234,7 @@ config's authCollections call to match your auth options.
 ### Modelled plugins and `extraSchema`
 
 `betterAuthCollections()` models 11 plugins' schemas directly: `admin`, `anonymous`, `apiKey`,
-`convex`, `deviceAuthorization`, `jwt`, `mcp`, `oidcProvider`, `organization` (`teams` is the
+`convex`, `deviceAuthorization`, `jwt`, `oauthProvider`, `organization` (`teams` is the
 one option that changes which tables exist), `phoneNumber`, `siwe`, and `twoFactor`. Each
 descriptor accepts `true` or schema-affecting options only (`{ schema: { ... } }` to rename
 columns or add fields) — runtime options like `adminRoles` or invitation mailers are rejected

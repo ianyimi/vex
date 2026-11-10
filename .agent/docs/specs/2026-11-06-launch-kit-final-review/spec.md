@@ -11,6 +11,8 @@ touches:
   - apps/www/e2e/routes.ts
   - .agent/docs/product/v0.1.0-launch-plan.md
   - .agent/docs/product/backlog.md
+  - .agent/docs/standards/docs/voice-and-wording.md
+  - .agent/docs/standards/anti-patterns.md
 prompt_version: 1
 ---
 
@@ -72,6 +74,11 @@ The research ran first (`sources.md`, every URL fetched 2026-11-06), and it chan
 22. **The 4 feature posts and `/launch-week` enter `QUALITY_ROUTES` in `apps/www/e2e/routes.ts` with `draft: true` (step 9).** CI skips drafts. Before L, each is audited locally: publish on the dev deployment, run the suite with `CI` unset, record the result in quality-pass `findings.md`, unpublish. Each launch-day publish removes its route's `draft` flag in the same edit as the seed `vex_status` flip (decision 8). Why: cross-spec decision 3. The routes are drafts in production until their day, so CI can't reach them, but they still get the same audit as every other www route before L reads them.
 23. **`launch-week` and every post document stay out of the `marketing-site` template.** Why: cross-spec decision 6 excludes everything vexcms-specific from the template: the `posts` collection, `/posts/[slug]`, the `privacy`, `accessibility`, `brand` and `launch-week` pages, `/tour`, every post document, the vexcms-only footer links, and the Sponsors `socialLinks` entry. L step 18 checks the scaffold against that list.
 24. **Step 8 is the shared media session.** It records this spec's 4 clips, public-presence step 16's demo media and the recaptured `/tour` screenshots, after quality-pass steps 6–7. Why: cross-spec decision 7. One session after the visual fixes means no frozen image ships a pre-fix screen, and `/tour` stays in step with the clips.
+25. **Scope change (developer, 2026-11-09).** Decision 2 stands: the developer writes every post. Four changes:
+    - **Example posts, a new step before step 6.** The agent finds strong real launch posts for each slot, records their numbers and opening lines, explains why they worked, and distils a per-slot checklist into `launch-post-examples.md`. It drafts nothing. The step is numbered **24** and sits before step 6 in both files, so steps 6–23 keep the numbers the coordination board, the sibling specs and the cross-spec decisions cite. Why: reading strong posts from the same platform and genre is the fastest preparation that keeps every word the developer's.
+    - **L excludes JSDoc and the TypeDoc API pages.** L covers the public docs pages (`apps/docs/src/content/docs/**` outside `api/`, plus `llms.txt`), www (including the `/admin` demo), GitHub (README, community files, issue forms, starter issues, Discussions), the npm READMEs (with the manifest fields npm renders beside them), template output, the launch posts and listings, and the release notes. The docs build still runs in step 13, because the link check reads its HTML, but `dist/api/**` is skipped and TypeDoc output is not a review item. Why: the developer's call; the API reference is generated from code and reviewed with the code.
+    - **L is a review-and-iterate loop.** In steps 14–22 the developer reads and gives feedback in this session. The agent applies each item to every surface it affects (found with `rg` over the `voice-and-wording.md` surfaces and step 13's sweeps), records it in `l-findings.md`, logs it as a `VW` entry in `.agent/docs/standards/docs/voice-and-wording.md` (or an `AP` entry in `anti-patterns.md` when it corrects an agent mistake) in the same turn, re-runs the touched evidence, and the developer re-reads. Decision 17's `blocker`/`backlog` classes stay; what changes is that a finding is applied now unless the developer defers it, and only deferred findings become `backlog.md` entries. Why: one pass of feedback reaches every surface that repeats the wording, and the voice log keeps later copy consistent.
+    - **Step 8's shot list is owned by the demo spec** named on the coordination board. `media-session.md`'s shot list is superseded by that version; step 8's checks (H.264, ≤ 60 s, ≤ 10 MB, silent, served 200, `/tour` 1280×800 and mirrored into `apps/test`) run against whatever files it lists. Why: the developer moved the media plan into its own spec.
 
 ## Out of Scope
 
@@ -80,7 +87,8 @@ The research ran first (`sources.md`, every URL fetched 2026-11-06), and it chan
 - A posts index route, RSS, tags or authors: the recap page covers launch week (decision 10).
 - Launch metrics reporting (traffic, downloads, stars). P's analytics and M's telemetry exist; reading them isn't part of this spec.
 - Launch itself (item 19): it runs `launch-kit.md`. Release mechanics (item 18): unchanged, except applying `copy-flip.patch` and the announcement handoff below.
-- Fixing L's non-blocker findings: recorded as `backlog.md` entries only (step 23).
+- Fixing L findings the developer defers: recorded as `backlog.md` entries only (step 23). Findings the developer doesn't defer are applied in the session (Design Decision 25).
+- JSDoc and the TypeDoc API pages in L (Design Decision 25).
 - Editing other specs. Step 23 edits the launch plan and `backlog.md` directly (cross-spec decision 8).
 - The unstaged telemetry work in `packages/cli`, `packages/telemetry`, `packages/create-vexcms`, `apps/test` and `scripts/`. Steps that edit `apps/test` wait for it to be committed.
 
@@ -1200,6 +1208,39 @@ and where it landed.
 
 Verify: `rg -c '^## Submission list$' .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md` prints `1`, and the table under it has 5 data rows: `rg -A8 '^## Submission list$' .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md | rg -c '^\| [A-Z]'` prints `5`. `rg -c '^\| .* \| D[1-5] ' .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md` prints `14` or more (one row per channel-day pairing in the Schedule table). `rg -c '^- \[ \]' .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md` under the Launch-morning checklist section prints `16`: `rg -A40 '^## Launch-morning checklist$' .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md | rg -c '^- \[ \]'`. `rg -c '^[0-9]+\. ' .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md` under Post-launch routine prints `10`: `rg -A20 '^## Post-launch routine$' .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md | rg -c '^[0-9]+\. '`. Negative test: `cp .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md /tmp/kit-sched.md && sed -i '' '/| 00:01 | D2 Tue | Product Hunt/d' /tmp/kit-sched.md && rg -c '^\| .* \| D2 ' /tmp/kit-sched.md` prints a count one lower than the original file's D2-row count, proving the row-coverage check catches a dropped day; `rm /tmp/kit-sched.md`.
 
+### Step 24 — Example posts [agent]
+
+Numbered 24 but runs before step 6 (Design Decision 25). The developer reads real, well-performing launch posts before writing their own. This step finds them, records their numbers, and explains why they worked. It writes no post prose: no titles, taglines or sentences for VexCMS, and short excerpts only (an opening line, a title), with links to the rest.
+
+- [ ] For every slot in `launch-kit.md`, 3–5 ranked examples. Priority: (1) the same platform and similar content (OSS dev tools, CMSs, backend frameworks, Convex-ecosystem projects); (2) the same platform, other dev-tool content; (3) other platforms. Each records the link, date, numbers (points, upvotes, comments, reactions) with the date and source they were read from (or `[UNVERIFIED]`), and the quoted opening line, then a breakdown: title shape, hook, proof, demo or link placement, length, tone, and how the maker handled comments
+- [ ] How-to guides: the Show HN guidelines and dang's tips, Product Hunt's maker guide, Supabase's launch-week writeups, and the strongest "how to write a launch post" guides
+- [ ] Per slot: a checklist distilled from its examples, and the slot's constraints (limits, rules) from `sources.md`
+- [ ] `sources.md` § 6: every URL used, with its fetch date and status
+
+Research runs in parallel subagents, one per channel group. Each writes only to a `local://` scratch file and edits no repository file. The lead stitches them into the one file.
+
+#### .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-post-examples.md
+
+```markdown
+# Launch post examples — VexCMS 0.1.0
+
+> Reading material for the developer before step 6. Real posts by other projects, ranked per
+> slot, with numbers and why they worked. Nothing here is VexCMS post text (Design Decision 2).
+
+## How to use this
+## Guides
+## <slot id>            (one section per launch-kit.md slot, in kit order)
+Slot purpose · Constraints (sources.md §…)
+### Examples (ranked)
+### Checklist
+```
+
+#### .agent/docs/specs/2026-11-06-launch-kit-final-review/sources.md
+
+One edit: append `## 6. Launch-post examples and guides (step 24)`, one `### 6.N` per channel group, each with a single `Status:` line (keeping step 1's `### ` / `Status:` count rule) and a `| URL | Fetched | Status |` table of every URL that group used. Step 12's re-fetch covers §1–§5 only; §6 is reading material, not channel rules.
+
+Verify: `test -f .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-post-examples.md`. Every kit slot has a section: `for s in $(rg -o '<!-- slot:([a-z0-9:_.-]+) -->' -r '$1' .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md | sort -u); do rg -qF "## $s" .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-post-examples.md || echo "MISSING $s"; done` prints nothing (negative test: rename one `## <slot>` heading in a `/tmp` copy → one `MISSING` line). `rg -c '^### Checklist$'` on the file equals the slot count (25). Every URL in the file is in `sources.md`, run from the spec folder: `export LC_ALL=C; x(){ rg -o 'https?://[^\s)>|"\x60*,\]]+' "$1" | sed 's/[.;:]*$//' | sort -u; }; comm -23 <(x launch-post-examples.md) <(x sources.md)` prints nothing (negative test: append an unknown URL to a `/tmp` copy → that URL is printed). Step 1's rule still holds: `rg -c '^Status:' sources.md` is one less than `rg -c '^### ' sources.md`. Manual: no section contains a title, tagline or sentence written for VexCMS.
+
 ### Step 6 — Hand-written posts and listing copy [dev]
 
 Write every slot in `launch-kit.md` yourself, working from that channel's brief and the fact sheet. No AI generation or AI editing of any slot's text (decision 2). Spell-checkers and grammar tools that only flag issues are fine; anything that rewrites isn't. Where a brief lists a `public-copy.md` string, paste it as is. If you want different wording, change `public-copy.md` first and then every surface, as its header requires.
@@ -1416,6 +1457,8 @@ One recording session captures every frozen image of the UI that ships at launch
 - **The 4 `/tour` screenshots** that launch-infrastructure step 10 shipped with pre-fix captures: dashboard, list view with a saved view, edit view with live preview, media library. Recaptured at 1280×800 and copied into both `apps/www/public/tour/` and `apps/test/public/tour/`, overwriting the files step 10 shipped under the same names.
 
 Attach to the developer's already running `apps/www` dev server on `:3030` (P-024 — never start one) and the Convex dev deployment it's wired to; nothing here starts a server. Re-seed the dev deployment first (`pnpm --filter www exec convex run seed:reinit`, cross-spec decision 9) so the recorded content is the seeded copy.
+
+**Shot list owner (Design Decision 25, 2026-11-09).** The demo spec named on the coordination board rewrites this step's shot list; `media-session.md`'s shot list is superseded by it. The Verify below runs against the files that version lists: every clip H.264, ≤ 60 s, ≤ 10 MB, silent and served `200`; every `/tour` PNG 1280×800 and byte-identical in `apps/test/public/tour/`.
 
 - [ ] Record `real-time-admin-and-live-preview.mp4`, `one-config-schema-and-types.mp4`, `access-control-hooks-validation.mp4`, `create-vexcms-to-deployed.mp4` as raw `.mov`/`.mp4` captures
 - [ ] Encode each with the command below; `ffprobe` each result for duration, codec and no audio stream; check file size
@@ -2235,7 +2278,7 @@ should contain.
 | www routes: `(frontend)/(site)/[slug]`, `@auth` modal + fallback, `unauthorized`, `(vexcms)/admin/[[...path]]`, `sitemap.ts`, `robots.ts`, `api/vex/revalidate` | baseline | baseline |
 | www header links: Features, Roadmap, Docs, GitHub, Get started | baseline | baseline |
 | www footer links: Features, Roadmap, Docs, Quickstart, Admin demo, npm, Licence, Convex | baseline | baseline |
-| docs: 44 hand-written content files outside `api/` (20 field pages) + TypeDoc `api/**` + llms.txt | baseline | baseline |
+| docs: 44 hand-written content files outside `api/` (20 field pages) + llms.txt. JSDoc and TypeDoc `api/**` are out of L's scope (Design Decision 25) | baseline | baseline |
 | root `README.md`, 8 `packages/*/README.md` | baseline | baseline |
 | 8 published packages at a shared alpha version, `publishConfig.tag: alpha` | baseline | baseline |
 | `create-vexcms` templates `base-nextjs`, `marketing-site` | baseline | baseline |
@@ -2281,15 +2324,15 @@ state once every parallel spec has landed; non-empty means re-derive the table a
 
 ## Docs (step 14)
 
-One row per file `find apps/docs/src/content/docs -name "*.md" -o -name "*.mdx"` lists
-(`l-prepass.md` §docs-inventory), plus `apps/docs/src/content/docs/api/**` (TypeDoc).
+One row per file `find apps/docs/src/content/docs -path '*/api/*' -prune -o \( -name "*.md" -o -name "*.mdx" \) -print` lists
+(`l-prepass.md` §docs-inventory). The TypeDoc `api/**` pages are not reviewed (Design Decision 25).
 
 | File | Pass | Finding |
 |---|---|---|
 |  |  |  |
 
 Checklist, applied per file:
-- [ ] Does every code example on this page compile against today's exports? Open the API page (`/api/<package>/<Symbol>`) for each symbol the example imports and confirm the signature matches.
+- [ ] Does every code example on this page compile against today's exports? Check each imported symbol against the package's `src/index.ts` export and its signature.
 - [ ] Does every internal link on the page resolve — no 404, no path left over from a rename (`l-prepass.md`'s link check covers this mechanically; re-read any 4xx or redirect-to-login row it lists for this file)?
 - [ ] Does the prose describe current behavior, not a planned or removed one (cross-check against the package's current `index.ts` exports, not the page's own narrative)?
 
@@ -2304,10 +2347,6 @@ Checklist, applied per file:
 
 `accessibility.md`:
 - [ ] Does the stated conformance target and known-exceptions list match `backlog.md`'s current open accessibility findings — not the list as it stood when the page was drafted?
-
-TypeDoc `api/**`:
-- [ ] Spot-read the 5 symbols actually referenced from guide/field pages' code examples (not a random sample) — does the rendered signature match the package's current exported type?
-- [ ] Does `pnpm --filter docs build` (`l-prepass.md` §docs-build) report zero TypeDoc warnings — `apps/docs/astro.config.mjs`'s `starlightTypedoc` plugin sets `typeDoc.treatWarningsAsErrors: true`, so a non-zero exit here already IS the warning?
 
 `llms.txt`:
 - [ ] Fetch `<vex-docs preview URL>/llms.txt` and read the `details` block end to end — does it still describe the config split (`vex.config.ts` / `vex.config.server.ts`), the `vex dev` / `vex generate` codegen flow, and is its alpha wording covered by `copy-flip.patch`?
@@ -2631,6 +2670,7 @@ function walk(dir, exts, out = []) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
       if (entry.name === "node_modules" || entry.name === ".git") continue;
+      if (full === join(root, "apps/docs/dist/api")) continue; // TypeDoc pages: out of L's scope (Design Decision 25)
       walk(full, exts, out);
       continue;
     }
@@ -2858,7 +2898,8 @@ pnpm --filter docs build
 
 `apps/docs/astro.config.mjs`'s `starlightTypedoc` plugin sets `typeDoc.treatWarningsAsErrors:
 true` — the build itself fails on any TypeDoc warning, so a green exit here already proves
-zero warnings; no separate warning-count check is needed.
+zero warnings; no separate warning-count check is needed. The build runs because the link check
+reads its HTML; TypeDoc output itself is not an L review item (Design Decision 25).
 
 **Launch-kit lint re-run.** Re-run the step 7 lint commands over every slot in `launch-kit.md`;
 append the new run to that file's existing lint log rather than duplicating it in
@@ -2998,11 +3039,13 @@ See `launch-kit.md`'s lint log (step 7) for the appended run; linked here: <link
 
 Verify: `rg -c "^### " .agent/docs/specs/2026-11-06-launch-kit-final-review/l-prepass.md` prints at least 14 (one per matrix row) plus the five named checks. `node /tmp/l-link-check.mjs --negative-test | rg "404 https://vexcms\.dev/__l-link-check-negative-test__"` prints a match. `pnpm --filter docs build` exits 0.
 
-### Step 14 — L: docs and API reference [dev]
+### Step 14 — L: public docs pages [dev]
 
 Why: the docs are where a stranger checks whether a claim is real.
 
-- [ ] Work through `surface-review.md`'s Docs section, file by file, plus `roadmap.md`, `compare.mdx`, `accessibility.md`, TypeDoc `api/**` and `llms.txt`'s dedicated checklists
+**How every L step runs (steps 14–22, Design Decision 25).** You read and give feedback in the session. For each item the agent: applies it to every surface it affects (`rg` the old wording over the `voice-and-wording.md` surfaces and step 13's sweeps); adds an `l-findings.md` row; logs it as a `VW` entry in `.agent/docs/standards/docs/voice-and-wording.md`, or an `AP` entry in `anti-patterns.md` when it corrects an agent mistake, in the same turn; re-runs the touched evidence and appends it to `l-prepass.md`, dated; and regenerates `copy-flip.patch` if a touched file is in it. You re-read and mark the row.
+
+- [ ] Work through `surface-review.md`'s Docs section, file by file, plus `roadmap.md`, `compare.mdx`, `accessibility.md` and `llms.txt`'s dedicated checklists. JSDoc and the TypeDoc `api/**` pages are out of scope
 - [ ] Mark every row pass or link an `l-findings.md` id
 
 The checklist content — including the concrete question for every file type — lives in
@@ -3089,7 +3132,7 @@ Verify: every matrix cell is filled (match / finding / n/a); `copy-flip.patch` i
 Why: blockers are fixed before Release; everything else is recorded, not lost.
 
 - [ ] `l-findings.md`: one row per finding from steps 14–21
-- [ ] Fix every `blocker`; re-check the touched surface and every matrix row it feeds
+- [ ] The agent applies every finding you don't defer, in the session, to every surface it affects; re-check the touched surfaces and every matrix row they feed
 - [ ] Regenerate `copy-flip.patch` if a fix touched a file it covers; re-read it line by line
 - [ ] Advance the reviewed SHA; sign off in `surface-review.md`
 
@@ -3101,7 +3144,9 @@ Why: blockers are fixed before Release; everything else is recorded, not lost.
 > One row per finding from steps 14–21. `blocker` = a cross-surface contradiction, a false or
 > unsupported claim, a broken link or route on a launch path, a paid tier/price/customer named
 > anywhere, or alpha wording outside `copy-flip.patch`'s scope. Everything else is `backlog`.
-> No open `blocker` survives this file at sign-off.
+> Every finding is applied in the session unless the developer defers it; a `blocker` can't be
+> deferred. No open `blocker` survives this file at sign-off. Wording findings also carry their
+> `VW-NNN` (or `AP-NNN`) id in the evidence cell.
 
 | id | surface | severity | evidence | fix commit | re-check | backlog entry |
 |---|---|---|---|---|---|---|
@@ -3109,9 +3154,9 @@ Why: blockers are fixed before Release; everything else is recorded, not lost.
 
 ## Fix loop
 
-For each `blocker`:
+For each finding that isn't deferred (every `blocker`, plus every `backlog` row the developer wants applied now):
 
-1. Fix it.
+1. The agent fixes it in the session, on every surface it affects, and logs the VW/AP entry (Design Decision 25).
 2. Re-check the surface it was found on, and every `surface-review.md` consistency-matrix row
    it feeds — not only the one row that caught it.
 3. If the fix touched a file `copy-flip.patch` covers, regenerate the patch and re-run step

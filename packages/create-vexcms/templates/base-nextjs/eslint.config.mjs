@@ -1,13 +1,9 @@
 import convexPlugin from "@convex-dev/eslint-plugin"
-import { FlatCompat } from "@eslint/eslintrc"
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals"
 import importX from "eslint-plugin-import-x"
 import jsxA11y from "eslint-plugin-jsx-a11y"
 import perfectionist from "eslint-plugin-perfectionist"
 import tseslint from "typescript-eslint"
-
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-})
 
 const convexConfig = convexPlugin.configs.recommended[0]
 const convexRules = convexConfig.rules
@@ -36,9 +32,6 @@ function promoteToError(config) {
  */
 const jsxA11yConfig = {
   files: ["**/*.tsx"],
-  plugins: {
-    "jsx-a11y": jsxA11y,
-  },
   rules: {
     ...Object.fromEntries(
       Object.entries(jsxA11y.flatConfigs.recommended.rules).map(([rule, config]) => [
@@ -81,7 +74,7 @@ export default tseslint.config(
   {
     ignores: defaultESLintIgnores,
   },
-  ...compat.extends("next/core-web-vitals"),
+  ...nextCoreWebVitals,
   perfectionist.configs["recommended-natural"],
   {
     extends: [

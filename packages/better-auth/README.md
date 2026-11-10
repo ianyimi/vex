@@ -130,7 +130,7 @@ Both entry points convert Better Auth's schema into Vex collections through the 
 ## Modelled plugins
 
 `betterAuthCollections()` models 11 plugins' schemas directly — `admin`, `anonymous`,
-`apiKey`, `convex`, `deviceAuthorization`, `jwt`, `mcp`, `oidcProvider`, `organization`
+`apiKey`, `convex`, `deviceAuthorization`, `jwt`, `oauthProvider`, `organization`
 (`teams` changes which tables exist), `phoneNumber`, `siwe`, `twoFactor`. Each descriptor
 accepts `true` or schema-affecting options only (`{ schema: { ... } }` to rename columns or
 add fields) — runtime options (roles, mailers, secrets) are rejected by the type, since
@@ -185,5 +185,5 @@ maintenance task.
 ## Peer Dependencies
 
 - `@vexcms/core` — Core VEX CMS types
-- `better-auth` — Better Auth (>=1.6.23 <1.7.0)
+- `better-auth` — Better Auth (>=1.7.16 <1.8.0)
 - `convex` — Convex backend (>=1.44.0 <2)

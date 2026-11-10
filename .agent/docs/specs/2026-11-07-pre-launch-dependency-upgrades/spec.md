@@ -8,6 +8,8 @@ touches:
   - "patches/*.patch"
   - ".changeset/*.md"
   - "apps/test/package.json"
+  - "apps/test/pnpm-lock.yaml"
+  - "apps/test/pnpm-workspace.yaml"
   - "apps/test/eslint.config.mjs"
   - "apps/test/convex/http.ts"
   - "apps/test/src/auth/plugins.ts"
@@ -20,7 +22,9 @@ touches:
   - "apps/docs/src/content.config.ts"
   - "apps/docs/src/content/i18n/en.json"
   - "apps/docs/src/content/docs/guides/auth.mdx"
-  - "packages/better-auth/package.json"
+  - "packages/*/package.json"
+  - "packages/cli/src/lib/loadConfig.ts"
+  - "packages/cli/src/lib/loadConfig.test.ts"
   - "packages/better-auth/README.md"
   - "packages/better-auth/src/pluginSchemas.ts"
   - "packages/better-auth/src/pluginSchemas.test.ts"
@@ -30,7 +34,10 @@ touches:
   - "packages/create-vexcms/templates/base-nextjs/eslint.config.mjs"
   - "packages/create-vexcms/templates/base-nextjs/convex/http.ts"
   - "packages/create-vexcms/templates/base-nextjs/convex/auth/plugins/index.ts"
+  - ".github/dependabot.yml"
+  - ".github/labels.yml"
   - ".agent/docs/product/tech-stack.md"
+  - ".agent/docs/product/backlog.md"
   - ".agent/manifest.json"
   - ".agent/dependencies/registry.md"
   - ".agent/docs/research/pre-launch-dependency-review.md"
@@ -47,8 +54,10 @@ Before v0.1.0 locks, every pinned dependency moves to a current, advisory-free v
 template still pins `next` 16.3.3 (critical RCE advisories; the catalog had already moved to
 16.4.3), and better-auth 1.6.x carries a critical account-takeover advisory fixed only in the 1.7
 line. The rest is same-major freshness, the Next 16 ESLint config, the docs site's Astro 7 move,
-and a transitive lockfile refresh. Findings: `.agent/docs/research/pre-launch-dependency-review.md`.
-Implementation starts after the current working tree is committed.
+a transitive lockfile refresh with build-only packages moved to `devDependencies`, and a
+Dependabot config plus a triage of every alert the upgrades leave open. Findings:
+`.agent/docs/research/pre-launch-dependency-review.md`. Implementation starts after the current
+working tree is committed.
 
 ## Design Decisions
 
@@ -98,6 +107,62 @@ Implementation starts after the current working tree is committed.
     entry in the template would fix only pnpm users; npm/yarn/bun would silently differ.
 16. **Changesets are `patch` (P-025)** and name only publishable packages whose packed output
     moved; private apps (`test`, `www`, `docs`) get none.
+17. **`vite` 7.3.7 joins step 1.** It is an exact catalog pin (direct dev dependency of
+    `apps/www`), so `pnpm update -r` cannot move it; 7.3.7 (2026-10-06) clears 5 Dependabot
+    alerts, 7.3.8 is inside the 72h window. vitest 4.1.12 peers `vite ^6 || ^7 || ^8`, so the
+    catalog comment's "pinned to the version vitest resolves" stays true.
+18. **The CLI's oidc-provider filter goes in step 3 too.** `packages/cli/src/lib/loadConfig.ts`
+    gained a copy of the `convex/http.ts` filter on 2026-11-09 (after this spec was written) with
+    the same expiry condition; it and its two tests leave with the other three copies.
+19. **Build-only packages move to `devDependencies` (developer decision, 2026-11-09).** A package
+    stays in `dependencies` only when a JS/TS module that runs in the browser, the Next server or
+    a Convex function imports it. `shadcn` and `tw-animate-css` are read only by `globals.css`
+    `@import`s (both apps, both templates); every `apps/docs` package is consumed by `astro build`
+    (static output). Vercel installs devDependencies: `tailwindcss` and `@tailwindcss/postcss`
+    already resolve from there on every deploy. Dependabot then files those trees as
+    `development`.
+20. **`tsup` 9.0.0 and catalog `esbuild` 0.28.2 (developer: take it if it is cheap).**
+    GHSA-g7r4-m6w7-qqqr covers `esbuild >=0.27.3 <0.28.1`; tsup 8.5.1 depends on `^0.27.0` and the
+    root's direct `esbuild` (scripts) is 0.27.7. `convex` 1.49.0's exact `esbuild` 0.27.0 is below
+    the vulnerable range and stays. tsup 9's only breaking change is dropping Node <22.18
+    (`debug` → `obug`), so root `engines.node` rises to `>=22.18.0`. A package gets a changeset
+    only if its built `dist/` differs.
+21. **The stale `apps/test/pnpm-lock.yaml` and `apps/test/pnpm-workspace.yaml` are deleted
+    (developer decision, 2026-11-09).** Committed in `b4ff20ba` with zero `catalog:` specifiers;
+    nothing installs from them; 155 of the 297 alerts. Not the root lockfile, so decision 14 does
+    not apply. Plain `rm`; the developer commits the deletion.
+22. **Dependabot: npm security-only, github-actions version updates, both weekly, grouped, with
+    `cooldown.default-days: 3`.** npm keeps the research doc's `open-pull-requests-limit: 0`:
+    catalog and template pins move by hand (decision 3), and version-update PRs would be a
+    second, template-blind path. Security PRs ignore cooldown, but pnpm's
+    `minimumReleaseAge: 4320` still gates their install; three days matches it for every version
+    update (actions now, npm if the limit is ever raised). Actions are SHA-pinned with version
+    comments, which Dependabot rewrites in place.
+23. **Alert triage re-matches against the final tree.** GitHub computes alerts on `master`, so
+    they keep showing the old versions until this tree merges. Step 7 re-pulls them and tests each
+    alert's vulnerable range against the versions the final lockfile and template manifest
+    resolve. Non-matching alerts close on merge; matching ones are listed with a GitHub dismiss
+    reason. Dismissing them and the live label sync are the developer's.
+24. **The backlog's "Upgrade the Better Auth stack" entry is removed in step 6.** The developer's
+    2026-11-09 go for step 3 settles its D4 conflict, and step 3 does the upgrade.
+25. **Base UI 1.9.0 and Shiki 4.6.0 land after test-environment fixes (post-polish, 2026-11-10).**
+    Step 2 first held both on 4 failing tests; every failure was a jsdom gap or a pinned internal
+    detail, not a product bug. Base UI 1.9 activates keyboard-focused items with
+    `new window.PointerEvent("click")` (jsdom has none → `@vexcms/react/testing` setup polyfills
+    it) and focuses an opened menu one tick later (the DropdownMenu test waits for focus); Radio
+    moved its `id` to the hidden native input (the SaveListViewDialog test queries by role);
+    Shiki 4.6's gzip-inlined wasm needs `Blob.stream()`, which Node has and jsdom lacks (the
+    `highlightClient` test stubs Node's `Blob`).
+26. **Auth-collection index parity with `@convex-dev/better-auth` 0.13.0 (post-polish).**
+    `betterAuthAdapter()` emits upstream's core-table indexes (`create-schema.js` `indexFields`)
+    plus Better Auth 1.7 table-level `indexes`. `findIndex` matches a prefix of equality fields
+    (sorted) then the range or sort field, so core entries are written equality-first (session
+    `[userId, expiresAt]`, not upstream's `[expiresAt, userId]`, which cannot serve Better Auth's
+    `userId` eq + `expiresAt` gt) and plugin uniqueness indexes are sorted. `findIndex` itself
+    dropped a local `_` prefix on range/sort fields (upstream has none) that made every
+    equality-plus-range/sort lookup miss. Indexes on absent fields are dropped and single-field
+    duplicates of `by_<field>` skipped. `mergeAuthCollections` unions `indexes` by name (project
+    wins) instead of replacing the adapter's list.
 
 ## Out of Scope
 
@@ -115,6 +180,11 @@ Implementation starts after the current working tree is committed.
 - A permanent advisory-check script or CI gate — the step-1 advisory query is a Verify command.
 - Rule-level tuning of the Next 16 ESLint rule set beyond fixing what it reports.
 - A custom docs 404 page or multilingual docs.
+- `CONTRIBUTING.md` — a separate contributing spec owns it.
+- Dependabot version-update PRs for npm (decision 22).
+- Running `sync-labels.mjs` live and dismissing alerts in GitHub — the developer's.
+- Moving JS-imported packages to `devDependencies` because Next bundles them (`geist`, etc.):
+  decision 19's rule keys on what runtime code imports, not on bundling.
 
 ## Implementation
 
@@ -123,7 +193,7 @@ Implementation starts after the current working tree is committed.
 Moves the three advisory-carrying pins that need no code change, and closes the template's
 `next` drift. Every later step reuses the advisory query defined here.
 
-- [ ] `pnpm-workspace.yaml`: `next`, `zod`, `vitest`, `@vitest/coverage-v8`
+- [ ] `pnpm-workspace.yaml`: `next`, `zod`, `vitest`, `@vitest/coverage-v8`, `vite`
 - [ ] `packages/create-vexcms/templates/base-nextjs/package.json`: `next`, `zod`
 - [ ] `.changeset/security-pins-next-zod.md`: new
 - [ ] `pnpm install`, then `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm lint`
@@ -131,11 +201,11 @@ Moves the three advisory-carrying pins that need no code change, and closes the 
 
 #### pnpm-workspace.yaml
 
-4 value edits in `catalog:`; everything not shown is unchanged. `catalogs.peers` is untouched:
+5 value edits in `catalog:`; everything not shown is unchanged. `catalogs.peers` is untouched:
 `zod: ">=4.0.0 <5"` and `vitest: ">=4.0.0 <5"` describe the API surface consumers need
 (P-012), and the consumer's own `zod`/`vitest` resolution is theirs to patch.
 
-**1 — `catalog:` entries `"@vitest/coverage-v8"`, `next`, `vitest`, `zod`.**
+**1 — `catalog:` entries `"@vitest/coverage-v8"`, `next`, `vite`, `vitest`, `zod`.**
 
 ```yaml
   "@vitest/coverage-v8": 4.1.12
@@ -143,6 +213,10 @@ Moves the three advisory-carrying pins that need no code change, and closes the 
 
 ```yaml
   next: 16.4.5
+```
+
+```yaml
+  vite: 7.3.7
 ```
 
 ```yaml
@@ -215,8 +289,8 @@ Measured before this step (2026-11-07): `astro better-auth next sharp vitest zod
 
 Verify:
 - [ ] Advisory query prints exactly `astro better-auth sharp` (the remaining three belong to
-      steps 3 and 5). Negative check: temporarily set the template's `next` back to `16.3.3`,
-      re-run, and confirm `next` reappears; restore.
+      steps 3 and 5); `vite` is absent. Negative check: temporarily set the template's `next`
+      back to `16.3.3`, re-run, and confirm `next` reappears; restore.
 - [ ] `node -e 'const t=require("./packages/create-vexcms/templates/base-nextjs/package.json");const y=require("yaml").parse(require("fs").readFileSync("pnpm-workspace.yaml","utf8"));process.exit(t.dependencies.next===y.catalog.next?0:1)'` exits 0
 - [ ] `pnpm install` exits 0 with no peer errors; `pnpm build`, `pnpm typecheck`, `pnpm test`,
       `pnpm lint` green
@@ -508,6 +582,8 @@ root `getToken` patch against 0.13.0.
 - [ ] `apps/test/src/auth/plugins.ts`, `apps/www/convex/auth/plugins/index.ts`,
       `packages/create-vexcms/templates/base-nextjs/convex/auth/plugins/index.ts` — correct the
       stale "convex() calls the deprecated oidc-provider plugin" JSDoc
+- [ ] `packages/cli/src/lib/loadConfig.ts` + `loadConfig.test.ts` — drop the CLI's copy of the
+      filter and its two tests
 - [ ] `.changeset/better-auth-1-7-upgrade.md` — new file
 - [ ] `pnpm install && pnpm build && pnpm typecheck && pnpm test && pnpm lint`
 
@@ -957,16 +1033,45 @@ Same JSDoc correction:
  */
 ```
 
+#### packages/cli/src/lib/loadConfig.ts
+
+1 edit (deletion); everything else unchanged.
+
+**1 — delete the oidc-provider `console.warn` filter around `jiti.import()`.** Same expiry
+condition as the `convex/http.ts` copies (its comment: "Remove once @convex-dev/better-auth
+migrates to @better-auth/oauth-provider"). The comment block, `originalWarn`, the override and
+the `try`/`finally` go; the import collapses to:
+
+```ts
+  const jiti = createJiti(configPath, createJitiOptions(projectDir));
+  const mod = (await jiti.import(configPath)) as VexConfig | { default: VexConfig };
+
+  const config = "default" in mod ? mod.default : mod;
+```
+
+#### packages/cli/src/lib/loadConfig.test.ts
+
+1 edit (deletion); everything else unchanged.
+
+**1 — delete the two filter tests**, "suppresses the oidc-provider deprecation warning while
+importing the config" and "does not suppress other console.warn calls during config import".
+Both pin the filter that no longer exists; `vi` leaves the `vitest` import with them:
+
+```ts
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+```
+
 #### .changeset/better-auth-1-7-upgrade.md
 
-New file. `patch` (P-025) for the two publishable packages this step's manifests touch —
-`@vexcms/better-auth` (the descriptor swap is a public API break) and `create-vexcms` (the
-scaffold template's pins and `pnpm` rules changed, same precedent as
-`2026-08-30-wpa-dependency-pinning` step 7).
+New file. `patch` (P-025) for the three publishable packages this step touches —
+`@vexcms/better-auth` (the descriptor swap is a public API break), `@vexcms/cli` (the config
+loader's warning filter goes) and `create-vexcms` (the scaffold template's pins and `pnpm`
+rules changed, same precedent as `2026-08-30-wpa-dependency-pinning` step 7).
 
 ```md
 ---
 "@vexcms/better-auth": patch
+"@vexcms/cli": patch
 "create-vexcms": patch
 ---
 
@@ -989,6 +1094,9 @@ hunk.
 
 `@better-auth/passkey`'s pinned override and the scaffold template's dependency pins move to
 1.7.18 in lockstep.
+
+`vex dev`/`vex deploy`/`vex generate` no longer filter the `oidc-provider` deprecation warning
+while loading `vex.config.server.ts`: `@convex-dev/better-auth` 0.13.0 no longer emits it.
 ```
 
 Verify:
@@ -1014,8 +1122,8 @@ Verify:
       `node_modules/.pnpm/@convex-dev+better-auth@0.13.0*/node_modules/@convex-dev/better-auth`
       — applies cleanly at offset 0 (proves the patch was authored against the real installed
       tree, not a stale `npm pack`)
-- [ ] `grep -rn "oidc-provider" apps/test/convex apps/www/convex packages/create-vexcms/templates` —
-      no output (the dead filter and its stale comment are fully removed)
+- [ ] `grep -rn "oidc-provider" apps/test/convex apps/www/convex packages/create-vexcms/templates packages/cli/src` —
+      no output (the dead filters, their tests and their stale comments are fully removed)
 - [ ] Manual, attached to the already-running `apps/test` dev server (P-024, port 3020 per its
       `dev` script; if the port refuses connections, ask the developer to start it — never
       start one, P-024): sign in with email/password, sign up a new account, anonymous
@@ -1023,7 +1131,7 @@ Verify:
 - [ ] `pnpm build && pnpm typecheck && pnpm test && pnpm lint` — all green; `pnpm test` count
       is the pre-step baseline plus/minus only the `pluginSchemas.test.ts` delta (11 probe
       cases replace 12 — `mcp`+`oidcProvider` collapse to one `oauthProvider`, net −1)
-- [ ] `pnpm changeset status` — `@vexcms/better-auth` and `create-vexcms` both listed
+- [ ] `pnpm changeset status` — `@vexcms/better-auth`, `@vexcms/cli` and `create-vexcms` listed
 
 ### Step 4 — eslint-config-next 16 alignment [agent]
 
@@ -1514,19 +1622,118 @@ Verify:
       the project's Node.js Version is set in the Vercel dashboard for the `docs` project —
       confirm it is ≥22.x before the next deploy
 
-### Step 6 — Transitive refresh, scaffold gate, records [agent]
+### Step 6 — Transitive refresh, build-only deps, tsup 9, scaffold gate, records [agent]
 
-Refreshes caret-ranged transitive dependencies inside their existing ranges, proves the
-scaffold end to end, and brings the project records in line with the new versions.
+Moves build-only packages to `devDependencies`, takes `tsup` 9 for the `esbuild` fix, refreshes
+caret-ranged transitive dependencies inside their existing ranges, proves the scaffold, and
+brings the project records in line with the new versions.
 
+- [ ] `pnpm-workspace.yaml` — `tsup` 9.0.0, `esbuild` 0.28.2
+- [ ] `package.json` (root) — `engines.node` `>=22.18.0`
+- [ ] `apps/www/package.json`, `apps/test/package.json`,
+      `packages/create-vexcms/templates/base-nextjs/package.json` — `shadcn`, `tw-animate-css` →
+      `devDependencies`
+- [ ] `apps/docs/package.json` — every `dependencies` entry → `devDependencies`
+- [ ] `.changeset/template-build-only-dev-deps.md` — new file
 - [ ] `pnpm update -r` (transitive refresh; manifests must not change)
 - [ ] `pnpm audit --audit-level high` residue recorded in this spec's `## Verification`
-- [ ] `pnpm --filter "@vexcms/*" --filter create-vexcms build`, then `pnpm verify:scaffold`
-- [ ] Manual scaffold run of both templates
+- [ ] `pnpm --filter "@vexcms/*" --filter create-vexcms build`, then `pnpm check:vercel` and
+      `node scripts/verify-scaffold.mjs`
+- [ ] Manual scaffold run of both templates → § Human queue (P-024)
 - [ ] `.agent/docs/product/tech-stack.md`: version rows + `verified_at`
 - [ ] `.agent/manifest.json`: `dependencies[].version`, then `harness deps sync`
 - [ ] `.agent/docs/research/pre-launch-dependency-review.md`: status line
+- [ ] `.agent/docs/product/backlog.md`: remove § Upgrade the Better Auth stack (decision 24)
 - [ ] `harness tasks add` for the unshipped template patches
+
+#### pnpm-workspace.yaml (tsup, esbuild)
+
+2 value edits in `catalog:`; everything not shown is unchanged. `esbuild` 0.28.2 published
+2026-08-08, `tsup` 9.0.0 2026-10-14 — both clear `minimumReleaseAge`. tsup 9 depends on
+`esbuild ^0.28.2`, so the root's direct pin and tsup's resolve to one copy.
+
+```yaml
+  esbuild: 0.28.2
+```
+
+```yaml
+  tsup: 9.0.0
+```
+
+Before the install, copy every `packages/*/dist` to `/tmp/dep/dist-tsup8/`; after `pnpm build`,
+`diff -r` each against the new `dist/`. A package whose output differs gets a `patch` changeset
+naming the tsup bump; identical output gets none.
+
+#### package.json (engines)
+
+1 edit; everything not shown is unchanged. tsup 9.0.0's `engines` is
+`^22.18.0 || ^24.11.0 || >=26.0.0`; the root floor states the toolchain's real minimum
+(decision 5's reasoning).
+
+```json
+  "engines": {
+    "node": ">=22.18.0"
+  },
+```
+
+#### apps/www/package.json
+
+2 moves; everything not shown is unchanged. Delete `"shadcn": "catalog:"` and
+`"tw-animate-css": "catalog:"` from `dependencies` and add both to `devDependencies` in
+alphabetical position. The only readers are `src/app/globals.css:24-25`
+(`@import "tw-animate-css"`, `@import "shadcn/tailwind.css"`).
+
+```json
+    "shadcn": "catalog:",
+```
+
+```json
+    "tw-animate-css": "catalog:",
+```
+
+#### apps/test/package.json
+
+Same 2 moves as `apps/www/package.json` (readers: `src/app/globals.css:24-25`).
+
+#### apps/docs/package.json
+
+1 edit; `scripts`, `engines` (step 5) and the existing `devDependencies` entries are
+unchanged. `apps/docs` is a static Astro build: every package is consumed by `astro build`,
+including `@vercel/analytics`, whose Astro component compiles into the emitted HTML. Delete the
+`dependencies` object and merge its five entries into `devDependencies`:
+
+```json
+  "devDependencies": {
+    "@astrojs/starlight": "catalog:",
+    "@types/node": "catalog:",
+    "@vercel/analytics": "catalog:",
+    "astro": "catalog:",
+    "sharp": "catalog:",
+    "starlight-llms-txt": "catalog:",
+    "starlight-typedoc": "catalog:",
+    "typedoc": "catalog:"
+  },
+```
+
+#### packages/create-vexcms/templates/base-nextjs/package.json (build-only deps)
+
+Same 2 moves as `apps/www/package.json`, as literal pins (`"shadcn": "3.6.3"`,
+`"tw-animate-css"` at its current pin). Readers: both templates' `src/app/globals.css:24-25`;
+the marketing overlay adds only `shiki` (`packages/create-vexcms/src/installers/base.ts`), which
+is runtime and stays in `dependencies`.
+
+#### .changeset/template-build-only-dev-deps.md
+
+New file.
+
+```md
+---
+"create-vexcms": patch
+---
+
+New projects list `shadcn` and `tw-animate-css` under `devDependencies`: only `globals.css`
+imports them, at build time.
+```
 
 #### pnpm-lock.yaml
 
@@ -1535,7 +1742,8 @@ transitive dependency re-resolves to the newest version its parent's range allow
 `minimumReleaseAge` admits. Direct dependencies cannot move: every catalog value is exact.
 
 The command must change ONLY `pnpm-lock.yaml`. If it rewrites any manifest or the catalog,
-`git checkout` those files and run `pnpm install` to re-sync the lockfile before continuing.
+restore those values by hand (board rule 8: no `git checkout`) and run `pnpm install` to re-sync
+the lockfile before continuing. Snapshot the manifests to `/tmp/dep/` first so the diff is exact.
 
 #### Audit residue
 
@@ -1610,34 +1818,166 @@ harness tasks add "Template ships no dependency patches: scaffolded projects mis
 
 #### Manual scaffold run
 
-AP-020: only a real scaffold run proves template changes. Pack and scaffold through
-`verify:scaffold --keep` (it already scaffolds both templates against the packed tarballs),
-then in each kept project directory:
+AP-020: only a real scaffold run proves template changes. It needs `npx convex dev --once`
+against fresh dev deployments and a running server, which agents may not start (P-024), so it
+goes to § Human queue as one item: scaffold both templates through
+`node scripts/verify-scaffold.mjs --keep`, then in each kept project directory:
 
-1. `npx convex dev --once` against a fresh dev deployment (needs the developer's Convex login;
-   ask the developer to run it if the CLI prompts for auth).
+1. `npx convex dev --once` against a fresh dev deployment.
 2. Set the env from `_env.example`, run `pnpm build`, then `pnpm start` on a free port.
 3. Sign up with email/password, load `/admin`, create and save one document, sign out, sign in
    again.
 4. `pnpm lint` exits 0 (proves step 4's flat config in the template).
 
+#### .agent/docs/product/backlog.md
+
+1 edit, under the board's `backlog.md` lock: delete § "Upgrade the Better Auth stack
+(oidc-provider deprecation)" through its closing `---` (decision 24).
+
 Verify:
 - [ ] `git diff --name-only` after `pnpm update -r` lists only `pnpm-lock.yaml`
-- [ ] `pnpm install --frozen-lockfile` exits 0; `pnpm build`, `pnpm typecheck`, `pnpm test`,
-      `pnpm lint` green
+- [ ] `pnpm install --frozen-lockfile` exits 0; `pnpm build`, `pnpm typecheck`,
+      `pnpm test --force` (twice), `pnpm lint` green
+- [ ] `pnpm why esbuild -r` shows 0.28.2 everywhere except `convex`'s own exact 0.27.0
+- [ ] `dist/` diff recorded; changesets only for packages whose output moved
 - [ ] `node scripts/check-packed-manifests.mjs` exits 0 (sweep + packed)
 - [ ] Advisory query (step 1) prints `no advisories`
 - [ ] `pnpm audit --audit-level high` residue fully listed under `## Verification`, none shipping
       to users
-- [ ] `pnpm verify:scaffold` exits 0; `node scripts/verify-scaffold.mjs --negative` exits 1
-      (the override gate still bites)
-- [ ] Manual scaffold run passes for `base-nextjs` and `marketing-site`
+- [ ] `pnpm check:vercel` exits 0
+- [ ] `node scripts/verify-scaffold.mjs` exits 0; `node scripts/verify-scaffold.mjs --negative`
+      exits 1 (the override gate still bites)
+- [ ] Manual scaffold run for `base-nextjs` and `marketing-site` queued in § Human queue
 - [ ] `harness deps list` shows the new versions; `harness doctor` reports no `stale-dependencies`
 - [ ] `harness state` shows the template-patch task in the inbox
 
+### Step 7 — Dependabot config + alert triage [agent]
+
+Adds the Dependabot config and its label, deletes the stale `apps/test` lockfile, then re-pulls
+the alerts and gives every one the upgrades leave open a dismiss reason.
+
+- [ ] `.github/dependabot.yml` — new file
+- [ ] `.github/labels.yml` — `dependencies` label
+- [ ] `node scripts/sync-labels.mjs --check`
+- [ ] `rm apps/test/pnpm-lock.yaml apps/test/pnpm-workspace.yaml`
+- [ ] Alert re-pull + re-match → `## Verification` § Dependabot alerts left open
+- [ ] § Human queue: live label sync, alert dismissals
+
+#### .github/dependabot.yml
+
+New file. The research doc's security-only npm entry plus a cooldown, and a github-actions entry
+(decision 22). Groups: `auth` must move together (`@convex-dev/better-auth` pins the better-auth
+range, a patch targets its version, `catalogs.peers` caps consumers); `docs-site` is build-time
+only; everything else non-breaking lands in one PR and majors fall through to individual PRs.
+
+```yaml
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 0
+    cooldown:
+      default-days: 3
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "fix(deps)"
+    groups:
+      auth:
+        applies-to: security-updates
+        patterns:
+          - "better-auth"
+          - "@better-auth/*"
+          - "better-call"
+          - "@convex-dev/better-auth"
+          - "@daveyplate/*"
+      docs-site:
+        applies-to: security-updates
+        patterns:
+          - "astro"
+          - "@astrojs/*"
+          - "starlight-*"
+          - "sharp"
+          - "devalue"
+          - "svgo"
+          - "smol-toml"
+          - "typedoc*"
+          - "markdown-it"
+      security-patches:
+        applies-to: security-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 3
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+```
+
+#### .github/labels.yml
+
+1 insertion, after `help wanted` and before the `# resolution` block. Dependabot applies the
+label named in `labels:`; without an entry here `sync-labels.mjs --check` reports it as drift and
+`--prune` deletes it. Colour and description are GitHub's own defaults for this label.
+
+```yaml
+
+# automation (GitHub's own default for the Dependabot label)
+- name: dependencies
+  description: Pull requests that update a dependency file
+  color: 0366D6
+```
+
+#### apps/test/pnpm-lock.yaml, apps/test/pnpm-workspace.yaml
+
+Deleted with plain `rm` (decision 21; the developer commits). `apps/test` installs through the
+root workspace and lockfile.
+
+#### Alert re-pull and re-match
+
+```sh
+gh api -X GET repos/ianyimi/vex/dependabot/alerts --paginate -f state=open -f per_page=100 > /tmp/dep/alerts-after.json
+```
+
+For each alert, read `dependency.package.name`, `dependency.manifest_path` and
+`security_vulnerability.vulnerable_version_range` (GitHub's `>= a, < b` form: drop the commas
+for `semver.satisfies`). Versions to test against: `pnpm-lock.yaml` → every `packages:` key of
+that name in the final lockfile; `packages/create-vexcms/templates/base-nextjs/package.json` →
+its pin; `apps/test/pnpm-lock.yaml` → none (deleted). An alert with no satisfying version closes
+on merge and is only counted. Every alert with a satisfying version gets one row in
+`## Verification` § Dependabot alerts left open, with one of GitHub's dismiss reasons:
+`tolerable_risk` (reachable only from dev/build tooling or a build over trusted content),
+`not_used` (the vulnerable code path is never called), `inaccurate`, `no_bandwidth`.
+
+Verify:
+- [ ] `node -e 'require("yaml").parse(require("fs").readFileSync(".github/dependabot.yml","utf8"))'`
+      exits 0
+- [ ] `node scripts/sync-labels.mjs --check` exits 1 naming only `dependencies` (missing on
+      GitHub until the queued live sync); exits 2 without `gh` auth, which is reported, not fixed
+- [ ] `pnpm install --frozen-lockfile` exits 0 and `pnpm --filter test build` exits 0 with the
+      two `apps/test` files gone
+- [ ] Alert counts recorded (open before / closing on merge / left open); every left-open row
+      has a dismiss reason; none ships to users without the developer's sign-off
+
 ## Verification
 
-Run after step 6, from a clean checkout of the final tree:
+Run after step 7, on the final tree:
 
 - [ ] `pnpm install --frozen-lockfile` exits 0 under `strictPeerDependencies: true`
 - [ ] `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm lint` green
@@ -1645,9 +1985,9 @@ Run after step 6, from a clean checkout of the final tree:
 - [ ] `node scripts/check-packed-manifests.mjs` exits 0
 - [ ] Advisory query (step 1) prints `no advisories`
 - [ ] `pnpm verify:scaffold` exits 0; `node scripts/verify-scaffold.mjs --negative` exits 1
-- [ ] Manual scaffold run of `base-nextjs` and `marketing-site` passes (step 6)
+- [ ] Manual scaffold run of `base-nextjs` and `marketing-site` passes (step 6, developer)
 - [ ] `pnpm changeset status` lists `@vexcms/core`, `@vexcms/react`, `@vexcms/better-auth`,
-      `create-vexcms`
+      `@vexcms/cli`, `create-vexcms`
 
 **Accepted audit residue.**
 
@@ -1656,3 +1996,21 @@ advisory; any row with "Ships to users: yes" blocks the spec.
 
 | Package | Version | Path | Why it cannot move in range | Ships to users |
 | --- | --- | --- | --- | --- |
+| basic-ftp | 5.3.1 | `apps/test` (dev) > `@lhci/cli` > `proxy-agent` > `pac-proxy-agent` > `get-uri` > `basic-ftp` | `get-uri@6.0.5` pins `basic-ftp` to `^5.0.2`, excluding the patched `6.2.1` | No — `@lhci/cli` is a devDependency, CI-only tooling |
+| zod | 3.25.76 | `apps/test` (dev) > `shadcn` > `zod` | `shadcn@3.6.3` pins `zod` to `^3.24.1`, excluding the patched `4.6.6`; unrelated to the workspace's catalog `zod` 4.6.7 | No — `shadcn` is a devDependency (step 6 moved it), build-time CLI only |
+
+**Dependabot alerts left open.**
+
+Filled in during step 7. One row per alert whose vulnerable range still matches the final tree;
+the developer dismisses each in GitHub with the reason given.
+
+| Alert | Package | Version in tree | Manifest | Severity | Advisory | Why it stays | Dismiss reason |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| #250 | `basic-ftp` | 5.3.1 | `pnpm-lock.yaml` | high | GHSA-c475-qrg2-pj4r | `apps/{test,www}` devDeps → `@lhci/cli` → `proxy-agent` → `get-uri` pins `^5`; patched 6.2.1 out of range. Lighthouse CI only, never lists an FTP directory | `tolerable_risk` |
+| #303 | `deepmerge` | 4.3.1 | `pnpm-lock.yaml` | low | GHSA-gcqx-w48m-w2h4 | No patched release. Runtime path: `@daveyplate/better-auth-ui` → `@react-email/components` → `html-to-text`, which merges its own static formatter options, never request data; second path `shadcn` (devDeps) | `not_used` |
+| #309 | `minimatch` | 10.2.6 | `pnpm-lock.yaml` | medium | GHSA-g3hv-75wg-m249 | ESLint toolchain (`eslint-config-next`, `typescript-eslint`, typedoc) pins `^10`; patterns are repo config, not input | `tolerable_risk` |
+| #279 | `zod` | 3.25.76 | `pnpm-lock.yaml` | high | GHSA-mrhx-c7xc-m3w5 | `shadcn` 3.6.3 (devDeps since step 6) pins `zod ^3.24.1`; only `shadcn/tailwind.css` is read, the CLI never runs. Our shipped `zod` is 4.6.7 | `not_used` |
+
+Counts (2026-11-10, alerts still computed on `master`): 297 open → 293 close when this tree merges
+(155 deleted `apps/test` lockfile, 16 template manifest, 122 root lockfile) → 4 left, all above.
+Dependabot reclassifies #250/#303/#279 from `runtime` once the `devDependencies` moves reach `master`.

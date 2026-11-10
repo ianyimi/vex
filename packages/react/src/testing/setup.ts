@@ -28,6 +28,25 @@ class ResizeObserverStub {
   unobserve() {}
 }
 
+/**
+ * Minimal `PointerEvent` polyfill. jsdom has no Pointer Events implementation,
+ * so `window.PointerEvent` is undefined — but Base UI 1.9's keyboard
+ * activation path (`utils/dispatchClickWithModifiers.mjs`) constructs
+ * `new window.PointerEvent('click')` unconditionally, which throws
+ * `window.PointerEvent is not a constructor` before the click ever fires.
+ * Extending `MouseEvent` is enough: nothing under test reads pointer-specific
+ * geometry, only that the constructor exists and the event carries a
+ * `pointerType`.
+ */
+class PointerEventPolyfill extends MouseEvent {
+  pointerType: string;
+
+  constructor(type: string, params: PointerEventInit = {}) {
+    super(type, params);
+    this.pointerType = params.pointerType ?? "";
+  }
+}
+
 
 /**
  * Inert `MediaQueryList`: never matches, never fires a change event. Good enough for
@@ -84,6 +103,9 @@ function installLocalStorage(): void {
  * `SidebarProvider`) and by `ThemeProvider`'s system-theme resolution — is
  * missing too. Web Storage is present but only on `window`, so the bare global
  * every third-party probe reads is rebound by {@link installLocalStorage}.
+ * jsdom has no `PointerEvent` either, and Base UI dispatches keyboard
+ * activation of menu items, options, radios, checkboxes and switches as
+ * `new PointerEvent("click")`, so those interactions do nothing without it.
  *
  * Safe to call more than once: all installs are guarded with `??=`.
  */
@@ -111,6 +133,7 @@ export function installDomPolyfills(): void {
     stub.media = query;
     return stub as unknown as MediaQueryList;
   }) as typeof window.matchMedia;
+  globalThis.PointerEvent ??= PointerEventPolyfill as unknown as typeof PointerEvent;
   installLocalStorage();
 }
 

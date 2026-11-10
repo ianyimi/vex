@@ -1,0 +1,57 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 0
+    cooldown:
+      default-days: 3
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "fix(deps)"
+    groups:
+      auth:
+        applies-to: security-updates
+        patterns:
+          - "better-auth"
+          - "@better-auth/*"
+          - "better-call"
+          - "@convex-dev/better-auth"
+          - "@daveyplate/*"
+      docs-site:
+        applies-to: security-updates
+        patterns:
+          - "astro"
+          - "@astrojs/*"
+          - "starlight-*"
+          - "sharp"
+          - "devalue"
+          - "svgo"
+          - "smol-toml"
+          - "typedoc*"
+          - "markdown-it"
+      security-patches:
+        applies-to: security-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 3
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

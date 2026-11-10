@@ -148,14 +148,10 @@ export const findIndex = (
   // We internally use _creationTime in place of Better Auth's createdAt
   const indexFields = indexEqFields
     .map(([field]) => field)
-    .concat(
-      boundField && boundField !== "createdAt"
-        ? `${indexEqFields.length ? "_" : ""}${boundField}`
-        : "",
-    )
+    .concat(boundField && boundField !== "createdAt" ? boundField : "")
     .concat(
       sortField && sortField !== "createdAt" && boundField !== sortField
-        ? `${indexEqFields.length || boundField ? "_" : ""}${sortField}`
+        ? sortField
         : "",
     )
     .filter(Boolean);

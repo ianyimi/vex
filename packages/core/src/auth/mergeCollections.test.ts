@@ -236,4 +236,46 @@ describe("mergeAuthCollections", () => {
 
     expect(user?.meta).toEqual({ protected: false, customMeta: "value" });
   });
+
+  it("merges indexes by name — the project's entry wins on a collision, an auth-only index survives", () => {
+    const authSessionWithIndexes = defineCollection<AuthFieldMeta, AuthCollectionMeta>({
+      slug: "session",
+      fields: {
+        token: text({ meta: { locked: true } }),
+        userId: text({ meta: { locked: true } }),
+        expiresAt: date({ meta: { locked: true } }),
+      },
+      indexes: [
+        { name: "by_userId_expiresAt", fields: ["userId", "expiresAt"] },
+        { name: "by_token", fields: ["token"] },
+      ],
+    });
+
+    const userCol = defineCollection({
+      slug: "session",
+      fields: { token: text(), userId: text(), expiresAt: date() },
+      indexes: [
+        { name: "by_token", fields: ["userId"] },
+        { name: "by_userId", fields: ["userId"] },
+      ],
+    });
+
+    const result = mergeAuthCollections({
+      authCollections: [authUser, authSessionWithIndexes],
+      userCollections: [userCol],
+    });
+    const session = result.find((c) => c.slug === "session");
+    const indexNames = (session?.indexes ?? []).map((i) => i.name);
+
+    // Auth-only index survives untouched.
+    expect(indexNames).toContain("by_userId_expiresAt");
+    expect(session?.indexes?.find((i) => i.name === "by_userId_expiresAt")?.fields).toEqual([
+      "userId",
+      "expiresAt",
+    ]);
+    // Project-only index is added.
+    expect(indexNames).toContain("by_userId");
+    // The project's "by_token" entry (fields: ["userId"]) wins over the auth adapter's (fields: ["token"]).
+    expect(session?.indexes?.find((i) => i.name === "by_token")?.fields).toEqual(["userId"]);
+  });
 });

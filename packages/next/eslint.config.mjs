@@ -1,12 +1,8 @@
-import { FlatCompat } from "@eslint/eslintrc";
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import importX from "eslint-plugin-import-x";
 import perfectionist from "eslint-plugin-perfectionist";
 import globals from "globals";
 import tseslint from "typescript-eslint";
-
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-});
 
 export default tseslint.config(
   {
@@ -23,11 +19,10 @@ export default tseslint.config(
       "**/temp/",
       "**/tsconfig.tsbuildinfo",
       "**/README.md",
-      "**/eslint.config.js",
       "**/vitest.config.ts",
     ],
   },
-  ...compat.extends("next/core-web-vitals"),
+  ...nextCoreWebVitals,
   perfectionist.configs["recommended-natural"],
   {
     extends: [

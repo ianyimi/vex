@@ -977,6 +977,8 @@ export const jwks = defineTable({
   privateKey: v.string(),
   createdAt: v.number(),
   expiresAt: v.optional(v.number()),
+  alg: v.optional(v.string()),
+  crv: v.optional(v.string()),
 })
 
 export const organization = defineTable({
@@ -990,6 +992,7 @@ export const organization = defineTable({
 
 export const team = defineTable({
   name: v.string(),
+  memberCount: v.number(),
   organizationId: v.string(),
   createdAt: v.number(),
   updatedAt: v.optional(v.number()),
@@ -998,10 +1001,12 @@ export const team = defineTable({
 export const teamMember = defineTable({
   teamId: v.string(),
   userId: v.string(),
+  membershipKey: v.optional(v.string()),
   createdAt: v.optional(v.number()),
 })
   .index("by_teamId", ["teamId"])
   .index("by_userId", ["userId"])
+  .index("by_membershipKey", ["membershipKey"])
 
 export const member = defineTable({
   organizationId: v.string(),

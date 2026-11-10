@@ -41,3 +41,15 @@ export const jsxA11yConfig = {
     ]),
   ),
 };
+
+/**
+ * The same rule set as `jsxA11yConfig`, without the `plugins` key — for
+ * configs that already register `"jsx-a11y"` via `eslint-config-next`'s
+ * `core-web-vitals` config (`apps/test`, `apps/www`, the `base-nextjs`
+ * template); re-declaring the plugin under the same key with a different
+ * object reference throws `TypeError: Cannot redefine plugin "jsx-a11y"`.
+ */
+export const jsxA11yRules = {
+  files: jsxA11yConfig.files,
+  rules: jsxA11yConfig.rules,
+};

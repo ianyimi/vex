@@ -1095,6 +1095,8 @@ export interface JwksDocument extends VexDocument {
   privateKey: string
   createdAt: number
   expiresAt?: number
+  alg?: string
+  crv?: string
 }
 
 export interface OrganizationDocument extends VexDocument {
@@ -1110,6 +1112,7 @@ export interface OrganizationDocument extends VexDocument {
 export interface TeamDocument extends VexDocument {
   _id: Id<"team">
   name: string
+  memberCount: number
   organizationId: string
   createdAt: number
   updatedAt?: number
@@ -1119,6 +1122,7 @@ export interface TeamMemberDocument extends VexDocument {
   _id: Id<"teamMember">
   teamId: string
   userId: string
+  membershipKey?: string
   createdAt?: number
 }
 
@@ -1558,7 +1562,7 @@ declare module "@vexcms/core" {
         checkbox: "enabled" | "rateLimitEnabled"
       }
       jwks: {
-        text: "publicKey" | "privateKey"
+        text: "publicKey" | "privateKey" | "alg" | "crv"
         date: "createdAt" | "expiresAt"
       }
       organization: {
@@ -1567,10 +1571,11 @@ declare module "@vexcms/core" {
       }
       team: {
         text: "name" | "organizationId"
+        number: "memberCount"
         date: "createdAt" | "updatedAt"
       }
       teamMember: {
-        text: "teamId" | "userId"
+        text: "teamId" | "userId" | "membershipKey"
         date: "createdAt"
       }
       member: {
@@ -1681,7 +1686,11 @@ declare module "@vexcms/core" {
       jwks: {}
       organization: { by_slug: readonly ["slug"] }
       team: { by_organizationId: readonly ["organizationId"] }
-      teamMember: { by_teamId: readonly ["teamId"]; by_userId: readonly ["userId"] }
+      teamMember: {
+        by_teamId: readonly ["teamId"]
+        by_userId: readonly ["userId"]
+        by_membershipKey: readonly ["membershipKey"]
+      }
       member: { by_organizationId: readonly ["organizationId"]; by_userId: readonly ["userId"] }
       invitation: { by_organizationId: readonly ["organizationId"]; by_email: readonly ["email"] }
       images: { by_deleted: readonly ["deleted"]; by_updatedAt: readonly ["updatedAt"] }

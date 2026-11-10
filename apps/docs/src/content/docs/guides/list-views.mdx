@@ -156,6 +156,12 @@ value control matched to that field type (a `DateTimePicker` for `date`/`commitT
 picker for `relationship`, etc.). Applying a filter updates the URL's `filter=` param and shows
 one dismissible chip per leaf condition in the toolbar's chip row.
 
+The **OR** button sits at the top of the popover: each new OR group appears first, directly under
+it, and existing groups move down. The popover always shows at least one condition while open — on
+the only remaining condition the × clears its field, operator, and value instead of removing it,
+and is disabled while that condition is still empty. Past about three OR groups the popover
+scrolls.
+
 ### Hidden view filters
 
 A view's own `where` (its declared filter, whether that's `admin.view`/`admin.views[n]`'s config

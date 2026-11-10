@@ -10,11 +10,6 @@ import { authSchema } from "./schema";
 /**
  * Returns a fresh array of Better Auth plugins for each VexCMS auth session.
  *
- * Returns a new array on every call so that plugin initialization — including the
- * `convex()` factory which internally calls the deprecated oidc-provider plugin —
- * runs inside `createAuth()` rather than at module-eval time. This lets the
- * console.warn filter in http.ts suppress the deprecation noise before it fires.
- *
  * Includes: admin roles, anonymous access, organization/team support, API key auth,
  * and Convex session storage.
  *

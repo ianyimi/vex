@@ -239,8 +239,12 @@ export interface ListViewFilterRowProps {
   onOpChange: (op: ListViewFilterOp) => void;
   /** Replaces the row's value. */
   onValueChange: (value: unknown) => void;
-  /** Removes this row from its group. */
+  /** Removes this row from its group, or resets it when it is the builder's only condition (see `removeMode`). */
   onRemove: () => void;
+  /** `"clear"` when this is the builder's only condition: the X resets it rather than removing it. @default "remove" */
+  removeMode?: "remove" | "clear";
+  /** Disables the X — the only condition is already empty, so there is nothing to clear. */
+  removeDisabled?: boolean;
 }
 
 /**
@@ -309,7 +313,8 @@ export function ListViewFilterRow(props: ListViewFilterRowProps): ReactNode {
       variant="ghost"
       size="icon-sm"
       icon="X"
-      aria-label="Remove condition"
+      aria-label={props.removeMode === "clear" ? "Clear condition" : "Remove condition"}
+      disabled={props.removeDisabled}
       onClick={props.onRemove}
     />
   );

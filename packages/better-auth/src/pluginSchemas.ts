@@ -1,4 +1,4 @@
-import type { DBFieldAttribute } from "better-auth";
+import type { DBFieldAttribute, DBTableIndex } from "better-auth";
 // Type-only namespace import: erased entirely by the compiler, so deriving the
 // plugin-name union below costs the client bundle nothing. A value import here
 // would pull every plugin factory (~684 KB) into any graph that touches it.
@@ -21,6 +21,7 @@ export type PluginDBSchema = Record<
     fields: Record<string, DBFieldAttribute>;
     modelName?: string | undefined;
     disableMigration?: boolean | undefined;
+    indexes?: readonly DBTableIndex[] | undefined;
   }
 >;
 
@@ -81,10 +82,14 @@ export interface ModelledPluginDescriptors {
   deviceAuthorization?: true | { schema?: PluginSchemaOverride };
   /** The `jwks` table. */
   jwt?: true | { schema?: PluginSchemaOverride };
-  /** The OAuth application/access-token/consent tables. */
-  mcp?: true | { schema?: PluginSchemaOverride };
-  /** The OAuth application/access-token/consent tables. */
-  oidcProvider?: true | { schema?: PluginSchemaOverride };
+  /**
+   * The `oauthClient`, `oauthResource`, `oauthClientResource`,
+   * `oauthClientAssertion`, `oauthAccessToken`, `oauthRefreshToken`, and
+   * `oauthConsent` tables Better Auth's OAuth provider registers. Enable
+   * this for `@better-auth/mcp`, which composes `oauthProvider` internally
+   * and declares no tables of its own.
+   */
+  oauthProvider?: true | { schema?: PluginSchemaOverride };
   /**
    * Organizations, members, and invitations — plus `team`/`teamMember` when
    * `teams` is enabled, which is the one option that changes which tables exist.

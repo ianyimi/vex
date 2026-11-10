@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "slug": "2026-11-06-launch-kit-final-review",
+  "updated": "2026-11-10T02:50:54.597Z",
+  "groups": {
+    "Step 2": {
+      "attempts": 3,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    }
+  }
+}
