@@ -1,5 +1,71 @@
 # create-vexcms
 
+## 0.1.0-alpha.35
+
+### Patch Changes
+
+- 61982b1: Upgrade `better-auth` to 1.7.18 and `@convex-dev/better-auth` to 0.13.0. 1.6.x carries
+  critical GHSA-965c-763c-88jm and high GHSA-r4xp-prcw-77qf / GHSA-q84f-53jg-9ppm, fixed only
+  in >=1.7.7; only 0.13.0 accepts better-auth 1.7 (peer `>=1.7.16 <1.8.0`).
+
+  `betterAuthCollections()` drops the separate `mcp` and `oidcProvider` plugin descriptors —
+  Better Auth 1.7 removed both from `better-auth/plugins` — for one `oauthProvider` descriptor
+  modelling the tables `@better-auth/oauth-provider` registers (`oauthClient`,
+  `oauthResource`, `oauthClientResource`, `oauthClientAssertion`, `oauthAccessToken`,
+  `oauthConsent`, `oauthRefreshToken`). Projects using `@better-auth/mcp` enable `oauthProvider: true` — `mcp()`
+  composes `oauthProvider` internally and declares no tables of its own. Breaking for any
+  project whose `authSchema.plugins` named `mcp` or `oidcProvider` directly.
+
+  The root `getToken`-path patch is re-created against 0.13.0's `dist/nextjs/index.js`: upstream
+  fixed the route-handler half of get-convex/better-auth#422 in 0.12.6 (GHSA-pgx2-m66h-x29f),
+  but `cachedGetToken`'s own header remap was never ported, so the patch now carries only that
+  hunk.
+
+  `@better-auth/passkey`'s pinned override and the scaffold template's dependency pins move to
+  1.7.18 in lockstep.
+
+  `vex dev`/`vex deploy`/`vex generate` no longer filter the `oidc-provider` deprecation warning
+  while loading `vex.config.server.ts`: `@convex-dev/better-auth` 0.13.0 no longer emits it.
+
+- 61982b1: `betterAuthAdapter()` now emits the same Convex indexes `@convex-dev/better-auth` 0.13.0 generates:
+  compound indexes Better Auth queries on every password set/change/reset and session cleanup
+  (`account` `[accountId, providerId, userId]`, `[providerId, userId]`; `session`
+  `[userId, expiresAt]`; `verification` `expiresAt`; `user` `name`, `[email, name]`), plus the
+  table-level `indexes` Better Auth 1.7 plugins declare (`deviceCode`, `oauthClientResource`).
+  Those lookups previously fell back to a full-table scan with a "Querying without an index"
+  warning. The Convex adapter's index lookup also stops prefixing range and sort fields with
+  `_`, which kept any equality-plus-range or equality-plus-sort query (listing a user's live
+  sessions, for example) from matching an index. Regenerate your schema (`vex generate`) to pick them up.
+
+  `mergeAuthCollections` now unions an auth collection's `indexes` with the project
+  collection's by name (the project's entry wins on a name clash) instead of replacing the
+  adapter's list. New projects scaffold with the regenerated schema and an `engines.node`
+  floor of `>=22.0.0`.
+
+- 61982b1: New projects lint with `eslint-config-next` 16 (native flat config) instead of the Next 15
+  config through `FlatCompat`; `@eslint/eslintrc` and `@next/eslint-plugin-next` are no longer
+  template devDependencies.
+- 856b7e5: New projects declare a `zod` peer for `@hookform/resolvers` (pulled in by
+  `@daveyplate/better-auth-ui`) through `pnpm.packageExtensions`. The package imports
+  `zod/v4/core` without declaring `zod`, so it only resolved when pnpm happened to hoist a
+  compatible copy; production builds could fail with "Can't resolve 'zod/v4/core'".
+- 61982b1: Same-major dependency refresh. `@vexcms/react`: `@codemirror/view` 6.43.14 → 6.43.15,
+  `@tanstack/react-form` 1.33.1 → 1.33.5, `@uiw/react-color-sketch` 2.9.6 → 2.10.3,
+  `tailwind-merge` 3.5.0 → 3.7.0, `use-mask-input` 3.14.2 → 3.14.3, `@base-ui/react` 1.2.0 →
+  1.9.0; no import or prop changes. `@vexcms/react`'s testing setup (`@vexcms/react/testing`)
+  now polyfills `window.PointerEvent` when jsdom has none, since Base UI 1.9's keyboard
+  activation dispatches a real `PointerEvent` before the synthetic click.
+  `create-vexcms`: `fs-extra` 11.3.6 → 11.4.1, `yaml` 2.9.0 → 2.9.1, and new projects scaffold
+  with `convex` 1.49.0, React 19.2.9, TanStack Query 5.106.1 and Form 1.33.5, `convex-helpers`
+  0.1.134, `nuqs` 2.10.2, `@base-ui/react` 1.9.0 and (marketing scaffolds) `shiki` 4.6.0.
+  `convex` 1.49 requires Node.js 22 or newer.
+- 61982b1: Security: `zod` 4.4.3 → 4.6.7 (GHSA-mrhx-c7xc-m3w5, memory exhaustion validating oversized
+  constrained collections, fixed in 4.6.6). New projects scaffold with `next` 16.4.5 instead of
+  16.3.3, which carried critical remote-code-execution advisories in the image optimizer,
+  `use cache` functions and `next/og`.
+- 61982b1: New projects list `shadcn` and `tw-animate-css` under `devDependencies`: only `globals.css`
+  imports them, at build time.
+
 ## 0.1.0-alpha.34
 
 ### Patch Changes

@@ -1,5 +1,22 @@
 # www
 
+## 0.1.0-alpha.35
+
+### Patch Changes
+
+- Updated dependencies [61982b1]
+- Updated dependencies [61982b1]
+- Updated dependencies [61982b1]
+- Updated dependencies [67c7dec]
+- Updated dependencies [61982b1]
+- Updated dependencies [61982b1]
+  - @vexcms/better-auth@0.1.0-alpha.35
+  - @vexcms/core@0.1.0-alpha.35
+  - @vexcms/react@0.1.0-alpha.35
+  - @vexcms/file-storage-convex@0.1.0-alpha.35
+  - @vexcms/next@0.1.0-alpha.35
+  - @vexcms/richtext-plate@0.1.0-alpha.35
+
 ## 0.1.0-alpha.34
 
 ### Patch Changes
