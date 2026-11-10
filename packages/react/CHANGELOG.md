@@ -1,5 +1,12 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.36
+
+### Patch Changes
+
+- @vexcms/core@0.1.0-alpha.36
+- @vexcms/better-auth@0.1.0-alpha.36
+
 ## 0.1.0-alpha.35
 
 ### Patch Changes
