@@ -400,12 +400,19 @@ describe('scaffolder hygiene (WP-5)', () => {
     expect(pkg.resolutions?.['@better-auth/passkey']).toBe(pkg.pnpm.overrides['@better-auth/passkey']);
   });
 
-  it('e: npm install --dry-run resolves without an ERESOLVE conflict', () => {
+  it('e: npm install --dry-run resolves without an ERESOLVE conflict', (ctx) => {
     const result = spawnSync(
       'npm',
       ['install', '--dry-run', '--package-lock=false'],
       { cwd: bareDir, encoding: 'utf-8' },
     );
+    const unpublishedVex = /notarget No matching version found for (@vexcms\/[\w-]+|create-vexcms)@/.exec(
+      result.stderr,
+    );
+    if (result.status !== 0 && unpublishedVex && !result.stderr.includes('ERESOLVE')) {
+      ctx.skip(`${unpublishedVex[1]} at this version is not on npm yet (versioned before publish)`);
+    }
+    expect(result.stderr).not.toContain('ERESOLVE');
     expect(result.status).toBe(0);
   }, 60_000);
 
