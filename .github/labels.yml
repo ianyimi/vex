@@ -58,13 +58,10 @@
   description: "@vexcms/file-storage-convex"
   color: 0B7285
 
-# type: — what kind of issue (orange family; no type: question — questions go to Discussions)
+# type: — what kind of issue (orange family; no type: question or type: feature — both go to Discussions)
 - name: "type: bug"
   description: Something doesn't work as documented
   color: D4330C
-- name: "type: feature"
-  description: A free-tier feature request, filed by a maintainer from Discussions Ideas
-  color: FF8C42
 - name: "type: docs"
   description: A docs.vexcms.dev correction or gap
   color: FFC999
@@ -76,6 +73,9 @@
 - name: "help wanted"
   description: A maintainer wants help on this one
   color: "008672"
+- name: accepted
+  description: An Ideas discussion accepted for a pull request
+  color: 0E8A16
 
 # automation (GitHub's own default for the Dependabot label)
 - name: dependencies
@@ -99,16 +99,3 @@
   description: A breaking change — called out in the changeset and release notes
   color: 2B2B2B
 
-# roadmap tracking (red-to-yellow priority family, plus the standalone tracking label)
-- name: planned
-  description: Tracks a post-0.1.0 roadmap item; the docs roadmap links the issue
-  color: 0052CC
-- name: "roadmap: p0"
-  description: Breaks a shipped feature or blocks a release
-  color: B60205
-- name: "roadmap: p1"
-  description: Should land in the next few releases
-  color: D93F0B
-- name: "roadmap: p2"
-  description: Worth doing, no particular urgency
-  color: FBCA04

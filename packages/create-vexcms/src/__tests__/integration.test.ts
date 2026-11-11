@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
+import { spawnSync } from 'child_process';
 import { createInstaller } from '../installers/index.js';
 import type { ProjectOptions } from '../installers/types.js';
 import { assertScaffold, PROHIBITED_PATTERNS } from '../../../../scripts/scaffold-smoke.mjs';
@@ -38,6 +39,7 @@ async function scaffold(overrides: {
   monorepo: boolean;
   workspaceRoot?: string | null;
   orgs?: boolean;
+  port?: number;
 }): Promise<void> {
   const options: ProjectOptions = { ...YES_DEFAULTS, ...overrides };
   const installer = createInstaller({
@@ -56,6 +58,8 @@ let monorepoWorkspaceRoot: string;
 let hostCatalog: Record<string, string>;
 let orgsBareDir: string;
 let orgsFullDir: string;
+let customPortDir: string;
+let pmStubDir: string;
 
 beforeAll(async () => {
   if (!fs.existsSync(baseTemplateDir)) {
@@ -135,6 +139,36 @@ beforeAll(async () => {
     monorepo: false,
     orgs: true,
   });
+
+  // WP-5 fixtures: a custom-port scaffold (fix a) and a scaffold run under a
+  // stubbed `npm_config_user_agent` (fix d) — both installer-config-level
+  // concerns, so their own scaffolds keep the baseline fixtures' assertions
+  // (default port 3010, real `npm_config_user_agent`) uncontaminated.
+  customPortDir = path.join(tmpRoot, 'custom-port-project');
+  fs.ensureDirSync(customPortDir);
+  await scaffold({
+    projectName: 'custom-port-project',
+    projectDir: customPortDir,
+    bare: true,
+    monorepo: false,
+    port: 3020,
+  });
+
+  pmStubDir = path.join(tmpRoot, 'pm-stub-project');
+  fs.ensureDirSync(pmStubDir);
+  const savedUserAgent = process.env.npm_config_user_agent;
+  process.env.npm_config_user_agent = 'pnpm/9.1.0 npm/? node/v20.11.0 darwin arm64';
+  try {
+    await scaffold({
+      projectName: 'pm-stub-project',
+      projectDir: pmStubDir,
+      bare: true,
+      monorepo: false,
+    });
+  } finally {
+    if (savedUserAgent === undefined) delete process.env.npm_config_user_agent;
+    else process.env.npm_config_user_agent = savedUserAgent;
+  }
 }, 120_000);
 
 afterAll(() => {
@@ -306,6 +340,7 @@ describe('overlay merge behavior (Contract 2 — template split)', () => {
       'convex/auth/index.ts',
       'convex/auth/db.ts',
       'src/vexcms/collections/users.ts',
+      'src/vexcms/api.ts',
       '.gitignore',
     ];
     for (const rel of baseOwned) {
@@ -332,6 +367,66 @@ describe('vex scripts (base template contract)', () => {
     expect(pkg.scripts['vex:update']).toContain('@vexcms/core@latest');
   });
 });
+
+describe('scaffolder hygiene (WP-5)', () => {
+  it('a: .env.example reflects a custom port, not the template default', () => {
+    const envExample = fs.readFileSync(path.join(customPortDir, '.env.example'), 'utf-8');
+    expect(envExample).toContain('http://localhost:3020');
+    expect(envExample).not.toContain('http://localhost:3010');
+  });
+
+  it('b: the generated secret lands only in .env.local, never .env.example', () => {
+    const envExample = fs.readFileSync(path.join(bareDir, '.env.example'), 'utf-8');
+    expect(envExample).toMatch(/^BETTER_AUTH_SECRET=""$/m);
+
+    const envLocal = fs.readFileSync(path.join(bareDir, '.env.local'), 'utf-8');
+    expect(envLocal).toMatch(/^BETTER_AUTH_SECRET=[0-9a-f]{64}$/m);
+  });
+
+  it('c: .gitignore negates .env.example so it is not ignored', () => {
+    spawnSync('git', ['init'], { cwd: bareDir });
+    const result = spawnSync('git', ['check-ignore', '.env.example'], { cwd: bareDir });
+    expect(result.status).toBe(1);
+  });
+
+  it('d: package.json carries a packageManager field matching the detected pm@version', () => {
+    const pkg = fs.readJsonSync(path.join(pmStubDir, 'package.json'));
+    expect(pkg.packageManager).toBe('pnpm@9.1.0');
+  });
+
+  it('e: the better-auth/passkey pin is mirrored into npm overrides and yarn resolutions', () => {
+    const pkg = fs.readJsonSync(path.join(bareDir, 'package.json'));
+    expect(pkg.overrides?.['@better-auth/passkey']).toBe(pkg.pnpm.overrides['@better-auth/passkey']);
+    expect(pkg.resolutions?.['@better-auth/passkey']).toBe(pkg.pnpm.overrides['@better-auth/passkey']);
+  });
+
+  it('e: npm install --dry-run resolves without an ERESOLVE conflict', (ctx) => {
+    const result = spawnSync(
+      'npm',
+      ['install', '--dry-run', '--package-lock=false'],
+      { cwd: bareDir, encoding: 'utf-8' },
+    );
+    const unpublishedVex = /notarget No matching version found for (@vexcms\/[\w-]+|create-vexcms)@/.exec(
+      result.stderr,
+    );
+    if (result.status !== 0 && unpublishedVex && !result.stderr.includes('ERESOLVE')) {
+      ctx.skip(`${unpublishedVex[1]} at this version is not on npm yet (versioned before publish)`);
+    }
+    expect(result.stderr).not.toContain('ERESOLVE');
+    expect(result.status).toBe(0);
+  }, 60_000);
+
+  it('f: --bare has no seed script (no convex/seed.ts to run); full scaffold has both', () => {
+    const barePkg = fs.readJsonSync(path.join(bareDir, 'package.json'));
+    expect(barePkg.scripts.seed).toBeUndefined();
+    expect(fs.existsSync(path.join(bareDir, 'convex/seed.ts'))).toBe(false);
+
+    const fullPkg = fs.readJsonSync(path.join(fullDir, 'package.json'));
+    expect(fullPkg.scripts.seed).toBe('convex run seed:init');
+    expect(fs.existsSync(path.join(fullDir, 'convex/seed.ts'))).toBe(true);
+  });
+});
+
 
 describe('organization wiring (--orgs declined vs accepted)', () => {
   function walkTsFiles(dir: string): string[] {
@@ -384,10 +479,10 @@ describe('organization wiring (--orgs declined vs accepted)', () => {
         expect(source).toContain('resolveOrgs: false');
         expect(source).not.toContain('orgCollectionSlug');
       }
+      const api = fs.readFileSync(path.join(dir, 'src/vexcms/api.ts'), 'utf-8');
+      expect(api).toContain('resolveOrgs: false');
+      expect(api).not.toContain('orgCollectionSlug');
     }
-    const fullApi = fs.readFileSync(path.join(fullDir, 'src/vexcms/api.ts'), 'utf-8');
-    expect(fullApi).toContain('resolveOrgs: false');
-    expect(fullApi).not.toContain('orgCollectionSlug');
   });
 
   it('--orgs accepted bare and full scaffolds keep every organization pattern', () => {

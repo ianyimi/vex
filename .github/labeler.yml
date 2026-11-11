@@ -1,0 +1,35 @@
+# Path → label rules for .github/workflows/labeler.yml. Only labels that map
+# one-to-one onto a package or app; semantic areas (live-preview, versions,
+# auth, storage) are applied by hand during triage.
+"area: core":
+  - changed-files:
+      - any-glob-to-any-file: packages/core/**
+"area: ui":
+  - changed-files:
+      - any-glob-to-any-file: packages/react/**
+"area: cli":
+  - changed-files:
+      - any-glob-to-any-file: packages/cli/**
+"area: create-vexcms":
+  - changed-files:
+      - all-globs-to-any-file:
+          - packages/create-vexcms/**
+          - "!packages/create-vexcms/templates/**"
+"area: templates":
+  - changed-files:
+      - any-glob-to-any-file: packages/create-vexcms/templates/**
+"area: docs":
+  - changed-files:
+      - any-glob-to-any-file: apps/docs/**
+"adapter: better-auth":
+  - changed-files:
+      - any-glob-to-any-file: packages/better-auth/**
+"adapter: next":
+  - changed-files:
+      - any-glob-to-any-file: packages/next/**
+"adapter: richtext-plate":
+  - changed-files:
+      - any-glob-to-any-file: packages/richtext-plate/**
+"adapter: file-storage-convex":
+  - changed-files:
+      - any-glob-to-any-file: packages/file-storage-convex/**

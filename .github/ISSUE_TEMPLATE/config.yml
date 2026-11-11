@@ -5,7 +5,10 @@ contact_links:
     about: Questions about using VexCMS go to Discussions, not issues.
   - name: Suggest a feature
     url: https://github.com/ianyimi/vex/discussions/categories/ideas
-    about: Feature ideas go to Discussions. A 👍'd idea becomes a tracked issue.
+    about: Feature ideas go to Discussions, where 👍 votes rank them.
+  - name: Contribute a fix or feature
+    url: https://github.com/ianyimi/vex/blob/master/CONTRIBUTING.md
+    about: Read this before opening a pull request.
   - name: Report a security vulnerability
     url: https://github.com/ianyimi/vex/security/advisories/new
     about: Please don't open a public issue for a security report.

@@ -539,3 +539,23 @@ keyed by the override id. `edit.actionsMenu` resolves through the same
 `DocumentEditSlotOutlet` and reused by `DocumentEditActionsMenu`
 (`packages/react/src/documents/DocumentEditActionsMenu.tsx`), the ⋯ menu's
 own component.
+
+## Gotchas
+
+Every module reachable from a registered `admin.components` entry — the
+component itself, and anything it imports at module scope — is bundled into
+the Convex deployment: `convex/vex.ts` imports the project's `vex.config.ts`,
+which imports every collection/global/root `admin.components` reference, so
+Convex evaluates those modules too, not just Next. A component (or something
+it imports) that does server-only work at import time — reading
+`NEXT_PUBLIC_*` env vars through a strict schema, touching `window`,
+calling a Next-only API — breaks every `vex dev`/`vex deploy` push, not just
+the admin panel, because `NEXT_PUBLIC_*` is never set during a Convex push.
+The template's `src/env.mjs` guards against the schema case by skipping
+validation when `CONVEX_CLOUD_URL` is set (a Convex-only variable, never set
+by Next); a registered component doing anything else server-only at import
+time needs the same kind of guard, or to move that work out of module scope.
+Lazy component references (config holding a module path instead of the
+component itself) would avoid this class of bug entirely and are tracked as
+a follow-up, not yet shipped.
+

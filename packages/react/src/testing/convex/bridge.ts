@@ -91,22 +91,64 @@ function resolveTable(args: Record<string, unknown>): "documents" | "media" {
  */
 export const fakeCollectionAdminViewOverrides: Record<string, { countLimit?: number }> = {};
 
+/**
+ * Builds the minimal `VexConfig` every raw `find`/`search`/`get` call now
+ * requires (`config` is a required argument — see `@vexcms/core`'s
+ * `GenericQueryServerParams`), folding in a per-collection
+ * {@link fakeCollectionAdminViewOverrides} entry when one is set.
+ */
+const FAKE_COLLECTION_FIELDS: Record<"documents" | "media", Record<string, { type: string }>> = {
+  documents: {
+    status: { type: "text" },
+    title: { type: "text" },
+    related: { type: "relationship" },
+  },
+  media: {
+    adapter: { type: "text" },
+    alt: { type: "text" },
+    collectionSlug: { type: "text" },
+    deleted: { type: "checkbox" },
+    filename: { type: "text" },
+    mimeType: { type: "text" },
+    size: { type: "number" },
+    src: { type: "text" },
+    storageId: { type: "text" },
+    width: { type: "number" },
+    height: { type: "number" },
+  },
+};
+
+function buildFakeConfig(collection: "documents" | "media"): VexConfig {
+  const adminViewOverride = fakeCollectionAdminViewOverrides[collection];
+  return {
+    collections: [
+      {
+        slug: collection,
+        fields: FAKE_COLLECTION_FIELDS[collection],
+        admin: adminViewOverride ? { view: { state: adminViewOverride } } : {},
+      },
+    ],
+  } as unknown as VexConfig;
+}
 const QUERY_HANDLERS: Record<string, FakeQueryHandler> = {
   "documents:list": async (ctx) => ctx.db.query("documents").collect(),
   "vex:search": async (ctx, args) => {
     const paginationOpts = args.paginationOpts as PaginationOptions | undefined;
     const collection = resolveTable(args);
+    const config = buildFakeConfig(collection);
     const where = args.where as VexWhere<"documents" | "media"> | undefined;
     const drafts = args.drafts as boolean | undefined;
     const query = args.query as string;
     const searchIndexName = args.searchIndexName as string;
     const searchField = args.searchField as string;
     return paginationOpts
-      ? search({ ctx, collection, query, searchIndexName, searchField, where, drafts, paginationOpts })
-      : search({ ctx, collection, query, searchIndexName, searchField, where, drafts });
+      ? search({ ctx, config, collection, query, searchIndexName, searchField, where, drafts, paginationOpts })
+      : search({ ctx, config, collection, query, searchIndexName, searchField, where, drafts });
   },
-  "vex:get": async (ctx, args) =>
-    get({ ctx, id: args.id as GenericId<"documents">, collection: resolveTable(args) }),
+  "vex:get": async (ctx, args) => {
+    const collection = resolveTable(args);
+    return get({ ctx, config: buildFakeConfig(collection), id: args.id as GenericId<"documents">, collection });
+  },
   // No `vex_globals` table exists in this test schema (every current fixture tests a
   // global either via `initialData` — never calling this at all, since `initialData`
   // seeds the cache before `queryFn` would ever run — or specifically tests the "never
@@ -134,12 +176,7 @@ const QUERY_HANDLERS: Record<string, FakeQueryHandler> = {
     const paginationOpts = args.paginationOpts as PaginationOptions | undefined;
     const collection = resolveTable(args);
     const where = args.where as VexWhere<"documents" | "media"> | undefined;
-    const adminViewOverride = fakeCollectionAdminViewOverrides[collection];
-    const config = adminViewOverride
-      ? ({
-          collections: [{ slug: collection, fields: {}, admin: { view: { state: adminViewOverride } } }],
-        } as unknown as VexConfig)
-      : undefined;
+    const config = buildFakeConfig(collection);
     return paginationOpts
       ? find({ ctx, collection, paginationOpts, where, config })
       : find({ ctx, collection, where, config });

@@ -335,6 +335,14 @@ export type LivePreviewQueryResult<TCollectionSlug extends VexResourceSlug = Vex
  * `getBySlug`-style query that resolves to an array, narrowed to its first
  * element the same way `PageContent.tsx` already does by hand.
  *
+ * The query key's tuple shape is erased to `any` rather than threaded
+ * through as its own type parameter: TypeScript's inference for a type used
+ * in both a covariant (`queryKey`) and a contravariant (`queryFn`'s context
+ * parameter) position stops considering call-site candidates the moment any
+ * EARLIER type parameter is given explicitly, falling back to the generic's
+ * default and rejecting `convexQuery`'s specific tuple. The query key's exact
+ * shape plays no role here — the object is forwarded to `useQuery` unchanged.
+ *
  * @example
  * ```tsx
  * const { data: page } = useLivePreviewQuery(
@@ -347,15 +355,13 @@ export type LivePreviewQueryResult<TCollectionSlug extends VexResourceSlug = Vex
  * @param collectionSlug - The collection those documents belong to.
  * @returns The query result with `data` narrowed to the single overlaid document.
  */
-export function useLivePreviewQuery<
-  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
-  TQueryKey extends readonly unknown[] = readonly unknown[],
->(
+export function useLivePreviewQuery<TCollectionSlug extends VexResourceSlug = VexResourceSlug>(
   queryOptions: UseQueryOptions<
     DocumentByResourceSlug<TCollectionSlug>[],
     Error,
     DocumentByResourceSlug<TCollectionSlug>[],
-    TQueryKey
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any
   >,
   collectionSlug: TCollectionSlug,
 ): LivePreviewQueryResult<TCollectionSlug> {
@@ -385,6 +391,13 @@ export type LivePreviewDocumentQueryResult<
  * invisible to live preview, which is why editing a `headers` document while
  * previewing the home page changed nothing.
  *
+ * The query key's tuple shape is erased to `any` rather than threaded through
+ * as its own type parameter, for the same reason as `useLivePreviewQuery`: a
+ * type used in both a covariant and a contravariant position stops being
+ * inferred the moment an earlier type parameter (here `TCollectionSlug`) is
+ * given explicitly, and the object is forwarded to `useQuery` unchanged
+ * regardless of its exact shape.
+ *
  * @param queryOptions - The `useQuery` options for a query resolving to one document.
  * @param collectionSlug - The collection that document belongs to.
  * @returns The query result with `data` overlaid by any unsaved editor values.
@@ -404,9 +417,9 @@ export function useLivePreviewDocumentQuery<
   // one of those makes the other fail to assign.
   TData extends DocumentByResourceSlug<TCollectionSlug> | null =
     DocumentByResourceSlug<TCollectionSlug> | null,
-  TQueryKey extends readonly unknown[] = readonly unknown[],
 >(
-  queryOptions: UseQueryOptions<TData, Error, TData, TQueryKey>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  queryOptions: UseQueryOptions<TData, Error, TData, any>,
   collectionSlug: TCollectionSlug,
 ): LivePreviewDocumentQueryResult<TCollectionSlug> {
   const queryResult = useQuery(queryOptions);

@@ -41,11 +41,13 @@ export interface RemoveServerArgs<
  * Supports both hard delete (permanent) and soft delete (mark as deleted).
  * Pass `softDelete` field name to soft delete instead of permanently removing.
  *
- * Import from `@vexcms/core/server`.
+ * Import from `@vexcms/core/server`. Prefer `vexServerApi()`'s bound
+ * `remove`, which threads `config` for you — a raw call omitting it is a
+ * type error.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
  * @typeParam TCollectionSlug - Collection slug.
- * @param args - `{ ctx, ids, softDelete? }`. `ctx` must be a mutation context.
+ * @param args - `{ ctx, config, ids, softDelete? }`. `ctx` must be a mutation context.
  * @returns Promise resolving to void.
  * @example Single delete
  * ```ts
@@ -53,14 +55,14 @@ export interface RemoveServerArgs<
  *
  * export const deletePost = mutation({
  *   args: { id: v.id("posts") },
- *   handler: (ctx, args) => remove({ ctx, ids: [args.id] }),
+ *   handler: (ctx, args) => remove({ ctx, config, ids: [args.id] }),
  * });
  * ```
  * @example Bulk delete
  * ```ts
  * export const bulkDeletePosts = mutation({
  *   args: { ids: v.array(v.id("posts")) },
- *   handler: (ctx, args) => remove({ ctx, ids: args.ids }),
+ *   handler: (ctx, args) => remove({ ctx, config, ids: args.ids }),
  * });
  * ```
  * @example Soft delete
@@ -68,7 +70,7 @@ export interface RemoveServerArgs<
  * export const softDeletePost = mutation({
  *   args: { id: v.id("posts") },
  *   handler: (ctx, args) =>
- *     remove({ ctx, ids: [args.id], softDelete: "deleted" }),
+ *     remove({ ctx, config, ids: [args.id], softDelete: "deleted" }),
  * });
  * ```
  *

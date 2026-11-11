@@ -1,0 +1,155 @@
+---
+title: Testing
+description: Run VexCMS's own admin-panel test kit against your project's real field types, access config, and build — `runVexReactSuite` from `@vexcms/react/testing`.
+---
+
+`@vexcms/react` ships the same test suite it tests itself with, as a `./testing` subpath your
+project can run directly: every core field type's input/cell/column-def contract, the admin
+shell, all eight admin views, the data table, the three modals, the media library, and the
+shared hooks — plus, through the `custom` option, your own project-authored field types. It
+exists to catch the failure class a consumer build can hit that the package's own CI never
+sees: resolution against *your* `@vexcms/react` build, your bundler, your module graph — not
+just the package's own source tree.
+
+## Setup
+
+Install the kit's peer dependencies (`vitest`, `jsdom`, `@testing-library/react`,
+`@testing-library/jest-dom`, `@testing-library/user-event`, `vitest-axe`) alongside
+`convex-test`, a **required** devDependency for this entry point specifically — the kit's
+Convex-backed suites (views, modals, media, hooks) run real queries and mutations through a
+`convex-test` bridge, not mocks, so importing `@vexcms/react/testing` fails without it even
+if your own tests never call `convexTest` directly.
+
+```json
+{
+  "devDependencies": {
+    "@testing-library/jest-dom": "...",
+    "@testing-library/react": "...",
+    "@testing-library/user-event": "...",
+    "convex-test": "...",
+    "jsdom": "...",
+    "vitest": "...",
+    "vitest-axe": "..."
+  }
+}
+```
+
+Point Vitest's `setupFiles` at the subpath and run under `jsdom`:
+
+```ts
+// vitest.config.ts
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    environment: "jsdom",
+    setupFiles: ["@vexcms/react/testing"],
+  },
+});
+```
+
+## Running the full kit
+
+Call `runVexReactSuite()` once at the top level of a `*.test.ts(x)` file — like every other
+factory in the kit, it calls `describe`/`it` itself:
+
+```ts
+// src/vexcms/admin.test.ts
+import { runVexReactSuite } from "@vexcms/react/testing";
+
+runVexReactSuite();
+```
+
+With no options, this runs every section: the `fieldFixtures`-driven loops (`fields`, `cells`,
+`columnDefs` — once per registered core field type), and the five single-call suites (`shell`,
+`views`, `dataTable`, `modals`, `media`, `hooks`).
+
+## Sections
+
+Narrow what runs with `sections` (a `VexSuiteSection[]`) and `includeCore` (a flag that
+suppresses the three `fieldFixtures`-driven loops independent of `sections`, combining with it
+by AND, never OR):
+
+```ts
+// Only the field-contract loops — skip shell/views/modals/etc.
+runVexReactSuite({ sections: ["fields", "cells", "columnDefs"] });
+
+// Everything except the field-contract loops.
+runVexReactSuite({ includeCore: false });
+```
+
+`VexSuiteSection` is `"fields" | "cells" | "columnDefs" | "views" | "shell" | "dataTable" |
+"modals" | "hooks" | "media"`.
+
+## Your own access config
+
+Pass your project's real `defineAccess()` result as `access`, and it threads into every
+section that reads RBAC — a falsifiable check that your own matrix resolves inside the real
+`VexConfigProvider`, not a hand-typed stub, plus the same config driving the real
+RBAC-gated render paths in `shell`, `views`, `modals`, and `media`:
+
+```ts
+import { runVexReactSuite } from "@vexcms/react/testing";
+import { access } from "~/auth/access";
+
+runVexReactSuite({ access });
+```
+
+## Custom field fixtures
+
+A project-authored field type has no entry in the package's own `fieldFixtures` registry, so
+pair it with its own admin component via `custom` — these always run, regardless of
+`includeCore`/`sections`:
+
+```ts
+// src/vexcms/admin.test.ts
+import { checkbox, type CheckboxField } from "@vexcms/react";
+import { CheckboxFieldAdmin } from "@vexcms/react/admin";
+import { runVexReactSuite, type FieldFixture } from "@vexcms/react/testing";
+import { access } from "~/auth/access";
+
+const isKeynoteFixture: FieldFixture<CheckboxField, boolean> = {
+  fieldType: "checkbox",
+  fieldDef: checkbox({ label: "Keynote", required: true }),
+  valid: true,
+  invalid: undefined,
+  empty: false,
+};
+
+runVexReactSuite({
+  sections: ["shell"],
+  access,
+  custom: [{ ...isKeynoteFixture, Component: CheckboxFieldAdmin }],
+});
+```
+
+Each `FieldFixture` entry needs `fieldType` (matching `fieldDef.type`), `fieldDef` (a real
+field definition from your field's builder), `valid` (a value that should pass validation),
+`invalid` (a value that should fail it — `undefined` only exercises the rejection case for a
+`required` field; an optional field, or one whose schema ends in an unconditional `.default()`,
+silently accepts a missing value instead), and `empty` (the value a brand-new field starts
+with). `invalid`'s fixture above needs `required: true` on the `checkbox()` definition itself —
+without it, `undefined` is a valid value and the rejection case never exercises.
+
+Each `custom` entry runs through the same `runFieldInputContractSuite` every core field type
+runs through, proving your field's admin component satisfies the same input contract (reading
+`fieldDef`, firing change events through its control, honoring `readOnly`) as a built-in one.
+
+## A worked example
+
+The conference example project's `src/vexcms/admin.test.ts` runs the fast `shell` section
+against its own real `access`, plus one `custom` fixture proving its project-authored
+`sessions.isKeynote` checkbox field runs through the same contract every core field type does
+— shown above in full.
+
+## Gotchas
+
+- **`convex-test` is required for this entry point, even for the `"shell"` section alone.**
+  It's an optional peer dependency of `@vexcms/react` as a whole — most of the package never
+  needs it — but importing `@vexcms/react/testing` pulls in the Convex-backed view/modal/media
+  suites, which do.
+- **`includeCore` and `sections` combine with AND, never OR.** `includeCore: false` suppresses
+  `fields`/`cells`/`columnDefs` even if `sections` names them; it has no effect on `custom` or
+  on any of `shell`/`views`/`dataTable`/`modals`/`media`/`hooks`.
+- **`custom` always runs.** There's no `fieldFixtures` registry entry for either `includeCore`
+  or `sections` to gate your own field type on.

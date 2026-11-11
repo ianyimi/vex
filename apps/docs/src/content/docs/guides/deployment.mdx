@@ -1,0 +1,207 @@
+---
+title: Deployment
+description: Deploy a VexCMS project's Convex backend to production and the Next.js app to Vercel production, using `vex:deploy`.
+sidebar:
+  hidden: true
+---
+
+This guide covers the two deploys a VexCMS project needs for production: pushing your schema
+and functions to a Convex production deployment, and deploying the Next.js app to Vercel with
+the right build command and environment variables.
+
+## Prerequisites
+
+- A scaffolded project already running locally — see the [quickstart guide](/guides/quickstart/).
+- A Convex account, logged in locally (`npx convex login` if you haven't already).
+- A Vercel project connected to this repository (or the Vercel CLI).
+- The `vex:deploy` script in `package.json` (`"vex:deploy": "vex deploy"`). Every project
+  scaffolded by `create-vexcms@alpha` ships it by default; if yours predates that, add the
+  script yourself.
+
+## Deploy Convex to production
+
+```bash
+pnpm vex:deploy
+```
+
+`vex deploy` resolves `vex.config.server.ts`, regenerates the Convex schema
+(`convex/vex.schema.ts`) and types (`src/vex.types.ts`) if they've drifted from your config,
+pushes the regenerated schema via `convex deploy` when it changed, then always runs one final
+`convex deploy` to push everything — schema, functions, and any pending data migration — to
+your linked production deployment.
+
+`vex deploy [--cwd <dir>] [convex deploy flags…]` forwards every flag it doesn't own straight
+through to that final `convex deploy` call — `--cmd`, `--preview-create`, and the rest. See
+[Passing flags to convex deploy](#passing-flags-to-convex-deploy) below — the Vercel build
+command uses exactly this to run `pnpm build` as part of the same deploy.
+
+## Set the production Convex environment
+
+Better Auth runs inside your Convex deployment, not inside the Next.js server, so it never
+reads anything from Vercel. Set these on the deployment itself, before or right after your
+first `vex:deploy`:
+
+```bash
+npx convex env set SITE_URL https://your-prod-domain.example --prod
+npx convex env set BETTER_AUTH_SECRET <the same BETTER_AUTH_SECRET you set in Vercel below> --prod
+```
+
+If your project added any OAuth providers, their Client ID/Secret pair needs setting here too
+— `convex/auth/options.ts` reads them the same way it reads `SITE_URL`:
+
+```bash
+npx convex env set GITHUB_CLIENT_ID <value> --prod
+npx convex env set GITHUB_CLIENT_SECRET <value> --prod
+```
+
+(Swap `GITHUB_*` for whichever provider(s) you selected while scaffolding — the variable names
+match your project's own `src/env.mjs` exactly.)
+
+Skipping `SITE_URL`/`BETTER_AUTH_SECRET` here is the same `403` on first sign-in the quickstart
+guide warns about, just against the production deployment instead of your local one.
+
+### OAuth per environment
+
+Each environment — your local dev deployment, any Convex preview deployment, and production —
+needs its own OAuth app (or at least its own callback URL) registered with the provider, and
+that app's own Client ID/Secret pair set on the matching Convex deployment via `convex env
+set ... --prod`/`--preview-name <name>` (bare, with no flag, for dev). An OAuth app's
+registered callback URL is exact-matched against the request; one app registered against your
+dev domain rejects the callback from your production domain (and vice versa) with a provider
+error before VexCMS ever sees the response. Reusing one app's credentials across environments
+by pointing its single registered callback URL at whichever domain you deployed last works
+only until two environments need to accept a sign-in at the same time.
+
+
+## Seed production (marketing-site starter)
+
+The marketing-site starter ships `pnpm seed` → `convex run seed:init`, an idempotent mutation
+that only inserts documents missing from the target deployment. Run it against prod directly:
+
+```bash
+npx convex run seed:init --prod
+```
+
+A `--bare` project has no `convex/seed.ts` — skip this step.
+
+## Deploy the Next.js app to Vercel (production)
+
+### Environment variables
+
+Set every variable `src/env.mjs`'s schema requires, for the **Production** environment:
+
+| Variable | Scope | Value |
+|---|---|---|
+| `NEXT_PUBLIC_CONVEX_URL` | client | injected automatically by `--cmd` (below) — set it by hand only if you deploy without `--cmd` |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | client | the prod deployment's `.convex.site` URL — `--cmd` does not inject this one |
+| `NEXT_PUBLIC_SITE_URL` | client | your production domain |
+| `SITE_URL` | server | same value as `NEXT_PUBLIC_SITE_URL` |
+| `BETTER_AUTH_SECRET` | server | the same value set on Convex above |
+| any OAuth `*_CLIENT_ID` / `*_CLIENT_SECRET` your project added | server | the same values set on Convex above |
+| `CONVEX_DEPLOY_KEY` | server, **Production** scope only | a **Production**-scoped deploy key for this project, from the Convex dashboard → Settings → Deploy Keys |
+
+`CONVEX_DEPLOY_KEY` is what the `convex deploy` call inside `vex:deploy` authenticates with
+when it runs as part of the Vercel build — without it, the build command below fails before it
+ever reaches `pnpm build`. Scope it to **Production** only: a Preview build should never be
+able to push schema to your real deployment.
+
+### Build command
+
+Override Vercel's build command (Project → Settings → Build and Deployment) to:
+
+```
+pnpm vex:deploy --cmd 'pnpm build'
+```
+
+This is `vex deploy`'s version of
+[Convex's own "Using Convex with Vercel" recipe](https://docs.convex.dev/production/hosting/vercel):
+`--cmd` runs the deploy, then runs `pnpm build` with the resulting Convex URL injected into its
+environment — the same as `npx convex deploy --cmd 'npm run build'` does, just running through
+`vex deploy` first so your schema generation and auto-migration happen before the build.
+`--cmd` infers and injects `NEXT_PUBLIC_CONVEX_URL` for a Next.js build automatically; rename
+the injected variable with `--cmd-url-env-var-name <name>` if your build can't infer it.
+`NEXT_PUBLIC_CONVEX_SITE_URL` isn't something `--cmd` knows how to inject — set it as an
+ordinary Vercel Production environment variable (above).
+
+### Install command
+
+Vercel's default (`pnpm install`) is correct — no override needed.
+
+## Create your first admin
+
+Same as local: visit the production URL and sign up. The first account created on *that*
+Convex deployment is auto-promoted to admin (`convex/vex/firstUser.ts`) — this is tracked
+per deployment, so your first production sign-up is a separate "first" from your dev
+deployment's.
+
+## Closing sign-up (optional)
+
+Once every account the deployment needs exists, you can close public sign-up without touching
+code — read a Convex env var in your own `convex/auth/options.ts` and set Better Auth's
+`emailAndPassword.disableSignUp` from it, for example an env var named `AUTH_DISABLE_SIGN_UP`:
+
+```ts
+// convex/auth/options.ts
+emailAndPassword: {
+  enabled: true,
+  disableSignUp: process.env.AUTH_DISABLE_SIGN_UP === "true",
+  // ...your other emailAndPassword options
+},
+```
+
+Then, once you've signed up yourself (above) and created every other account the deployment
+needs:
+
+```bash
+npx convex env set AUTH_DISABLE_SIGN_UP true --prod
+```
+
+`POST /api/auth/sign-up/email` now returns an error status on this deployment; existing
+accounts can still sign in. Reverse it with
+`npx convex env set AUTH_DISABLE_SIGN_UP false --prod`.
+
+## Live preview on production
+
+Both starters mount the admin panel and the public site on the same Vercel domain by default,
+so live preview needs no extra configuration. If you move the admin to a different origin from
+the public site, add that production origin to `livePreview.allowedOrigins` in `vex.config.ts`
+before deploying — an empty allowlist disables the cross-origin `postMessage` transport
+entirely.
+
+## Revalidation on production
+
+Nothing to configure. `POST /api/vex/revalidate` (`createVexRevalidateRoute`) is
+session-authorized, not secret-authorized: the caller must already hold a signed-in session,
+and the route re-checks `hasPermission` against the affected collection server-side before
+purging anything. There's no shared-secret environment variable to set for production — see
+[Caching, sitemaps and revalidation](/guides/caching-and-seo/) for how the route itself works.
+
+## Passing flags to convex deploy
+
+`vex deploy [--cwd <dir>] [convex deploy flags…]` forwards every flag it doesn't own straight
+through to the final `convex deploy` call — `--cmd`, `--cmd-url-env-var-name`,
+`--preview-create`, `--preview-run`, anything
+[`convex deploy`](https://docs.convex.dev/cli/reference/deploy) accepts. `--cwd <dir>` is the
+one flag `vex` itself owns: it runs as if started from `<dir>` instead of `process.cwd()`, and
+it is never forwarded to `convex deploy` (which has no `--cwd` of its own).
+
+The auto-migration interim pushes (the ones that run only when your schema changed and the
+migration needs more than one deploy to converge) strip `--cmd` and `--cmd-url-env-var-name`
+before forwarding the rest — so your build command runs exactly once, on the final deploy,
+never on an interim schema-only push.
+
+`convex deploy` runs with no timeout when `vex deploy` calls it (every other `convex` command
+`vex` runs — `dev`, the standalone schema push — keeps a 120-second timeout): a deploy that
+also runs your build command (`--cmd`) can take much longer than 120 seconds, and `vex deploy`
+would otherwise report it as failed before it finished.
+
+## What vex deploy does not do
+
+- **No migration sequencing beyond schema generation.** It regenerates and pushes the Convex
+  schema/types; it does not run or order your own data migrations.
+- **No environment-variable management.** It neither reads nor writes Vercel or Convex
+  environment variables itself — every value on this page is set by hand (or by your own CI
+  secrets, or by `--cmd`'s own URL injection above), never by `vex deploy` directly.
+- **No Vercel step of its own.** `vex deploy` only talks to Convex. `pnpm build` (run directly,
+  or through `--cmd` above) is Vercel's own build step, not something `vex deploy` runs unless
+  you pass `--cmd`.

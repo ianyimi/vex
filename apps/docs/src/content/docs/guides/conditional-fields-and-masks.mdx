@@ -29,6 +29,46 @@ const advancedNote = text({
   for a top-level field, or the enclosing group/array-item/tab's own fields
   otherwise.
 
+**A `select` or `relationship` field's value is always a list**, even with `hasMany: false`
+— a single selection is a one-element array, not a bare value. A condition reading one of
+these compares the first element or checks membership, never the raw field:
+
+```ts
+import { select, text } from "@vexcms/core"
+
+const season = select({
+  options: [
+    { label: "Spring", value: "spring" },
+    { label: "Summer", value: "summer" },
+  ],
+})
+
+// Single-select: compare the one element the array holds.
+const summerNote = text({
+  label: "Summer Note",
+  admin: {
+    condition: ({ siblingData }) =>
+      typeof siblingData === "object" &&
+      siblingData !== null &&
+      "season" in siblingData &&
+      siblingData.season?.[0] === "summer",
+  },
+})
+
+// Multi-select: check membership instead of equality.
+const festivalNote = text({
+  label: "Festival Note",
+  admin: {
+    condition: ({ siblingData }) =>
+      typeof siblingData === "object" &&
+      siblingData !== null &&
+      "tags" in siblingData &&
+      Array.isArray(siblingData.tags) &&
+      siblingData.tags.includes("festival"),
+  },
+})
+```
+
 A field nested inside a `group()`, an `array()` item, or a named `tabs()` tab
 reads its own siblings, not the top-level document, from `siblingData`:
 
@@ -129,7 +169,7 @@ const featuredNote = text({
 ## Input masks
 
 `admin.mask` formats what the user types in a `text`, `email`, `number`, or
-`url` field's input, backed by [`use-mask-input`](https://github.com/vireshvekariya/use-mask-input).
+`url` field's input, backed by [`use-mask-input`](https://github.com/eduardoborges/use-mask-input).
 It's opt-in and lazy-loaded — only a form that actually renders a masked input
 pays the (~29 KB gz) cost.
 

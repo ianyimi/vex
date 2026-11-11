@@ -167,3 +167,97 @@ describe("vexServerApi — access.action", () => {
     expect(getAuth).not.toHaveBeenCalled();
   });
 });
+
+const versionedPosts = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text() },
+  versions: { drafts: true },
+});
+
+const versionedAccessConfig = {
+  collections: [versionedPosts],
+  access: defineAccess({
+    roles: ["contributor"] as const,
+    resources: [versionedPosts],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: { contributor: { posts: { read: true } } },
+  }),
+} as unknown as VexConfig;
+
+describe("vexServerApi — find sees versions.drafts through the injected config", () => {
+  test("a bound call with no `drafts` flag returns the published row only, never the draft", async () => {
+    const t = convexTest(schema, modules);
+    const getAuth = vi.fn(async (): Promise<VexApiAuth | undefined> => contributor);
+    const api = vexServerApi<GenericDataModel>({ config: versionedAccessConfig, getAuth });
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Published", slug: "a", vex_status: "published" });
+      await ctx.db.insert("posts", { title: "Draft", slug: "a", vex_status: "draft" });
+      return api.find({ ctx, collection: "posts" });
+    });
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?.vex_status).toBe("published");
+  });
+});
+
+const postsOwned = defineCollection({
+  slug: "posts",
+  fields: { title: text(), body: text() },
+});
+
+const ownerAccessConfig = {
+  collections: [postsOwned],
+  access: defineAccess({
+    roles: ["contributor"] as const,
+    resources: [postsOwned],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    customActions: { posts: { mutation: ["markSold"] } },
+    permissions: {
+      contributor: {
+        posts: {
+          markSold: ({ data, user }: { data?: { body?: string }; user: { _id: string } }) =>
+            data?.body === user._id,
+        },
+      },
+    },
+  }),
+} as unknown as VexConfig;
+
+describe("vexServerApi — update through a custom action authorizes against the owner", () => {
+  test("allowed for the document's own author, denied for another user", async () => {
+    const t = convexTest(schema, modules);
+    const owner: VexApiAuth = { user: { _id: "author-1", roles: "contributor" } };
+    const stranger: VexApiAuth = { user: { _id: "author-2", roles: "contributor" } };
+    let resolveAs = owner;
+    const getAuth = vi.fn(async (): Promise<VexApiAuth | undefined> => resolveAs);
+    const api = vexServerApi<GenericDataModel>({ config: ownerAccessConfig, getAuth });
+
+    const id = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "For sale", slug: "for-sale", body: "author-1" }),
+    );
+
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      api.update({
+        ctx,
+        collection: "posts",
+        id,
+        data: { title: "Sold" },
+        access: { action: "markSold" },
+      }),
+    );
+
+    resolveAs = stranger;
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        api.update({
+          ctx,
+          collection: "posts",
+          id,
+          data: { title: "Sold again" },
+          access: { action: "markSold" },
+        }),
+      ),
+    ).rejects.toThrow(VexAccessError);
+  });
+});

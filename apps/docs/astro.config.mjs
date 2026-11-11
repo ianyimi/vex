@@ -80,6 +80,7 @@ export default defineConfig({
 					label: 'Next.js',
 					items: [
 						{ label: 'Quickstart', slug: 'guides/quickstart' },
+						{ label: 'Deployment', slug: 'guides/deployment' },
 						{ label: 'Caching, sitemaps & revalidation', slug: 'guides/caching-and-seo' },
 					],
 				},

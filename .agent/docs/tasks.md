@@ -8,6 +8,8 @@
 - www live-demo admin content (spec 2026-11-02-www-live-demo-admin-content)
 - V — Accessibility, web standards & performance pass on `apps/www` and the admin panel (`apps/test` → fixes in `packages/react`): spec fetches WCAG 2.2, WAI-ARIA 1.2 + APG, HTML standard, Core Web Vitals; axe + Lighthouse CI + Nu validator + jsx-a11y; manual keyboard / focus-visible / VoiceOver / zoom pass; security headers; CI gates; accessibility statement. Target WCAG 2.2 AA + AAA focus appearance. After J, before K conformance and N (launch plan § V)
 - Pre-launch dependency upgrades (spec 2026-11-07-pre-launch-dependency-upgrades)
+- Contributor workflow (spec 2026-11-10-contributor-workflow)
+- Golden use cases — 4 demo examples (spec 2026-11-09-golden-use-cases)
 
 ## Inbox
 ### v0.1.0 launch track — work in this order (`.agent/docs/product/v0.1.0-launch-plan.md`)
@@ -27,7 +29,6 @@
 - Concurrent-edit conflict detection already assessed — see backlog.md § Concurrent-edit conflict-resolution UX
 - Polish follow-up (list view): `find`'s first-page count reads up to `countLimit + 1` (default 10001) full docs, which hits Convex's 8 MiB query read limit at ~800 B per doc. Documented in pagination.mdx; real fix tracked in backlog.md § Total-count cap for large collections
 - Polish follow-up (list view): `isQueryAffectingViewSwitch` (useListViewUrlState.ts ~450) compares raw URL params, not the effective state, so an external link with an explicit param equal to the target view's default dims once on view switch (P3)
-- Golden use cases — 4 demo examples (spec 2026-11-09-golden-use-cases)
 - Template ships no dependency patches: scaffolded projects miss the @convex-dev/better-auth getToken x-forwarded-host remap (#422, dormant) and the better-auth-ui password-toggle label + footer-link nesting fixes; needs a package-manager-neutral fix or upstream PRs
 - betterAuthAdapter index parity: a custom Better Auth fieldName on an indexed field drops that compound index silently (candidates resolve through tableDef.fields[f].fieldName but adapter fields are keyed by the logical name) — lookups fall back to a full-table scan
 

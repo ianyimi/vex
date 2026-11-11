@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * `@vexcms/react/testing` — the test kit's entry point. `convex-test` is an
+ * OPTIONAL peer of `@vexcms/react` (a project that never imports this entry
+ * never needs it), but every section that mounts real admin surfaces
+ * (`mediaSuite`, `modalSuite`, the `access`-gated shell checks) runs against
+ * a real `convex-test` instance, so it is a REQUIRED `devDependency` for any
+ * project that imports from here — add it alongside `vitest` and
+ * `@testing-library/react`.
+ *
+ * @module ./testing
+ */
+
 // Matches the banner tsup stamps on `dist/testing/index.js`. Inert where this
 // entry is actually consumed (a vitest process, where the directive is just a
 // string literal), but kept in step with the main barrel so source and bundle
@@ -7,9 +19,10 @@
 
 import "../adapter";
 import type { ComponentType } from "react";
-import type { AdminDataField, DataFieldType, CellComponentProps, CollectionConfig, TDocument, VexAccessConfig } from "@vexcms/core";
+import type { AdminDataField, AdminField, BaseFieldMeta, DataFieldType, CellComponentProps, FieldComponentProps, TDocument, VexAccessConfig } from "@vexcms/core";
 import { describe, expect, it } from "vitest";
 import { fieldToCellComponent, fieldToFieldComponent } from "../fields";
+import type { FieldInputContractOptions } from "./fieldInputContract";
 import { fieldFixtures } from "./fixtures";
 import type { FieldFixture } from "./fixtures/types";
 import { runFieldInputContractSuite } from "./fieldInputContract";
@@ -77,18 +90,15 @@ const NO_TRUNCATION_FIELD_TYPES: ReadonlySet<DataFieldType> = new Set([
 ]);
 
 /**
- * The field input component shape every real field input satisfies (see
- * `FieldInputContractOptions.Component`'s doc comment for why this is not
- * `FieldComponentProps<BaseFieldMeta, TField>`). Named here so
- * `runVexReactSuite`'s `custom` option never resorts to `any`.
+ * The field input component shape every real field input satisfies — exactly
+ * `FieldComponentProps<BaseFieldMeta, TField>`, so a project's own real
+ * `*FieldAdmin` export (e.g. `CheckboxFieldAdmin`) satisfies `custom[].Component`
+ * directly, with no cast. Named here so `runVexReactSuite`'s `custom` option
+ * never resorts to `any`.
  */
-type FieldInputComponent<TField> = ComponentType<{
-  name: string;
-  fieldDef: TField;
-  readOnly: boolean;
-  collection: CollectionConfig;
-  index?: number;
-}>;
+type FieldInputComponent<TField extends AdminField = AdminField> = ComponentType<
+  FieldComponentProps<BaseFieldMeta, TField>
+>;
 
 /**
  * The cell component shape every real field cell satisfies — the `cells` loop's
@@ -143,6 +153,26 @@ const ALL_SECTIONS: readonly VexSuiteSection[] = [
 ];
 
 /**
+ * One `custom[]` entry, correlated to a single concrete field type: `Component`
+ * is typed against THAT SAME entry's `fieldDef`, not the whole `AdminDataField`
+ * union — letting a real `*FieldAdmin` export (typed for one concrete field
+ * type, e.g. `CheckboxFieldAdmin`) satisfy it directly.
+ */
+type DistributeCustomFieldFixtureEntry<TField> = TField extends AdminDataField
+  ? FieldFixture<TField> & { Component: FieldInputComponent<TField> }
+  : never;
+
+/**
+ * `custom[]`'s element type — the union of {@link DistributeCustomFieldFixtureEntry} over every
+ * registered field type, plus the un-narrowed fallback: `fieldFixtures`' registry type doesn't
+ * narrow its values per key, so a fixture read back out of it (`fieldFixtures.text`) carries the
+ * wide `AdminDataField` fieldDef rather than `TextField` specifically.
+ */
+type CustomFieldFixtureEntry =
+  | DistributeCustomFieldFixtureEntry<AdminDataField>
+  | (FieldFixture & { Component: FieldInputComponent });
+
+/**
  * Runs the full `@vexcms/react` test kit — the low-ceremony entry point the
  * `./testing` subpath exists to deliver. Call at module top level inside a
  * `*.test.ts(x)` file; like every other factory in this kit it calls
@@ -178,7 +208,7 @@ const ALL_SECTIONS: readonly VexSuiteSection[] = [
 export function runVexReactSuite(options?: {
   includeCore?: boolean;
   sections?: VexSuiteSection[];
-  custom?: Array<FieldFixture & { Component: FieldInputComponent<FieldFixture["fieldDef"]> }>;
+  custom?: Array<CustomFieldFixtureEntry>;
   access?: VexAccessConfig;
 }): void {
   const { includeCore = true, sections = ALL_SECTIONS, custom = [], access } = options ?? {};
@@ -224,13 +254,13 @@ export function runVexReactSuite(options?: {
       if (NO_CONTROL_FIELD_TYPES.has(fieldType)) continue;
       const InputComponent = fieldToFieldComponent(fieldType);
       if (!InputComponent) continue;
-      // Boundary cast: `fieldToFieldComponent` returns
-      // `ComponentType<FieldComponentProps<BaseFieldMeta, AdminField>>`, whose
-      // `collection` prop is `CollectionConfig | GlobalConfig`. Comparing
-      // `ComponentType`s checks `defaultProps` covariantly, which rejects that
-      // wider union against `FieldInputComponent`'s narrower `CollectionConfig`-only
-      // prop — the same boundary `nestedFieldContainer.ts` documents and casts.
-      const Component = InputComponent as unknown as FieldInputComponent<typeof fixture.fieldDef>;
+      // Boundary cast: `fieldToFieldComponent` returns `ComponentType<FieldComponentProps<BaseFieldMeta,
+      // AdminField>>` — `fieldDef` typed to the whole union, not this one fixture's specific field type,
+      // and `collection` typed to the whole `CollectionConfig | GlobalConfig` union, wider than
+      // `FieldInputContractOptions.Component`'s own narrower contract (see its doc comment for why).
+      // `defaultProps` is compared covariantly, so neither widening satisfies the narrower target —
+      // the same boundary `nestedFieldContainer.ts` documents and casts.
+      const Component = InputComponent as unknown as FieldInputContractOptions<typeof fixture.fieldDef>["Component"];
 
       runFieldInputContractSuite({ fixture, Component });
 
@@ -272,7 +302,15 @@ export function runVexReactSuite(options?: {
   }
 
   for (const { Component, ...fixture } of custom) {
-    runFieldInputContractSuite({ fixture, Component });
+    // Boundary cast: a `custom` entry's `Component` is aligned with the real
+    // `FieldComponentProps` (`collection: CollectionConfig | GlobalConfig`,
+    // `documentStatus`/`renderDefault` present), wider than
+    // `FieldInputContractOptions.Component`'s own narrower contract — the
+    // same boundary the `fields` loop above casts across.
+    runFieldInputContractSuite({
+      fixture,
+      Component: Component as unknown as FieldInputContractOptions<typeof fixture.fieldDef>["Component"],
+    });
   }
 }
 

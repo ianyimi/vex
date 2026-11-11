@@ -9,6 +9,7 @@ import {
   TABLE_SLUG_USERS,
   type UserID,
 } from "~/db/constants";
+import config from "~/vex.config.server";
 
 import { query } from "../_generated/server";
 
@@ -31,13 +32,14 @@ export const getUserOrg = query({
     }
     const session = await get({
       ctx,
+      config,
       id: identity.sessionId as SessionID,
       collection: TABLE_SLUG_SESSIONS,
     });
     if (!session) {
       return empty;
     }
-    const user = await get({ ctx, id: identity.subject as UserID, collection: TABLE_SLUG_USERS });
+    const user = await get({ ctx, config, id: identity.subject as UserID, collection: TABLE_SLUG_USERS });
     if (!user) {
       return empty;
     }
@@ -46,6 +48,7 @@ export const getUserOrg = query({
     }
     const organization = await get({
       ctx,
+      config,
       id: session.activeOrganizationId as OrganizationID,
       collection: TABLE_SLUG_ORGANIZATIONS,
     });

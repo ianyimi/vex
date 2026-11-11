@@ -92,7 +92,7 @@ compile time:
 ```ts
 posts: {
   read: {
-    withIndex: ({ user }) => ({ name: "by_authorId", range: (ix) => ix.eq("authorId", user._id) }),
+    withIndex: ({ user }) => ({ name: "by_authorId", range: (ix) => ix.eq("authorId", [user._id]) }),
   },
 }
 ```
@@ -126,7 +126,7 @@ range can't (a `neq` is never an index range):
 ```ts
 posts: {
   read: {
-    withIndex: ({ user }) => ({ name: "by_authorId", range: (ix) => ix.eq("authorId", user._id) }),
+    withIndex: ({ user }) => ({ name: "by_authorId", range: (ix) => ix.eq("authorId", [user._id]) }),
     where: ({ q }) => q.neq("status", "archived"),
   },
 }
@@ -189,10 +189,19 @@ which case `scope` decides how to answer:
 posts: {
   read: true,
   create: true,
-  update: ({ user, data }) => data?.authorId === user._id,
-  delete: ({ user, data }) => data?.authorId === user._id,
+  update: ({ user, data }) => data?.authorId?.includes(user._id),
+  delete: ({ user, data }) => data?.authorId?.includes(user._id),
 }
 ```
+
+**Relationship values are lists.** A `relationship` field is stored as `Id[]` regardless of
+`hasMany` — a single relationship is a one-element array, not a bare id — so a plain-JS
+comparison needs `data?.authorId?.includes(user._id)`, never `data?.authorId === user._id`.
+`withIndex`'s raw `range` callback has the same requirement: wrap the comparison value yourself
+(`ix.eq("authorId", [user._id])`), because unlike `where`, it bypasses the normalization that
+makes a bare `q.eq("authorId", user._id)` work inside `where`. When in doubt, reach for
+`indexedOwnerCheck`/`ownerPredicateCheck` (`@vexcms/core`'s access helpers) instead of writing
+either form by hand — they get the field's shape right for you.
 
 ### 3. Boolean shorthand — the static case
 

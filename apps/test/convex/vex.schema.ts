@@ -314,6 +314,9 @@ export const user = defineTable({
   userId: v.optional(v.string()),
   roles: v.array(v.string()),
 })
+  .index("by_email_name", ["email", "name"])
+  .index("by_name", ["name"])
+  .index("by_userId", ["userId"])
   .index("by_email", ["email"])
   .searchIndex("search_name", {
     searchField: "name",
@@ -919,6 +922,8 @@ export const session = defineTable({
   activeOrganizationId: v.optional(v.string()),
   activeTeamId: v.optional(v.string()),
 })
+  .index("by_expiresAt", ["expiresAt"])
+  .index("by_userId_expiresAt", ["userId", "expiresAt"])
   .index("by_token", ["token"])
   .index("by_userId", ["userId"])
 
@@ -935,7 +940,12 @@ export const account = defineTable({
   password: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
-}).index("by_userId", ["userId"])
+})
+  .index("by_accountId", ["accountId"])
+  .index("by_accountId_providerId", ["accountId", "providerId"])
+  .index("by_accountId_providerId_userId", ["accountId", "providerId", "userId"])
+  .index("by_providerId_userId", ["providerId", "userId"])
+  .index("by_userId", ["userId"])
 
 export const verification = defineTable({
   identifier: v.string(),
@@ -943,7 +953,9 @@ export const verification = defineTable({
   expiresAt: v.number(),
   createdAt: v.number(),
   updatedAt: v.number(),
-}).index("by_identifier", ["identifier"])
+})
+  .index("by_expiresAt", ["expiresAt"])
+  .index("by_identifier", ["identifier"])
 
 export const apikey = defineTable({
   configId: v.string(),

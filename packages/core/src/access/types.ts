@@ -554,6 +554,7 @@ export type AccessIndexedFieldWithValue<S extends string, V> = {
  */
 export type AccessResourceRef<S extends string> = {
   readonly fields: Readonly<Record<string, { readonly index?: string | { readonly name: string }; readonly type?: string }>>;
+  readonly indexes?: readonly { readonly name: string; readonly fields: readonly string[]; readonly draftStatus?: true | "both" }[];
   readonly slug: S;
 };
 

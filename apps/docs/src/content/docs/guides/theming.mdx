@@ -273,6 +273,40 @@ tick. Create and remove it in an effect keyed on the scope alone; write its
 `textContent` from a second effect, and hold the previous CSS (`return` early)
 while the new theme is still loading.
 
+### Page-level themes
+
+A page that carries its own brand palette — distinct from the rest of the
+site — can't just emit `scope: "admin"` or `"site"`: both target `:root`,
+and `<ThemeLive>`'s live-update block re-applies the SITE theme after
+hydration at that same `:root` specificity, winning by DOM order regardless
+of which block rendered first. `scope: { selector }` sidesteps the
+contest entirely by never touching `:root`: it scopes the theme to one
+region of the page — its own wrapper element — so a page-level override and
+the site-wide live theme can both exist without either outranking the other.
+
+```tsx
+// src/app/(frontend)/(site)/locations/[slug]/LocationThemeStyle.tsx
+import { buildThemeCss } from "@vexcms/core";
+
+import type { ThemesDocument } from "~/vex.types";
+
+export function LocationThemeStyle(props: { theme: ThemesDocument | null }) {
+  if (!props.theme) return null;
+  const css = buildThemeCss({
+    theme: props.theme,
+    scope: { selector: `[data-vex-theme="${props.theme._id}"]` },
+  });
+  if (!css) return null;
+  return <style dangerouslySetInnerHTML={{ __html: css }} />;
+}
+```
+
+Render the page's own content inside a wrapper carrying the matching
+attribute (`<div data-vex-theme={theme._id}>…</div>`) so the scoped
+selector actually matches something. The dark variant is a descendant
+selector (`.dark [data-vex-theme="…"]`), since the wrapper sits inside
+`<html>`, not on it.
+
 ## Gotchas
 
 - **`format: "oklch"` for token fields.** Custom properties accept any colour

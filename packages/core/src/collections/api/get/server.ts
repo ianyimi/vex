@@ -45,13 +45,14 @@ export interface GetServerArgs<
  * populate all relationship fields to N levels — internal use only.
  *
  * Import from `@vexcms/core/server`. For the client-side version, import
- * `get` from `@vexcms/react/client`.
+ * `get` from `@vexcms/react/client`. Prefer `vexServerApi()`'s bound `get`,
+ * which threads `config` for you — a raw call omitting it is a type error.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
  * @typeParam TCollectionSlug - Collection slug, recovered from the `Id` brand.
  * @typeParam TPopulate - Populate object.
  * @typeParam D - Depth literal (0 = none).
- * @param args - `{ ctx, id, populate? }` or `{ ctx, id, depth, config }`.
+ * @param args - `{ ctx, id, config, populate? }` or `{ ctx, id, config, depth }`.
  * @returns Promise resolving to the doc or `null` if not found.
  * @example
  * ```ts
@@ -59,7 +60,7 @@ export interface GetServerArgs<
  *
  * export const post = query({
  *   args: { id: v.id("posts") },
- *   handler: (ctx, args) => get({ ctx, id: args.id, populate: { author: true } }),
+ *   handler: (ctx, args) => get({ ctx, config, id: args.id, populate: { author: true } }),
  * });
  * ```
  */

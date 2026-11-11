@@ -1615,7 +1615,12 @@ declare module "@vexcms/core" {
         by_themes: readonly ["themes"]
         by_updatedAt: readonly ["updatedAt"]
       }
-      user: { by_email: readonly ["email"] }
+      user: {
+        by_email_name: readonly ["email", "name"]
+        by_name: readonly ["name"]
+        by_userId: readonly ["userId"]
+        by_email: readonly ["email"]
+      }
       headers: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
       footers: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
       themes: { by_name: readonly ["name"]; by_updatedAt: readonly ["updatedAt"] }
@@ -1675,9 +1680,20 @@ declare module "@vexcms/core" {
         by_hookCount: readonly ["hookCount"]
         by_accessRuleCount: readonly ["accessRuleCount"]
       }
-      session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] }
-      account: { by_userId: readonly ["userId"] }
-      verification: { by_identifier: readonly ["identifier"] }
+      session: {
+        by_expiresAt: readonly ["expiresAt"]
+        by_userId_expiresAt: readonly ["userId", "expiresAt"]
+        by_token: readonly ["token"]
+        by_userId: readonly ["userId"]
+      }
+      account: {
+        by_accountId: readonly ["accountId"]
+        by_accountId_providerId: readonly ["accountId", "providerId"]
+        by_accountId_providerId_userId: readonly ["accountId", "providerId", "userId"]
+        by_providerId_userId: readonly ["providerId", "userId"]
+        by_userId: readonly ["userId"]
+      }
+      verification: { by_expiresAt: readonly ["expiresAt"]; by_identifier: readonly ["identifier"] }
       apikey: {
         by_configId: readonly ["configId"]
         by_referenceId: readonly ["referenceId"]

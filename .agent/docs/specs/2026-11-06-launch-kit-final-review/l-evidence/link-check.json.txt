@@ -1,0 +1,1224 @@
+checked 201 URL(s) from 239 file(s)
+flagged 24:
+  404 https://docs.vexcms.dev/404/
+  404 https://docs.vexcms.dev/dev/contributing/
+  404 https://docs.vexcms.dev/dev/testing-and-code-style/
+  404 https://github.com/&lt;you&gt;/vex.git
+  404 https://github.com/ianyimi/vex.gitgit
+  200 https://github.com/ianyimi/vex/issues/new/choose -> login (https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fianyimi%2Fvex%2Fissues%2Fnew%2Fchoose)
+  404 https://github.com/ianyimi/vex/issues/new/choose`
+  200 https://github.com/ianyimi/vex/security/advisories/new -> login (https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fianyimi%2Fvex%2Fsecurity%2Fadvisories%2Fnew)
+  404 https://github.com/ianyimi/vex`
+  404 https://github.com/vireshvekariya/use-mask-input
+  404 https://github.com/you/minimal-repro
+  404 https://payloadcms.com/pricing
+  404 https://placeholder.convex.cloud
+  404 https://twitter.com/username
+  403 https://twitter.com/username&quot
+  404 https://va.vercel-scripts.com/v1/script.debug.js`:e.basePath?p(`${e.basePath}/insights/script.js`
+  404 https://vexcms.dev/brand
+  404 https://vexcms.dev/docs/access-control
+  404 https://vexcms.dev/posts/vexcms-0-1-0`
+  403 https://www.npmjs.com/package/
+  403 https://www.npmjs.com/package/@vexcms/core
+  403 https://www.npmjs.com/package/convex-test
+  403 https://www.npmjs.com/package/create-vexcms
+  404 https://x.com/vexcms
+[
+  {
+    "url": "http://`",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "http://localhost:3000",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "http://localhost:3000&quot",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: Failed to parse URL from http://localhost:3000&quot"
+  },
+  {
+    "url": "http://localhost:3010",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "http://localhost:3010`",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: Failed to parse URL from http://localhost:3010`"
+  },
+  {
+    "url": "http://localhost:3010npx",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: Failed to parse URL from http://localhost:3010npx"
+  },
+  {
+    "url": "http://localhost:3020",
+    "status": 200,
+    "finalUrl": "http://localhost:3020/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "http://www.w3.org/2000/svg",
+    "status": 200,
+    "finalUrl": "https://www.w3.org/2000/svg",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: Failed to parse URL from https://"
+  },
+  {
+    "url": "https://${props.convexHost}`",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "https://...&quot",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "https://`",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "https://admin.example.com",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "https://admin.example.com&quot",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "https://buttondown.com/legal/privacy",
+    "status": 200,
+    "finalUrl": "https://buttondown.com/legal/privacy",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://buttondown.com/vexcms",
+    "status": 200,
+    "finalUrl": "https://buttondown.com/vexcms",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://buymeacoffee.com/zaye",
+    "status": 200,
+    "finalUrl": "https://buymeacoffee.com/zaye",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://cdn.example.com/",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "https://cdn.example.com/${storageId}&#x60",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "https://convex.dev",
+    "status": 200,
+    "finalUrl": "https://www.convex.dev/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "status": 200,
+    "finalUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.convex.dev",
+    "status": 200,
+    "finalUrl": "https://docs.convex.dev/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.convex.dev/realtime",
+    "status": 200,
+    "finalUrl": "https://docs.convex.dev/realtime",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.convex.dev/self-hosting",
+    "status": 200,
+    "finalUrl": "https://docs.convex.dev/self-hosting",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.convex.dev/self-hosting.md",
+    "status": 200,
+    "finalUrl": "https://docs.convex.dev/self-hosting.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.convex.dev/understanding/convex-fundamentals/functions#atomicity-and-optimistic-concurrency-control",
+    "status": 200,
+    "finalUrl": "https://docs.convex.dev/functions/query-functions",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.convex.dev/using/document-ids",
+    "status": 200,
+    "finalUrl": "https://docs.convex.dev/database/document-ids",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.strapi.io/cms/api/rest",
+    "status": 200,
+    "finalUrl": "https://docs.strapi.io/cms/api/rest",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.strapi.io/cms/backend-customization/models",
+    "status": 200,
+    "finalUrl": "https://docs.strapi.io/cms/backend-customization/models",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.strapi.io/cms/features/content-manager",
+    "status": 200,
+    "finalUrl": "https://docs.strapi.io/cms/features/content-manager",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.strapi.io/cms/features/internationalization",
+    "status": 200,
+    "finalUrl": "https://docs.strapi.io/cms/features/internationalization",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.strapi.io/cms/features/media-library",
+    "status": 200,
+    "finalUrl": "https://docs.strapi.io/cms/features/media-library",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.strapi.io/cms/features/preview",
+    "status": 200,
+    "finalUrl": "https://docs.strapi.io/cms/features/preview",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.strapi.io/cms/features/rbac",
+    "status": 200,
+    "finalUrl": "https://docs.strapi.io/cms/features/rbac",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/404/",
+    "status": 404,
+    "finalUrl": "https://docs.vexcms.dev/404/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/accessibility/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/accessibility/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/compare/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/compare/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/dev/adding-a-field-type/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/dev/adding-a-field-type/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/dev/contributing/",
+    "status": 404,
+    "finalUrl": "https://docs.vexcms.dev/dev/contributing/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/dev/naming-conventions/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/dev/naming-conventions/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/dev/package-layout/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/dev/package-layout/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/dev/project-structure/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/dev/project-structure/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/dev/testing-and-code-style/",
+    "status": 404,
+    "finalUrl": "https://docs.vexcms.dev/dev/testing-and-code-style/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/array/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/array/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/blocks/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/blocks/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/checkbox/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/checkbox/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/collapsible/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/collapsible/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/color/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/color/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/date/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/date/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/email/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/email/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/group/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/group/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/json/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/json/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/number/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/number/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/relationship/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/relationship/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/richtext/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/richtext/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/row/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/row/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/select/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/select/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/tabs/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/tabs/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/text/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/text/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/textarea/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/textarea/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/ui/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/ui/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/upload/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/upload/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/fields/url/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/fields/url/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/access-control/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/access-control/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/admin-cookies/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/admin-cookies/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/admin-customization/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/admin-customization/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/auth/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/auth/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/caching-and-seo/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/caching-and-seo/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/conditional-fields-and-masks/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/conditional-fields-and-masks/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/custom-storage-adapter/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/custom-storage-adapter/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/framework-adapters/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/framework-adapters/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/globals/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/globals/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/lifecycle-hooks/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/lifecycle-hooks/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/list-views/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/list-views/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/live-preview/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/live-preview/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/local-api/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/local-api/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/pagination/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/pagination/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/quickstart/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/quickstart/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/telemetry/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/telemetry/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/theming/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/theming/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/guides/versioning-and-drafts/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/guides/versioning-and-drafts/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://docs.vexcms.dev/roadmap/",
+    "status": 200,
+    "finalUrl": "https://docs.vexcms.dev/roadmap/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://example.com",
+    "status": 200,
+    "finalUrl": "https://example.com/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://example.com&quot",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "https://feedback.strapi.io/customization/p/content-editor-lock",
+    "status": 200,
+    "finalUrl": "https://feedback.strapi.io/customization/p/content-editor-lock",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/",
+    "status": 200,
+    "finalUrl": "https://github.com/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/&lt;you&gt;/vex.git",
+    "status": 404,
+    "finalUrl": "https://github.com/&lt;you&gt;/vex",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/convex/convex-backend/blob/main/self-hosted/README.md",
+    "status": 200,
+    "finalUrl": "https://github.com/convex/convex-backend/blob/main/self-hosted/README.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/get-convex/convex-helpers",
+    "status": 200,
+    "finalUrl": "https://github.com/convex/convex-helpers",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex#manual-setup",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex.git",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex.gitgit",
+    "status": 404,
+    "finalUrl": "https://github.com/ianyimi/vex.git%7Fgit",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/actions/workflows/ci.yml",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/actions/workflows/ci.yml",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/actions/workflows/ci.yml/badge.svg",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/actions/workflows/ci.yml/badge.svg",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/blob/master/CONTRIBUTING.md",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/blob/master/CONTRIBUTING.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/blob/master/LICENSE",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/blob/master/LICENSE",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/blob/master/packages/better-auth/CHANGELOG.md",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/blob/master/packages/better-auth/CHANGELOG.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/blob/master/packages/cli/CHANGELOG.md",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/blob/master/packages/cli/CHANGELOG.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/blob/master/packages/core/CHANGELOG.md",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/blob/master/packages/core/CHANGELOG.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/blob/master/packages/create-vexcms/CHANGELOG.md",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/blob/master/packages/create-vexcms/CHANGELOG.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/blob/master/packages/create-vexcms/README.md",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/blob/master/packages/create-vexcms/README.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/blob/master/packages/file-storage-convex/CHANGELOG.md",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/blob/master/packages/file-storage-convex/CHANGELOG.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/blob/master/packages/next/CHANGELOG.md",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/blob/master/packages/next/CHANGELOG.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/blob/master/packages/react/CHANGELOG.md",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/blob/master/packages/react/CHANGELOG.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/blob/master/packages/richtext-plate/CHANGELOG.md",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/blob/master/packages/richtext-plate/CHANGELOG.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/discussions",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/discussions",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/discussions/categories/ideas",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/discussions/categories/ideas",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/discussions/categories/q-a",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/discussions/categories/q-a",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/issues",
+    "status": 200,
+    "finalUrl": "https://github.com/ianyimi/vex/issues",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/issues/new/choose",
+    "status": 200,
+    "finalUrl": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fianyimi%2Fvex%2Fissues%2Fnew%2Fchoose",
+    "redirectedToLogin": true
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/issues/new/choose`",
+    "status": 404,
+    "finalUrl": "https://github.com/ianyimi/vex/issues/new/choose%60",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/ianyimi/vex/security/advisories/new",
+    "status": 200,
+    "finalUrl": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fianyimi%2Fvex%2Fsecurity%2Fadvisories%2Fnew",
+    "redirectedToLogin": true
+  },
+  {
+    "url": "https://github.com/ianyimi/vex`",
+    "status": 404,
+    "finalUrl": "https://github.com/ianyimi/vex%60",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/mozilla/inclusion",
+    "status": 200,
+    "finalUrl": "https://github.com/mozilla/inclusion",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/sponsors/ianyimi",
+    "status": 200,
+    "finalUrl": "https://github.com/sponsors/ianyimi",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/strapi/strapi/releases",
+    "status": 200,
+    "finalUrl": "https://github.com/strapi/strapi/releases",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/vireshvekariya/use-mask-input",
+    "status": 404,
+    "finalUrl": "https://github.com/vireshvekariya/use-mask-input",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://github.com/you/minimal-repro",
+    "status": 404,
+    "finalUrl": "https://github.com/you/minimal-repro",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://img.shields.io/github/license/ianyimi/vex",
+    "status": 200,
+    "finalUrl": "https://img.shields.io/github/license/ianyimi/vex",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://img.shields.io/github/sponsors/ianyimi",
+    "status": 200,
+    "finalUrl": "https://img.shields.io/github/sponsors/ianyimi",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://img.shields.io/npm/v/@vexcms/core",
+    "status": 200,
+    "finalUrl": "https://img.shields.io/npm/v/@vexcms/core",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://llmstxt.org",
+    "status": 200,
+    "finalUrl": "https://llmstxt.org/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://lucide.dev/icons",
+    "status": 200,
+    "finalUrl": "https://lucide.dev/icons",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://maprios.com",
+    "status": 200,
+    "finalUrl": "https://maprios.com/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://nextjs.org/docs",
+    "status": 200,
+    "finalUrl": "https://nextjs.org/docs",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://nextjs.org/docs/app/guides/draft-mode",
+    "status": 200,
+    "finalUrl": "https://nextjs.org/docs/app/guides/draft-mode",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/access-control/overview",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/access-control/overview",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/configuration/localization",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/configuration/localization",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/database/overview",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/database/overview",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/getting-started/what-is-payload",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/getting-started/what-is-payload",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/live-preview/overview",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/live-preview/overview",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/local-api/overview",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/local-api/overview",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/query-presets/overview",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/query-presets/overview",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/rich-text/overview",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/rich-text/overview",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/typescript/overview",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/typescript/overview",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/upload/overview",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/upload/overview",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/upload/storage-adapters",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/upload/storage-adapters",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/docs/versions/overview",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/docs/versions/overview",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/enterprise",
+    "status": 200,
+    "finalUrl": "https://payloadcms.com/enterprise",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://payloadcms.com/pricing",
+    "status": 404,
+    "finalUrl": "https://payloadcms.com/pricing",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://placeholder.convex.cloud",
+    "status": 404,
+    "finalUrl": "https://placeholder.convex.cloud/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://placeholder.convex.cloud`",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "https://platejs.org",
+    "status": 200,
+    "finalUrl": "https://platejs.org/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://platejs.org/",
+    "status": 200,
+    "finalUrl": "https://platejs.org/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://products.vexcms.dev/${slug}`",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/ianyimi/vex/master/README.md",
+    "status": 200,
+    "finalUrl": "https://raw.githubusercontent.com/ianyimi/vex/master/README.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://raw.githubusercontent.com/payloadcms/payload/main/LICENSE.md",
+    "status": 200,
+    "finalUrl": "https://raw.githubusercontent.com/payloadcms/payload/main/LICENSE.md",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://raw.githubusercontent.com/strapi/strapi/main/LICENSE",
+    "status": 200,
+    "finalUrl": "https://raw.githubusercontent.com/strapi/strapi/main/LICENSE",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://strapi.io/pricing-cloud",
+    "status": 200,
+    "finalUrl": "https://strapi.io/pricing-cloud",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://strapi.io/pricing-cms",
+    "status": 200,
+    "finalUrl": "https://strapi.io/pricing-cms",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://twitter.com/username",
+    "status": 404,
+    "finalUrl": "https://twitter.com/username",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://twitter.com/username&quot",
+    "status": 403,
+    "finalUrl": "https://twitter.com/username&quot",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://va.vercel-scripts.com/v1/script.debug.js`:e.basePath?p(`${e.basePath}/insights/script.js`",
+    "status": 404,
+    "finalUrl": "https://va.vercel-scripts.com/v1/script.debug.js%60:e.basePath?p(`${e.basePath}/insights/script.js`",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vercel.com/docs/analytics",
+    "status": 200,
+    "finalUrl": "https://vercel.com/docs/analytics",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vercel.com/docs/analytics/privacy-policy",
+    "status": 200,
+    "finalUrl": "https://vercel.com/docs/analytics/privacy-policy",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vercel.com/docs/analytics/quickstart",
+    "status": 200,
+    "finalUrl": "https://vercel.com/docs/analytics/quickstart",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vercel.com/docs/speed-insights",
+    "status": 200,
+    "finalUrl": "https://vercel.com/docs/speed-insights",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vercel.com/docs/speed-insights/privacy-policy",
+    "status": 200,
+    "finalUrl": "https://vercel.com/docs/speed-insights/privacy-policy",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vexcms.dev",
+    "status": 200,
+    "finalUrl": "https://vexcms.dev/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vexcms.dev/",
+    "status": 200,
+    "finalUrl": "https://vexcms.dev/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vexcms.dev/admin",
+    "status": 200,
+    "finalUrl": "https://vexcms.dev/admin",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vexcms.dev/brand",
+    "status": 404,
+    "finalUrl": "https://vexcms.dev/brand",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vexcms.dev/docs/access-control",
+    "status": 404,
+    "finalUrl": "https://vexcms.dev/docs/access-control",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vexcms.dev/launch-week",
+    "status": "not-yet-live",
+    "liveFrom": "D5"
+  },
+  {
+    "url": "https://vexcms.dev/launch/access-control-hooks-validation.mp4",
+    "status": "not-yet-live",
+    "liveFrom": "D4"
+  },
+  {
+    "url": "https://vexcms.dev/launch/create-vexcms-to-deployed.mp4",
+    "status": "not-yet-live",
+    "liveFrom": "D5"
+  },
+  {
+    "url": "https://vexcms.dev/launch/one-config-schema-and-types.mp4",
+    "status": "not-yet-live",
+    "liveFrom": "D3"
+  },
+  {
+    "url": "https://vexcms.dev/launch/real-time-admin-and-live-preview.mp4",
+    "status": "not-yet-live",
+    "liveFrom": "D2 (linked from that day's post)"
+  },
+  {
+    "url": "https://vexcms.dev/posts/access-control-hooks-validation",
+    "status": "not-yet-live",
+    "liveFrom": "D4"
+  },
+  {
+    "url": "https://vexcms.dev/posts/create-vexcms-to-deployed",
+    "status": "not-yet-live",
+    "liveFrom": "D5"
+  },
+  {
+    "url": "https://vexcms.dev/posts/one-config-schema-and-types",
+    "status": "not-yet-live",
+    "liveFrom": "D3"
+  },
+  {
+    "url": "https://vexcms.dev/posts/real-time-admin-and-live-preview",
+    "status": "not-yet-live",
+    "liveFrom": "D2"
+  },
+  {
+    "url": "https://vexcms.dev/posts/vexcms-0-1-0",
+    "status": "not-yet-live",
+    "liveFrom": "D1 (published from the admin the same day)"
+  },
+  {
+    "url": "https://vexcms.dev/posts/vexcms-0-1-0`",
+    "status": 404,
+    "finalUrl": "https://vexcms.dev/posts/vexcms-0-1-0%60",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vexcms.dev/roadmap",
+    "status": 200,
+    "finalUrl": "https://vexcms.dev/roadmap",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://vexcms.dev`",
+    "status": 0,
+    "finalUrl": null,
+    "error": "TypeError: fetch failed"
+  },
+  {
+    "url": "https://www.better-auth.com/",
+    "status": 200,
+    "finalUrl": "https://better-auth.com/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.better-auth.com/docs",
+    "status": 200,
+    "finalUrl": "https://better-auth.com/docs/introduction",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.better-auth.com/docs/plugins/admin",
+    "status": 200,
+    "finalUrl": "https://better-auth.com/docs/plugins/admin",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.contributor-covenant.org/faq",
+    "status": 200,
+    "finalUrl": "https://www.contributor-covenant.org/faq/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.contributor-covenant.org/resources",
+    "status": 200,
+    "finalUrl": "https://www.contributor-covenant.org/resources/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.contributor-covenant.org/translations",
+    "status": 200,
+    "finalUrl": "https://www.contributor-covenant.org/translations/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.contributor-covenant.org/version/3/0/",
+    "status": 200,
+    "finalUrl": "https://www.contributor-covenant.org/version/3/0/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.conventionalcommits.org/",
+    "status": 200,
+    "finalUrl": "https://www.conventionalcommits.org/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.npmjs.com/package/",
+    "status": 403,
+    "finalUrl": "https://www.npmjs.com/package/",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.npmjs.com/package/@vexcms/core",
+    "status": 403,
+    "finalUrl": "https://www.npmjs.com/package/@vexcms/core",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.npmjs.com/package/convex-test",
+    "status": 403,
+    "finalUrl": "https://www.npmjs.com/package/convex-test",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.npmjs.com/package/create-vexcms",
+    "status": 403,
+    "finalUrl": "https://www.npmjs.com/package/create-vexcms",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.sanity.io/blog/scheduled-drafts",
+    "status": 200,
+    "finalUrl": "https://www.sanity.io/blog/scheduled-drafts",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.sanity.io/docs/apis-and-sdks/sanity-typegen",
+    "status": 200,
+    "finalUrl": "https://www.sanity.io/docs/apis-and-sdks/sanity-typegen",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.sanity.io/docs/content-lake/graphql",
+    "status": 200,
+    "finalUrl": "https://www.sanity.io/docs/content-lake/graphql",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.sanity.io/docs/studio",
+    "status": 200,
+    "finalUrl": "https://www.sanity.io/docs/studio",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.sanity.io/docs/studio/intro-to-custom-studio-components",
+    "status": 200,
+    "finalUrl": "https://www.sanity.io/docs/studio/intro-to-custom-studio-components",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.sanity.io/docs/studio/structure-builder-introduction",
+    "status": 200,
+    "finalUrl": "https://www.sanity.io/docs/studio/structure-builder-introduction",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.sanity.io/docs/user-guides/roles",
+    "status": 200,
+    "finalUrl": "https://www.sanity.io/docs/user-guides/roles",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://www.sanity.io/pricing",
+    "status": 200,
+    "finalUrl": "https://www.sanity.io/pricing",
+    "redirectedToLogin": false
+  },
+  {
+    "url": "https://x.com/vexcms",
+    "status": 404,
+    "finalUrl": "https://x.com/vexcms",
+    "redirectedToLogin": false
+  }
+]

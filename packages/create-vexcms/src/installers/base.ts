@@ -124,7 +124,7 @@ export abstract class VexFrameworkInstaller {
    * Apply the parts of the marketing overlay that copying files cannot express.
    *
    * `overlayTemplate` only adds and overwrites — it has no way to remove a
-   * base file, and it does not touch `package.json`. Two things therefore
+   * base file, and it does not touch `package.json`. Three things therefore
    * have to happen here:
    *
    * 1. **Delete base's `(frontend)/page.tsx`.** It and the overlay's
@@ -136,6 +136,10 @@ export abstract class VexFrameworkInstaller {
    *    time in a server component. It is a marketing-only dependency, so it
    *    is added here rather than carried in base's `package.json` where a
    *    `--bare` scaffold would install it for nothing.
+   * 3. **Add the `seed` script.** `convex/seed.ts` only exists in the
+   *    marketing overlay (`convex run seed:init` fails in `--bare`, which
+   *    has no `seed.ts`), so the script is added here rather than carried
+   *    in base's `package.json`.
    */
   protected async finalizeMarketingOverlay(): Promise<void> {
     const homeRoute = path.join(this.targetPath, 'src/app/(frontend)/page.tsx');
@@ -147,6 +151,7 @@ export abstract class VexFrameworkInstaller {
     pkg.dependencies = Object.fromEntries(
       Object.entries(pkg.dependencies).sort(([a], [b]) => a.localeCompare(b)),
     );
+    pkg.scripts = { ...pkg.scripts, seed: 'convex run seed:init' };
     await fs.writeJson(pkgPath, pkg, { spaces: 2 });
   }
 
@@ -161,6 +166,13 @@ export abstract class VexFrameworkInstaller {
     const pkgPath = path.join(this.targetPath, 'package.json');
     const pkg = await fs.readJson(pkgPath);
     pkg.name = name;
+
+    // Only write `packageManager` when `npm_config_user_agent` actually
+    // identifies one — corepack enforces this field strictly, so a guessed
+    // value (the detector's `npm` default with no signal at all) would make
+    // every other package manager refuse to install against the scaffold.
+    const packageManagerField = this.buildPackageManagerField();
+    if (packageManagerField) pkg.packageManager = packageManagerField;
 
     // Update vex:update script to use detected package manager
     const pm = this.detectPackageManager();
@@ -240,6 +252,15 @@ export abstract class VexFrameworkInstaller {
       const readme = await fs.readFile(readmePath, 'utf-8');
       await fs.writeFile(readmePath, readme.replaceAll('http://localhost:3010', siteUrl));
     }
+
+    // `.env.example` ships the same default-port placeholders as `.env.local`
+    // — a custom port otherwise leaves the committed template pointing at
+    // the wrong origin for anyone who clones the repo and copies it.
+    const envExamplePath = path.join(this.targetPath, '.env.example');
+    if (await fs.pathExists(envExamplePath)) {
+      const envExample = await fs.readFile(envExamplePath, 'utf-8');
+      await fs.writeFile(envExamplePath, envExample.replaceAll('http://localhost:3010', siteUrl));
+    }
   }
 
   /**
@@ -278,6 +299,24 @@ export abstract class VexFrameworkInstaller {
     }
 
     return 'npm';
+  }
+
+  /**
+   * Build the `packageManager` field value (Corepack's `pm@version` shape)
+   * from `npm_config_user_agent`, when it names a version for the detected
+   * package manager. Returns `undefined` when there is no real signal (a
+   * direct `node` invocation, or a user agent that doesn't carry a version)
+   * rather than guessing — Corepack/pnpm enforce this field strictly, so a
+   * wrong guess (e.g. `npm@…` on a pnpm workspace) breaks the next install
+   * instead of merely being unhelpful.
+   *
+   * @returns A string like `"pnpm@9.1.0"`, or `undefined` when undetectable.
+   */
+  protected buildPackageManagerField(): string | undefined {
+    const pm = this.detectPackageManager();
+    const userAgent = process.env.npm_config_user_agent;
+    const match = userAgent?.match(new RegExp(`${pm}/(\\S+)`));
+    return match ? `${pm}@${match[1]}` : undefined;
   }
 
   /**
@@ -396,23 +435,6 @@ export abstract class VexFrameworkInstaller {
   }
 
   /**
-   * Write the generated auth secret to .env.example
-   */
-  protected async writeAuthSecret(): Promise<void> {
-    const envPath = path.join(this.targetPath, '.env.example');
-    const secret = this.generateAuthSecret();
-
-    if (await fs.pathExists(envPath)) {
-      let content = await fs.readFile(envPath, 'utf-8');
-      content = content.replace(
-        /BETTER_AUTH_SECRET=.*/,
-        `BETTER_AUTH_SECRET=${secret}`
-      );
-      await fs.writeFile(envPath, content);
-    }
-  }
-
-  /**
    * Configure the Better Auth organizations plugin.
    * When enabled, replaces placeholders with the organization import, plugin
    * instance, and schema descriptor,
@@ -474,8 +496,7 @@ export abstract class VexFrameworkInstaller {
    * regen. Every transform throws loudly when its expected pattern is
    * missing (template drift), rather than silently no-opping.
    *
-   * `src/vexcms/api.ts` only exists in full (marketing-site overlay)
-   * scaffolds — skipped, not required, for `--bare`.
+   * `src/vexcms/api.ts` ships in every scaffold (base template).
    */
   protected async stripOrganizationWiring(): Promise<void> {
     const requiredFiles: Array<{
@@ -490,6 +511,7 @@ export abstract class VexFrameworkInstaller {
       { rel: 'src/context/AuthContext.tsx', transform: stripOrgFromAuthContext },
       { rel: 'src/auth/hasPermission.ts', transform: stripOrgFromHasPermission },
       { rel: 'src/db/constants/index.ts', transform: stripOrgFromDbConstants },
+      { rel: 'src/vexcms/api.ts', transform: stripOrgFromGetAuthCall },
     ];
 
     for (const file of requiredFiles) {
@@ -501,13 +523,6 @@ export abstract class VexFrameworkInstaller {
       }
       const content = await fs.readFile(filePath, 'utf-8');
       await fs.writeFile(filePath, file.transform(filePath, content));
-    }
-
-    // Full scaffolds only — the marketing-site overlay adds this file.
-    const apiPath = path.join(this.targetPath, 'src/vexcms/api.ts');
-    if (await fs.pathExists(apiPath)) {
-      const content = await fs.readFile(apiPath, 'utf-8');
-      await fs.writeFile(apiPath, stripOrgFromGetAuthCall(apiPath, content));
     }
   }
 
@@ -632,17 +647,6 @@ export abstract class VexFrameworkInstaller {
       );
     } catch (error) {
       orgsSpinner.fail('Failed to configure organizations');
-      throw error;
-    }
-
-    // Step 10: Generate auth secret
-    // (renumbered from Step 9 after organizations insertion)
-    const secretSpinner = ora('Generating auth secret...').start();
-    try {
-      await this.writeAuthSecret();
-      secretSpinner.succeed('Auth secret generated');
-    } catch (error) {
-      secretSpinner.fail('Failed to generate auth secret');
       throw error;
     }
 

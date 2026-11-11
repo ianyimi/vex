@@ -23,6 +23,33 @@ real design in a linked doc — an entry that grows past a screen belongs in
 
 ---
 
+## Backlogged application types (golden use cases)
+
+**What.** A ranked list of common project types VexCMS can't yet build end to end — Agency
+multi-client, multilingual corporate, newsroom with embargoes, job board, membership/community
+submissions, nonprofit donation/volunteer forms, headless mobile-app content, franchise
+multi-site, event ticketing, podcast network, product catalog, course/LMS — plus the docs-site
+type excluded by developer preference, not a gap. Each row names what it needs, the shipped-
+feature gap blocking it, and a feature-rank table counting how many app types each gap unblocks.
+
+**Why.** The golden-use-cases spec's four demo scenarios (`2026-11-09-golden-use-cases`) cover
+every shipped feature except `--orgs` and a custom storage adapter (`inventory.md` Listed
+exceptions); everything that needs an unshipped feature goes here instead of being faked on
+camera (that spec's Design Decision 16).
+
+**Lift.** N/A — a tracking document, not a feature.
+
+**Blockers.** None for the document itself; each row names its own blocking gap (the matching
+`apps/docs` roadmap item in `roadmap.md` § After 0.1.0, or the "HTTP API for vex server
+functions" entry above).
+
+**Why deferred.** Not deferred — recorded here because `use-case-backlog.md` is private
+(that spec's Design Decision 17) and this entry is the public pointer to it.
+
+**Detail.** `.agent/docs/product/use-case-backlog.md`
+
+---
+
 ## Tag-based cache control (`cacheComponents` + `revalidateTag`)
 
 **What.** Expose the full Next.js cache surface — `cacheTag`, `cacheLife`,
@@ -1837,3 +1864,13 @@ polish (2026-11-10).
 **Why deferred.** CLI 3 migrates prerelease state from `pre.json` to `.changeset/pre/` on its first run; doing that mid-alpha, right before `changeset pre exit`, risks the 0.1.0 versions and changelog. After 0.1.0 there is no pre state to migrate.
 
 **Lift.** Root `release` script: `changeset tag` → `changeset git-tag`. `release.yml`: action v2 input renames (`version-script`, `publish-script`, `pr-title`, `commit-message`, `github-token` = the release app token). Decide `privatePackages` (v3 stops versioning private `www`). Confirm `onlyUpdatePeerDependentsWhenOutOfRange` and the `@changesets/cli/changelog` generator still work in v3. Rehearse `changeset status`/`version` in a throwaway copy before merging; the first `master` run is the real check.
+
+---
+
+## Label Vitest job summaries by package in CI
+
+**What.** In `ci.yml`/`release.yml` runs, every package's Vitest block in the GitHub job summary is headed `## Vitest Test Report` with no package name, so the 11 reports can't be told apart.
+
+**Why.** Vitest 4's GitHub Actions reporter hard-codes that heading (`SUMMARY_HEADER`); `jobSummary` only offers `enabled`, `outputPath`, `fileLinks`. Turbo runs packages in parallel into one `$GITHUB_STEP_SUMMARY`.
+
+**Lift.** Each `vitest.config.ts` (9 packages + `apps/www`, `apps/test`): when `VITEST_SUMMARY_DIR` is set, `jobSummary.outputPath` = `<dir>/<package>.md` (no local change). Workflows: set `VITEST_SUMMARY_DIR: ${{ runner.temp }}/vitest` on the test step, plus an `if: always()` step that writes `## <package>` + each report minus its own heading into `$GITHUB_STEP_SUMMARY` in a fixed order. Rendering is only checkable on a real CI run.

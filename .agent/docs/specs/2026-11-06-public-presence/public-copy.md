@@ -18,7 +18,7 @@ VexCMS is Apache-2.0 licensed.
 Intro: Everything below is free and lands in the Apache-2.0 core. It ships in this order.
 
 1. **Plugin system** — The extension points 0.1.0 ships (admin slots, component overrides, action contributions) become a supported plugin API for collections, fields, hooks, access rules and admin views.
-2. **Free features, as demand appears** — No fixed order: 👍 the linked issue to move one up.
+2. **Free features, as demand appears** — No fixed order.
    - **Localization** — Per-field locale values, opted into per collection and per field, with locale-aware drafts.
    - **Scheduled publishing** — Publish and unpublish at a set time, on Convex's scheduler.
    - **TanStack Start adapter** — The admin panel and the caching helpers on a second framework.
@@ -29,22 +29,13 @@ Intro: Everything below is free and lands in the Apache-2.0 core. It ships in th
 
 Not planned: `imageUrl` field — use `upload` with the media library, or a `url` field.
 
-### `planned` issues
-
-| Item | Issue |
-|---|---|
-| Plugin system | #61 |
-| Localization | #59 |
-| Scheduled publishing | #63 |
-| TanStack Start adapter | #64 |
-| Form builder | #57 |
-| Outbound webhooks | #60 |
-| API keys and team management | #53 |
-| Brownfield adoption | #54 |
-
 ## Who builds this
 
 VexCMS is built and maintained by one developer, [@ianyimi](https://github.com/ianyimi), in their free time. New issues are triaged within a week; how fast a fix lands depends on its severity and on sponsorship.
+
+## Pull request response window
+
+I give every pull request a first review within a week.
 
 ## Funding
 

@@ -1,0 +1,26 @@
+name: Labeler
+
+# pull_request_target so fork pull requests get labels (a fork's pull_request
+# token is read-only). Safe because nothing here checks out or runs the
+# pull request's code: actions/labeler reads .github/labeler.yml from the base
+# branch through the API and only matches changed paths. Fork pull requests
+# only; same-repo pull requests skip the job.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches:
+      - dev
+
+permissions: {}
+
+jobs:
+  label:
+    name: Label
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Apply area and adapter labels
+        uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0

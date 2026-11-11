@@ -3,7 +3,7 @@
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import { useQuery } from "@tanstack/react-query"
-import { buildThemeCss, type ThemeScope } from "@vexcms/core"
+import { buildThemeCss } from "@vexcms/core"
 import { useLivePreviewDocumentQuery } from "@vexcms/react"
 import { useEffect, useRef } from "react"
 
@@ -42,11 +42,11 @@ import { GLOBAL_SLUG_SITE_SETTINGS } from "~/db/constants"
  * `:root`, `"admin"` emits `:root:root` with the `adminTheme` fallback.
  * @returns Nothing — the style element is managed imperatively.
  */
-export function ThemeLive(props: { scope?: ThemeScope }) {
+export function ThemeLive(props: { scope?: "admin" | "site" }) {
   const scope = props.scope ?? "site"
 
-  const { data: settings } = useLivePreviewDocumentQuery<typeof GLOBAL_SLUG_SITE_SETTINGS>(
-    convexQuery(api.siteSettings.get, {}) as never,
+  const { data: settings } = useLivePreviewDocumentQuery(
+    convexQuery(api.siteSettings.get, {}),
     GLOBAL_SLUG_SITE_SETTINGS,
   )
 

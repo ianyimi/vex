@@ -61,6 +61,7 @@ const BARE_REQUIRED = [
   'convex/auth/plugins/index.ts',
   'src/auth/client.tsx',
   'src/vexcms/collections/users.ts',
+  'src/vexcms/api.ts',
   'src/vexcms/collections/index.ts',
   'convex/vex/firstUser.ts',
   'convex/vex/globals.ts',

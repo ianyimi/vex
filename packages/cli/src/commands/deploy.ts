@@ -2,19 +2,34 @@ import { classifyTelemetryError, recordTelemetryEvent } from "@vexcms/telemetry"
 import { anonymizeConfig } from "@vexcms/telemetry/config";
 
 import { generateAndWrite, type GenerateResult } from "../lib/generateSchema.js";
-import { deployToProduction } from "../lib/convexProcess.js";
+import { deployToProduction, stripCmdFlags } from "../lib/convexProcess.js";
 import { loadConfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
 import { isServerConfigPath, resolveConfigPath } from "../lib/resolveConfigPath.js";
 
 import type { VexConfig } from "@vexcms/core";
 
+/** Options for {@link deployCommand}, parsed from the `vex deploy` argv. */
+export interface DeployCommandOptions {
+  /** Run as if started from this directory (default `process.cwd()`). */
+  cwd?: string;
+  /** Flags vex doesn't own, forwarded to the final `convex deploy` call. */
+  convexArgs?: string[];
+}
+
 /**
  * `vex deploy` — generate schema, auto-migrate if enabled, then run
  * `convex deploy` to push to production. Replaces `convex deploy` in CI.
+ * `options.convexArgs` forwards straight through to the final deploy; the
+ * auto-migration interim pushes strip `--cmd`/`--cmd-url-env-var-name` from
+ * it so a custom build command runs once, not on every interim push.
+ *
+ * @param options - Parsed `vex deploy` options; both fields optional.
+ * @returns Resolves once the final deploy succeeds; exits the process on failure.
  */
-export async function deployCommand(): Promise<void> {
-  const cwd = process.cwd();
+export async function deployCommand(options: DeployCommandOptions = {}): Promise<void> {
+  const cwd = options.cwd ?? process.cwd();
+  const convexArgs = options.convexArgs ?? [];
 
   let configPath: string;
   try {
@@ -47,8 +62,11 @@ export async function deployCommand(): Promise<void> {
     throw error;
   }
 
-  // Use `convex deploy` for all schema pushes (interim + final)
-  const pushSchema = (pushCwd: string) => deployToProduction(pushCwd);
+  // Use `convex deploy` for all schema pushes (interim + final). Interim
+  // pushes strip --cmd/--cmd-url-env-var-name so the build command runs
+  // once, on the final deploy below.
+  const pushSchema = (pushCwd: string) =>
+    deployToProduction({ cwd: pushCwd, convexArgs: stripCmdFlags(convexArgs) });
 
   let result: GenerateResult;
   try {
@@ -68,8 +86,9 @@ export async function deployCommand(): Promise<void> {
     logger.info("Schema up to date (no changes)");
   }
 
-  // Final deploy — push everything to production
-  if (!deployToProduction(cwd)) {
+  // Final deploy — push everything to production, with every caller-passed
+  // flag (including --cmd) forwarded.
+  if (!deployToProduction({ cwd, convexArgs })) {
     logger.error("convex deploy failed");
     process.exit(1);
   }

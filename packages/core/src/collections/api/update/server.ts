@@ -51,11 +51,13 @@ export interface UpdateServerArgs<
  * Patches a document by its `Id<TCollectionSlug>`. Only specified fields are updated;
  * unspecified fields are left unchanged. Server-side only.
  *
- * Import from `@vexcms/core/server`.
+ * Import from `@vexcms/core/server`. Prefer `vexServerApi()`'s bound
+ * `update`, which threads `config` for you — a raw call omitting it is a
+ * type error.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
  * @typeParam TCollectionSlug - Collection slug.
- * @param args - `{ ctx, id, data }`. `ctx` must be a mutation context.
+ * @param args - `{ ctx, config, id, data }`. `ctx` must be a mutation context.
  * @returns Promise resolving to void.
  * @example
  * ```ts
@@ -63,7 +65,7 @@ export interface UpdateServerArgs<
  *
  * export const updatePost = mutation({
  *   args: { id: v.id("posts"), data: v.any() },
- *   handler: (ctx, args) => update({ ctx, id: args.id, data: args.data }),
+ *   handler: (ctx, args) => update({ ctx, config, id: args.id, data: args.data }),
  * });
  * ```
  */

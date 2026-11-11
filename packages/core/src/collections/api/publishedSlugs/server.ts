@@ -26,7 +26,7 @@ export interface PublishedSlugsServerArgs<
    * `publishedSlugs`. Without it, `find` can't see `versions.drafts`, so
    * draft-only rows are returned too.
    */
-  config?: VexConfig;
+  config: VexConfig;
   /** Convex query context. */
   ctx: GenericQueryCtx<DataModel>;
   /** Maximum number of documents to return. Defaults to 5000. */
@@ -60,11 +60,13 @@ export interface PublishedSlug {
  * collection with mixed field shapes degrades to a partial sitemap instead of
  * failing the whole route.
  *
- * Import from `@vexcms/core/server`.
+ * Import from `@vexcms/core/server`. Prefer `vexServerApi()`'s bound
+ * `publishedSlugs`, which threads `config` for you — a raw call omitting it
+ * is a type error.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
  * @typeParam TCollectionSlug - Collection slug.
- * @param args - Input args: `{ ctx, collection, access?, limit? }`.
+ * @param args - Input args: `{ ctx, config, collection, access?, limit? }`.
  * @returns Promise resolving to `{ slug, createdAt, updatedAt? }` for every matching document.
  *
  * @example
@@ -73,7 +75,7 @@ export interface PublishedSlug {
  *
  * export const listSlugs = query({
  *   args: {},
- *   handler: (ctx) => publishedSlugs({ ctx, collection: "pages", access: { bypass: true } }),
+ *   handler: (ctx) => publishedSlugs({ ctx, config, collection: "pages", access: { bypass: true } }),
  * });
  * ```
  */

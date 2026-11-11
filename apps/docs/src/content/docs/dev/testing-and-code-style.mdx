@@ -1,0 +1,70 @@
+---
+title: Testing and code style
+description: Where tests live, what a useful test proves, how Convex-backed and field tests are set up, and the code-style rules reviews check.
+sidebar:
+  order: 2
+---
+
+## Where tests live
+
+Tests sit next to the file they test, as `*.test.ts` or `*.test.tsx`: no `__tests__` folders
+and no `.spec` suffix. Every package except `@vexcms/tsconfig` has a `test` script, and each
+package's `vitest.config.ts` sets its environment: `edge-runtime` for `@vexcms/core` (Convex
+code), `jsdom` for the React packages. Check it before adding a test to a package you haven't
+worked in.
+
+Run tests per package while you work (see
+[One package at a time](/dev/contributing/#one-package-at-a-time)); the root `pnpm test` runs
+everything.
+
+## What a test proves
+
+- **Behavior someone can observe**: a return value, a rendered result, a thrown error, a stored
+  document. Assert exact expected values.
+- **A bug fix's regression test fails without the fix.** Run it on the base commit once to see
+  it fail.
+- **Layout is checked in a browser, not in jsdom.** jsdom computes no sizes, clipping, or
+  overflow, so a class-name assertion can pass while the bug is still there.
+- **Skip tests that restate the implementation**: that a prop is passed through, that a mock
+  returns what it was given, that a constant equals itself.
+- **Types are fixed, not cast away.** A test that fails `typecheck` gets a correct value or is
+  removed, never an `as` cast to silence the error.
+
+## Convex-backed tests
+
+Server code in `@vexcms/core` (and the adapters that touch Convex) is tested with
+[`convex-test`](https://www.npmjs.com/package/convex-test):
+
+- Import the schema and generated API from the package's test fixture directory
+  (`src/db/test/convex/`) and pass an explicit modules map. `import.meta.glob` doesn't work
+  there.
+- Run database work inside `t.run`:
+  `const t = convexTest(schema, modules); await t.run(async (ctx) => { … })`.
+- Never assert an ID's format. `convex-test` IDs look different from production IDs, so check
+  only that an ID is a non-empty string.
+
+`packages/core/src/collections/api/create/server.test.ts` is a short worked example.
+
+## Field type tests
+
+Every field type in `packages/core/src/fields/<type>/` has two colocated tests:
+
+- `validator.test.ts` checks the Convex validator the field emits, required and optional.
+- `inputSchema.test.ts` checks the Zod input schema: valid data parses, invalid data fails, and
+  an optional field accepts `undefined`.
+
+Build field configs inline with the public factory (`upload({ to: "images", required: true })`),
+not shared fixtures. The React half's tests (`Field.test.tsx`, `Cell.test.tsx`) sit next to its
+files in `packages/react/src/fields/<type>/`. [Adding a field type](/dev/adding-a-field-type/)
+walks through both halves.
+
+## Code style
+
+- **Names** follow [Naming conventions](/dev/naming-conventions/).
+- **Lint**: `pnpm lint` passes, including the `jsx-a11y` accessibility rules on UI code.
+- **Comments**: none narrating code inside function bodies. Exported functions and types carry
+  JSDoc that says what they really do: parameters, return value, and what they throw.
+- **Type assertions**: fix the type rather than asserting past it. A `@ts-expect-error` states
+  exactly which error it expects and why.
+- **New dependencies** need an approved plan first (see
+  [CONTRIBUTING.md](https://github.com/ianyimi/vex/blob/master/CONTRIBUTING.md)).

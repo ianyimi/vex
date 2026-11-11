@@ -1,5 +1,49 @@
 # @vexcms/core
 
+## 0.1.0-alpha.37
+
+### Patch Changes
+
+- `indexedOwnerCheck`/`ownerPredicateCheck`/`indexedEqCheck` now resolve a field's index
+  through the same `resolveCollectionIndexes` result the schema generator uses, instead of
+  reading only the field's own `index` option. A relationship field's automatic `by_<field>`
+  index is now visible to these checks without adding `index: "by_<field>"` by hand; an
+  explicit field-level `index` still wins, and a collection-level `indexes` entry that
+  replaces an automatic name wins over the automatic one too.
+- `buildThemeCss` accepts a region scope — `scope: { selector }` scopes the theme to
+  one wrapper element (`[data-vex-theme="…"]`, light at that selector, dark at
+  `.dark ${selector}`) instead of `:root`, for a page carrying its own palette
+  distinct from the rest of the site.
+
+  `useLivePreviewQuery`/`useLivePreviewDocumentQuery` no longer require a
+  `convexQuery(...) as never` cast at the call site: their query-key type
+  parameter is erased to `any` rather than threaded through as its own generic,
+  which TypeScript stopped inferring the moment an earlier type parameter
+  (`TCollectionSlug`) was given explicitly.
+
+  `runVexReactSuite`'s `custom[].Component` option now accepts a real
+  `admin.components.Field` export (e.g. `CheckboxFieldAdmin`) directly, aligned
+  with `FieldComponentProps` instead of a narrower hand-rolled shape.
+
+- `convex/schema.ts` imports the `user` table from the generated
+  `convex/vex.schema.ts` instead of redeclaring it by hand, in `apps/www`,
+  `apps/test` and both `create-vexcms` templates (`base-nextjs`,
+  `marketing-site`). A field added to the `users`/`user` collection now reaches
+  `Doc<"user">` and the deployed schema with no second edit — previously it
+  reached the generated schema but not the hand-written table.
+
+  The generated `user` tables in `apps/www`/`apps/test` were also missing the
+  `by_email_name`/`by_name`/`by_userId` indexes Better Auth needs (the adapter's
+  collection definition already computes them; the checked-in files had not
+  been regenerated since that indexing landed).
+
+- Raw `@vexcms/core/server` calls now require `config`: `PublishedSlugsServerArgs.config` and
+  `GenericQueryServerParams.config` (behind `find`/`get`/`search`) are no longer optional, so a
+  raw call omitting it is a type error instead of silently skipping `versions.drafts` filtering
+  and `depth` population. Calls through `vexServerApi()`'s bound functions are unaffected — the
+  factory threads `config` for you. The server JSDoc examples now pass `config` and point at the
+  bound API.
+
 ## 0.1.0-alpha.36
 
 ## 0.1.0-alpha.35

@@ -265,7 +265,10 @@ function's default verb.
 
 - **Bind once, per project — not per file.** Import `get`/`find`/`search`/`create`/
   `update`/`remove`/`globals` from your own `convex/vexApi.ts`, never straight from
-  `@vexcms/core/server`, so `config`/`auth` are supplied in exactly one place.
+  `@vexcms/core/server`, so `config`/`auth` are supplied in exactly one place. A raw call
+  takes `config` as a required argument, so omitting it is a type error — but `auth` stays
+  optional, and a raw call without it runs as `anonRole`, denying every rule that isn't
+  `"*": true` for that role.
 - **`access.action`/`access.bypass` are for server code you trust, not client input.**
   Accepting either from a Convex `args` validator lets a caller pick an action no role
   declared — see the [Access Control guide](/guides/access-control/) for why that's a deny

@@ -1,0 +1,32 @@
+
+### @vexcms/better-auth
+{"name":"@vexcms/better-auth","version":"0.1.0-alpha.36","description":"better-auth adapter for VexCMS on Convex","keywords":["cms","headless-cms","convex","typescript","auth","better-auth"],"homepage":"https://docs.vexcms.dev","repository":{"type":"git","url":"git+https://github.com/ianyimi/vex.git","directory":"packages/better-auth"},"license":"Apache-2.0","bugs":null,"files":["dist"],"engines":null,"peerDependencies":{"better-auth":">=1.7.16 <1.8.0","convex":">=1.44.0 <2","@vexcms/core":"^0.1.0-alpha.36"}}
+README -> /tmp/l-pack-evidence/@vexcms__better-auth/README.md
+
+### @vexcms/cli
+{"name":"@vexcms/cli","version":"0.1.0-alpha.36","description":"VexCMS CLI: dev server orchestration and type generation","keywords":["cms","headless-cms","convex","typescript","cli"],"homepage":"https://docs.vexcms.dev","repository":{"type":"git","url":"git+https://github.com/ianyimi/vex.git","directory":"packages/cli"},"license":"Apache-2.0","bugs":null,"files":["dist"],"engines":null,"peerDependencies":{"convex":">=1.44.0 <2","@vexcms/core":"^0.1.0-alpha.36"}}
+README -> /tmp/l-pack-evidence/@vexcms__cli/README.md
+
+### @vexcms/core
+{"name":"@vexcms/core","version":"0.1.0-alpha.36","description":"Convex-native headless CMS core: field factories, schema generation, and typed collection APIs","keywords":["cms","headless-cms","convex","typescript"],"homepage":"https://docs.vexcms.dev","repository":{"type":"git","url":"git+https://github.com/ianyimi/vex.git","directory":"packages/core"},"license":"Apache-2.0","bugs":null,"files":["dist"],"engines":null,"peerDependencies":{"convex":">=1.44.0 <2"}}
+README -> /tmp/l-pack-evidence/@vexcms__core/README.md
+
+### create-vexcms
+{"name":"create-vexcms","version":"0.1.0-alpha.36","description":"Scaffold a new VexCMS project","keywords":["cms","headless-cms","convex","typescript","create","scaffold"],"homepage":"https://docs.vexcms.dev","repository":{"type":"git","url":"git+https://github.com/ianyimi/vex.git","directory":"packages/create-vexcms"},"license":"Apache-2.0","bugs":null,"files":["dist","templates"],"engines":null,"peerDependencies":null}
+README -> /tmp/l-pack-evidence/create-vexcms/README.md
+
+### @vexcms/file-storage-convex
+{"name":"@vexcms/file-storage-convex","version":"0.1.0-alpha.36","description":"Convex file-storage adapter for VexCMS uploads","keywords":["cms","headless-cms","convex","typescript","storage"],"homepage":"https://docs.vexcms.dev","repository":{"type":"git","url":"git+https://github.com/ianyimi/vex.git","directory":"packages/file-storage-convex"},"license":"Apache-2.0","bugs":null,"files":["dist"],"engines":null,"peerDependencies":{"convex":">=1.44.0 <2","@vexcms/core":"^0.1.0-alpha.36"}}
+README -> /tmp/l-pack-evidence/@vexcms__file-storage-convex/README.md
+
+### @vexcms/next
+{"name":"@vexcms/next","version":"0.1.0-alpha.36","description":"Next.js adapter and admin routes for VexCMS","keywords":["cms","headless-cms","convex","typescript","nextjs"],"homepage":"https://docs.vexcms.dev","repository":{"type":"git","url":"git+https://github.com/ianyimi/vex.git","directory":"packages/next"},"license":"Apache-2.0","bugs":null,"files":["dist","styles.css"],"engines":null,"peerDependencies":{"@convex-dev/react-query":">=0.1.0 <0.2.0","@tanstack/react-form":">=1.33.0 <2","@tanstack/react-query":">=5.0.0 <6","@tanstack/react-table":">=8.0.0 <9","convex":">=1.44.0 <2","next":">=15.0.0","nuqs":">=2.8.0 <3","react":">=18.0.0","react-dom":">=18.0.0","zod":">=4.0.0 <5"}}
+README -> /tmp/l-pack-evidence/@vexcms__next/README.md
+
+### @vexcms/react
+{"name":"@vexcms/react","version":"0.1.0-alpha.36","description":"React admin components and hooks for VexCMS","keywords":["cms","headless-cms","convex","typescript","react","admin"],"homepage":"https://docs.vexcms.dev","repository":{"type":"git","url":"git+https://github.com/ianyimi/vex.git","directory":"packages/react"},"license":"Apache-2.0","bugs":null,"files":["dist","styles.css"],"engines":null,"peerDependencies":{"@convex-dev/react-query":">=0.1.0 <0.2.0","@tanstack/react-query":">=5.0.0 <6","@testing-library/jest-dom":">=7.0.0 <8","@testing-library/react":">=16.0.0 <17","@testing-library/user-event":">=14.0.0 <15","convex":">=1.44.0 <2","convex-test":">=0.0.38 <0.1.0","next":">=15.0.0","nuqs":">=2.8.0 <3","react":">=18.0.0","react-dom":">=18.0.0","vitest":">=4.0.0 <5","vitest-axe":">=1.0.0-pre.5 <2.0.0"}}
+README -> /tmp/l-pack-evidence/@vexcms__react/README.md
+
+### @vexcms/richtext-plate
+{"name":"@vexcms/richtext-plate","version":"0.1.0-alpha.36","description":"Plate rich-text editor integration for VexCMS","keywords":["cms","headless-cms","convex","typescript","richtext","plate"],"homepage":"https://docs.vexcms.dev","repository":{"type":"git","url":"git+https://github.com/ianyimi/vex.git","directory":"packages/richtext-plate"},"license":"Apache-2.0","bugs":null,"files":["dist"],"engines":null,"peerDependencies":{"react":">=18.0.0","react-dom":">=18.0.0","@vexcms/core":"^0.1.0-alpha.36","@vexcms/react":"^0.1.0-alpha.36"}}
+README -> /tmp/l-pack-evidence/@vexcms__richtext-plate/README.md

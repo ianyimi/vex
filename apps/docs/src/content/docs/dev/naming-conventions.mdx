@@ -1,6 +1,6 @@
 ---
 title: Naming Conventions
-description: Why VexCMS names things the way it does, and what harness struct --check enforces.
+description: Why VexCMS names things the way it does, and the file and folder rules reviews check.
 ---
 
 ## Identifiers
@@ -75,11 +75,8 @@ everywhere, in code and in these docs.
 
 ## File / folder rules
 
-These are the machine-checked rules in
-[`.agent/docs/standards/naming-conventions.md`](https://github.com/ianyimi/vex/blob/rebuild/.agent/docs/standards/naming-conventions.md)'s
-`rules:` block — `harness struct --check` fails the build on any filename
-outside its scope's pattern. Grouped here by the package/app family they
-apply to; each rule id below matches that file's `id:` field exactly.
+These are the file and folder rules reviews check, grouped by the package or app family they
+apply to. Reviews refer to each rule by the id in its heading.
 
 ### `@vexcms/core`
 
@@ -410,8 +407,5 @@ file is a self-contained concern.
 
 ---
 
-The machine-checked source of truth is
-[`.agent/docs/standards/naming-conventions.md`](https://github.com/ianyimi/vex/blob/rebuild/.agent/docs/standards/naming-conventions.md);
-`harness struct --check` enforces it on every file in the repo. This page
-explains the reasoning behind each rule — that file is what actually fails a
-build.
+This page is the reference reviews check new and renamed files against. When a pattern doesn't
+settle a case, the reasoning under its rule does.

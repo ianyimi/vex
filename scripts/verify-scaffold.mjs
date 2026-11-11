@@ -304,6 +304,35 @@ function injectOverrides(projectDir, tarballs) {
 }
 
 /**
+ * WP-3 leftover: proves a field added to the scaffold's `users` collection
+ * reaches the generated Better Auth `user` table (`convex/vex.schema.ts`)
+ * with no second edit, so `convex/schema.ts`'s `user` import still
+ * typechecks (the bug was fields added to `users.ts` not showing up in the
+ * hand-written `user` table/`Doc<"user">`). Inserted before the real
+ * `pnpm typecheck` step this file already runs, so a regression here fails
+ * the same gate a real scaffold build would hit.
+ *
+ * @param {string} projectDir absolute path to a scaffolded project
+ */
+function addUserField(projectDir) {
+  const usersPath = path.join(projectDir, "src/vexcms/collections/users.ts");
+  if (!fs.existsSync(usersPath)) {
+    throw new Error(`${usersPath} does not exist \u2014 scaffold did not produce users.ts`);
+  }
+
+  const source = fs.readFileSync(usersPath, "utf-8");
+  const marker = "name: text({ label: \"Name\", required: true }),";
+  if (!source.includes(marker)) {
+    throw new Error(`${usersPath} does not contain the expected \`name\` field line to anchor on`);
+  }
+
+  fs.writeFileSync(
+    usersPath,
+    source.replace(marker, `${marker}\n    bio: text({ label: "Bio" }),`),
+  );
+}
+
+/**
  * Scaffolds one template via the built CLI, injects tarball overrides, then
  * runs install/typecheck/build — stopping at the first failing step so a
  * broken scaffold doesn't spend minutes typechecking a project that never
@@ -346,6 +375,17 @@ async function runTemplate({ key, label, bare, staticRoutes, seoRoutes, cliEntry
   } catch (error) {
     ok({ label: "inject pnpm.overrides", ok: false, ms: Date.now() - overrideStart });
     console.error(`  \u2717 inject pnpm.overrides \u2014 ${error.message}`);
+    return { key, label, steps };
+  }
+
+  const userFieldStart = Date.now();
+  try {
+    addUserField(projectDir);
+    ok({ label: "add field to users.ts (WP-3)", ok: true, ms: Date.now() - userFieldStart });
+    console.log(`  \u2713 add field to users.ts (WP-3) (${Date.now() - userFieldStart}ms)`);
+  } catch (error) {
+    ok({ label: "add field to users.ts (WP-3)", ok: false, ms: Date.now() - userFieldStart });
+    console.error(`  \u2717 add field to users.ts (WP-3) \u2014 ${error.message}`);
     return { key, label, steps };
   }
 

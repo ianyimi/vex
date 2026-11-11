@@ -50,11 +50,11 @@ scenario 1, and starts a gap-driven backlog of future application types.
    least one scenario, except the listed exceptions: F56 `--orgs`, F59 custom storage adapter, F57
    `--monorepo`/`--yes`. Each exception names where it lands. A scenario step that drops a ● feature
    must move it to another scenario in the same change.
-5. **Location: `vexcms/examples`.** Private until Release (T-1), then public. Independent folders
+5. **Location: `ianyimi/vex-examples`.** Private until Release (T-1), then public. Independent folders
    (`magazine/`, `real-estate/`, `conference/`, `restaurant/`), each a standalone scaffold with its
    own lockfile, exactly what a stranger gets. Licensed Apache-2.0 with a NOTICE, like the core. CI
    runs `pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint` per folder (needs no Convex).
-   Clone at `~/Documents/Projects/vexcms-examples`, outside the monorepo.
+   Clone at `~/Documents/Projects/vex-examples`, outside the monorepo.
 6. **Production stays live.** Each example keeps a Convex prod deployment and a Vercel production
    deployment, linked from its own `<slug>/README.md` and the root README's "Live demos" table. The
    developer creates the prod deployments, Vercel projects and prod env; GU verifies them, links them
@@ -95,7 +95,7 @@ scenario 1, and starts a gap-driven backlog of future application types.
     the www admin. The clip slugs and filenames stay the same, so `launch-kit.md`'s posts and URLs need
     no change. Its D5 fact sheet only gains the deployment-guide link (carve-out in Out of Scope).
 14. **Scoped P-024 exception, modelled on LI-19/D7.** Requested in § Human queue and recorded in
-    § Log when granted. GU may run `create-vexcms`, `vex dev`, `next dev` and the Convex CLI only inside `~/Documents/Projects/vexcms-examples/<slug>`, on ports magazine 3200,
+    § Log when granted. GU may run `create-vexcms`, `vex dev`, `next dev` and the Convex CLI only inside `~/Documents/Projects/vex-examples/<slug>`, on ports magazine 3200,
     real-estate 3210, conference 3220, restaurant 3230, against the Convex projects
     `vex-example-<slug>`. Against production GU only runs `demo:accounts`, `convex env set
     AUTH_DISABLE_SIGN_UP` and read-only checks, with a deploy key the developer provides. Never
@@ -203,7 +203,7 @@ queue` heading:
 | GU-2  | Use-case backlog                                                         | —                                                                                                 | todo   |       |
 | GU-3  | `vex deploy` flag passthrough + deployment guide                        | —                                                                                                 | todo   | alpha.35 published after this step |
 | GU-4  | Templates: `vex:deploy` script + README Deployment                      | GU-3; DEP (`2026-11-07-pre-launch-dependency-upgrades`) done — both edit `templates/base-nextjs/package.json` | todo   | alpha.35 published after this step |
-| GU-5  | Examples repo skeleton                                                   | human: private `vexcms/examples` created + cloned to `~/Documents/Projects/vexcms-examples`      | human  |       |
+| GU-5  | Examples repo skeleton                                                   | human: private `ianyimi/vex-examples` created + cloned to `~/Documents/Projects/vex-examples`      | human  |       |
 | GU-6  | Magazine 01: scaffold on alpha.35                                        | GU-5, alpha.35 published, exception granted                                                      | human  | needs developer exception |
 | GU-7  | Magazine 02: collections and fields                                     | alpha.35 published                                                                                | human  | needs developer exception |
 | GU-8  | Magazine 03: access, hooks, validation, slots                           | alpha.35 published                                                                                | human  | needs developer exception |
@@ -225,7 +225,7 @@ queue` heading:
 | GU-24 | Restaurant 04–05: seed and front end                                    | alpha.35 published                                                                                | human  | needs developer exception |
 | GU-25 | Restaurant 06: deploy, playbook, run-through                            | human — restaurant Convex prod + Vercel project + env set up; alpha.35 published                  | human  | needs developer exception |
 | GU-26 | Live deployments: README links + health check                           | GU-11, GU-17, GU-21, GU-25                                                                         | todo   |       |
-| GU-27 | Release: repo public, 0.1.0 bump, retag                                 | Release mechanics (`changeset pre exit` + publish); human: flip `vexcms/examples` public          | human  | needs developer exception |
+| GU-27 | Release: repo public, 0.1.0 bump, retag                                 | Release mechanics (`changeset pre exit` + publish); human: flip `ianyimi/vex-examples` public          | human  | needs developer exception |
 | GU-28 | Bookkeeping                                                              | —                                                                                                  | todo   |       |
 
 ````
@@ -243,12 +243,12 @@ Edit 4 — § Human queue. Anchor: the existing last item, the `LK-VW` line (the
 immediately after it:
 
 ````markdown
-- [ ] GU-5: create the private GitHub repo `vexcms/examples` (Apache-2.0, empty) and clone it to `~/Documents/Projects/vexcms-examples`, outside this monorepo → unblocks GU-5, then every GU-6+ step
-- [ ] GU-6: grant the scoped P-024 exception, modelled on LI-19/D7 (Design Decision 14): GU may run `create-vexcms`, `vex dev`, `next dev`, `vex deploy`, `vercel` and the Convex CLI only inside `~/Documents/Projects/vexcms-examples/<slug>`, on ports magazine 3200, real-estate 3210, conference 3220, restaurant 3230, against the Convex projects `vex-example-<slug>`. Production uses deploy keys and a Vercel token the developer provides. Never in the monorepo; :3030/:3020 and their deployments are never touched; every service the step started is stopped at the end of the step → record the grant in § Log when given; unblocks GU-6…GU-27 (every step marked "needs developer exception")
+- [ ] GU-5: create the private GitHub repo `ianyimi/vex-examples` (Apache-2.0, empty) and clone it to `~/Documents/Projects/vex-examples`, outside this monorepo → unblocks GU-5, then every GU-6+ step
+- [ ] GU-6: grant the scoped P-024 exception, modelled on LI-19/D7 (Design Decision 14): GU may run `create-vexcms`, `vex dev`, `next dev`, `vex deploy`, `vercel` and the Convex CLI only inside `~/Documents/Projects/vex-examples/<slug>`, on ports magazine 3200, real-estate 3210, conference 3220, restaurant 3230, against the Convex projects `vex-example-<slug>`. Production uses deploy keys and a Vercel token the developer provides. Never in the monorepo; :3030/:3020 and their deployments are never touched; every service the step started is stopped at the end of the step → record the grant in § Log when given; unblocks GU-6…GU-27 (every step marked "needs developer exception")
 - [ ] GU-3/GU-4: once GU-3 lands (`vex deploy` flag passthrough) and GU-4 lands (`vex:deploy` ships in both scaffolds), publish `@vexcms/*@0.1.0-alpha.35` and `create-vexcms@0.1.0-alpha.35` → unblocks GU-6…GU-25 (every step waiting on alpha.35 published)
 - [ ] GU-11/17/21/25: per example, create the Convex prod deployment, the Vercel project (`vexcms-example-<slug>`), and set every production env var the deployment guide lists — then sign up on the production URL yourself first (the first account on a deployment is auto-promoted to admin) → unblocks GU-11 (magazine), GU-17 (real estate), GU-21 (conference), GU-25 (restaurant)
 - [ ] GU-18/21: create a GitHub OAuth app for the conference example — a dev callback (`http://localhost:3220/api/auth/callback/github`) for GU-18 and a prod callback (the chosen `vexcms-example-conference` domain) for GU-21 — and give GU the client id/secret for each → unblocks GU-18, GU-21
-- [ ] GU-27: at T-1, flip `vexcms/examples` from private to public → unblocks GU-27 (0.1.0 bump + retag)
+- [ ] GU-27: at T-1, flip `ianyimi/vex-examples` from private to public → unblocks GU-27 (0.1.0 bump + retag)
 ````
 
 Edit 5 — § Log. Anchor: the existing last line (the `2026-11-10T03:00Z LK: scope change …`
@@ -256,7 +256,7 @@ line, end of file). Append immediately after it:
 
 ````markdown
 - <ISO time> GU: heads-up for LK — LK-8 (shared media session) should run only after GU-13 (`media-session.md` rewrite) is done; GU can't edit LK's own rows (rule 2).
-- <ISO time> GU: heads-up for LK — the `vexcms/examples` README becomes a public surface at T-1 (Design Decision 20, GU-27); LK's L pass (step 19, GitHub + external) should check it then.
+- <ISO time> GU: heads-up for LK — the `ianyimi/vex-examples` README becomes a public surface at T-1 (Design Decision 20, GU-27); LK's L pass (step 19, GitHub + external) should check it then.
 ````
 
 Verify: `launch-coordination.md` has § GU with rows GU-1…GU-28, a § Locks row for the two LK
@@ -1369,10 +1369,10 @@ Verify: `node scripts/verify-scaffold.mjs`, `node scripts/scaffold-smoke.mjs --b
 
 Why: one private, clonable home for the four scenarios, with CI that catches alpha bumps.
 
-Waits for: human — private `vexcms/examples` created and cloned to
-`~/Documents/Projects/vexcms-examples`.
+Waits for: human — private `ianyimi/vex-examples` created and cloned to
+`~/Documents/Projects/vex-examples`.
 
-Every path below is relative to the clone root (`~/Documents/Projects/vexcms-examples`), not
+Every path below is relative to the clone root (`~/Documents/Projects/vex-examples`), not
 this monorepo. All five are new files — the clone is empty before this step.
 
 - [ ] `README.md`
@@ -1465,7 +1465,7 @@ The full Apache-2.0 text is identical to the main VexCMS repo's — copy it rath
 retyping it:
 
 ```bash
-cp ~/Documents/Projects/vex.git/dev/LICENSE ~/Documents/Projects/vexcms-examples/LICENSE
+cp ~/Documents/Projects/vex.git/dev/LICENSE ~/Documents/Projects/vex-examples/LICENSE
 ```
 
 - [ ] `LICENSE` — Apache License, Version 2.0, copied verbatim via the command above (adjust
@@ -1637,7 +1637,7 @@ alpha tag to agree before the examples repo pins exact versions.
 **Scaffold — exact prompt answers**
 
 ```bash
-cd ~/Documents/Projects/vexcms-examples
+cd ~/Documents/Projects/vex-examples
 pnpm create vexcms@alpha magazine --bare
 ```
 
@@ -3469,7 +3469,7 @@ account (created in the human prerequisites); confirm the 8 seeded articles are 
 **Sign-up lockdown sequence (decision 21)**
 
 ```bash
-cd ~/Documents/Projects/vexcms-examples/magazine
+cd ~/Documents/Projects/vex-examples/magazine
 SITE_URL=https://vexcms-example-magazine.vercel.app node --env-file=.env.local scripts/create-demo-accounts.mjs --prod
 npx convex env set AUTH_DISABLE_SIGN_UP true --prod
 ```
@@ -3607,11 +3607,11 @@ New section (file created by this step if it does not yet exist, mirroring
 ## magazine
 
 Run against `create-vexcms@0.1.0-alpha.35` / `@vexcms/*@0.1.0-alpha.35`, scaffolded at
-`~/Documents/Projects/vexcms-examples/magazine`, port 3200, Convex project `vex-example-magazine`.
+`~/Documents/Projects/vex-examples/magazine`, port 3200, Convex project `vex-example-magazine`.
 
 | | magazine |
 |---|---|
-| Folder | `~/Documents/Projects/vexcms-examples/magazine` |
+| Folder | `~/Documents/Projects/vex-examples/magazine` |
 | Answers | `magazine`, Next.js, port 3200, email/password yes, orgs no, no OAuth, git no, install yes; `--bare` |
 | Convex project | `vex-example-magazine` |
 | Vercel project | `vexcms-example-magazine` |
@@ -3652,7 +3652,7 @@ Run against `create-vexcms@0.1.0-alpha.35` / `@vexcms/*@0.1.0-alpha.35`, scaffol
 | 5-minute script, every beat | run `playbooks/magazine.md` § 5-minute | every beat executes as written | pending |
 | 15-minute script, every beat | run `playbooks/magazine.md` § 15-minute | every beat executes as written | pending |
 | Shot list, every clip | record the 4 clips per `playbooks/magazine.md` § Shot list | each ≤ 60s, matches its "Shows" cell | pending |
-| Examples CI green | push to `vexcms/examples` | `ci` workflow green on `magazine/` | pending |
+| Examples CI green | push to `ianyimi/vex-examples` | `ci` workflow green on `magazine/` | pending |
 ````
 
 Verify: `golden-runthrough.md` § magazine has every 5-min and 15-min beat and every shot executed
@@ -3698,7 +3698,7 @@ on :3200; `/tour` and the brand admin/mobile/live-preview screenshots stay on `a
 - [ ] Board: QP-6 (admin views) and QP-7 (www pages) are `done`. Recording earlier ships pre-fix screens.
 - [ ] Your `apps/www` dev server is running on `:3030` against the Convex dev deployment (P-024: attach, never start a second one).
 - [ ] Re-seed the `apps/www` dev deployment: `pnpm --filter www exec convex run seed:reinit`.
-- [ ] Your magazine dev servers are running on `:3200` (`~/Documents/Projects/vexcms-examples/magazine`, P-024: attach, never start a second one).
+- [ ] Your magazine dev servers are running on `:3200` (`~/Documents/Projects/vex-examples/magazine`, P-024: attach, never start a second one).
 - [ ] Reset the magazine dev deployment to its seeded start state: `pnpm seed:reset`, then `pnpm demo:accounts`.
 - [ ] Browser: a clean profile (no extensions, bookmarks bar hidden), 100% zoom, light theme unless a shot says otherwise. Hide desktop notifications.
 - [ ] Two signed-in magazine sessions ready for the RBAC clip: an author and an editor (`DEMO_AUTHOR_A_EMAIL`/`DEMO_EDITOR_EMAIL`, two browser profiles or one normal + one private window).
@@ -6617,7 +6617,7 @@ interactive-answers convention as `n-runthrough.md`.
 
 | | conference |
 |---|---|
-| Folder | `~/Documents/Projects/vexcms-examples/conference` |
+| Folder | `~/Documents/Projects/vex-examples/conference` |
 | Answers | name `conference`, marketing-site (no `--bare`), port **3220**, email/password yes, orgs no, OAuth → GitHub, git yes, install yes |
 | Convex project | `vex-example-conference` |
 | Env | `.env.local` `BETTER_AUTH_SECRET`/`GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` from the scaffold + the dev GitHub OAuth App; `SITE_URL` + `BETTER_AUTH_SECRET` + the two GitHub vars set on the deployment |
@@ -6668,7 +6668,7 @@ Waits for: GU-12.
 
 **Scaffold command**
 
-Inside the Step 14 P-024 exception scope (`~/Documents/Projects/vexcms-examples`, Design Decision 14).
+Inside the Step 14 P-024 exception scope (`~/Documents/Projects/vex-examples`, Design Decision 14).
 No `--bare` — restaurant uses the **marketing-site** template (F55), the same default
 `pnpm create vexcms@alpha` resolves to (`apps/docs/src/content/docs/guides/quickstart.mdx`: "By
 default this includes the full marketing-site starter"). The CLI's 8 prompts, answered live for
@@ -6676,7 +6676,7 @@ the 15-minute script, typed-not-defaulted (Design Decision 3/Listed exceptions �
 unused):
 
 ```bash
-cd ~/Documents/Projects/vexcms-examples
+cd ~/Documents/Projects/vex-examples
 pnpm create vexcms@alpha restaurant
 # name: restaurant
 # framework: Next.js
@@ -8077,7 +8077,7 @@ reads the resulting build log and runs the Convex-CLI-only verification/seeding/
 below, scoped to `restaurant/` under the existing P-024 exception (Design Decision 14):
 
 ```bash
-cd ~/Documents/Projects/vexcms-examples/restaurant
+cd ~/Documents/Projects/vex-examples/restaurant
 npx convex run seed:init --prod
 NEXT_PUBLIC_SITE_URL=<the production URL> pnpm demo:accounts
 npx convex env set AUTH_DISABLE_SIGN_UP true --prod
@@ -8188,7 +8188,7 @@ exception is granted and the stubs above are filled in):
 
 | | restaurant |
 |---|---|
-| Folder | `~/Documents/Projects/vexcms-examples/restaurant` |
+| Folder | `~/Documents/Projects/vex-examples/restaurant` |
 | Port | 3230 |
 | Convex project | `vex-example-restaurant` |
 | Answers | name `restaurant`, Next.js, port 3230, email/password yes, orgs no, no OAuth, git yes, install yes (no `--bare`) |
@@ -8323,9 +8323,9 @@ Verify:
 ### Step 27 — Release: repo public, 0.1.0 bump, retag [agent] — needs developer exception
 
 Why: posts link a public repo on 0.1.0, not a private one on an alpha.
-Waits for: Release mechanics (`changeset pre exit` + publish); human — flip `vexcms/examples` public.
+Waits for: Release mechanics (`changeset pre exit` + publish); human — flip `ianyimi/vex-examples` public.
 
-- [ ] Confirm `vexcms/examples` is public (human queue item checked off) before touching any file
+- [ ] Confirm `ianyimi/vex-examples` is public (human queue item checked off) before touching any file
 - [ ] `magazine/package.json` — every `@vexcms/*` dependency (and `create-vexcms` if present in devDependencies) pinned to exact `0.1.0`
 - [ ] `real-estate/package.json` — same
 - [ ] `conference/package.json` — same
@@ -8369,7 +8369,7 @@ examples will have already removed it from `package.json` once scaffolded — ch
 **Command sequence per example**
 
 ```bash
-cd ~/Documents/Projects/vexcms-examples/magazine
+cd ~/Documents/Projects/vex-examples/magazine
 pnpm install
 pnpm vex:generate
 pnpm typecheck
@@ -8385,7 +8385,7 @@ projects). `pnpm vex:generate` is the template's `vex dev --once` script
 (`packages/create-vexcms/templates/base-nextjs/package.json`) — it pushes schema/codegen to the
 scenario's **dev** Convex deployment, which is why this step is marked "needs developer
 exception" (Design Decision 14's P-024 scope covers `vex dev` inside
-`~/Documents/Projects/vexcms-examples/<slug>`); it does not touch the scenario's own, separately
+`~/Documents/Projects/vex-examples/<slug>`); it does not touch the scenario's own, separately
 live production deployment, which stays exactly as Step 26 last confirmed it (decision 6 — production
 deployments stay live, they are never paused or torn down).
 
@@ -8450,8 +8450,8 @@ Numbered edit, anchor by heading. Everything not shown is unchanged.
 bullet under `## Release mechanics` → `### Tasks`):
 
 ```md
-- [ ] Flip `vexcms/examples` public (`2026-11-09-golden-use-cases` Step 27 precondition)
-- [ ] Bump every example in `vexcms/examples` to `0.1.0`, retag `<slug>/07-v0.1.0` (`2026-11-09-golden-use-cases` Step 27)
+- [ ] Flip `ianyimi/vex-examples` public (`2026-11-09-golden-use-cases` Step 27 precondition)
+- [ ] Bump every example in `ianyimi/vex-examples` to `0.1.0`, retag `<slug>/07-v0.1.0` (`2026-11-09-golden-use-cases` Step 27)
 ```
 
 **2 — § T / § U pointer.** Wherever § T and § U track launch content (the `## T — Launch content`
@@ -8515,7 +8515,7 @@ guides/access-control.mdx`.
 **What.** `@vexcms/react/testing` (the exported testing kit from `2026-09-04-react-test-suite`)
 has no docs page under `apps/docs/src/content/docs/guides/`.
 
-**Why.** Every example in `vexcms/examples` ships with no unit tests (Design Decision 10's
+**Why.** Every example in `ianyimi/vex-examples` ships with no unit tests (Design Decision 10's
 `[agent]` tier covers scaffolding/seeds/scripts/front end, not a test suite) — writing the guide
 without a canonical consumer risks documenting an API shape nobody has exercised end to end.
 
@@ -8588,7 +8588,7 @@ Board edit (own rows, rule 2 — no lock needed for GU's own § GU rows):
 ```md
 - <ISO time> GU: stopping (rule 11). GU-1…28 done except: <list any `human` rows and what
   unblocks them, e.g. GU-13's P-024 exception grant, GU-11/17/21/25's Convex prod + Vercel
-  project + env setup, GU-27's repo-public flip>. `vexcms/examples` tagged through
+  project + env setup, GU-27's repo-public flip>. `ianyimi/vex-examples` tagged through
   `<slug>/07-v0.1.0` for all four scenarios once Step 27 completes. No locks held.
 ```
 

@@ -1,0 +1,165 @@
+---
+title: Contributing workflow
+description: Set up the repo, run the checks, add a changeset, and open a pull request against dev — the path from a fork to a published release.
+sidebar:
+  order: 1
+---
+
+This page is the how-to for changing VexCMS itself. What needs an issue or an accepted idea
+first, review times, and licensing are in
+[CONTRIBUTING.md](https://github.com/ianyimi/vex/blob/master/CONTRIBUTING.md).
+
+## Set up
+
+You need Node.js 22.18 or later and pnpm 10. `corepack enable` gives you the pnpm version the
+repo pins in `package.json`.
+
+```bash
+git clone https://github.com/<you>/vex.git
+cd vex
+git remote add upstream https://github.com/ianyimi/vex.git
+git fetch upstream
+pnpm install
+```
+
+Turborepo runs the root scripts across the workspace:
+
+| Command | What it does |
+| --- | --- |
+| `pnpm build` | Builds every package and app |
+| `pnpm typecheck` | Typechecks the whole workspace |
+| `pnpm test` | Runs Vitest in every package that has tests |
+| `pnpm lint` / `pnpm lint:fix` | ESLint over `packages/*/src/**/*.{ts,tsx}` |
+| `pnpm changeset` | Records a changeset for your change |
+
+`apps/www` and `apps/test` need their own Convex deployment to run or build, so `pnpm build`
+fails on them in a fresh clone. Working on `packages/*` doesn't need one:
+`pnpm build --filter='./packages/*'` builds just the packages.
+
+### One package at a time
+
+Packages import each other's built `dist/`, so a package's tests and typecheck need its
+dependencies built first. `pnpm turbo run` builds them for you:
+
+```bash
+pnpm turbo run test typecheck --filter=@vexcms/react
+```
+
+Once the dependencies are built, `pnpm --filter <package> exec vitest run <path>` runs a subset
+of tests without rebuilding anything:
+
+```bash
+pnpm --filter @vexcms/react exec vitest run src/media
+```
+
+### Run the admin panel
+
+UI changes need a browser check, so you need `apps/test` running against a Convex deployment of
+your own:
+
+1. Copy `apps/test/.env.example` to `apps/test/.env.local`, then follow the quickstart's
+   [Stand up your deployment](/guides/quickstart/#stand-up-your-deployment) from inside
+   `apps/test`, with port `3020`.
+2. From the repo root, in two terminals: `pnpm test:dev:vex` (regenerates the schema and runs
+   `convex dev`) and `pnpm test:dev` (Next.js on `http://localhost:3020`).
+3. Optionally seed the demo content, from `apps/test`: `npx convex run seed:init`.
+4. Sign up. The first account becomes the admin.
+
+## Make the change
+
+Branch off the upstream `dev` branch:
+
+```bash
+git switch -c fix/upload-error-toast upstream/dev
+```
+
+Branch names are up to you. Keep the diff to the issue you're fixing.
+
+## Check it
+
+Run what CI runs, for the packages you touched:
+
+```bash
+pnpm turbo run build typecheck test --filter=@vexcms/react
+pnpm lint
+```
+
+CI also checks import cost and the packed manifests of every published package. On pull
+requests from the main repo it also builds `apps/test` for production and checks its bundle
+budget. Fork pull requests get no secrets, so those two steps are skipped there.
+
+- **A bug fix** comes with a regression test. Run it without your fix and watch it fail, then
+  with your fix and watch it pass. Say so in the pull request.
+- **A UI change** gets a browser check in `apps/test` at 375, 390, and 1280 px wide, in light and
+  dark mode. Unit tests run in jsdom, which has no layout: a test that finds a `min-h-11` class
+  doesn't prove a tap target is 44 px tall.
+- [Testing and code style](/dev/testing-and-code-style/) covers where tests go and what reviews
+  check.
+
+## Add a changeset
+
+A pull request that changes the behavior or types of a published package (anything under
+`packages/*` that users install) needs a changeset. Docs-only and `apps/*`-only changes don't.
+
+```bash
+pnpm changeset
+```
+
+Pick the packages you changed and `patch`. Every change is a `patch`, including breaking ones,
+and I set the final version bump when releasing. The summary becomes a line in the package's
+CHANGELOG, so write it for someone upgrading:
+
+```md
+---
+"@vexcms/react": patch
+---
+
+Show an error toast when a media upload fails, instead of only logging it to the console.
+```
+
+For a breaking change, add a **Breaking:** paragraph that says what changed and a
+**Migration:** paragraph that says what to do about it.
+
+## Open the pull request
+
+Push your branch to your fork and open the pull request against `ianyimi/vex`'s `dev` branch.
+GitHub suggests `master`; change it to `dev`.
+
+- Title: `type(scope): description`, for example
+  `fix(react): show a toast when a media upload fails`. The `PR title` check runs on every edit.
+- Description: fill in the template, including `Fixes #123` or the link to the accepted idea.
+- Leave **Allow edits by maintainers** on.
+
+Path-based `area:` and `adapter:` labels are added automatically.
+
+## From merge to release
+
+1. I squash-merge your pull request into `dev`. Your title becomes the commit subject and your
+   description its body.
+2. When `dev` is ready to ship, I merge it into `master` through a pull request. That pull
+   request runs CI again, plus the `axe` and Lighthouse checks against a Vercel preview. Once it
+   merges, the `Fixes #123` in your commit closes the issue.
+3. The merge to `master` starts the Release workflow, which opens a
+   `chore: version packages (alpha)` pull request from the queued changesets.
+4. Merging that pull request publishes the packages to npm under the `alpha` tag.
+
+## Repo map
+
+| Path | What's there |
+| --- | --- |
+| `packages/core` | Field system, collections, access control, schema and type generation |
+| `packages/react` | The admin panel UI |
+| `packages/next` | The Next.js framework adapter |
+| `packages/cli` | `vex`: `dev`, `deploy`, `generate` |
+| `packages/better-auth` | The Better Auth integration |
+| `packages/file-storage-convex` | The Convex file-storage adapter |
+| `packages/richtext-plate` | The richtext field's Plate.js editor |
+| `packages/create-vexcms` | `pnpm create vexcms` and its templates |
+| `packages/telemetry` | Build-time telemetry shared by `vex` and `create-vexcms` (private, not published) |
+| `apps/test` | The admin panel host used for development, on port 3020 |
+| `apps/www` | vexcms.dev, built on VexCMS itself |
+| `apps/docs` | docs.vexcms.dev (Astro + Starlight) |
+| `scripts/` | Repo-wide checks and sync scripts, run from the root `package.json` |
+
+[Project structure](/dev/project-structure/) explains how packages, apps, and templates depend on
+each other.

@@ -49,15 +49,15 @@ and what isn't planned. This page is the source of truth for the roadmap; the
 
 Everything below is free and lands in the Apache-2.0 core. It ships in this order.
 
-1. **Plugin system** — The extension points 0.1.0 ships (admin slots, component overrides, action contributions) become a supported plugin API for collections, fields, hooks, access rules and admin views. [`planned` issue #61](https://github.com/ianyimi/vex/issues/61)
-2. **Free features, as demand appears** — No fixed order: 👍 the linked issue to move one up.
-   - **Localization** — Per-field locale values, opted into per collection and per field, with locale-aware drafts. [`planned` issue #59](https://github.com/ianyimi/vex/issues/59)
-   - **Scheduled publishing** — Publish and unpublish at a set time, on Convex's scheduler. [`planned` issue #63](https://github.com/ianyimi/vex/issues/63)
-   - **TanStack Start adapter** — The admin panel and the caching helpers on a second framework. [`planned` issue #64](https://github.com/ianyimi/vex/issues/64)
-   - **Form builder** — Collect input from site visitors, with generated validation and stored submissions. [`planned` issue #57](https://github.com/ianyimi/vex/issues/57)
-   - **Outbound webhooks** — Notify other services when content changes. [`planned` issue #60](https://github.com/ianyimi/vex/issues/60)
-   - **API keys and team management** — Invite people, assign roles, and issue scoped keys for reading content from outside. [`planned` issue #53](https://github.com/ianyimi/vex/issues/53)
-3. **Brownfield adoption** — Add VexCMS to an existing Convex app table by table, without migrating the data it already holds. [`planned` issue #54](https://github.com/ianyimi/vex/issues/54)
+1. **Plugin system** — The extension points 0.1.0 ships (admin slots, component overrides, action contributions) become a supported plugin API for collections, fields, hooks, access rules and admin views.
+2. **Free features, as demand appears** — No fixed order.
+   - **Localization** — Per-field locale values, opted into per collection and per field, with locale-aware drafts.
+   - **Scheduled publishing** — Publish and unpublish at a set time, on Convex's scheduler.
+   - **TanStack Start adapter** — The admin panel and the caching helpers on a second framework.
+   - **Form builder** — Collect input from site visitors, with generated validation and stored submissions.
+   - **Outbound webhooks** — Notify other services when content changes.
+   - **API keys and team management** — Invite people, assign roles, and issue scoped keys for reading content from outside.
+3. **Brownfield adoption** — Add VexCMS to an existing Convex app table by table, without migrating the data it already holds.
 
 How VexCMS compares today: [Compare](/compare/).
 

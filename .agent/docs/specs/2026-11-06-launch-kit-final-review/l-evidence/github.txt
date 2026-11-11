@@ -1,0 +1,35 @@
+## repo
+{"default_branch":"master","description":"Type-safe headless CMS built on Convex. A real-time admin panel, end-to-end type inference, auth, ABAC — no separate backend to run.","has_discussions":true,"has_wiki":false,"homepage":"https://vexcms.dev","license":"Apache-2.0","topics":["admin-panel","better-auth","cms","convex","headless-cms","nextjs","rbac","react","real-time","typescript"]}
+## community
+{"files":{"code_of_conduct":"https://github.com/ianyimi/vex/blob/master/CODE_OF_CONDUCT.md","code_of_conduct_file":"https://github.com/ianyimi/vex/blob/master/CODE_OF_CONDUCT.md","contributing":"https://github.com/ianyimi/vex/blob/master/CONTRIBUTING.md","issue_template":null,"license":"https://github.com/ianyimi/vex/blob/master/LICENSE","pull_request_template":"https://github.com/ianyimi/vex/blob/master/.github/PULL_REQUEST_TEMPLATE.md","readme":"https://github.com/ianyimi/vex/blob/master/README.md"},"health_percentage":100}
+## labels
+adapter: better-auth;adapter: file-storage-convex;adapter: next;adapter: richtext-plate;area: auth;area: cli;area: core;area: create-vexcms;area: docs;area: live-preview;area: storage;area: templates;area: ui;area: versions;BREAKING;dependencies;duplicate;good first issue;help wanted;invalid;javascript;planned;roadmap: p0;roadmap: p1;roadmap: p2;stale;status: cant-reproduce;status: needs-repro;status: needs-triage;status: verified;type: bug;type: docs;type: feature;wontfix;
+## discussion categories
+{"discussionCategories":{"nodes":[{"isAnswerable":false,"name":"Announcements","slug":"announcements"},{"isAnswerable":false,"name":"Ideas","slug":"ideas"},{"isAnswerable":true,"name":"Q\u0026A","slug":"q-a"},{"isAnswerable":false,"name":"Show and tell","slug":"show-and-tell"}]},"pinnedDiscussions":{"nodes":[{"discussion":{"title":"Welcome to VexCMS Discussions","url":"https://github.com/ianyimi/vex/discussions/66"}}]}}
+## planned
+[]
+## good first issue
+65 CLOSED Show a toast when media upload fails instead of only logging to console []
+58 CLOSED List-view row title links are 16px-tall touch targets on mobile []
+56 OPEN Add a CI check that apps/docs' llms.txt outputs stay in sync with the sidebar []
+55 OPEN Collapse duplicate exported types (VexMediaCreateMediaDocumentArgs / DraggableContextValue) []
+52 CLOSED Wire the existing AdminNotFound component into its 6 remaining TODO call sites []
+## open issues
+56 Add a CI check that apps/docs' llms.txt outputs stay in sync with the sidebar {good first issue,area: docs,type: docs}
+55 Collapse duplicate exported types (VexMediaCreateMediaDocumentArgs / DraggableContextValue) {good first issue,area: core,type: bug}
+## releases
+@vexcms/cli@0.1.0-alpha.36	Pre-release	@vexcms/cli@0.1.0-alpha.36	2026-11-10T11:09:37Z
+@vexcms/next@0.1.0-alpha.36	Pre-release	@vexcms/next@0.1.0-alpha.36	2026-11-10T11:09:34Z
+@vexcms/file-storage-convex@0.1.0-alpha.36	Pre-release	@vexcms/file-storage-convex@0.1.0-alpha.36	2026-11-10T11:09:31Z
+@vexcms/better-auth@0.1.0-alpha.36	Pre-release	@vexcms/better-auth@0.1.0-alpha.36	2026-11-10T11:09:28Z
+@vexcms/core@0.1.0-alpha.36	Pre-release	@vexcms/core@0.1.0-alpha.36	2026-11-10T11:09:25Z
+## pvr
+{"enabled":true}## npm
+@vexcms/core {"latest":"0.0.20","alpha":"0.1.0-alpha.36"}
+create-vexcms {"latest":"0.0.20","alpha":"0.1.0-alpha.36"}
+## external
+200 https://github.com/sponsors/ianyimi
+200 https://buymeacoffee.com/zaye
+200 https://buttondown.com/vexcms
+200 https://vexcms.dev/
+200 https://docs.vexcms.dev/

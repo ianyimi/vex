@@ -836,3 +836,53 @@ Status: partial (7 of 18 URLs blocked, missing or read via a mirror/snippet; see
 | https://www.markepear.dev/blog/dev-tool-hacker-news-launch | 2026-11-09 | ok |
 | https://www.markepear.dev/blog/developer-marketing-guide | 2026-11-09 | partial (read first ~300 of 905 lines; general dev-marketing context, not launch-post-specific, not separately cited) |
 | https://www.ycombinator.com/library/6i-how-to-launch-again-and-again | 2026-11-09 | partial (metadata only, no transcript on page) |
+
+---
+
+## Re-fetch log (L, step 12)
+
+Re-fetched 2026-11-10 against the working tree reviewed for L (`dev` @ e49d7ac3 plus uncommitted
+contributor-workflow changes). `unchanged` = every quoted excerpt still matches; `changed` =
+re-quoted below and the affected brief in `launch-kit.md` updated in the same pass. §3 (Reddit),
+§4 and the unused §5 channels are not re-fetched; §6 is reading material, not rules.
+
+| URL | § | Date | Status | Note |
+|---|---|---|---|---|
+| https://news.ycombinator.com/showhn.html | 1.1 | 2026-11-10 | unchanged | All 11 quoted lines present verbatim. |
+| https://news.ycombinator.com/newsguidelines.html | 1.2 | 2026-11-10 | unchanged | All quoted lines present verbatim (generated-text, promotion, upvote-solicitation rules all intact). |
+| https://news.ycombinator.com/newsfaq.html | 1.3 | 2026-11-10 | unchanged | Repost, upvote/comment-solicitation, and YC/HN relationship quotes all present verbatim. |
+| https://news.ycombinator.com/launches | 1.4 | 2026-11-10 | unchanged | Still exclusively "Launch HN:" posts, every one of the 30 sampled entries YC-batch-tagged (e.g. "(YC W23)", "(YC S26)"). |
+| https://news.ycombinator.com/item?id=22336638 | 1.4 | 2026-11-10 | unchanged | dang's full tips comment fetched via HN Algolia API; every quoted line (hand-write text, backstory, no-marketing-language, friends-not-boosting, repost-cadence) matches verbatim, including the 2026-03-28 edit about not using an LLM. |
+| https://help.producthunt.com/en/articles/17734306-1-how-product-hunt-works | 2.1 | 2026-11-10 | unchanged | Maker/hunter, 12:01 AM PT go-live, no-paid-upvotes, personal-account, verified-email quotes all intact. |
+| https://help.producthunt.com/en/articles/17734355-3-set-your-goals-and-pick-your-launch-date | 2.2 | 2026-11-10 | unchanged | 12:01 AM–midnight PT window, 30-day scheduling lookahead, 2-launches/day, weekday/weekend framing all intact. |
+| https://help.producthunt.com/en/articles/17834537-4-build-your-product-page | 2.3 | 2026-11-10 | unchanged | Name/tagline/description char limits, logo spec (240×240, ≤2MB), image spec (1270×760, ≥1), pricing field, ≤3 launch tags, 5,000-char Maker comment, seven required fields, 2-month relaunch trigger, and open-source/repo-link field all intact verbatim. |
+| https://help.producthunt.com/en/articles/17734384-5-how-to-promote-your-launch-and-what-to-avoid | 2.4 | 2026-11-10 | unchanged | "Never ask for upvotes", no fake accounts, "try it/comment/share feedback", and "communities you've never posted in before" quotes all intact. |
+| https://help.producthunt.com/en/articles/17734411-7-relaunch-your-product | 2.5 | 2026-11-10 | unchanged | 2-month relaunch-request threshold, "small fixes...aren't enough" and anti-URL-swap quotes all intact. |
+| https://help.producthunt.com/en/articles/3615694-community-guidelines | 2.6 | 2026-11-10 | unchanged | Anti-spam/self-promo and real-profile requirements intact (profile quote now sits inside a slightly longer lead-in sentence — same wording, not reworded). |
+| https://help.producthunt.com/en/articles/484935-can-i-ask-my-community-friends-family-to-upvote-a-product | 2.7 | 2026-11-10 | unchanged | Quoted algorithm-penalty sentence intact verbatim. |
+| https://help.producthunt.com/en/articles/9883485-product-hunt-featuring-guidelines | 2.8 | 2026-11-10 | **changed** | See Changed quotes below — the "No Vaporware" criterion was loosened. |
+| https://devhunt.org/faq | 2.9 | 2026-11-10 | unchanged | All quoted lines (what-is-DevHunt, how-to-launch, free-vs-$49-launch, voting/auth, eligible tool types, week-long format, super-boost pricing) present verbatim. |
+| https://devhunt.org/llms.txt | 2.10 | 2026-11-10 | unchanged | Free-listing and $49-launch bullet points, and the five named categories (Open Source, DB, Code, API, Boilerplate) all present verbatim. |
+| https://cooperpress.com/ | 5.1 | 2026-11-10 | unchanged | "editor@cooperpress.com" and "We're always happy to talk!" both present verbatim; still no public submission form, still one shared editorial address. |
+| https://thisweekinreact.com/ | 5.2 | 2026-11-10 | unchanged | Still no "Submit" nav item or documented submission route; page is now a testimonials wall (nav/contact details not re-displayed on this fetch, but no submission-related rule was ever quoted here to break — original section was explicitly "no quoted rule... because none is published"). |
+| https://github.com/jamstack/jamstack.org | 5.4 | 2026-11-10 | unchanged | Root README "We accept contributions submitted as pull requests" quote present verbatim; confirmed `src/site/headless-cms/` still lists `caisy.md` and ~140 other per-CMS files in the same format, directory convention unchanged. |
+| https://raw.githubusercontent.com/unicodeveloper/awesome-nextjs/master/CONTRIBUTING.md | 5.7 | 2026-11-10 | unchanged | All quoted formatting rules ("Make an individual pull request...", "[Title Case Name](link) - Description.", capital/full-stop rule, "New categories...are welcome") present verbatim. |
+| https://discord.com/invite/nk6C2qTeCq | 5.10 | 2026-11-10 | unchanged | Still blocked — only OG/meta tags fetchable (tagline + member count, now 16,680 vs 16,681 previously, negligible drift); channel rules still not readable logged out. |
+| https://dev.to/p/editor_guide | 5.13 | 2026-11-10 | unchanged | canonical_url, 4-tag-max, ai_disclosure_level field (with all four disclosure levels), and 200-megapixel GIF-frame limit all present verbatim. |
+| https://raw.githubusercontent.com/Hashnode/support/main/docs/write-an-article.md | 5.14 | 2026-11-10 | unchanged | "Add Original Article"/canonical-URL quote and "hide from Hashnode and display on my blog only" quote both present verbatim. |
+| https://www.linkedin.com/help/linkedin/answer/a528176 | 5.17 | 2026-11-10 | **blocked→found (false assumption)** | See note below — the original "no official doc" finding no longer holds. |
+
+**Product Hunt — Featuring Guidelines (§2.8), https://help.producthunt.com/en/articles/9883485-product-hunt-featuring-guidelines**
+- Old: *"**No Vaporware**: We only feature products that are ready for use"*
+- New: *"**No Vaporware**: We only feature products that are ready for use or have a clear path to launch."*
+- The added clause ("or have a clear path to launch") loosens this criterion — a pre-launch/roadmap-stage product may now qualify where the old wording required it to already be ready for use. Doesn't change the launch-kit plan materially (VexCMS 0.1.0 is functional at launch) but is worth noting as a real wording change, not drift.
+
+No other in-use URL had a quote go missing or get reworded; all other rows above are verbatim matches.
+
+**New rules found on re-fetch**
+
+1. **Product Hunt Featuring Guidelines (§2.8)** now lists **"Waitlisted products (unless immediate access is provided)"** as the first bullet under "What We Don't Feature" — this bullet was not in the original quoted list at all (new, not a rewording). It directly reinforces the Show-HN "no signup barriers" theme already in the launch plan: VexCMS must not be waitlisted/invite-gated at PH submission time, must offer immediate access.
+2. **Product Hunt Featuring Guidelines (§2.8)** — the "Hardware" exclusion gained a worked example: *"Hardware (unless it has a prominent digital component e.g., AI wearables)"* (previously just "...prominent digital component)"). Not relevant to VexCMS (software product) but noted as an addition, not a rewording of substance.
+3. **LinkedIn (§5.17) — corrected finding, not a new rule on the page itself, but a correction to the spec's own research gap:** the spec recorded §5.17 as `Status: blocked` with "no official LinkedIn Help/Developer doc was located." That is no longer true: **https://www.linkedin.com/help/linkedin/answer/a528176 ("Post and share updates")** is live, official, and states a **3,000-character hard cap** on standard posts ("If your post exceeds 3000 characters, you can instead write an article using LinkedIn's Publishing Platform"), plus a documented anti-automation clause: *"If we detect excessive post creation that indicates inauthentic activity, or the use of an automation tool, we may limit the visibility of those posts."* This last clause is a concrete new constraint for the launch kit: scheduling/automating the LinkedIn cross-post (e.g. via a bot/scheduler) risks visibility suppression — post manually or via LinkedIn's own native scheduler (also documented on the same page: "If you'd like your post to go live at a later time, you can schedule it in advance"). The page also links out to **"Best practices for content created with the help of AI"** (https://www.linkedin.com/help/linkedin/answer/a1481496) — relevant given the launch-kit's AI-authorship concerns elsewhere (HN/dev.to); this companion doc was not fetched in this pass and should be read before finalizing the LinkedIn post workflow.
+
+No new rules were found on the HN, DevHunt, Cooperpress, This Week in React, jamstack.org, awesome-nextjs, Convex Discord, dev.to, or Hashnode pages beyond what was already quoted in the 2026-11-06 sources file.

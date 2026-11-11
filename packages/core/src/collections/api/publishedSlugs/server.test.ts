@@ -12,12 +12,17 @@ const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
 };
 
-// These calls pass no `access` option on purpose. `publishedSlugs`' own JSDoc tells a real
-// sitemap caller to pass `{ bypass: true }`, but that is for a caller who HAS a resolved
-// config with an access matrix to bypass. No `config` is threaded here, so RBAC is already
-// off and `bypass` would change nothing — `resolveAccessCall` says exactly that on stderr
-// ("the flag changed nothing. Either drop it..."). Slug shaping, not RBAC, is what these
-// tests cover; the bypass path is exercised where a config actually exists.
+// `config` carries no `access` matrix, so RBAC stays off (`resolveAccessCall`'s
+// documented posture) the same way an unthreaded config used to — slug shaping,
+// not RBAC, is what these tests cover; the bypass path is exercised where a
+// config with a real access matrix exists.
+const fixtureConfig = {
+  collections: [
+    defineCollection({ slug: "posts", fields: { title: text(), slug: text() } }),
+    defineCollection({ slug: "authors", fields: { name: text(), slug: text() } }),
+  ],
+} as unknown as VexConfig;
+
 describe("publishedSlugs (server)", () => {
   test("returns slug and _creationTime for every document with a string slug", async () => {
     const t = convexTest(schema, modules);
@@ -27,6 +32,7 @@ describe("publishedSlugs (server)", () => {
 
       const result = await publishedSlugs({
         collection: "posts",
+        config: fixtureConfig,
         ctx,
       });
 
@@ -49,6 +55,7 @@ describe("publishedSlugs (server)", () => {
 
       const result = await publishedSlugs({
         collection: "authors",
+        config: fixtureConfig,
         ctx,
       });
 
@@ -65,6 +72,7 @@ describe("publishedSlugs (server)", () => {
 
       const result = await publishedSlugs({
         collection: "posts",
+        config: fixtureConfig,
         ctx,
       });
 
@@ -81,6 +89,7 @@ describe("publishedSlugs (server)", () => {
 
       const result = await publishedSlugs({
         collection: "posts",
+        config: fixtureConfig,
         ctx,
         limit: 1,
       });
@@ -88,6 +97,7 @@ describe("publishedSlugs (server)", () => {
       expect(result).toHaveLength(1);
     });
   });
+
 
   // A sitemap must never list a draft-only document: its URL 404s for anonymous
   // visitors and leaks an unpublished slug. The draft filter needs the

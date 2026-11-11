@@ -620,10 +620,12 @@ export function stripOrgFromAuthApi(filePath: string, content: string): string {
       '  TABLE_SLUG_SESSIONS,\n' +
       '  TABLE_SLUG_USERS,\n' +
       '  type UserID,\n' +
-      '} from "~/db/constants";',
+      '} from "~/db/constants";\n' +
+      'import config from "~/vex.config.server";',
     'import { get } from "@vexcms/core/server";\n' +
       '\n' +
-      'import { type SessionID, TABLE_SLUG_SESSIONS, TABLE_SLUG_USERS, type UserID } from "~/db/constants";',
+      'import { type SessionID, TABLE_SLUG_SESSIONS, TABLE_SLUG_USERS, type UserID } from "~/db/constants";\n' +
+      'import config from "~/vex.config.server";',
     'auth/api.ts imports'
   );
 
@@ -642,13 +644,14 @@ export function stripOrgFromAuthApi(filePath: string, content: string): string {
       '    }\n' +
       '    const session = await get({\n' +
       '      ctx,\n' +
+      '      config,\n' +
       '      id: identity.sessionId as SessionID,\n' +
       '      collection: TABLE_SLUG_SESSIONS,\n' +
       '    });\n' +
       '    if (!session) {\n' +
       '      return empty;\n' +
       '    }\n' +
-      '    const user = await get({ ctx, id: identity.subject as UserID, collection: TABLE_SLUG_USERS });\n' +
+      '    const user = await get({ ctx, config, id: identity.subject as UserID, collection: TABLE_SLUG_USERS });\n' +
       '    if (!user) {\n' +
       '      return empty;\n' +
       '    }\n' +
@@ -657,6 +660,7 @@ export function stripOrgFromAuthApi(filePath: string, content: string): string {
       '    }\n' +
       '    const organization = await get({\n' +
       '      ctx,\n' +
+      '      config,\n' +
       '      id: session.activeOrganizationId as OrganizationID,\n' +
       '      collection: TABLE_SLUG_ORGANIZATIONS,\n' +
       '    });\n' +
@@ -673,13 +677,14 @@ export function stripOrgFromAuthApi(filePath: string, content: string): string {
       '    }\n' +
       '    const session = await get({\n' +
       '      ctx,\n' +
+      '      config,\n' +
       '      id: identity.sessionId as SessionID,\n' +
       '      collection: TABLE_SLUG_SESSIONS,\n' +
       '    });\n' +
       '    if (!session) {\n' +
       '      return empty;\n' +
       '    }\n' +
-      '    const user = await get({ ctx, id: identity.subject as UserID, collection: TABLE_SLUG_USERS });\n' +
+      '    const user = await get({ ctx, config, id: identity.subject as UserID, collection: TABLE_SLUG_USERS });\n' +
       '    if (!user) {\n' +
       '      return empty;\n' +
       '    }\n' +

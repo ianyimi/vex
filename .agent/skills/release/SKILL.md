@@ -1,6 +1,6 @@
 ---
 name: release
-description: Audit everything shipped since the last release (dev vs master) — missed docs, missing changesets, roadmap drift, template drift — fix it, and write the release PR message. Never versions packages: the Release workflow's version PR does that on master. Release-only: never writes the working-tree feature commit (that is the `commit` skill). Triggers on "release", "/release", "write the release", "release message". Fully autonomous; message-only by default.
+description: Audit everything shipped since the last release (dev vs master) — missed docs, missing changesets, roadmap drift, template drift — fix it, and write the release PR message. Versioning defaults to the Release workflow's version PR on master; when the developer asks to "version locally", it runs `pnpm version:packages` on dev as the run's last step so the merge publishes directly. Release-only: never writes the working-tree feature commit (that is the `commit` skill). Triggers on "release", "/release", "write the release", "release message". Fully autonomous; message-only by default.
 harness_model_role: slow
 ---
 
@@ -14,14 +14,19 @@ One output, always: **the release message** — the `dev` → `master` PR title/
 commit since the last release, plus any docs/changeset fixes the audit made. The working-tree
 feature commit is NOT this skill's job: run `commit` (or `commit-release`) for that.
 
-**Versioning is CI's job, never this skill's.** On every push to `master`,
-`.github/workflows/release.yml` runs `changesets/action`: with unconsumed changesets it runs
-`pnpm version:packages` and opens/updates the "chore: version packages" PR; merging that PR
-leaves no changesets, so the next run publishes (`pnpm release`). Running
-`pnpm version:packages` on `dev` consumes the changesets early, and any changeset added before
-the merge makes CI bump again — that is how `0.1.0-alpha.31` was skipped (npm went 30 → 32).
-So on `dev` changesets always stay pending, and this skill writes changesets, never CHANGELOG
-entries or version bumps.
+**Two versioning modes — the developer picks per run; default is CI.** On every push to
+`master`, `.github/workflows/release.yml` runs `changesets/action`: with unconsumed changesets
+it runs `pnpm version:packages` and opens/updates the "chore: version packages" PR; with none
+it publishes (`pnpm release`).
+- **CI (default).** Changesets stay pending on `dev`; this skill writes changesets, never
+  CHANGELOG entries or version bumps. Merge the release PR, then the bot's version PR.
+- **Local** — only when the developer's arguments ask for it ("version locally", "version the
+  packages", "skip the bot PR"). This skill runs `pnpm version:packages` on `dev` as the LAST
+  step, after the audit has written every changeset. `master` then receives no pending
+  changesets, so the merge publishes directly — no bot PR. **Hazard:** any changeset that lands
+  on `dev` after the bump and before the merge makes CI bump AGAIN on merge — how
+  `0.1.0-alpha.31` was skipped (npm went 30 → 32). The summary must say: merge `dev` → `master`
+  before anything else lands on `dev`.
 
 ## Preflight
 1. If `.agent/manifest.json` is missing → stop; tell the user to run `harness init`.
@@ -37,10 +42,11 @@ entries or version bumps.
 6. **Classify the working tree** (`git status --porcelain`):
    - **clean** — everything is committed;
    - **local version bump** — `.changeset/` deletions, `pre.json`, `CHANGELOG.md`s and
-     `package.json` version edits (someone ran `pnpm version:packages` locally). Flag it 🔴 at
-     the top of the summary: do not commit it; restore those paths
+     `package.json` version edits (someone ran `pnpm version:packages` locally). In **local**
+     mode this is expected only if it matches the pending set; otherwise (and always in **CI**
+     mode) flag it 🔴 at the top of the summary: do not commit it; restore those paths
      (`git restore .changeset 'packages/*/package.json' 'packages/*/CHANGELOG.md' apps/www/package.json packages/create-vexcms/templates`)
-     so CI versions on `master`;
+     and re-run;
    - **has uncommitted feature work** — anything else. Do not write a commit message for it;
      note it at the top of the summary ("run `commit` first") and treat those files as NOT part
      of the release.
@@ -74,8 +80,10 @@ entries or version bumps.
 2. **Write the release message** as `.agent/docs/session-log/YYYY/MM/YYYY-MM-DD.commit.N.md`
    (next free N):
    - Title: `release: <next version> — <3–5 headline features>`, the version from Preflight 7.
-   - Opening paragraph: range (`master` version → next version), commit count, and that the
-     version PR CI opens after the merge applies the bump and publishes on merge.
+   - Opening paragraph: range (`master` version → next version), commit count, and either
+     that the version PR CI opens after the merge applies the bump and publishes on merge
+     (**CI** mode), or that the bump is already committed and the merge publishes directly
+     (**local** mode).
    - One bold-headed paragraph per feature area across the whole range (not per commit),
      symbols named, behavior contrasted with before.
    - `**Changesets by package**` list — every pending changeset in the range, grouped by
@@ -86,11 +94,18 @@ entries or version bumps.
 3. **Ledger.** Append a `## HH:MM — <release title>` section to `.agent/docs/commits/MM-DD-YYYY.md`:
    raw path, a note that it is the `dev` → `master` PR title/body (not a commit), and any
    audit-fix commit block with its exact file list. Plain Markdown.
-4. **Summary.** 🔴 items first (local version bump, `dev` behind `master`, gate failures); then
-   the version range, the next version, changesets the audit added, docs files the audit
-   touched, the commit blocks in order, the full release message, and the reminder: merge the
-   PR, then review and merge the bot's "chore: version packages" PR to publish.
+4. **Local mode only — version.** Run `pnpm version:packages` (changeset version + template
+   version sync). Confirm every fixed-group `package.json` reads the Preflight-7 version and
+   `pnpm changeset status` reports nothing pending (in `pre` mode the changeset files stay;
+   `pre.json#changesets` records them as consumed). The bump rides the run's
+   commit (its files: the new changesets, `pre.json`, `CHANGELOG.md`s, `package.json`s, template
+   pins); name it in the commit body's `**Release.**` paragraph.
+5. **Summary.** 🔴 items first (unexpected local version bump, `dev` behind `master`, gate
+   failures); then the version range, the next version, changesets the audit added, docs files
+   the audit touched, the commit blocks in order, the full release message, and the reminder:
+   **CI** — merge the PR, then review and merge the bot's "chore: version packages" PR to
+   publish; **local** — merge the PR before anything else lands on `dev`; the merge publishes.
 
-Never run `git commit`, `git push`, `pnpm version:packages`, or open the PR unless
-`workflow.commit_mode` is `agent-commits` and the developer confirms (one question, as in
-`commit`) — and even then never run `pnpm version:packages`.
+Never run `git commit`, `git push`, or open the PR unless `workflow.commit_mode` is
+`agent-commits` and the developer confirms (one question, as in `commit`). Run
+`pnpm version:packages` only in **local** mode.
