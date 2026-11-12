@@ -174,7 +174,7 @@ function RichTextFieldAdminInner(props: FieldComponentProps<{}, RichTextField>) 
   const label = (
     <span
       id={`${props.name}-label`}
-      className="relative flex items-center gap-2 text-sm leading-none font-medium select-none"
+      className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]/field:opacity-50"
     >
       {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
       {props.fieldDef.label || props.name}

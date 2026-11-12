@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
 import { convexTest } from "convex-test";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +10,9 @@ import {
   LIST_VIEW_PEEK_UNAVAILABLE_TITLE,
   ListViewPeek,
 } from "./index";
-import { renderView } from "../../../../testing/harness/viewHarness";
+import { renderView, wrapWithViewProviders } from "../../../../testing/harness/viewHarness";
+import { VexConfigProvider } from "../../../../config/VexConfigContext";
+import { VexAuthProvider } from "../../../../auth/VexAuthContext";
 import { SIDEBAR_TRANSITION_CLASS, SidebarProvider } from "../../../../ui/sidebar";
 import schema, { testModules } from "../../../../testing/convex/schema";
 
@@ -160,6 +164,93 @@ describe("ListViewPeek", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Streamed doc").length).toBeGreaterThan(0);
     });
+  });
+
+  it("shows real field labels/keys and the ID row's real value immediately while the document is still pending, and the SAME rows persist once it resolves — the fallback is no longer a structurally unrelated placeholder", async () => {
+    const t = convexTest(schema, testModules);
+    const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Streamed doc", status: "published" }));
+
+    const { container } = renderView(
+      <ListViewPeek collection={peekCollection} peekId={id} rows={[]} onPeekChange={() => {}} width={384} onWidthChange={() => {}} activeTab="fields" onActiveTabChange={() => {}} />,
+      { convex: t, config: defineConfig({ collections: [peekCollection] }) },
+    );
+
+    // Asserted SYNCHRONOUSLY, before any `waitFor` — this is the exact
+    // pending frame the old fallback rendered 5 structurally unrelated
+    // `Skeleton` bars for (no labels, no tabs, no ID). `ListViewPeekFieldsTab`
+    // now mounts immediately with `document={undefined}`: the ID row shows
+    // the REAL `peekId` (known synchronously, no fetch needed for it), and
+    // every visible field's label/key render for real — only each field's
+    // VALUE slot is a `Skeleton`.
+    expect(within(container).getByText("ID")).toBeInTheDocument();
+    expect(within(container).getByText(id)).toBeInTheDocument();
+    expect(within(container).getByText("Status")).toBeInTheDocument();
+    expect(within(container).getByText("status")).toBeInTheDocument();
+    expect(within(container).getByRole("tab", { name: "Fields" })).toBeInTheDocument();
+    expect(within(container).getByRole("tab", { name: "JSON" })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Streamed doc").length).toBeGreaterThan(0);
+    });
+
+    // Same rows, same labels/keys, same tabs — now with real values instead
+    // of skeletons. Structural parity, not a before/after reshuffle.
+    expect(within(container).getByText("ID")).toBeInTheDocument();
+    expect(within(container).getByText(id)).toBeInTheDocument();
+    expect(within(container).getByText("Status")).toBeInTheDocument();
+    expect(within(container).getByText("status")).toBeInTheDocument();
+    expect(within(container).getByRole("tab", { name: "Fields" })).toBeInTheDocument();
+    expect(within(container).getByRole("tab", { name: "JSON" })).toBeInTheDocument();
+  });
+
+  it("reserves the position-text line's own height whether a real \"N of M\" string, a loading skeleton, or nothing (no row list to wrap within) fills it — the title block is never a different size", async () => {
+    const t = convexTest(schema, testModules);
+    const id0 = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0", status: "published" }));
+    const id1 = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 1", status: "published" }));
+    const rows: VexDocument[] = [
+      { _id: id0, _creationTime: Date.now(), title: "Doc 0", status: "published" },
+      { _id: id1, _creationTime: Date.now(), title: "Doc 1", status: "published" },
+    ];
+
+    function titleBlock(c: HTMLElement): Element {
+      const el = c.querySelector(".flex.shrink-0.items-center.gap-2 > .min-w-0.flex-1");
+      if (!el) throw new Error("title block not found");
+      return el;
+    }
+    function positionSlot(c: HTMLElement): Element {
+      const slot = titleBlock(c).lastElementChild;
+      if (!slot) throw new Error("position slot not found");
+      return slot;
+    }
+
+    // 1. Settled, a real row list to wrap within — the real "N of M" string.
+    const settled = renderView(
+      <ListViewPeek collection={peekCollection} peekId={id1} rows={rows} onPeekChange={() => {}} width={384} onWidthChange={() => {}} activeTab="fields" onActiveTabChange={() => {}} />,
+      { convex: t, config: defineConfig({ collections: [peekCollection] }) },
+    );
+    const settledSlot = positionSlot(settled.container);
+    expect(settledSlot.className).toContain("h-4");
+    expect(settledSlot.textContent).toMatch(/2 of 2/);
+    cleanup();
+
+    // 2. Pending (Suspense fallback) — the SAME reserved slot, a skeleton inside.
+    const pending = renderView(
+      <ListViewPeek collection={peekCollection} peekId={id1} rows={[]} onPeekChange={() => {}} width={384} onWidthChange={() => {}} activeTab="fields" onActiveTabChange={() => {}} />,
+      { convex: t, config: defineConfig({ collections: [peekCollection] }) },
+    );
+    const pendingSlot = positionSlot(pending.container);
+    expect(pendingSlot.className).toContain("h-4");
+    expect(pendingSlot.querySelector('[data-slot="skeleton"]')).toBeInTheDocument();
+
+    // 3. Settled, but no row list to wrap within at all (`rowIndex === -1`
+    // forever — the exact state the deep-linked peek above resolves into).
+    // The slot stays reserved, now genuinely empty — the title never
+    // resizes going from "a skeleton inside" to "nothing inside".
+    await waitFor(() => expect(screen.getAllByText("Doc 1").length).toBeGreaterThan(0));
+    const resolvedSlot = positionSlot(pending.container);
+    expect(resolvedSlot.className).toContain("h-4");
+    expect(resolvedSlot.textContent).toBe("");
+    expect(resolvedSlot.querySelector('[data-slot="skeleton"]')).not.toBeInTheDocument();
   });
 
   it("renders the same message for a not-found id as for a denied read", async () => {
@@ -757,6 +848,46 @@ describe("ListViewPeek", () => {
       expect(handle).toHaveAttribute("aria-valuenow", "400");
       expect(handle).toHaveAttribute("aria-valuemin", "320");
       expect(handle).toHaveAttribute("aria-valuemax", String(Math.round(window.innerWidth * 0.6)));
+    });
+
+    it("renders the SAME aria-valuemax on the server (no window) as on the client's first paint, independent of window.innerWidth — regression for a hydration mismatch (server always rendered 9007199254740991, the client the real clamped value)", async () => {
+      const t = convexTest(schema, testModules);
+      const id = await t.run((ctx) => ctx.db.insert("documents", { title: "Doc 0" }));
+      const row: VexDocument = { _id: id, _creationTime: Date.now(), title: "Doc 0" };
+      const config = defineConfig({ collections: [peekCollection] });
+      const tree = createElement(VexConfigProvider, {
+        config,
+        children: createElement(VexAuthProvider, {
+          value: { user: null },
+          children: wrapWithViewProviders(
+            createElement(ListViewPeek, {
+              collection: peekCollection,
+              peekId: id,
+              rows: [row],
+              onPeekChange: () => {},
+              width: 400,
+              onWidthChange: () => {},
+              activeTab: "fields",
+              onActiveTabChange: () => {},
+            }),
+            { convex: t, config },
+          ),
+        }),
+      });
+
+      const originalInnerWidth = window.innerWidth;
+      Object.defineProperty(window, "innerWidth", { value: 390, configurable: true });
+      const htmlAtNarrowWidth = renderToString(tree);
+      Object.defineProperty(window, "innerWidth", { value: 2560, configurable: true });
+      const htmlAtWideWidth = renderToString(tree);
+      Object.defineProperty(window, "innerWidth", { value: originalInnerWidth, configurable: true });
+
+      expect(htmlAtNarrowWidth).toBe(htmlAtWideWidth);
+      const [, serverValueMax] = htmlAtNarrowWidth.match(/aria-valuemax="(\d+)"/) ?? [];
+      expect(serverValueMax).toBe(String(Number.MAX_SAFE_INTEGER));
+
+      const { handle } = await renderResizable(vi.fn());
+      await waitFor(() => expect(handle).toHaveAttribute("aria-valuemax", String(Math.round(window.innerWidth * 0.6))));
     });
 
     it("shows a Reset peek width button on handle hover/focus, which clears the saved width", async () => {

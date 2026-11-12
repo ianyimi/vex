@@ -2,7 +2,6 @@ import { type GenericDataModel, GenericQueryCtx, GenericMutationCtx } from "conv
 import type { VexConfig } from "./config";
 import type {
   CollectionSlug,
-  GlobalPopulateShape,
   GlobalSlug,
   VexDataModel,
   VexDocumentGlobal,
@@ -11,6 +10,7 @@ import type {
 } from "./types/generated";
 import type {
   AccessCallOptions,
+  GlobalPopulateShape,
   PaginationOptions,
   PaginationResult,
   PopulateShape,

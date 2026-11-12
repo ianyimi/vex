@@ -221,6 +221,24 @@ export const access = defineAccess({
       },
     },
 
+    // ── Reviewer: read/update `fields` + admin, no access to `user` at all ──
+    // `fields` is the one resource this role names, so its `relatedUser`
+    // relationship (pointing at a `user` document) hits the default-deny
+    // posture for the unnamed `user` resource below — the `AccessDeniedItemRow`
+    // locked-row demo on that field.
+    [USER_ROLES.reviewer]: {
+      "*": false,
+      fields: {
+        "*": false,
+        read: true,
+        update: true,
+      },
+      adminPanel: {
+        access: true,
+        impersonate: false,
+      },
+    },
+
     // ── User: public reader ────────────────────────────────────────────────
     [USER_ROLES.user]: {
       "*": false,

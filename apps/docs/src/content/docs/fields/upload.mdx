@@ -165,3 +165,27 @@ indicator once `max` is set. `hasMany: false` allows only a single selection;
 list-view table, the cell shows the first file's thumbnail and filename with
 a `+N` badge when more than one file is attached; sorting is disabled since
 file references aren't meaningfully sortable.
+
+## Populating
+
+`populate`/`depth` resolve an `upload()` field's stored `Id`s into the real media
+document(s) — same mechanism `relationship()` uses:
+
+```ts
+get({ ctx, id, collection: "posts", populate: { featuredImage: true } });
+// featuredImage: Image[] — the real media document(s), not raw ids
+```
+
+This reaches an `upload()` field nested inside a `blocks()` block (keyed by the block's
+`blockType`), an `array()` item, or a `group()` — the same paths a nested `relationship()`
+field reaches. See the [blocks field guide](/fields/blocks/#populating-a-relationshipupload-field-nested-inside-a-block)
+for the nested-inside-a-block shape; a `group()`/`array()` nests the same way, without a
+block-slug level:
+
+```ts
+// `gallery` is an array(group()) field; `asset` is an upload() on each item.
+get({ ctx, id, collection: "pages", populate: { gallery: { asset: true } } });
+
+// `seo` is a plain group() field; `ogImage` is an upload() inside it.
+get({ ctx, id, collection: "pages", populate: { seo: { ogImage: true } } });
+```

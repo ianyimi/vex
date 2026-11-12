@@ -6,7 +6,13 @@ import { classifyTelemetryError, recordTelemetryEvent, TELEMETRY_DEV_TIMEOUT_MS 
 import { anonymizeConfig } from "@vexcms/telemetry/config";
 
 import { generateAndWrite, getOutputPath } from "../lib/generateSchema.js";
-import { killConvexDev, startConvexDev, waitForDeploy } from "../lib/convexProcess.js";
+import {
+  DEV_FINAL_ONLY_FLAGS,
+  killConvexDev,
+  startConvexDev,
+  stripConvexFlags,
+  waitForDeploy,
+} from "../lib/convexProcess.js";
 import { loadConfig, patchConvexTsconfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
 import { isServerConfigPath, resolveConfigPath } from "../lib/resolveConfigPath.js";
@@ -17,20 +23,28 @@ import { createWatcher } from "../lib/watcher.js";
 export interface DevOptions {
   once?: boolean;
   cwd?: string;
+  /** Flags forwarded verbatim to `convex dev` (see `parseCliArgs`). */
+  convexArgs?: string[];
 }
 
 /**
  * Run the `vex dev` workflow: load the config, generate the Convex schema,
- * patch `convex/tsconfig.json` for path aliases, start `convex dev`, and
- * watch the config's transitive imports to regenerate the schema on change.
+ * patch `convex/tsconfig.json` for path aliases, start `convex dev` with
+ * every forwarded flag, and watch the config's transitive imports to
+ * regenerate the schema on change.
  *
  * With `options.once`, generates and pushes the schema a single time (via a
- * standalone `convex dev --once` push) instead of starting the long-running
- * watch loop.
- * @param options - Run-mode and working-directory overrides for the dev command.
+ * standalone `convex dev --once` push carrying the forwarded flags) instead
+ * of starting the long-running watch loop. Interim auto-migration pushes in
+ * that mode drop `--run`/`--run-component`/`--start`, so those run once, on
+ * the final push.
+ * @param options - Run-mode, working-directory and Convex-flag overrides.
  */
 export async function devCommand(options: DevOptions = {}) {
   const cwd = options.cwd ? resolve(process.cwd(), options.cwd) : process.cwd();
+  const convexArgs = options.convexArgs ?? [];
+  const interimPush = (pushCwd: string) =>
+    waitForDeploy({ cwd: pushCwd, convexArgs: stripConvexFlags({ convexArgs, flags: DEV_FINAL_ONLY_FLAGS }) });
   let configPath: string;
   try {
     configPath = resolveConfigPath(cwd);
@@ -69,7 +83,7 @@ export async function devCommand(options: DevOptions = {}) {
   const schemaGenStart = performance.now();
   let result;
   try {
-    result = await generateAndWrite(config, cwd, configPath);
+    result = await generateAndWrite(config, cwd, configPath, { pushSchema: interimPush });
   } catch (error) {
     await recordTelemetryEvent({
       event: "dev",
@@ -98,7 +112,7 @@ export async function devCommand(options: DevOptions = {}) {
   // the longer `TELEMETRY_DEV_TIMEOUT_MS` since there's nothing left to do
   // but exit 0 either way.
   if (options.once) {
-    const ok = await waitForDeploy(cwd);
+    const ok = await waitForDeploy({ cwd, convexArgs });
     if (!ok) {
       logger.error("Schema push failed");
       await recordTelemetryEvent({
@@ -142,7 +156,7 @@ export async function devCommand(options: DevOptions = {}) {
     : null;
 
   // Start convex dev — this is the core of `vex dev`
-  startConvexDev(cwd);
+  startConvexDev({ cwd, convexArgs });
 
   // Wait for the first deployment. On success, stop the tsconfig watcher
   // (no longer needed). On failure, the watcher already patched the file
@@ -150,7 +164,7 @@ export async function devCommand(options: DevOptions = {}) {
   // only now — after the first push resolves, not before it starts — same
   // race-avoidance reason as the `--once` branch above; fire-and-forget
   // here since the process keeps running the watch loop afterward.
-  waitForDeploy(cwd)
+  waitForDeploy({ cwd })
     .then(async (deployed) => {
       // Stop watching — Convex only overwrites tsconfig during provisioning
       tsconfigWatcher?.close();
@@ -197,7 +211,7 @@ export async function devCommand(options: DevOptions = {}) {
 
     try {
       config = await loadConfig({ configPath, projectDir: cwd });
-      const genResult = await generateAndWrite(config, cwd, configPath);
+      const genResult = await generateAndWrite(config, cwd, configPath, { pushSchema: interimPush });
 
       if (genResult.written) {
         logger.success(`Regenerated ${config.schema.outputPath}`);

@@ -107,24 +107,28 @@ export const LIST_VIEW_PEEK_UNAVAILABLE_DESCRIPTION =
  *   screen readers still read the hidden description text on entering
  *   the landmark either way).
  *
- * `top-12`/`z-40` (desktop) and `top-10`/`rounded-t-xl` (mobile) match
- * the SAME values the two previous separate elements used — `top-12`
- * is `AdminTopNav.tsx`'s own `h-12` header height (confirmed live: the
- * header doesn't span the full viewport width in every layout state, so
- * an explicit offset is needed rather than relying on z-index alone);
- * `top-10` leaves the mobile top-bar's own shorter strip visible, same
- * as `LivePreviewMobileOverlay`'s own bottom sheet. The desktop width is
- * a CSS custom property (`--peek-width`, set inline from `props.width`)
- * consumed ONLY by the `md:w-[var(--peek-width)]` utility — an inline
- * `style` always wins over a class, so gating the WIDTH RULE itself
- * behind `md:` (rather than gating the style object in JS, which can't
- * know the viewport server-side) is what keeps the mobile shape full-width
- * regardless of the resolved desktop width.
+ * `top-[var(--vex-topbar-h,67px)]`/`z-40` (desktop) and `top-10`/`rounded-t-xl` (mobile)
+ * match the SAME values the two previous separate elements used. The desktop offset reads
+ * `--vex-topbar-h` — `AdminTopNav.tsx`'s own measured rendered height, published via a
+ * `ResizeObserver` on `document.documentElement` — rather than a hardcoded pixel guess,
+ * which silently went stale the last time the top bar's height changed (measured
+ * regression: this panel's title row clipped behind a taller bar until the hardcoded guess
+ * was separately, manually updated); `67px` is only the fallback for the one frame before
+ * that effect's first measurement commits. An explicit offset is needed at all (rather than
+ * relying on z-index alone) because the header doesn't span the full viewport width in
+ * every layout state. `top-10` (mobile) leaves the mobile top-bar's own shorter strip
+ * visible, same as `LivePreviewMobileOverlay`'s own bottom sheet — a deliberate decorative
+ * reveal strip, NOT derived from the top bar's real height, so it does not read the same
+ * CSS var. The desktop width is a CSS custom property (`--peek-width`, set inline from
+ * `props.width`) consumed ONLY by the `md:w-[var(--peek-width)]` utility — an inline `style`
+ * always wins over a class, so gating the WIDTH RULE itself behind `md:` (rather than
+ * gating the style object in JS, which can't know the viewport server-side) is what keeps
+ * the mobile shape full-width regardless of the resolved desktop width.
  */
 const LIST_PEEK_PANEL_CLASSNAME = cn(
   "fixed inset-x-0 bottom-0 top-10 z-40 flex flex-col gap-0 overflow-hidden rounded-t-xl border-t border-border bg-popover shadow-lg",
   "transition-[transform,opacity] duration-200 ease-in-out starting:translate-y-10 starting:opacity-0",
-  "md:inset-x-auto md:top-12 md:right-[var(--peek-sidebar-offset)] md:bottom-0 md:left-auto md:w-[var(--peek-width)] md:rounded-none md:border-t-0 md:border-l",
+  "md:inset-x-auto md:top-[var(--vex-topbar-h,67px)] md:right-[var(--peek-sidebar-offset)] md:bottom-0 md:left-auto md:w-[var(--peek-width)] md:rounded-none md:border-t-0 md:border-l",
   "md:starting:translate-y-0 md:starting:opacity-100",
 );
 
@@ -461,6 +465,24 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  // Seeded `undefined` (never a direct `window.innerWidth` read) so the server render
+  // and the client's FIRST render produce IDENTICAL output — `clampPeekWidth` below
+  // treats `undefined` as "not yet measured" and returns `width` itself unclamped,
+  // exactly like the server's own unclamped render. Measured once on mount and kept
+  // live on resize, same pattern as `useLivePreviewPanelMinSize`'s own
+  // `ResizeObserver`-backed `minSizes` state — a hydration mismatch here previously
+  // showed up as React warning about `aria-valuemax` disagreeing between server
+  // (`Number.MAX_SAFE_INTEGER`, from a `typeof window === "undefined"` branch) and
+  // client (the real clamped value), because that branch ran DURING render instead of
+  // after mount.
+  const [viewportWidth, setViewportWidth] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const measure = () => setViewportWidth(window.innerWidth);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
   const dataFields = useMemo(
     () => getDataFields({ fields: props.collection.fields }),
     [props.collection.fields],
@@ -484,14 +506,20 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
   const [resizeHovered, setResizeHovered] = useState(false);
   const resizeActive = resizeHovered || liveDragWidth !== null;
 
+  /**
+   * Clamps `width` to `[PEEK_PANEL_MIN_WIDTH_PX, 60% of the AVAILABLE width]` — available
+   * meaning the viewport minus the sidebar's own current pixel width when it collides with
+   * this panel (a RIGHT-side, non-mobile sidebar), so growing the panel can never visually
+   * reach into the sidebar's own area even at its most generous clamp. Renders `width`
+   * unclamped while `viewportWidth` is still `undefined` (not yet measured), matching the
+   * server's own render exactly.
+   *
+   * @param width - The candidate width (a drag delta, a keyboard step, or `props.width`).
+   * @returns `width` clamped into the allowed range.
+   */
   function clampPeekWidth(width: number): number {
-    // Subtracts the sidebar's own current pixel width first (when it
-    // collides with this panel, i.e. a RIGHT-side, non-mobile sidebar) —
-    // the 60% cap is of the AVAILABLE width, not the full viewport, so
-    // growing the panel can never visually reach into the sidebar's own
-    // area even at its most generous clamp.
-    const availableWidth = typeof window === "undefined" ? width : window.innerWidth - sidebarOffsetPx;
-    const maxWidth = typeof window === "undefined" ? width : availableWidth * PEEK_PANEL_MAX_WIDTH_VIEWPORT_FRACTION;
+    const availableWidth = viewportWidth === undefined ? width : viewportWidth - sidebarOffsetPx;
+    const maxWidth = viewportWidth === undefined ? width : availableWidth * PEEK_PANEL_MAX_WIDTH_VIEWPORT_FRACTION;
     return Math.round(Math.min(maxWidth, Math.max(PEEK_PANEL_MIN_WIDTH_PX, width)));
   }
 
@@ -601,17 +629,27 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
   // same structural rule `RenderFields`'s `isFieldEntryVisible` and
   // `useFieldCondition`'s pure `isFieldConditionMet` apply in the edit
   // view, just evaluated once against this fixed document instead of live
-  // form state (there is no form here to watch).
+  // form state (there is no form here to watch). Evaluated against `{}`
+  // (never bailing to `{}` wholesale) while `document` is `null`/`undefined`
+  // — `isFieldConditionMet` itself already returns `true` for any field with
+  // no `admin.condition` regardless of `data`, so the common case (no
+  // conditional fields at all) still resolves its FULL field set during the
+  // Suspense-fallback/not-found states, which is exactly what lets the
+  // fallback below render one real row per field instead of a generic
+  // placeholder. A genuinely conditional field best-effort evaluates
+  // against empty data until the real document lands (recomputes instantly
+  // once it does); hiding it until then would require knowing its answer in
+  // advance, which only the real document can provide.
   const conditionFields = useMemo(() => {
-    if (document == null) return {};
     const result: Record<string, AdminDataField> = {};
+    const conditionData = (document ?? {}) as Record<string, unknown>;
     for (const [key, field] of Object.entries(dataFields)) {
       if (field.admin.hidden) continue;
       if (
         !isFieldConditionMet({
           field,
-          data: document as Record<string, unknown>,
-          siblingData: document as Record<string, unknown>,
+          data: conditionData,
+          siblingData: conditionData,
         })
       ) {
         continue;
@@ -662,6 +700,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
   const canNavigateRows = props.rowIndex !== -1 && props.rows.length > 1;
   const previousRowIndex = props.rowIndex === 0 ? props.rows.length - 1 : props.rowIndex - 1;
   const nextRowIndex = props.rowIndex === props.rows.length - 1 ? 0 : props.rowIndex + 1;
+  const isPending = document === undefined;
   const titleValue =
     document != null
       ? String((document as Record<string, unknown>)[props.collection.admin.useAsTitle] ?? document._id)
@@ -674,16 +713,40 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
   // of their own (unlike the mobile `Sheet`'s Esc/backdrop).
   const header = (
     <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
-      {titleValue !== undefined ? (
+      {titleValue !== undefined || isPending ? (
         <>
-          <PeekInitialsAvatar title={titleValue} icon={props.collection.admin.icon} />
+          {titleValue !== undefined ? (
+            <PeekInitialsAvatar title={titleValue} icon={props.collection.admin.icon} />
+          ) : (
+            <Skeleton className="size-8 shrink-0 rounded-full" />
+          )}
+          {/*
+           * BOTH lines' height is reserved unconditionally — the title's own
+           * line, then a fixed `h-4` slot for the position text — so this
+           * block is the SAME height whether the position text is a real
+           * string, a loading skeleton, or (a deep-linked peek with no row
+           * list to wrap within, `props.rowIndex === -1`) genuinely absent.
+           * Toggling that second line in/out used to resize this block and
+           * re-center the title against the header's own `items-center`
+           * cross-axis — confirmed live (diffing the title's own measured
+           * rect with/without the line: a 6px title shift, 53px→49px header
+           * height).
+           */}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{titleValue}</p>
-            {props.rowIndex !== -1 ? (
-              <p className="text-xs text-muted-foreground">
-                {props.collection.labels.singular} · {props.rowIndex + 1} of {props.rows.length}
-              </p>
-            ) : null}
+            {titleValue !== undefined ? (
+              <p className="truncate text-sm font-medium">{titleValue}</p>
+            ) : (
+              <Skeleton className="h-5 w-2/3" />
+            )}
+            <div className="h-4">
+              {titleValue !== undefined && props.rowIndex !== -1 ? (
+                <p className="text-xs text-muted-foreground">
+                  {props.collection.labels.singular} · {props.rowIndex + 1} of {props.rows.length}
+                </p>
+              ) : isPending ? (
+                <Skeleton className="h-3 w-28" />
+              ) : null}
+            </div>
           </div>
           <Button
             variant="ghost"
@@ -722,22 +785,20 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
     </div>
   );
 
+  // Not-found/denied is the ONLY state that diverges structurally — the
+  // Fields/JSON tabs below need a document's actual KEYS to exist at all,
+  // which a genuinely missing document never has. A pending one (`undefined`,
+  // the Suspense fallback) renders this SAME tree: `ListViewPeekFieldsTab`
+  // accepts `document: TDocument | undefined` and swaps each field's VALUE
+  // slot for a `Skeleton` internally, `ListViewPeekJsonTab` already carried
+  // its own independent `rawDocument`-pending skeleton — so the fallback is
+  // never a second, hand-maintained tree that can drift from the loaded one.
   let content: ReactNode;
   if (document === null) {
     content = (
       <div className="flex flex-1 flex-col items-center justify-center gap-1 p-6 text-center">
         <p className="text-sm font-medium">{LIST_VIEW_PEEK_UNAVAILABLE_TITLE}</p>
         <p className="text-sm text-muted-foreground">{LIST_VIEW_PEEK_UNAVAILABLE_DESCRIPTION}</p>
-      </div>
-    );
-  } else if (document === undefined) {
-    content = (
-      <div className="flex flex-col gap-2 p-3">
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-full" />
       </div>
     );
   } else {
@@ -773,6 +834,7 @@ function ListPeekPanel<TDocument extends VexDocument = VexDocument>(
           </TabsList>
           <TabsContent value="fields" className="flex min-h-0 flex-1 flex-col">
             <ListViewPeekFieldsTab
+              peekId={props.peekId}
               document={document}
               visibleFieldEntries={visibleFieldEntries}
               canReadField={canReadField}

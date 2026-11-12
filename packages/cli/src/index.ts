@@ -9,7 +9,7 @@ const { command, once, json, cwd, telemetryAction, convexArgs } = parseCliArgs(p
 
 switch (command) {
   case "dev":
-    devCommand({ once, cwd }).catch((err) => {
+    devCommand({ once, cwd, convexArgs }).catch((err) => {
       logger.error("Fatal error", err);
       process.exit(1);
     });
@@ -42,8 +42,10 @@ Usage: vex <command>
 
 Commands:
   dev [options]       Generate vex schema, start convex dev, and watch for
-                      collection config changes. Run your app server (e.g.
-                      next dev) in a separate terminal.
+                      collection config changes. Replaces \`convex dev\`. Any
+                      flag vex doesn't own (--tail-logs, --run, --configure,
+                      --env-file, ...) forwards straight through to \`convex
+                      dev\`; --start '<cmd>' runs your app server alongside.
   deploy [options]    Generate schema, auto-migrate if enabled, and deploy
                       to production. Replaces \`convex deploy\` in CI. Any
                       flag vex doesn't own (--cmd, --preview-create, ...)

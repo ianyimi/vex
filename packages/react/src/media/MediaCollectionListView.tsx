@@ -154,10 +154,17 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
         fallback={
           // Real loading state, not a separate skeleton file: the SAME `DataTable` the
           // settled content renders, with `isPending` driving its own real skeleton rows/
-          // footer — same columns (same pattern as `CollectionListView.tsx`).
-          <div className="grid place-items-center rounded-md border">
-            <DataTable data={[]} columns={columns} isPending isDone={false} enableRowSelection={canDelete} />
-          </div>
+          // footer — same columns (same pattern as `CollectionListView.tsx`). No wrapper
+          // div here (unlike an earlier version of this file): `DataTable`'s own root
+          // already renders `rounded-md border` and owns its own horizontal scroll
+          // containment — a `grid place-items-center` wrapper around it left the grid
+          // item unstretched, so the table centered at its full unclamped intrinsic width
+          // (every column's declared/default px width summed) instead of being clamped to
+          // the available column width, overflowing the viewport equally on both sides
+          // whenever that sum exceeded it (most visibly for an anonymous session, which
+          // has no saved per-field column-width cookie and so renders every column at
+          // `DEFAULT_COLUMN_WIDTH_PX`).
+          <DataTable data={[]} columns={columns} isPending isDone={false} enableRowSelection={canDelete} />
         }
       >
         <MediaCollectionListViewData
@@ -276,21 +283,27 @@ function MediaCollectionListViewData(props: {
               isDeleting={deleteMediaMutation.isPending}
             />
           )}
-          <div className="grid place-items-center rounded-md border">
-            <DataTable
-              data={pagination.results}
-              columns={props.columns}
-              isDone={pagination.isDone}
-              onLoadMore={() => pagination.loadMore()}
-              isLoadingMore={pagination.isPending}
-              totalCount={pagination.totalDocs}
-              totalDocsCapped={pagination.totalDocsCapped}
-              enableRowSelection={props.canDelete}
-              selectedIds={props.selectedIds}
-              onSelectionChange={props.setSelectedIds}
-              isPending={pagination.isPending}
-            />
-          </div>
+          {/*
+           * No wrapper div here — see the `Suspense` fallback's identical `DataTable`
+           * above for why a `grid place-items-center` wrapper was removed: it left this
+           * grid item unstretched, so the table rendered at its full unclamped intrinsic
+           * width (centered, overflowing the viewport equally on both sides) instead of
+           * being clamped to the available column width. `DataTable`'s own root already
+           * supplies `rounded-md border` and owns its own horizontal scroll containment.
+           */}
+          <DataTable
+            data={pagination.results}
+            columns={props.columns}
+            isDone={pagination.isDone}
+            onLoadMore={() => pagination.loadMore()}
+            isLoadingMore={pagination.isPending}
+            totalCount={pagination.totalDocs}
+            totalDocsCapped={pagination.totalDocsCapped}
+            enableRowSelection={props.canDelete}
+            selectedIds={props.selectedIds}
+            onSelectionChange={props.setSelectedIds}
+            isPending={pagination.isPending}
+          />
           <DataTableBulkDeleteModal
             open={deleteModalOpen}
             onOpenChange={setDeleteModalOpen}

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Draggable, DragHandle, Droppable, Skeleton } from "../../ui";
+import { AccessDeniedItemRow } from "../../access";
 import { useQuery } from "@tanstack/react-query";
 import {
   CollectionConfig,
@@ -180,27 +181,38 @@ function UploadItemRow({
   });
   const mediaDoc = doc as VexMediaDocument | null | undefined;
 
-  const accessError = (error as ReturnType<typeof useQuery<any, VexAccessError>>["error"])?.data;
+  const errorData = (error as ReturnType<typeof useQuery<any, VexAccessError>>["error"])?.data;
+  const isAccessDenied = errorData?.code === "ACCESS_DENIED";
+  const config = useVexConfig();
+  const mediaLabel =
+    config.mediaCollections.find((mc) => mc.slug === collection)?.labels.singular ?? collection;
   return (
     <div className="flex items-center justify-between gap-2 rounded border-2 border-border px-2">
       <div className="flex min-w-0 flex-1 items-center gap-2 font-mono">
         {showDragHandle && (
           <DragHandle
-            disabled={readOnly || Boolean(accessError)}
+            disabled={readOnly || Boolean(errorData)}
             aria-label={`Reorder ${mediaDoc?.filename ?? "item"}`}
           />
         )}
         {!mediaDoc ? (
-          !accessError ? (
+          !errorData ? (
             <Skeleton className="h-12 w-12" />
+          ) : isAccessDenied ? (
+            <AccessDeniedItemRow
+              resource={errorData.resource}
+              action={errorData.action}
+              field={errorData.field}
+              label={mediaLabel}
+            />
           ) : (
-            <p className="w-full text-center text-destructive">{accessError.message}</p>
+            <p className="w-full text-center text-destructive">{errorData.message}</p>
           )
         ) : (
           <FilePreview mediaDoc={mediaDoc} size={44} radius={3} isPending={isPending} />
         )}
         {!mediaDoc ? (
-          !accessError ? (
+          !errorData ? (
             <div className="flex flex-col gap-2">
               <Skeleton className="h-4 w-xs" />
               <Skeleton className="h-4 w-xs" />
@@ -219,7 +231,7 @@ function UploadItemRow({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {!mediaDoc ? (
-          !accessError ? (
+          !errorData ? (
             <Skeleton className="h-8 w-[200px]" />
           ) : null
         ) : (
@@ -238,7 +250,7 @@ function UploadItemRow({
           type="button"
           title="Remove"
           onClick={onRemove}
-          disabled={readOnly || Boolean(accessError)}
+          disabled={readOnly || Boolean(errorData)}
           icon="X"
           iconPosition="center"
         />

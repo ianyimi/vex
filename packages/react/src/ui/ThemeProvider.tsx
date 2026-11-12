@@ -24,6 +24,18 @@ interface ThemeContextValue {
   resolvedTheme: "light" | "dark";
   /** Set the theme and persist to localStorage. */
   setTheme: (theme: Theme) => void;
+  /**
+   * `false` on the server AND on the client's FIRST render (identical both
+   * sides — this state literally starts `false` and only ever flips via an
+   * effect, which never runs during SSR and never runs before hydration's
+   * own first client render either), `true` from the moment client effects
+   * have run once. `ThemeToggle` (`./ThemeToggle.tsx`) gates its icon on
+   * this — not on `theme`/`resolvedTheme` directly — so a caller that reads
+   * anything client-only to pick an icon (a persisted theme, an OS
+   * preference) can never produce a server/first-client-render mismatch:
+   * every such read only ever happens inside an effect, after this flips.
+   */
+  mounted: boolean;
 }
 
 export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -123,13 +135,18 @@ export function ThemeProvider({
 } & ComponentPropsWithRef<"div">) {
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
+  const [mounted, setMounted] = useState(false);
 
-  // Load the persisted theme on mount, if it is readable at all.
+  // Load the persisted theme on mount, if it is readable at all. Also flips
+  // `mounted` — both are gated on this SAME effect because both represent
+  // "client-only state is now safe to read": `ThemeToggle` must not pick an
+  // icon off a persisted/OS-level preference before this has run.
   useIsomorphicLayoutEffect(() => {
     const stored = readStoredTheme(storageKey);
     if (stored) {
       setThemeState(stored);
     }
+    setMounted(true);
   }, [storageKey]);
 
   useIsomorphicLayoutEffect(() => {
@@ -164,7 +181,7 @@ export function ThemeProvider({
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, mounted }}>
       <div {...divProps}>{children}</div>
     </ThemeContext.Provider>
   );

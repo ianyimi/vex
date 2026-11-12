@@ -165,6 +165,8 @@ export async function get<
     effectivePopulate,
     wantsDrafts,
     args.config,
+    access,
+    args.auth,
   );
 
   return (populated ?? null) as unknown as GetReturn<TCollectionSlug, TPopulate, D>;

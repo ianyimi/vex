@@ -95,6 +95,27 @@ runFieldCellContractSuite({
           screen.getByText(`2 ${relationshipTargetCollection.labels.plural}`),
         ).toBeInTheDocument();
       });
+
+      it("renders AccessDeniedItemRow's lock for a single HiddenDocument placeholder (populateDocs denied target)", () => {
+        const populated = [
+          { _id: "doc_a", code: "ACCESS_DENIED", resource: "documents", action: "read" },
+        ];
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value: populated });
+        render(
+          withConfig(
+            <RelationshipFieldCell
+              value={populated}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
+        );
+        expect(screen.getByText(`Hidden ${relationshipTargetCollection.labels.singular}`)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Requires documents/read" })).toBeInTheDocument();
+      });
     });
 
     // No `isMounted` hydration gate (removed — see Cell.tsx's JSDoc):

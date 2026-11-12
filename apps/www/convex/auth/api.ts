@@ -25,14 +25,18 @@ export const getUserOrg = query({
       config,
       id: identity.sessionId as SessionID,
       collection: TABLE_SLUG_SESSIONS,
+      access: { bypass: true },
     });
     if (!session) {
       return empty;
     }
-    const user = await get({ ctx, config, id: identity.subject as UserID, collection: TABLE_SLUG_USERS });
-    if (!user) {
-      return empty;
-    }
+    const user = await get({
+      ctx,
+      config,
+      id: identity.subject as UserID,
+      collection: TABLE_SLUG_USERS,
+      access: { bypass: true },
+    });
     return { user, organization: undefined };
   },
 });

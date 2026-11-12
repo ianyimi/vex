@@ -2,9 +2,21 @@ import type {
   PaginationOptions as ConvexPaginationOptions,
   PaginationResult as ConvexPaginationResult,
 } from "convex/server";
+import type { GenericId } from "convex/values";
 
 import { ADMIN_FIELDS, CheckboxFieldType, DateFieldType, NumberFieldType, SelectFieldType, TextFieldType, type AdminFieldType } from "../fields";
-import type { CollectionsFieldTypeMap, CollectionSlug, CustomActionsBySlug, DocumentBySlug } from "../types/generated";
+import type {
+  CollectionsFieldTypeMap,
+  CollectionsPopulateMap,
+  CollectionSlug,
+  CustomActionsBySlug,
+  DocumentBySlug,
+  GlobalDocumentBySlug,
+  GlobalRelationshipKeysOf,
+  GlobalRelationshipTargetOf,
+  GlobalSlug,
+  PopulateMapEntry,
+} from "../types/generated";
 import { QueryAction, DraftAction, CrudAction } from "../access/constants";
 
 /**
@@ -156,54 +168,326 @@ export type RelationshipTargetOf<
   : CollectionSlug;
 
 /**
- * Recursive populate options, type-restricted to relationship field keys per
- * the augmented `CollectionsFieldTypeMap` registry.
+ * Resolves the populate OPTION type for one {@link PopulateMapEntry} —
+ * the value a caller may put at a given key once `PopulateShape`/
+ * `ContainerPopulateShape` has located it in the field tree.
  *
- * @typeParam TCollectionSlug - The collection slug to narrow relationship keys against.
- *   Defaults to the full `CollectionSlug` union for internal recursive use.
+ * - `relationship` / `upload` — a leaf: `true` (populate, no further
+ *   recursion) or `{ populate: PopulateShape<Target> }` (populate AND
+ *   recurse into the target's own relationships).
+ * - `group` — the group's OWN nested container shape, applied directly
+ *   (no `{ populate }` wrapper — a group is part of THIS document, not a
+ *   separate target collection to recurse into).
+ * - `blocks` — an object keyed by each block's `blockType` slug, each
+ *   value that block's own nested container shape.
+ *
+ * @typeParam TEntry - One {@link CollectionsPopulateMap} leaf/container entry.
  */
-export type PopulateShape<TCollectionSlug extends CollectionSlug = CollectionSlug> = {
-  [K in RelationshipKeysOf<TCollectionSlug>]?:
-    | true
-    | {
-        populate: PopulateShape<RelationshipTargetOf<TCollectionSlug, K>>;
-      };
+export type PopulateOptionForEntry<TEntry extends PopulateMapEntry> = TEntry extends {
+  kind: "relationship" | "upload";
+  target: infer Target extends string;
+}
+  ? Target extends CollectionSlug
+    ? true | { populate: PopulateShape<Target> }
+    : true
+  : TEntry extends { kind: "group"; fields: infer TFields extends Record<string, PopulateMapEntry> }
+    ? ContainerPopulateShape<TFields>
+    : TEntry extends {
+          kind: "blocks";
+          blocks: infer TBlocks extends Record<string, Record<string, PopulateMapEntry>>;
+        }
+      ? { [B in keyof TBlocks]?: ContainerPopulateShape<TBlocks[B]> }
+      : never;
+
+/**
+ * Populate options for one container level of the field tree — a
+ * collection's top-level fields, a `group()`'s own sub-fields, or one
+ * `blocks()` block type's own fields. Keyed by {@link PopulateMapEntry}
+ * map (built by `fieldsToPopulateMap` at `vex generate` time), so only
+ * keys that actually resolve to a relationship/upload field (at any
+ * nesting depth) are legal here.
+ *
+ * @typeParam TMap - A {@link CollectionsPopulateMap} entry's nested map
+ *   (or the top-level per-collection map itself).
+ */
+export type ContainerPopulateShape<TMap extends Record<string, PopulateMapEntry>> = {
+  [K in keyof TMap]?: PopulateOptionForEntry<TMap[K]>;
 };
 
 /**
- * Result type of a populated query — `Doc<TCollectionSlug>` with each key listed in
- * `TPopulate` replaced from `Id<TargetSlug>[]` to `Doc<TargetSlug>[]`.
- * Recurses if the populate value has a nested `populate` field (D12: unbounded
- * nesting).
+ * Resolves `TCollectionSlug`'s populate map from the augmented
+ * `CollectionsPopulateMap` registry, falling back to an empty map when the
+ * slug isn't registered (pre-`vex generate`, or an internal recursive use
+ * with the full `CollectionSlug` union).
  *
- * Keys not in `TPopulate` keep their original `Id[]` type. Non-relationship
- * keys are left untouched.
+ * Factored out so `PopulateShape`'s own immediate form is a plain mapped
+ * type (`ContainerPopulateShape<...>`), not a conditional — a generic
+ * `TPopulate extends PopulateShape<TCollectionSlug> = {}`-style default
+ * (used throughout `collections/api/types.ts`/`server.ts`) is checked
+ * against `PopulateShape`'s OWN unresolved form, and a conditional at that
+ * outermost position fails to resolve for an abstract `TCollectionSlug` —
+ * even `{}` stops satisfying it. A plain mapped type whose KEY DOMAIN is
+ * computed via a conditional (here, inside this helper) does not have that
+ * problem, matching every other field-type-map-driven shape in this file
+ * (`RelationshipKeysOf` et al.) that already did it this way.
+ */
+type PopulateMapFor<TCollectionSlug extends CollectionSlug> =
+  TCollectionSlug extends keyof CollectionsPopulateMap ? CollectionsPopulateMap[TCollectionSlug] : {};
+
+/**
+ * Recursive populate options for `TCollectionSlug`, type-restricted to
+ * paths the augmented `CollectionsPopulateMap` registry (populated by
+ * `vex generate`) resolves to a relationship or upload field — including
+ * one nested inside a `group()`, an `array()` item, or a `blocks()` block
+ * (keyed by `blockType`). `tabs()`/`row()`/`collapsible()` need no special
+ * handling: `CollectionsPopulateMap` is built from `getDataFields`, which
+ * already hoists their fields to the containing level.
+ *
+ * @example
+ * ```ts
+ * // `content` is a blocks() field; `hero` is a block's `blockType`;
+ * // `image` is an upload() field declared on that block.
+ * populate: { content: { hero: { image: true } } }
+ * ```
+ *
+ * @typeParam TCollectionSlug - The collection slug to narrow populatable
+ *   paths against. Defaults to the full `CollectionSlug` union for
+ *   internal recursive use (a relationship/upload target).
+ */
+export type PopulateShape<TCollectionSlug extends CollectionSlug = CollectionSlug> = ContainerPopulateShape<
+  PopulateMapFor<TCollectionSlug>
+>;
+
+/**
+ * Placeholder `populateDocs` substitutes for a populated relationship/upload
+ * target the caller's resolved read decision denies, in place of the real
+ * `Doc<TargetSlug>` — same seam `AccessDeniedItemRow` already renders for a
+ * direct `get()` on a relationship/upload field's own id, now reached
+ * through a populated field too.
+ *
+ * Carries just enough to render a locked row without ever exposing the
+ * target document's own fields: `_id` (so a list key / remove action still
+ * has something to key off), and the same `{ code, resource, action }` shape
+ * `VexAccessError.data` carries for a direct denied read. A denial that is
+ * only FIELD-scoped (the caller may read the target doc, just not every
+ * field on it) never produces this — the target doc comes back with the
+ * denied fields stripped by `stripDeniedFields` instead, same as a direct
+ * `get`/`find`/`search` read.
+ *
+ * @typeParam TResource - The target collection's slug.
+ */
+export interface HiddenDocument<TResource extends string = string> {
+  /** The target document's own id, never stripped. */
+  _id: GenericId<TResource>;
+  /** Always `"ACCESS_DENIED"` — mirrors `VexAccessError.data.code`. */
+  code: "ACCESS_DENIED";
+  /** The denied target collection's slug. */
+  resource: TResource;
+  /** Always `"read"` — populate only ever resolves a target for reading. */
+  action: "read";
+}
+
+/**
+ * Result type of a populated query — `DocumentBySlug[TCollectionSlug]` with
+ * each path listed in `TPopulate` replaced from raw `Id[]` to resolved
+ * `Doc[]`, including a path nested inside a `group()`, an `array()` item,
+ * or a `blocks()` block (keyed by `blockType`). Unlisted keys — at any
+ * level — keep their original type untouched.
+ *
+ * Recurses through a leaf's own `{ populate: ... }` (D12: unbounded
+ * nesting across target collections) and transparently through every
+ * `group`/`blocks` container {@link CollectionsPopulateMap} describes,
+ * driven structurally by `TPopulate` rather than walking the field tree
+ * again — the same map `PopulateShape` itself is restricted against.
+ *
+ * Each populated array's element type also includes {@link HiddenDocument} —
+ * `populateDocs` applies the target collection's own read rule (and
+ * field-permission map) to every resolved target, exactly as a direct `get`
+ * on that collection would, so a caller without read access on the target
+ * gets a placeholder in its place rather than the document's real fields.
  */
 export type Populated<
   TCollectionSlug extends CollectionSlug,
   TPopulate extends PopulateShape<TCollectionSlug>,
 > = TCollectionSlug extends keyof DocumentBySlug
+  ? TCollectionSlug extends keyof CollectionsPopulateMap
+    ? ApplyContainerPopulate<DocumentBySlug[TCollectionSlug], CollectionsPopulateMap[TCollectionSlug], TPopulate>
+    : DocumentBySlug[TCollectionSlug]
+  : never;
+
+/**
+ * Unconstrained counterpart of {@link Populated} for `DepthPopulated`'s own
+ * use — `TPopulate` carries NO `extends PopulateShape<TCollectionSlug>`
+ * bound.
+ *
+ * `DepthPopulate`'s own walk is ALWAYS a valid `PopulateShape` by
+ * construction, so nothing needs to re-verify it — but `Populated`'s own
+ * constrained second parameter forced exactly that (via an
+ * `& PopulateShape<TCollectionSlug>` bridge, needed only because
+ * `DepthPopulate`'s mapped-type key domain is a separate, though
+ * equivalent, expression from `PopulateShape`'s own — see `DepthPopulate`'s
+ * own doc comment). That bridge multiplies TWO already-recursive container
+ * walks (the depth walk AND the populate-shape walk) together for every
+ * instantiation, which overflows TypeScript's instantiation depth limit
+ * (`TS2589`) on a real, many-collection project — `DepthPopulate`'s OWN
+ * "practical depth limit: 3" note is about ITS OWN recursion; the
+ * intersection bridge made the COMBINED cost worse than either alone.
+ *
+ * Internal-use only — never accept arbitrary caller-supplied `TPopulate`
+ * through this alias; it has no key-safety checking at all.
+ */
+export type ApplyDepthPopulate<TCollectionSlug extends CollectionSlug, TPopulate> =
+  TCollectionSlug extends keyof DocumentBySlug
+    ? TCollectionSlug extends keyof CollectionsPopulateMap
+      ? ApplyContainerPopulate<DocumentBySlug[TCollectionSlug], CollectionsPopulateMap[TCollectionSlug], TPopulate>
+      : DocumentBySlug[TCollectionSlug]
+    : never;
+
+/**
+ * Applies `TOpt` (a {@link ContainerPopulateShape} value) over `TValue` (the
+ * real document/group/block-item shape at this same container level),
+ * guided by `TMap` (the matching {@link CollectionsPopulateMap} entry map).
+ * Every key of `TValue` is preserved; only keys both present in `TMap` AND
+ * requested in `TOpt` are replaced. @see {@link Populated}
+ */
+type ApplyContainerPopulate<TValue, TMap extends Record<string, PopulateMapEntry>, TOpt> = {
+  [K in keyof TValue]: K extends keyof TMap
+    ? K extends keyof TOpt
+      ? ApplyEntryPopulate<TValue[K], TMap[K], TOpt[K]>
+      : TValue[K]
+    : TValue[K];
+};
+
+/** One field's populated value, dispatched by its {@link PopulateMapEntry} kind. @see {@link Populated} */
+type ApplyEntryPopulate<TValue, TEntry extends PopulateMapEntry, TOpt> = TEntry extends {
+  kind: "relationship" | "upload";
+  target: infer Target extends string;
+}
+  ? TOpt extends true | { populate: unknown }
+    ? Target extends CollectionSlug
+      ? Target extends keyof DocumentBySlug
+        ? TOpt extends { populate: infer NestedPopulate }
+          ? NestedPopulate extends PopulateShape<Target>
+            ? (Populated<Target, NestedPopulate> | HiddenDocument<Target>)[]
+            : (DocumentBySlug[Target] | HiddenDocument<Target>)[]
+          : (DocumentBySlug[Target] | HiddenDocument<Target>)[]
+        : TValue
+      : TValue
+    : TValue
+  : TEntry extends { kind: "group"; fields: infer TFields extends Record<string, PopulateMapEntry> }
+    ? TOpt extends Record<string, unknown>
+      ? NonNullable<TValue> extends ReadonlyArray<infer Item>
+        ? ApplyContainerPopulate<Item, TFields, TOpt>[]
+        : ApplyContainerPopulate<TValue, TFields, TOpt>
+      : TValue
+    : TEntry extends {
+          kind: "blocks";
+          blocks: infer TBlocks extends Record<string, Record<string, PopulateMapEntry>>;
+        }
+      ? TOpt extends Record<string, unknown>
+        ? NonNullable<TValue> extends ReadonlyArray<infer Item>
+          ? ApplyBlockItemPopulate<Item, TBlocks, TOpt>[]
+          : TValue
+        : TValue
+      : TValue;
+
+/**
+ * Applies a `blocks()` populate option to one block-union member `TItem`.
+ * `TItem` is a bare conditional-type parameter, so this DISTRIBUTES over
+ * the block union automatically — each block type is checked against its
+ * own `blockType` literal independently. @see {@link Populated}
+ */
+type ApplyBlockItemPopulate<
+  TItem,
+  TBlocks extends Record<string, Record<string, PopulateMapEntry>>,
+  TOpt,
+> = TItem extends { blockType: infer BT extends string }
+  ? BT extends keyof TOpt
+    ? BT extends keyof TBlocks
+      ? ApplyContainerPopulate<TItem, TBlocks[BT], TOpt[BT]>
+      : TItem
+    : TItem
+  : TItem;
+
+/**
+ * Populate options for a global — keys restricted to relationship fields via
+ * `GlobalRelationshipKeysOf<TGlobalSlug>`, each resolving `{ populate }` to a
+ * real `PopulateShape<Target>` for the relationship's target COLLECTION
+ * (never `Record<string, unknown>`) — globals relate to collections, not to
+ * other globals, so a populated global relationship recurses into the
+ * target collection's OWN nested populate machinery (`PopulateShape`),
+ * reaching a field nested inside that collection's `blocks()`/`array()`/
+ * `group()` the same way a direct collection-to-collection populate would.
+ *
+ * @typeParam TGlobalSlug - The global slug.
+ */
+export type GlobalPopulateShape<TGlobalSlug extends GlobalSlug = GlobalSlug> = {
+  [K in GlobalRelationshipKeysOf<TGlobalSlug>]?:
+    | true
+    | { populate: PopulateShape<GlobalRelationshipTargetOf<TGlobalSlug, K & string>> };
+};
+
+/**
+ * Return type of `globals.get` when `populate` is provided. Maps over
+ * `GlobalDocumentBySlug[TGlobalSlug]`, replacing each populated relationship
+ * field's raw `Id[]` with the real target collection document array (or
+ * `Populated<Target, NestedPopulate>` when `{ populate }` recurses further)
+ * — the global counterpart of `Populated<TCollectionSlug, TPopulate>`.
+ *
+ * @typeParam TGlobalSlug - The global slug.
+ * @typeParam TPopulate - The populate options object.
+ */
+export type GlobalPopulated<
+  TGlobalSlug extends GlobalSlug,
+  TPopulate extends GlobalPopulateShape<TGlobalSlug>,
+> = TGlobalSlug extends keyof GlobalDocumentBySlug
   ? {
-      [K in keyof DocumentBySlug[TCollectionSlug]]: K extends keyof TPopulate
+      [K in keyof GlobalDocumentBySlug[TGlobalSlug]]: K extends keyof TPopulate
         ? K extends string
-          ? RelationshipTargetOf<TCollectionSlug, K> extends infer Target
+          ? GlobalRelationshipTargetOf<TGlobalSlug, K> extends infer Target
             ? Target extends CollectionSlug
               ? Target extends keyof DocumentBySlug
-                ? // Recurse if nested populate is provided.
-                  TPopulate[K] extends {
-                    populate: infer NestedPopulate;
-                  }
+                ? TPopulate[K] extends { populate: infer NestedPopulate }
                   ? NestedPopulate extends PopulateShape<Target>
-                    ? Populated<Target, NestedPopulate>[]
-                    : DocumentBySlug[Target][]
-                  : DocumentBySlug[Target][]
-                : DocumentBySlug[TCollectionSlug][K]
-              : DocumentBySlug[TCollectionSlug][K]
-            : DocumentBySlug[TCollectionSlug][K]
-          : DocumentBySlug[TCollectionSlug][K]
-        : DocumentBySlug[TCollectionSlug][K];
+                    ? (Populated<Target, NestedPopulate> | HiddenDocument<Target>)[]
+                    : (DocumentBySlug[Target] | HiddenDocument<Target>)[]
+                  : (DocumentBySlug[Target] | HiddenDocument<Target>)[]
+                : GlobalDocumentBySlug[TGlobalSlug][K]
+              : GlobalDocumentBySlug[TGlobalSlug][K]
+            : GlobalDocumentBySlug[TGlobalSlug][K]
+          : GlobalDocumentBySlug[TGlobalSlug][K]
+        : GlobalDocumentBySlug[TGlobalSlug][K];
     }
   : never;
+
+/**
+ * Unconstrained counterpart of {@link GlobalPopulated} for `GetGlobalReturn`'s
+ * own `depth` branch — same rationale as {@link ApplyDepthPopulate}:
+ * `GlobalDepthPopulate`'s walk is valid by construction, so nothing needs to
+ * re-verify it against `GlobalPopulateShape`'s own constraint (which would
+ * otherwise need the same expensive `& GlobalPopulateShape<TGlobalSlug>`
+ * bridge `DepthPopulated` used to need). Internal-use only.
+ */
+export type ApplyGlobalDepthPopulate<TGlobalSlug extends GlobalSlug, TPopulate> =
+  TGlobalSlug extends keyof GlobalDocumentBySlug
+    ? {
+        [K in keyof GlobalDocumentBySlug[TGlobalSlug]]: K extends keyof TPopulate
+          ? K extends string
+            ? GlobalRelationshipTargetOf<TGlobalSlug, K> extends infer Target
+              ? Target extends CollectionSlug
+                ? Target extends keyof DocumentBySlug
+                  ? TPopulate[K] extends { populate: infer NestedPopulate }
+                    ? NestedPopulate extends PopulateShape<Target>
+                      ? (Populated<Target, NestedPopulate> | HiddenDocument<Target>)[]
+                      : (DocumentBySlug[Target] | HiddenDocument<Target>)[]
+                    : (DocumentBySlug[Target] | HiddenDocument<Target>)[]
+                  : GlobalDocumentBySlug[TGlobalSlug][K]
+                : GlobalDocumentBySlug[TGlobalSlug][K]
+              : GlobalDocumentBySlug[TGlobalSlug][K]
+            : GlobalDocumentBySlug[TGlobalSlug][K]
+          : GlobalDocumentBySlug[TGlobalSlug][K];
+      }
+    : never;
 
 /**
  * Pagination options for Convex queries.

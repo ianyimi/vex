@@ -99,6 +99,7 @@ export function UrlField(props: UrlFieldProps): ReactNode {
       before={props.before}
       after={props.after}
       className={props.className}
+      readOnly={props.readOnly}
     >
       {row}
     </FormFieldLayout>

@@ -39,12 +39,28 @@ const AUTH_COLLECTION_TYPES = {
   verification: "verification",
 } as const;
 
-/** Fields on the user table that end-users are allowed to edit. */
+/**
+ * Fields on the user table a document edited through the VexCMS admin can
+ * write — `admin.readOnly`/`meta.locked` are NOT stamped onto these.
+ *
+ * Deliberately independent of Better Auth's own `input` attribute: `input:
+ * false` (AP-027) only blocks `/sign-up/email` and `/update-user`, Better
+ * Auth's OWN client endpoints — `getClientWritableUserFields` below reads
+ * that flag for a completely different question ("can an end user set this
+ * through Better Auth directly?"). Whether a field is editable through the
+ * access-checked, server-run `vex:update` mutation is a separate question
+ * this allowlist answers, and both `role` (Better Auth's own admin-plugin
+ * field) and `roles` (the `additionalFields` alias every vexcms app/example
+ * uses per the auth guide and AP-027) must stay writable there — an admin
+ * changing a user's role through the admin panel is a normal, RBAC-gated
+ * write, not a client sign-up/update-user call.
+ */
 const EDITABLE_FIELDS = new Set([
   "name",
   "email",
   "image",
   "role",
+  "roles",
   "banned",
   "banReason",
   "banExpires",

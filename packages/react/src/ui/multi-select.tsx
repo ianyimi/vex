@@ -21,6 +21,7 @@ import {
   useState,
   type ComponentPropsWithoutRef,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { Badge } from "./badge";
 
@@ -35,6 +36,12 @@ type MultiSelectContextType = {
   single: boolean;
   // eslint-disable-next-line no-unused-vars
   onItemAdded: (value: string, label: ReactNode) => void;
+  /**
+   * The trigger row's own element — anchors the popup's positioner so
+   * `--anchor-width` tracks the full field width, not just the inner
+   * combobox button (see `MultiSelectTrigger`/`MultiSelectContent`).
+   */
+  anchorRef: RefObject<HTMLDivElement | null>;
 };
 const MultiSelectContext = createContext<MultiSelectContextType | null>(null);
 
@@ -70,6 +77,7 @@ export function MultiSelect({
   modal?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const [internalValues, setInternalValues] = useState(
     new Set<string>(values ?? defaultValues),
   );
@@ -111,6 +119,7 @@ export function MultiSelect({
         toggleValue,
         items,
         onItemAdded,
+        anchorRef,
       }}
     >
       <Popover open={open} onOpenChange={setOpen} modal={modal}>
@@ -123,15 +132,33 @@ export function MultiSelect({
 export function MultiSelectTrigger({
   className,
   children,
+  onKeyDown,
   ...props
 }: {
   className?: string;
   children?: ReactNode;
 } & ComponentPropsWithoutRef<typeof PopoverTrigger>) {
-  const { open } = useMultiSelectContext();
+  const { open, setOpen, anchorRef } = useMultiSelectContext();
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   return (
+    // The row is not itself interactive — it only forwards a click
+    // anywhere in its non-interactive area to the real combobox button
+    // (`triggerRef`), the same pattern as `InputGroupAddon` in
+    // `input-group.tsx`. Clicks that start inside that button already
+    // reach it natively and are skipped here to avoid double-toggling;
+    // clicks on a chip's own remove control never arrive (it stops
+    // propagation). Keyboard access stays exclusively on the button.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <div
+      ref={anchorRef}
+      role="group"
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest("[data-slot=popover-trigger]")) {
+          return;
+        }
+        triggerRef.current?.click();
+      }}
       className={cn(
         "flex h-auto min-h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] has-[[data-slot=popover-trigger]:focus-visible]:border-ring has-[[data-slot=popover-trigger]:focus-visible]:focus-ring has-disabled:cursor-not-allowed has-disabled:opacity-50 has-[[data-slot=popover-trigger][aria-invalid=true]]:border-destructive has-[[data-slot=popover-trigger][aria-invalid=true]]:ring-[3px] has-[[data-slot=popover-trigger][aria-invalid=true]]:ring-destructive/20 dark:has-[[data-slot=popover-trigger][aria-invalid=true]]:border-destructive/50 dark:has-[[data-slot=popover-trigger][aria-invalid=true]]:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className,
@@ -139,9 +166,20 @@ export function MultiSelectTrigger({
     >
       {children}
       <PopoverTrigger
+        ref={triggerRef}
         role="combobox"
         aria-expanded={open}
         {...props}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          // ArrowDown opens the popup, matching the APG combobox pattern;
+          // Enter/Space already open it via native `<button>` click
+          // semantics — no handler needed for those.
+          if (!event.defaultPrevented && event.key === "ArrowDown" && !open) {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
         className="ml-auto shrink-0 rounded-sm outline-none"
       >
         <ChevronsUpDownIcon className="size-4 shrink-0 opacity-50" />
@@ -302,7 +340,7 @@ export function MultiSelectContent({
   children: ReactNode;
 } & Omit<ComponentPropsWithoutRef<typeof Command>, "children">) {
   const canSearch = typeof search === "object" ? true : search;
-  const { open } = useMultiSelectContext();
+  const { open, anchorRef } = useMultiSelectContext();
   const commandRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -361,7 +399,11 @@ export function MultiSelectContent({
           <CommandList>{children}</CommandList>
         </Command>
       </div>
-      <PopoverContent className="w-(--anchor-width) p-0" initialFocus={false}>
+      <PopoverContent
+        anchor={anchorRef}
+        className="w-(--anchor-width) p-0"
+        initialFocus={false}
+      >
         {/* Hidden until positioned; revealed by the effect above. */}
         <div ref={contentRef} style={{ display: "none" }}>
           <Command {...props} ref={commandRef}>

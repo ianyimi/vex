@@ -78,6 +78,7 @@ export function GroupField(props: GroupFieldProps): ReactNode {
           field={field}
           submissionAttempts={submissionAttempts}
           className={props.className}
+          readOnly={props.readOnly}
         >
           <ArrayItemHeaderContext.Provider value={null}>{props.children}</ArrayItemHeaderContext.Provider>
         </FormFieldLayout>
@@ -93,11 +94,14 @@ export function GroupField(props: GroupFieldProps): ReactNode {
           leading={itemHeader?.dragHandle}
           actions={itemHeader?.actions}
         >
-          <div className="flex min-w-0 flex-col gap-1 self-center">
+          <div
+            className="group/field flex min-w-0 flex-col gap-1 self-center"
+            data-disabled={props.readOnly || undefined}
+          >
             <span className="flex min-w-0 items-center gap-2">
               <span
                 id={`${field.name}-label`}
-                className="relative block min-w-0 truncate text-sm leading-snug font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+                className="relative block min-w-0 truncate text-sm leading-snug font-medium select-none group-data-[disabled=true]/field:pointer-events-none group-data-[disabled=true]/field:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
               >
                 {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
                 {props.label}
@@ -117,6 +121,7 @@ export function GroupField(props: GroupFieldProps): ReactNode {
             id={field.name}
             field={field}
             submissionAttempts={submissionAttempts}
+            readOnly={props.readOnly}
           >
             <ArrayItemHeaderContext.Provider value={null}>{props.children}</ArrayItemHeaderContext.Provider>
           </FormFieldLayout>

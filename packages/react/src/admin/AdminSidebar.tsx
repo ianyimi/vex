@@ -18,8 +18,9 @@ import {
   Icon,
 } from "../ui";
 import { AdminUser } from "./AdminLayout";
-import { Activity } from "react";
+import { Activity, useEffect } from "react";
 import { usePermission } from "../access";
+import { writeSidebarSectionCountsCookie } from "./writeSidebarSectionCountsCookie";
 
 /**
  * Props for the `AppSidebar` component.
@@ -92,6 +93,22 @@ export function AppSidebar(props: AppSidebarProps) {
     }),
   );
 
+  // Persists each section's own settled, permission-filtered item count so the NEXT
+  // server render's `<Suspense>` fallback (`AdminSidebarSkeleton`) can reproduce this
+  // exact header/row shape on first paint instead of a generic placeholder count — the
+  // sidebar's own version of `writeListViewSkeletonRowCountCookie`. One effect per
+  // section (not a single combined write) so a section whose own permission check
+  // resolves independently of the others still persists as soon as ITS length settles.
+  useEffect(() => {
+    writeSidebarSectionCountsCookie({ basePath: config.basePath, section: "collections", count: collections.length });
+  }, [config.basePath, collections.length]);
+  useEffect(() => {
+    writeSidebarSectionCountsCookie({ basePath: config.basePath, section: "globals", count: globals.length });
+  }, [config.basePath, globals.length]);
+  useEffect(() => {
+    writeSidebarSectionCountsCookie({ basePath: config.basePath, section: "media", count: mediaCollections.length });
+  }, [config.basePath, mediaCollections.length]);
+
   return (
     <Sidebar
       aria-label="Admin navigation"
@@ -99,10 +116,10 @@ export function AppSidebar(props: AppSidebarProps) {
       role="navigation"
       side={config.admin.sidebar.side}
     >
-      <SidebarHeader className="flex h-12 justify-center border-b">
+      <SidebarHeader className="flex min-h-[67px] justify-center border-b px-4">
         <div className="flex items-center justify-between">
-          <span className="px-2 font-mono text-sm font-semibold tracking-tight">VexCMS Admin</span>
-          <ThemeToggle />
+          <span className="font-mono text-base font-semibold tracking-tight">VexCMS Admin</span>
+          <ThemeToggle size="icon-lg" />
         </div>
       </SidebarHeader>
       <SidebarContent>

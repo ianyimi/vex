@@ -16,3 +16,4 @@ export type { UnauthorizedViewProps } from "./UnauthorizedView";
 export { usePreservedScrollTop } from "./usePreservedScrollTop";
 export { adminHref } from "./adminHref";
 export type { AdminHrefTarget } from "./adminHref";
+export { writeSidebarSectionCountsCookie } from "./writeSidebarSectionCountsCookie";

@@ -1,6 +1,7 @@
 import type { ListDensity } from "./collections/listView/listViewConfigCookies";
 import type { ListViewSkeletonRowCountEntry, ListViewSkeletonRowCountMap } from "./collections/listView/listViewSkeletonRowCountCookie";
 import type { LocalSavedListViewsIndexEntry } from "./collections/savedListViews/localSavedListViewsCookie";
+import type { SidebarSectionCounts } from "./sidebarSectionCountsCookie";
 
 /**
  * Consolidated admin-cookie codec — replaces up to five
@@ -83,6 +84,14 @@ export interface AdminCookieGlobal {
   livePreview?: AdminCookieLivePreview;
   /** The Inspect peek panel's remembered tab — admin-wide, NOT per-collection/per-view: the same "last used" tradeoff `density`/`sidebarOpen` already make. */
   peekTab?: "fields" | "json";
+  /**
+   * The admin sidebar's last-settled item count per section
+   * (`"collections"`/`"globals"`/`"media"`) — read server-side by the
+   * sidebar's own `<Suspense>` fallback (`AdminSidebarSkeleton`) so it
+   * renders the SAME per-section header/row shape the real, permission-
+   * filtered nav is about to settle with. See {@link SidebarSectionCounts}.
+   */
+  sidebarCounts?: SidebarSectionCounts;
 }
 
 /**
@@ -181,6 +190,20 @@ function parseRowCounts(value: unknown): ListViewSkeletonRowCountMap | undefined
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
+const SIDEBAR_SECTIONS = ["collections", "globals", "media"] as const;
+
+function parseSidebarCounts(value: unknown): SidebarSectionCounts | undefined {
+  if (!isPlainObject(value)) return undefined;
+  const result: SidebarSectionCounts = {};
+  for (const section of SIDEBAR_SECTIONS) {
+    const count = value[section];
+    if (typeof count === "number" && Number.isInteger(count) && count >= 0) {
+      result[section] = count;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 /**
  * Parses the `vex-admin` cookie's value. Tolerant: a missing, malformed,
  * stale-shaped, or version-mismatched cookie degrades to `{ v: 1 }` (every
@@ -201,6 +224,8 @@ export function parseAdminCookie(props: { cookieValue: string | undefined }): Ad
   if (parsed.peekTab === "fields" || parsed.peekTab === "json") result.peekTab = parsed.peekTab;
   const livePreview = parseLivePreview(parsed.livePreview);
   if (livePreview !== undefined) result.livePreview = livePreview;
+  const sidebarCounts = parseSidebarCounts(parsed.sidebarCounts);
+  if (sidebarCounts !== undefined) result.sidebarCounts = sidebarCounts;
   return result;
 }
 

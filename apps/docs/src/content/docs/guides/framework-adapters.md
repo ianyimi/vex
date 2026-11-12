@@ -522,13 +522,18 @@ path alone. `signInHref` must
 return the full sign-in route URL to link to — typically appending it as a query param
 your sign-in page/route-level auth guard already reads (the same convention a `redirect()`
 to the sign-in page from a server component gate should already be using, see
-`app/admin/[[...path]]/page.tsx` above). `signOut` must perform the ENTIRE sign-out
-sequence your framework needs (your auth client's own sign-out call AND whatever
-server-aware refresh makes the server-resolved auth state and route guard re-evaluate on
-return — Next.js: `router.refresh()`), not just the auth-client call — `AdminTopNav` shows
-a pending state for exactly as long as the returned promise takes to settle, and only
-calls it once per click (a second click while pending is a no-op, the control disables
-itself).
+`app/admin/[[...path]]/page.tsx` above). `signOut` must sign the session out, then
+hard-navigate (a full document load — e.g. `window.location.href = …`, NEVER
+`router.push`/`router.refresh`/any other client-side transition) to the resolved
+`config.auth.signOut.redirectTo` (defaults to `"/"`; set `auth: { signOut: { redirectTo } }`
+on `defineConfig()` to change it) once the session cookie is actually cleared — not just the
+auth-client call. The admin shell (sidebar, top bar) must never re-render in a signed-out
+state: a client-side refresh keeps it mounted while queries re-run anonymously and a route
+guard redirects underneath it, which is exactly the multi-second "sidebar lingers, then a
+sign-in flash, then the destination" sequence this hard-navigation contract exists to avoid.
+`AdminTopNav` shows a pending state for exactly as long as the returned promise takes to
+settle, and only calls it once per click (a second click while pending is a no-op, the
+control disables itself).
 
 Provide it through the same framework-components mechanism as `Link`/`Image`/
 `navigationBlocker`/`useNavigate` — `@vexcms/next` supplies this one differently, though:
@@ -542,20 +547,23 @@ mount it inside their own Better Auth client provider:
 ```tsx
 // components/providers/client.tsx or auth/client.tsx ("use client")
 import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth";
-import { useRouter } from "next/navigation";
 import { signOut } from "~/auth/client";
 
+import config from "~/vex.config";
+
 function AuthAdapterProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   return (
     <VexAdminAuthAdapterProvider
       value={{
         signInHref: (redirectTo) => `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}`,
-        signOut: () =>
-          signOut()
-            .then(() => router.refresh())
-            .catch(() => router.refresh()), // refresh either way — a stale client
-            // cache after a failed sign-out is worse than a redundant refresh.
+        signOut: () => {
+          const goToDestination = () => {
+            window.location.href = config.auth.signOut.redirectTo;
+          };
+          return signOut().then(goToDestination).catch(goToDestination);
+          // hard-navigate either way — a stale client cache after a failed
+          // sign-out is worse than a redundant navigation.
+        },
       }}
     >
       {children}
@@ -566,9 +574,9 @@ function AuthAdapterProvider({ children }: { children: React.ReactNode }) {
 
 **For non-React or server-rendered frameworks:** implement `signInHref` against your own
 sign-in route's URL scheme, and `signOut` against your auth library's own sign-out call
-plus whatever "make the server re-check auth state" mechanism your framework offers (a
-full reload is always a safe fallback). A framework with no sign-in/out concept at all —
-omit `auth` entirely; the control simply does not render.
+plus a full reload (or equivalent hard navigation) to `config.auth.signOut.redirectTo`. A
+framework with no sign-in/out concept at all — omit `auth` entirely; the control simply
+does not render.
 
 ## Step 11 — Covering routes: `useIsRouteCovered` and `useSearchParams` (both optional)
 

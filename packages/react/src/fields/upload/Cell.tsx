@@ -5,6 +5,7 @@ import {
   CellComponentProps,
   CollectionConfig,
   CollectionSlug,
+  type HiddenDocument,
   TDocument,
   UploadField,
   VexMediaDocument,
@@ -14,8 +15,22 @@ import { FilePreview } from "../../media/FilePreview";
 import { get } from "../../client";
 import { GenericId } from "convex/values";
 import { Skeleton, VexLink } from "../../ui";
+import { AccessDeniedItemRow } from "../../access";
 import { adminHref } from "../../admin/adminHref";
 import { useVexConfig } from "../../config/VexConfigContext";
+
+/**
+ * True when a populated field's item is a `populateDocs`-produced
+ * {@link HiddenDocument} placeholder rather than a real target doc.
+ *
+ * @param value - The populated field's item to check.
+ * @returns Whether `value` is a {@link HiddenDocument}.
+ */
+function isHiddenDocument(value: unknown): value is HiddenDocument {
+  return (
+    typeof value === "object" && value !== null && (value as Record<string, unknown>).code === "ACCESS_DENIED"
+  );
+}
 
 /**
  * Table cell rendering for upload field.
@@ -32,7 +47,9 @@ import { useVexConfig } from "../../config/VexConfigContext";
  * - Empty: "—" placeholder.
  * - Populated (array of docs, any length): FilePreview thumbnail + filename
  *   truncated with ellipsis, `+N` badge for 2+ items — read straight from the
- *   row, no query.
+ *   row, no query. A denied target (`populateDocs`'s `HiddenDocument`
+ *   placeholder) renders `AccessDeniedItemRow` instead of attempting the
+ *   preview on a doc that carries none of `FilePreview`'s required fields.
  * - Unpopulated fallback (array of raw ids): a full-width skeleton while a
  *   single `get` query (fired only in this case) resolves the first id.
  *
@@ -84,7 +101,7 @@ export function UploadFieldCell<TData extends TDocument = TDocument>(
   }
 
   const firstMediaDoc = isPopulated
-    ? (rawValue[0] as VexMediaDocument)
+    ? (rawValue[0] as VexMediaDocument | HiddenDocument)
     : (fallbackDoc as VexMediaDocument | undefined);
 
   if (!firstMediaDoc) {
@@ -96,6 +113,17 @@ export function UploadFieldCell<TData extends TDocument = TDocument>(
     // while the real content hasn't resolved yet.
     return wrap(
       <Skeleton className="h-[26px] w-full max-w-48" title={rawValue.join(", ")} />,
+    );
+  }
+
+  if (isHiddenDocument(firstMediaDoc)) {
+    const targetCollection = config.mediaCollections.find((c) => c.slug === fieldDef.to);
+    return wrap(
+      <AccessDeniedItemRow
+        resource={firstMediaDoc.resource}
+        action={firstMediaDoc.action}
+        label={targetCollection?.labels.singular ?? fieldDef.to}
+      />,
     );
   }
 

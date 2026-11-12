@@ -1,17 +1,18 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import {
   defineCollection,
   defineGlobal,
   LIVE_PREVIEW_COOKIE,
   LIVE_PREVIEW_QUERY_PARAM,
+  LIVE_PREVIEW_WINDOW_NAME,
   text,
   type CollectionSlug,
   type VexClientConfig,
   type VexResourceSlug,
 } from "@vexcms/core";
-import { LIVE_PREVIEW_MESSAGE_SOURCE } from "./livePreviewProtocol";
+import { LIVE_PREVIEW_MESSAGE_SOURCE, isLivePreviewMessage } from "./livePreviewProtocol";
 import { LivePreviewProvider, useLivePreview } from "./LivePreviewContext";
 import { VexConfigProvider } from "../config/VexConfigContext";
 
@@ -30,6 +31,7 @@ function setSearch(search: string) {
 afterEach(() => {
   clearPreviewCookie();
   setSearch("");
+  window.name = "";
 });
 
 const previewCollection = defineCollection({
@@ -166,6 +168,34 @@ describe("LivePreviewProvider overlay", () => {
   });
 });
 
+describe("LivePreviewProvider ready message", () => {
+  beforeEach(() => {
+    setSearch(`${LIVE_PREVIEW_QUERY_PARAM}=1`);
+    setPreviewCookie("1");
+  });
+
+  it("shows the editor's reply to its ready message without waiting for another keystroke", async () => {
+    const editorChannel = new BroadcastChannel("vexcms-live-preview");
+    editorChannel.addEventListener("message", (event: MessageEvent) => {
+      if (!isLivePreviewMessage(event.data) || event.data.type !== "vex-live-preview-ready") return;
+      editorChannel.postMessage({
+        source: LIVE_PREVIEW_MESSAGE_SOURCE,
+        type: "vex-live-preview-update",
+        collectionSlug: "pages",
+        documentId: "doc1",
+        values: { title: "Unsaved title" },
+      });
+    });
+
+    try {
+      renderOverlay({ _id: "doc1", title: "Saved title", subtitle: "Saved subtitle" });
+      expect(await screen.findByText(/title: Unsaved title/)).toBeInTheDocument();
+    } finally {
+      editorChannel.close();
+    }
+  });
+});
+
 describe("LivePreviewProvider gate", () => {
   /**
    * Whether an update reaches the overlay IS the gate's verdict — the provider
@@ -183,25 +213,27 @@ describe("LivePreviewProvider gate", () => {
     return screen.queryByText(/title: Unsaved title/) !== null;
   }
 
-  it("stays off with the query param alone — an unverified visitor gets no listener", async () => {
+  it("attaches no listener for a visitor without the verified cookie", async () => {
     setSearch(`${LIVE_PREVIEW_QUERY_PARAM}=1`);
     expect(await overlayReceivesUpdate()).toBe(false);
   });
 
-  it("stays off with the verified cookie but no query param", async () => {
-    setPreviewCookie("1");
-    expect(await overlayReceivesUpdate()).toBe(false);
-  });
-
-  it("turns on only when both the query param and the verified cookie are present", async () => {
+  it("names the window on activation and keeps overlaying once a navigation drops the query param", async () => {
     setSearch(`${LIVE_PREVIEW_QUERY_PARAM}=1`);
     setPreviewCookie("1");
+    renderOverlay({ _id: "doc1", title: "Saved title", subtitle: "Saved subtitle" });
+    await waitFor(() => expect(window.name).toBe(LIVE_PREVIEW_WINDOW_NAME));
+    cleanup();
+
+    setSearch("");
     expect(await overlayReceivesUpdate()).toBe(true);
   });
 
-  it("stays off when the marker cookie holds anything other than the verified value", async () => {
+  it("leaves a window that already has a name untouched", async () => {
+    window.name = "editor-target";
     setSearch(`${LIVE_PREVIEW_QUERY_PARAM}=1`);
-    setPreviewCookie("0");
-    expect(await overlayReceivesUpdate()).toBe(false);
+    setPreviewCookie("1");
+    expect(await overlayReceivesUpdate()).toBe(true);
+    expect(window.name).toBe("editor-target");
   });
 });

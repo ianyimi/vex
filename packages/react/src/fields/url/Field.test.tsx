@@ -302,7 +302,9 @@ describe("url: admin.mask", () => {
         <UrlMaskHarness fieldDef={fieldDef} />
       </VexConfigContext.Provider>,
     );
-    await waitFor(() => expect(withMaskMock).toHaveBeenCalledWith("url", { autoUnmask: true }));
+    await waitFor(() =>
+      expect(withMaskMock).toHaveBeenCalledWith("url", { rightAlign: false, autoUnmask: true }),
+    );
   });
 
   it("falls back to the project-wide default from fields.inputMasks.url", async () => {
@@ -312,7 +314,9 @@ describe("url: admin.mask", () => {
         <UrlMaskHarness fieldDef={fieldDef} />
       </VexConfigContext.Provider>,
     );
-    await waitFor(() => expect(withMaskMock).toHaveBeenCalledWith("url", { autoUnmask: true }));
+    await waitFor(() =>
+      expect(withMaskMock).toHaveBeenCalledWith("url", { rightAlign: false, autoUnmask: true }),
+    );
   });
 
   it("renders the ordinary controlled input when no mask resolves", () => {

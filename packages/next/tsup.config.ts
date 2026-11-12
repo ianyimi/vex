@@ -16,6 +16,7 @@ export default defineConfig([
       "cache/index": "src/cache/index.ts",
       index: "src/index.ts",
       "livePreview/index": "src/livePreview/index.ts",
+      "livePreview/client": "src/livePreview/client.ts",
       "seo/index": "src/seo/index.ts",
       // Test kit re-export (`@vexcms/next/testing`) — runs in a vitest/Node
       // process, never in a React Server Components graph, so it belongs in

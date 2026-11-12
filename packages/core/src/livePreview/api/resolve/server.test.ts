@@ -18,6 +18,7 @@ const DEFAULT_LIVE_PREVIEW: VexConfig["admin"]["livePreview"] = {
   breakpoints: [],
   collections: {},
   globals: {},
+  expiredSessions: "allow",
 };
 
 function makeConfig(props: { url?: unknown; access?: VexConfig["access"] }): VexConfig {

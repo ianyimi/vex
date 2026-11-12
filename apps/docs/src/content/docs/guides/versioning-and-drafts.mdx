@@ -209,7 +209,7 @@ export const getBySlugPreview = query({
 
 On the page, pick that query only once the browser confirms a preview session — both
 `?vexLivePreview=1` and the `vex-live-preview` cookie your middleware sets. `apps/www`'s
-`PageContent.tsx` (`useSitePreviewMode`) is the reference implementation.
+`PageContent.tsx` (`useIsLivePreviewActive`) is the reference implementation.
 
 :::caution
 The preview cookie only proves the request came from *a* verified session — not that the

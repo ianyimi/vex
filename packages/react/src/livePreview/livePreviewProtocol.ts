@@ -4,8 +4,9 @@
  * (`LIVE_PREVIEW_BROADCAST_CHANNEL`, needing no reference at all). Two message
  * types:
  *
- * - `vex-live-preview-handshake` — sent by the preview surface on mount, so state
- *   is recovered without waiting for the next keystroke.
+ * - `vex-live-preview-ready` — posted by `LivePreviewProvider` once its
+ *   listeners are attached, so every open edit view replies with its current
+ *   values instead of waiting for the next keystroke.
  * - `vex-live-preview-update` — sent by the admin panel on every debounced form
  *   change, carrying the form's **complete** current values.
  */
@@ -14,16 +15,14 @@ export const LIVE_PREVIEW_MESSAGE_SOURCE = "vexcms-live-preview" as const;
 /** Shared `BroadcastChannel` name — one channel for every document a page renders. */
 export const LIVE_PREVIEW_BROADCAST_CHANNEL = "vexcms-live-preview";
 
-/** Sent by the preview surface on mount to request current unsaved state. */
-export interface LivePreviewHandshakeMessage {
+/**
+ * Posted by the preview surface's provider once it is listening. Carries no
+ * data — every edit view that receives it replies with a full
+ * `vex-live-preview-update`, and the provider keeps what it renders.
+ */
+export interface LivePreviewReadyMessage {
   source: typeof LIVE_PREVIEW_MESSAGE_SOURCE;
-  type: "vex-live-preview-handshake";
-  /** The collection or global slug the preview surface expects to render. */
-  collectionSlug: string;
-  /** The saved document id, when the previewed document already exists. */
-  documentId?: string;
-  /** The client-generated temp id, when previewing a document being created. */
-  tempId?: string;
+  type: "vex-live-preview-ready";
 }
 
 /** Sent by the admin panel whenever the form's values change. */
@@ -38,7 +37,7 @@ export interface LivePreviewUpdateMessage {
 }
 
 /** Either message the live-preview transport carries. */
-export type LivePreviewMessage = LivePreviewHandshakeMessage | LivePreviewUpdateMessage;
+export type LivePreviewMessage = LivePreviewReadyMessage | LivePreviewUpdateMessage;
 
 /**
  * Narrows an arbitrary message payload to a `LivePreviewMessage`, so a listener

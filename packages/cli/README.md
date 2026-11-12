@@ -17,7 +17,7 @@ The CLI is exposed as the `vex` binary.
 Starts the development workflow:
 
 ```bash
-vex dev [--once]
+vex dev [--once] [--cwd <dir>] [convex dev flags…]
 ```
 
 1. Loads your `vex.config.ts`
@@ -26,21 +26,36 @@ vex dev [--once]
 4. Watches for config changes and regenerates on save
 5. Traces import dependencies to watch only relevant files
 
-**`--once`** — Generate schema, push to Convex, and exit (no long-running watch).
+Use it instead of `convex dev`. Every flag vex doesn't own is forwarded to `convex dev`
+unchanged: `--tail-logs`, `--run`, `--configure`, `--env-file`, `--typecheck`, and the rest.
+`--start '<command>'` runs your app server alongside it, so one terminal is enough:
+
+```bash
+vex dev --start 'next dev'
+```
+
+**`--once`** — Generate schema, push to Convex, and exit (no long-running watch). The push is
+`convex dev --once` with `--typecheck disable --codegen disable` unless you pass your own
+`--typecheck` or `--codegen`, plus every forwarded flag. When auto-migration needs interim
+pushes, they skip `--run`, `--run-component` and `--start`, which run once, on the final push.
+
+**`--cwd <dir>`** — Run as if started from `<dir>`. vex consumes it; Convex never sees it.
 
 ### `vex deploy`
 
 Handles production deployment:
 
 ```bash
-vex deploy
+vex deploy [--cwd <dir>] [convex deploy flags…]
 ```
 
 1. Generates schema for production
 2. Runs auto-migration if enabled (interim schema → mutations → final schema)
 3. Executes `convex deploy`
 
-Use this instead of `convex deploy` directly to ensure VEX schema is up to date.
+Use this instead of `convex deploy` directly to ensure VEX schema is up to date. Every flag
+vex doesn't own (`--cmd`, `--preview-create`, …) is forwarded to `convex deploy`; interim
+migration pushes skip `--cmd` and `--cmd-url-env-var-name`, so your build runs once.
 
 ### `vex generate`
 

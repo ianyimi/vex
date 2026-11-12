@@ -2,6 +2,7 @@ import { relationship as reactRelationship } from "@vexcms/react";
 import { tabs, text } from "@vexcms/core";
 
 import { TABLE_SLUG_ARTICLES, TABLE_SLUG_FIELDS, TABLE_SLUG_USERS } from "~/db/constants";
+import type { Article } from "~/vex.types";
 
 /**
  * Compile-time pin: a `tabs()` tab's `admin.condition` is typed against the
@@ -16,21 +17,16 @@ import { TABLE_SLUG_ARTICLES, TABLE_SLUG_FIELDS, TABLE_SLUG_USERS } from "~/db/c
  * `string` have no overlap), pinning that `data` really is `FieldsExample`
  * and not `any`.
  *
- * A field-NAME typo (`data.showAdvancedx`) does NOT currently fail to
- * compile here: `FieldsExample extends VexDocument`, and `VexDocument`
- * carries `[key: string]: unknown` (packages/core/src/api/convex.ts) for
- * generic `Record<string, unknown>` call sites (form state, slot props) —
- * every GENERATED per-collection document interface inherits that same
- * catch-all index signature, so any undeclared property name on ANY
- * generated document resolves to `unknown` instead of erroring. This is a
- * real, confirmed core-package gap (reported separately, not app-local), not
- * something this file can work around: removing the index signature from
- * generated interfaces breaks every `<T extends VexDocument>` /
- * `<TData extends TDocument>` generic constraint across `@vexcms/react`
- * (verified: both direct assignment and generic constraint satisfaction
- * fail the moment a generated interface loses the index signature). Until
- * that is fixed, this pin stops at the value-type-mismatch case below,
- * which is the strongest typo-adjacent proof achievable today.
+ * A field-NAME typo (`data.showAdvancedx`) NOW fails to compile too: every
+ * GENERATED per-collection document interface used to inherit `VexDocument`'s
+ * `[key: string]: unknown` catch-all (a real, confirmed core-package gap —
+ * `packages/core/src/documents/types.ts`), which made any undeclared
+ * property name on ANY generated document resolve to `unknown` instead of
+ * erroring. Fixed: generated interfaces now extend the closed
+ * `VexDocumentShape` (`_id`/`_creationTime` only, no index signature)
+ * instead — `VexDocument` itself is unchanged and still backs every
+ * generic/pre-generation consumer (`<T extends VexDocument>` across
+ * `@vexcms/react`, verified unaffected by a full repo typecheck).
  */
 tabs<typeof TABLE_SLUG_FIELDS>({
   tabs: [
@@ -50,6 +46,15 @@ tabs<typeof TABLE_SLUG_FIELDS>({
       },
       fields: { visibilityNote: text() },
     },
+    {
+      label: "Visibility (typo)",
+      admin: {
+        // @ts-expect-error — "showAdvancedx" does not exist on FieldsExample;
+        // a closed generated interface (no index signature) now catches this.
+        condition: ({ data }) => data.showAdvancedx === true,
+      },
+      fields: { visibilityNote: text() },
+    },
   ],
 });
 
@@ -65,4 +70,19 @@ text({ index: { name: "by_slug_x", additionalFields: ["slug"] } });
 
 // @ts-expect-error — `nope` is not a field of articles, through the React wrapper too
 reactRelationship<typeof TABLE_SLUG_ARTICLES, "authorId">({ collection: { slug: TABLE_SLUG_USERS }, index: { name: "by_author_x", additionalFields: ["nope"] } });
+
+/**
+ * Compile-time pin: `Omit<Article, "body">["status"]` keeps `status`'s real
+ * literal union (`vex.config.ts`'s `select()` options), instead of
+ * widening to `unknown` — the exact symptom a generated interface's
+ * inherited `VexDocument` index signature used to cause (see
+ * `~/vexcms/collections/fields.typecheck.ts`'s header comment above, and
+ * `@vexcms/core`'s `VexDocumentShape`).
+ */
+type ArticleStatusOmitBody = Omit<Article, "body">["status"];
+const articleStatusOk: ArticleStatusOmitBody = ["draft", "published"];
+// @ts-expect-error — "nonsense" is not a member of articles' status option union
+const articleStatusBad: ArticleStatusOmitBody = ["nonsense"];
+
+export const articleOmitStatusTypePins = [articleStatusOk, articleStatusBad] as const;
 

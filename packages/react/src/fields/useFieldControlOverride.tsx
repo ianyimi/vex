@@ -9,6 +9,7 @@ import type {
 import type { RenderControl } from "../forms";
 import type { ReactHKT } from "../adapter";
 import { VexConfigContext } from "../config/VexConfigContext";
+import { useStableRenderControl } from "./useStableRenderControl";
 
 /**
  * Composes one field's `admin.components.Input` override chain into a single
@@ -16,13 +17,24 @@ import { VexConfigContext } from "../config/VexConfigContext";
  * component's `renderControl` prop (decision 5/12: "replaces the control,
  * layout kept").
  *
+ * `props.defaultControl` is wrapped in {@link useStableRenderControl} before
+ * anything else: every `*FieldAdmin` caller defines its
+ * `renderMaskedControl`/`renderBareControl` inline, a fresh closure every
+ * render, so without this the composed chain below — and the `renderDefault`
+ * prop each override in it receives — would get a new identity on every
+ * render too. An override that renders `renderDefault` as JSX
+ * (`<RenderDefault {...props} />`, the natural pattern) would then remount
+ * the real control underneath on every keystroke, losing focus. Wrapping
+ * here, once, fixes it for every field type that calls this hook — not just
+ * the one whose override happens to render it as JSX.
+ *
  * @param props.fieldType - The field's `DataFieldType` — reads the
  *   project-wide chain off `useVexConfig()`.
  * @param props.fieldOverrides - This field instance's own
  *   `admin.components.Input` chain (`fieldDef.admin.components.Input`).
  * @param props.defaultControl - This field's own bare-control fallback,
  *   reached only when the chain is non-empty and its innermost override
- *   calls `renderDefault`.
+ *   calls `renderDefault`. Need not be referentially stable itself — see above.
  * @returns A composed `RenderControl<TValue>`, or `undefined` when neither
  *   override list has an entry — the caller then omits `renderControl`.
  */
@@ -35,6 +47,7 @@ export function useFieldControlOverride<TValue>(props: {
   const rootOverrides = config?.admin.components?.fields?.[props.fieldType]?.Input as
     | ComponentOverrideInput<ReactHKT, FieldControlProps<TValue>>[]
     | undefined;
+  const stableDefaultControl = useStableRenderControl(props.defaultControl);
   return useMemo(() => {
     const fieldOverrideList = Array.isArray(props.fieldOverrides)
       ? props.fieldOverrides
@@ -50,6 +63,6 @@ export function useFieldControlOverride<TValue>(props: {
       }
       Composed.displayName = `FieldControlOverride(${override.id})`;
       return Composed;
-    }, props.defaultControl);
-  }, [rootOverrides, props.fieldOverrides, props.defaultControl]);
+    }, stableDefaultControl);
+  }, [rootOverrides, props.fieldOverrides, stableDefaultControl]);
 }

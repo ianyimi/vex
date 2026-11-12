@@ -132,6 +132,19 @@ export function FormFieldLayout(props: {
   counter?: ReactNode;
   children: ReactNode;
   className?: string;
+  /**
+   * Whether the control this field renders is disabled — the SAME source
+   * every caller already passes its default control's `disabled`/`readOnly`
+   * (`BaseFormFieldProps.readOnly`, already OR-ing `fieldDef.admin.readOnly`
+   * and any container/permission-driven `readOnly` before it reaches here).
+   * Drives `data-disabled` on the outer {@link Field}, which mutes the label
+   * (`group-data-[disabled=true]/field:opacity-50`, already wired on
+   * `FieldLabel`) and description to the same `opacity-50` a disabled input
+   * gets, so a read-only field — whether locked by a field permission map,
+   * `admin.readOnly`, or an auth-adapter-locked field — visibly reads as
+   * read-only at a glance, not just its (greyed-out, easy to miss) control.
+   */
+  readOnly?: boolean;
 }): ReactNode {
   const errorMessage = getFieldErrorMessage(props.field);
   const showError = isFieldShowingError({
@@ -159,7 +172,7 @@ export function FormFieldLayout(props: {
     ));
 
   return (
-    <Field className={props.className} data-invalid={showError}>
+    <Field className={props.className} data-invalid={showError} data-disabled={props.readOnly || undefined}>
       {hasLabel && labelNode}
       <Activity mode={hasDescription ? "visible" : "hidden"}>
         <FieldDescription

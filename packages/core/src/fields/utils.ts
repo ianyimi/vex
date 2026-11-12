@@ -301,6 +301,98 @@ export function fieldsToFieldTypeMap(props: {
   return `\t${props.key}: {\n${body}\t}`;
 }
 
+/**
+ * Renders one `CollectionsPopulateMap` entry for the generated `declare
+ * module '@vexcms/core'` block — the type-level counterpart of
+ * `buildDepthPopulate`'s runtime walk, except keyed by field STRUCTURE
+ * (relationship/upload leaf, or a `group`/`blocks`/`array` container to
+ * recurse through) rather than by target depth.
+ *
+ * Only `relationship`/`upload` leaves and `group`/`blocks`/`array`
+ * containers that themselves carry at least one such leaf (at any depth)
+ * produce an entry — a field with nothing populatable inside it (text,
+ * richtext, a group of plain strings, …) is omitted entirely, so
+ * `PopulateShape`/`Populated` never see it and can't recurse into it.
+ *
+ * `array()` is transparent here: its own map entry IS its `items` field's
+ * entry (an array of relationship ids behaves like the relationship field
+ * itself; an array of `group()` items behaves like the group). `tabs()` /
+ * `row()` / `collapsible()` need no handling at all — `getDataFields`
+ * already hoists their fields to this same level before this function
+ * ever sees them.
+ *
+ * @param props.key - The map key — the collection or global slug.
+ * @param props.fields - The resource's resolved field map.
+ * @returns TypeScript source for one entry, without wrapping braces.
+ *
+ * @example
+ * ```ts
+ * fieldsToPopulateMap({ key: "posts", fields: posts.fields });
+ * // → '\tposts: { author: { kind: "relationship"; target: "authors" } }'
+ * ```
+ */
+export function fieldsToPopulateMap(props: { key: string; fields: Record<string, AdminField> }): string {
+  const body = buildPopulateMapEntries({ fields: props.fields });
+  return `\t${props.key}: {${body ? ` ${body} ` : ""}}`;
+}
+
+/**
+ * Builds the `{ key: Entry; ... }` body for one `fields` record's populate
+ * map, recursing through `group()`/`array()`/`blocks()` boundaries that
+ * `getDataFields` itself stops at. @see {@link fieldsToPopulateMap}
+ *
+ * @returns Semicolon-joined `key: Entry` pairs, or `""` when nothing in
+ *   `fields` (at any depth) is populatable.
+ */
+function buildPopulateMapEntries(props: { fields: Record<string, AdminField> }): string {
+  return Object.entries(getDataFields({ fields: props.fields }))
+    .map(([key, field]) => {
+      const entry = buildPopulateMapEntry({ field });
+      return entry ? `${key}: ${entry}` : null;
+    })
+    .filter((entry): entry is string => entry !== null)
+    .join("; ");
+}
+
+/**
+ * Builds one field's populate-map entry, or `null` when `field` (at any
+ * depth) carries nothing populatable. @see {@link fieldsToPopulateMap}
+ *
+ * @returns The entry's TypeScript source (`{ kind: "..."; ... }`), or
+ *   `null` when `field` is not populatable at any depth.
+ */
+function buildPopulateMapEntry(props: { field: AdminDataField }): string | null {
+  const { field } = props;
+  if (field.type === ADMIN_FIELDS.relationship.type) {
+    return `{ kind: "relationship"; target: "${field.collection.slug}" }`;
+  }
+  if (field.type === ADMIN_FIELDS.upload.type) {
+    return `{ kind: "upload"; target: "${field.to}" }`;
+  }
+  if (field.type === ADMIN_FIELDS.array.type) {
+    // Transparent: an array's own entry is whatever its `items` field's
+    // entry would be — `items` is always `required: true` on a resolved
+    // `ArrayField`, satisfying `AdminDataField` for every item type array()
+    // accepts (scalars fall through to `null` below, same as any other
+    // non-populatable leaf).
+    return buildPopulateMapEntry({ field: field.items });
+  }
+  if (field.type === ADMIN_FIELDS.group.type) {
+    const inner = buildPopulateMapEntries({ fields: field.fields });
+    return inner ? `{ kind: "group"; fields: { ${inner} } }` : null;
+  }
+  if (field.type === ADMIN_FIELDS.blocks.type) {
+    const blockEntries = field.blocks
+      .map((block) => {
+        const inner = buildPopulateMapEntries({ fields: block.fields });
+        return inner ? `${block.blockType}: { ${inner} }` : null;
+      })
+      .filter((entry): entry is string => entry !== null);
+    return blockEntries.length > 0 ? `{ kind: "blocks"; blocks: { ${blockEntries.join("; ")} } }` : null;
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Field traversal, conditions and row layout
 // ---------------------------------------------------------------------------

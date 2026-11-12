@@ -21,9 +21,15 @@ import {
   ui,
   upload,
   url,
+  VexError,
 } from "@vexcms/core";
 
-import { TABLE_SLUG_FIELDS, TABLE_SLUG_IMAGES, TABLE_SLUG_USERS } from "~/db/constants";
+import {
+  TABLE_SLUG_ARTICLES,
+  TABLE_SLUG_FIELDS,
+  TABLE_SLUG_IMAGES,
+  TABLE_SLUG_USERS,
+} from "~/db/constants";
 import { FieldsTitleInputOverride } from "~/vexcms/components/FieldsTitleInput";
 import { FieldsWordCountCell, FieldsWordCountField } from "~/vexcms/components/FieldsWordCount";
 
@@ -50,6 +56,9 @@ const statGroupBlock = defineBlock({
           siblingData.showHeading === true,
       },
     }),
+    // `array()` of `group()` whose items carry an `upload()` — nested
+    // populate (`populate: { content: { stat_group: { stats: { icon: true } } } }`)
+    // resolves `icon` to the real image doc.
     stats: array({
       label: "Stats",
       items: group({
@@ -57,6 +66,12 @@ const statGroupBlock = defineBlock({
         fields: {
           value: text({ label: "Value" }),
           caption: text({ label: "Caption" }),
+          icon: upload({
+            label: "Icon",
+            to: TABLE_SLUG_IMAGES,
+            description:
+              "Demonstrates upload() nested inside array(group()) inside blocks() — populate reaches this via `content.stat_group.stats.icon`.",
+          }),
         },
       }),
     }),
@@ -113,6 +128,15 @@ const containerBlock = defineBlock({
         { label: "Meta", name: "meta", fields: { tag: text({ label: "Tag" }) } },
       ],
     }),
+    // `relationship()` directly on a block's own fields — nested populate
+    // (`populate: { content: { container: { relatedArticle: true } } }`)
+    // resolves this to the real article doc.
+    relatedArticle: relationship({
+      label: "Related Article",
+      collection: { slug: TABLE_SLUG_ARTICLES },
+      description:
+        "Demonstrates relationship() nested directly inside a blocks() block's own fields.",
+    }),
     children: blocks({
       label: "Children",
       blocks: [nestedStatGroupBlock],
@@ -162,6 +186,9 @@ export const fields = defineCollection({
       url: "/",
     },
   },
+  versions: {
+    drafts: true,
+  },
   fields: {
     // ── email() — custom-named search index, reused by relationship pickers
     // targeting this collection instead of an auto-generated `search_contactEmail`.
@@ -208,6 +235,32 @@ export const fields = defineCollection({
       min: [0, "Rating cannot be negative."],
       max: [5, "Rating cannot exceed 5."],
       description: "Demonstrates number() with tuple min/max.",
+    }),
+
+    // ── number() — admin.mask: "decimal", left-aligned (rightAlign: false
+    // default overriding the alias's own rightAlign: true). Regression
+    // guard for the caret-reset-to-0 bug: typing digits in order must not
+    // re-initialize Inputmask on every keystroke.
+    quantity: number({
+      label: "Quantity",
+      admin: {
+        mask: "decimal",
+      },
+      description: "Demonstrates number() with admin.mask: \"decimal\".",
+    }),
+
+    // ── number() — admin.mask with currency-like options (radixPoint,
+    // groupSeparator, digits) alongside the decimal alias.
+    unitPrice: number({
+      label: "Unit Price",
+      admin: {
+        mask: {
+          mask: "decimal",
+          storeMasked: false,
+          options: { radixPoint: ".", groupSeparator: ",", digits: 2 },
+        },
+      },
+      description: "Demonstrates number() with a currency-like admin.mask (radixPoint/groupSeparator/digits).",
     }),
 
     // ── checkbox() — boolean toggle.
@@ -263,6 +316,26 @@ export const fields = defineCollection({
       label: "Event At",
       time: { timePicker: { hour: true, minute: true, second: true } },
       description: "Demonstrates date() with a seconds-precision time picker.",
+    }),
+
+    // ── date() — dependsOn: endDate's validate() re-runs when startDate
+    // changes, even when endDate itself doesn't, because it depends on it.
+    startDate: date({
+      label: "Start Date",
+      description:
+        "Demonstrates validate()'s dependsOn: changing this re-runs endDate's validate().",
+    }),
+
+    endDate: date<typeof TABLE_SLUG_FIELDS>({
+      label: "End Date",
+      dependsOn: ["startDate"],
+      description:
+        'Must be after Start Date. dependsOn: ["startDate"] re-runs this check when Start Date changes, not only when End Date itself does.',
+      validate: ({ value, doc }) => {
+        if (typeof doc.startDate === "number" && value <= doc.startDate) {
+          throw new VexError({ message: "End Date must be after Start Date." });
+        }
+      },
     }),
 
     // ── relationship() — single target.
@@ -323,7 +396,9 @@ export const fields = defineCollection({
       description: "Demonstrates array() of group() — array of groups.",
     }),
 
-    // ── group() containing array() — a nested list inside a group.
+    // ── group() containing array() — a nested list inside a group. Also
+    // carries an upload() — nested populate (`populate: { info: { coverImage: true } }`)
+    // resolves it to the real image doc.
     info: group({
       label: "Info",
       interfaceName: "FieldsExampleInfo",
@@ -333,6 +408,11 @@ export const fields = defineCollection({
         bullets: array({
           label: "Bullets",
           items: text({ label: "Bullet" }),
+        }),
+        coverImage: upload({
+          label: "Cover Image",
+          to: TABLE_SLUG_IMAGES,
+          description: "Demonstrates upload() nested directly inside a group() field.",
         }),
       },
     }),
@@ -486,6 +566,46 @@ export const fields = defineCollection({
           data.showAdvanced === true,
       },
       description: "Demonstrates row() with admin.condition reading the showAdvanced sibling.",
+    }),
+
+    // ── select() — drives pricingRow's conditional child below.
+    listingType: select({
+      label: "Listing Type",
+      options: [
+        { label: "Sale", value: "sale" },
+        { label: "Rent", value: "rent" },
+      ],
+      description: "Demonstrates a select() controlling a row() child's admin.condition.",
+    }),
+
+    // ── row() — salePrice is condition-hidden unless listingType is "sale";
+    // monthlyRent always renders. Toggling listingType reflows the row:
+    // salePrice reserves no slot while hidden, and monthlyRent takes the
+    // row's full width until salePrice reappears.
+    pricingRow: row({
+      fields: {
+        salePrice: text({
+          label: "Sale Price",
+          admin: {
+            width: "50%",
+            condition: ({ data }) =>
+              typeof data === "object" &&
+              data !== null &&
+              "listingType" in data &&
+              Array.isArray(data.listingType) &&
+              data.listingType.includes("sale"),
+          },
+        }),
+        monthlyRent: text({
+          label: "Monthly Rent",
+          admin: {
+            width: "50%",
+            mask: { mask: "decimal", storeMasked: false, options: { radixPoint: "." } },
+          },
+        }),
+      },
+      description:
+        "Demonstrates row() sizing slots from each child's own live admin.condition — salePrice gets no slot while listingType isn't 'sale'.",
     }),
 
     // ── ui() — custom Field + Cell, no stored value. Field renders in the

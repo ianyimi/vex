@@ -104,8 +104,9 @@ export default function RootLayout({
                 only reaches consumers inside the provider. Rendered directly —
                 it takes nothing but `children`, reading collections, globals,
                 and allowed origins from `VexConfigContext` — and gates itself
-                on `?vexLivePreview=1` plus the session-verified cookie, so
-                every public route stays prerenderable. */}
+                on the session-verified cookie plus
+                `?vexLivePreview=1` (or the preview window name it writes on
+                first activation), so every public route stays prerenderable. */}
             <LivePreviewProvider>
               <ThemeLive />
               {children}

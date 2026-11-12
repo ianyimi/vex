@@ -67,3 +67,4 @@
 - N — Update + test create-vexcms templates: sync `base-nextjs` from `apps/test` and `marketing-site` from `apps/www` (template-sync skill), scaffold from packed tarballs, manual run-through per template on a fresh Convex deployment (launch plan § N)
 - S — Harden the live demo: anonymous-user cleanup cron, anonymous sign-in rate limit, read-only proven by direct mutation calls, Convex sized for launch traffic, screenshot/video fallback (launch plan § S)
 - P — Launch analytics & monitoring: Vercel Web Analytics + Speed Insights on www and docs, template default, privacy page, Vercel spend + Convex usage alerts, uptime checks (launch plan § P)
+- Live preview across pages (spec 2026-11-11-live-preview-cross-page)

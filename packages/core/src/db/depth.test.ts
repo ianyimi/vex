@@ -7,7 +7,7 @@ import { buildDepthPopulate } from "./depth";
 function makeConfig(
   collections: {
     slug: string;
-    fields: Record<string, { type: string; collection?: { slug: string } }>;
+    fields: Record<string, Record<string, unknown>>;
   }[],
 ): VexConfig {
   return {
@@ -164,5 +164,136 @@ describe("buildDepthPopulate", () => {
   it("collection with only an upload field (no relationships) still populates it", () => {
     const withUpload = makeConfig([{ slug: "images", fields: { file: { type: "upload" } } }]);
     expect(buildDepthPopulate(withUpload, "images", 1)).toEqual({ file: true });
+  });
+
+  // ── Nested containers: blocks()/array()/group() ───────────────────────────
+
+  it("depth 1 — a relationship nested directly inside a blocks() block becomes true", () => {
+    const withBlocks = makeConfig([
+      {
+        slug: "pages",
+        fields: {
+          content: {
+            type: "blocks",
+            blocks: [
+              {
+                blockType: "container",
+                fields: {
+                  relatedArticle: { type: "relationship", collection: { slug: "articles" } },
+                },
+              },
+            ],
+          },
+        },
+      },
+      { slug: "articles", fields: { title: { type: "text" } } },
+    ]);
+    expect(buildDepthPopulate(withBlocks, "pages", 1)).toEqual({
+      content: { container: { relatedArticle: true } },
+    });
+  });
+
+  it("depth 2 — a relationship nested inside a blocks() block recurses into its own target's relationships", () => {
+    const withBlocks = makeConfig([
+      {
+        slug: "pages",
+        fields: {
+          content: {
+            type: "blocks",
+            blocks: [
+              {
+                blockType: "container",
+                fields: {
+                  relatedArticle: { type: "relationship", collection: { slug: "articles" } },
+                },
+              },
+            ],
+          },
+        },
+      },
+      {
+        slug: "articles",
+        fields: { author: { type: "relationship", collection: { slug: "authors" } } },
+      },
+      { slug: "authors", fields: { name: { type: "text" } } },
+    ]);
+    expect(buildDepthPopulate(withBlocks, "pages", 2)).toEqual({
+      content: { container: { relatedArticle: { populate: { author: true } } } },
+    });
+  });
+
+  it("a block with nothing populatable is omitted from the blocks() result entirely", () => {
+    const withBlocks = makeConfig([
+      {
+        slug: "pages",
+        fields: {
+          content: {
+            type: "blocks",
+            blocks: [
+              { blockType: "text_only", fields: { body: { type: "text" } } },
+              {
+                blockType: "container",
+                fields: {
+                  relatedArticle: { type: "relationship", collection: { slug: "articles" } },
+                },
+              },
+            ],
+          },
+        },
+      },
+      { slug: "articles", fields: { title: { type: "text" } } },
+    ]);
+    const result = buildDepthPopulate(withBlocks, "pages", 1) as Record<string, unknown>;
+    expect(result.content).toEqual({ container: { relatedArticle: true } });
+    expect(result.content).not.toHaveProperty("text_only");
+  });
+
+  it("depth 1 — an upload nested inside array(group()) items becomes true, keyed directly (no array wrapper)", () => {
+    const withGallery = makeConfig([
+      {
+        slug: "pages",
+        fields: {
+          gallery: {
+            type: "array",
+            items: {
+              type: "group",
+              fields: { asset: { type: "upload" } },
+            },
+          },
+        },
+      },
+    ]);
+    expect(buildDepthPopulate(withGallery, "pages", 1)).toEqual({
+      gallery: { asset: true },
+    });
+  });
+
+  it("depth 1 — an upload nested inside a plain group() becomes true", () => {
+    const withSeo = makeConfig([
+      {
+        slug: "pages",
+        fields: {
+          seo: { type: "group", fields: { ogImage: { type: "upload" } } },
+        },
+      },
+    ]);
+    expect(buildDepthPopulate(withSeo, "pages", 1)).toEqual({
+      seo: { ogImage: true },
+    });
+  });
+
+  it("a group()/array() with nothing populatable is omitted entirely", () => {
+    const withPlainGroup = makeConfig([
+      {
+        slug: "pages",
+        fields: {
+          seo: { type: "group", fields: { title: { type: "text" } } },
+          tags: { type: "array", items: { type: "text" } },
+          author: { type: "relationship", collection: { slug: "authors" } },
+        },
+      },
+      { slug: "authors", fields: { name: { type: "text" } } },
+    ]);
+    expect(buildDepthPopulate(withPlainGroup, "pages", 1)).toEqual({ author: true });
   });
 });

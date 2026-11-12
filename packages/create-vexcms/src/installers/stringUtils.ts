@@ -647,11 +647,18 @@ export function stripOrgFromAuthApi(filePath: string, content: string): string {
       '      config,\n' +
       '      id: identity.sessionId as SessionID,\n' +
       '      collection: TABLE_SLUG_SESSIONS,\n' +
+      '      access: { bypass: true },\n' +
       '    });\n' +
       '    if (!session) {\n' +
       '      return empty;\n' +
       '    }\n' +
-      '    const user = await get({ ctx, config, id: identity.subject as UserID, collection: TABLE_SLUG_USERS });\n' +
+      '    const user = await get({\n' +
+      '      ctx,\n' +
+      '      config,\n' +
+      '      id: identity.subject as UserID,\n' +
+      '      collection: TABLE_SLUG_USERS,\n' +
+      '      access: { bypass: true },\n' +
+      '    });\n' +
       '    if (!user) {\n' +
       '      return empty;\n' +
       '    }\n' +
@@ -663,6 +670,7 @@ export function stripOrgFromAuthApi(filePath: string, content: string): string {
       '      config,\n' +
       '      id: session.activeOrganizationId as OrganizationID,\n' +
       '      collection: TABLE_SLUG_ORGANIZATIONS,\n' +
+      '      access: { bypass: true },\n' +
       '    });\n' +
       '    return { user, organization: organization ?? undefined };\n' +
       '  },\n' +
@@ -680,11 +688,18 @@ export function stripOrgFromAuthApi(filePath: string, content: string): string {
       '      config,\n' +
       '      id: identity.sessionId as SessionID,\n' +
       '      collection: TABLE_SLUG_SESSIONS,\n' +
+      '      access: { bypass: true },\n' +
       '    });\n' +
       '    if (!session) {\n' +
       '      return empty;\n' +
       '    }\n' +
-      '    const user = await get({ ctx, config, id: identity.subject as UserID, collection: TABLE_SLUG_USERS });\n' +
+      '    const user = await get({\n' +
+      '      ctx,\n' +
+      '      config,\n' +
+      '      id: identity.subject as UserID,\n' +
+      '      collection: TABLE_SLUG_USERS,\n' +
+      '      access: { bypass: true },\n' +
+      '    });\n' +
       '    if (!user) {\n' +
       '      return empty;\n' +
       '    }\n' +

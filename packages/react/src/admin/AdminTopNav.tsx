@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useState, type ReactNode, type RefAttributes } from "react";
-import { Button, Skeleton, SidebarTrigger, VexLink, Icon } from "../ui";
+import { Suspense, useEffect, useRef, useState, type ReactNode, type RefAttributes } from "react";
+import { Button, Skeleton, SidebarTrigger, VexLink, UserDisplay, Icon } from "../ui";
 import { ChevronLeft, ChevronRight, LucideProps } from "lucide-react";
 import {
   IconName,
@@ -11,7 +11,7 @@ import {
   type MediaCollectionConfig,
 } from "@vexcms/core";
 import { adminHref } from "./adminHref";
-import { useVexConfig } from "../config/VexConfigContext";
+import { useVexConfig, useVexAccess } from "../config/VexConfigContext";
 import { COVERING_ROUTE_LINK_ATTRIBUTE, useFrameworkComponents } from "../config/useFrameworkComponents";
 import { useLastUncoveredValue } from "../config/useLastUncoveredValue";
 import { useVexAuth } from "../auth/VexAuthContext";
@@ -57,7 +57,7 @@ function ViewSiteButton({ className }: { className?: string }) {
     <Button
       nativeButton={false}
       render={<VexLink href="/" />}
-      size="icon"
+      size="icon-lg"
       variant="outline"
       icon="ExternalLink"
       iconPosition="center"
@@ -165,6 +165,7 @@ function AuthControl(props: { className?: string; currentHref: string }): ReactN
           />
         }
         variant="outline"
+        size="lg"
         icon="LogIn"
         iconPosition="right"
         className={props.className}
@@ -176,6 +177,7 @@ function AuthControl(props: { className?: string; currentHref: string }): ReactN
   return (
     <Button
       variant="outline"
+      size="lg"
       icon="LogOut"
       iconPosition="right"
       isPending={isSigningOut}
@@ -187,6 +189,39 @@ function AuthControl(props: { className?: string; currentHref: string }): ReactN
     >
       Sign out
     </Button>
+  );
+}
+
+/**
+ * Shows the signed-in caller to the right of {@link AuthControl}'s sign-in/out button, via
+ * the reusable `UserDisplay` (`ui/UserDisplay.tsx`). Resolves `name`/`email`/`image` from
+ * the SAME `useVexAuth()` the control itself reads, so the two never disagree about who is
+ * signed in, and resolves `fallbackIcon` from `config.access.userCollectionSlug`'s own
+ * `admin.icon` — when the user has no avatar image, the chip falls back to the SAME icon
+ * the user collection's dashboard card/sidebar entry already shows, before `UserDisplay`'s
+ * own generic single-user icon.
+ *
+ * Renders nothing for every signed-out shape `AuthControl` treats as signed out
+ * (`user === null` or `user.isAnonymous === true`), and nothing again if neither a `name`
+ * nor an `email` string is present on the user doc (`UserDisplay`'s own contract).
+ *
+ * @param props.className - Positioning class, mirroring `AuthControl`'s own `className` prop.
+ * @returns The signed-in user's avatar + name/email, or `null`.
+ */
+function CurrentUserDisplay(props: { className?: string }): ReactNode {
+  const { user } = useVexAuth();
+  const config = useVexConfig();
+  const access = useVexAccess();
+  if (!user || user.isAnonymous === true) return null;
+  const userCollection = config.collections.find((c) => c.slug === access?.userCollectionSlug);
+  return (
+    <UserDisplay
+      name={typeof user.name === "string" ? user.name : undefined}
+      email={typeof user.email === "string" ? user.email : undefined}
+      image={typeof user.image === "string" ? user.image : undefined}
+      fallbackIcon={userCollection?.admin.icon}
+      className={cn("text-muted-foreground", props.className)}
+    />
   );
 }
 
@@ -259,7 +294,7 @@ function CrumbLink(props: { crumb: Crumb; isLast: boolean }): ReactNode {
     >
       {props.crumb.icon && (
         <span>
-          <Icon name={props.crumb.icon} size={14} />
+          <Icon name={props.crumb.icon} size={16} />
         </span>
       )}
       <span>{props.crumb.label}</span>
@@ -330,13 +365,42 @@ function AdminTopNavDocCrumb(props: {
  * cause of the pre-existing "document crumb never shows" bug this move also fixes, alongside a
  * genuine `drafts`-key mismatch bug found and fixed in the same investigation).
  *
- * Horizontal padding is `px-6` (NOT `px-4`), matching `NextAdminPage`'s own content wrapper
- * (`className="min-h-0 flex-1 p-6 pt-0"`) exactly — the bar's edges
- * must line up with the page content column's edges (e.g. a list/dashboard page's own
- * title) on BOTH sides, not just visually approximate it. A mismatched padding here is a
- * recurring trap: `px-4` (16px) looked "close enough" at a glance but was a real,
- * measurable 8px off from the content's own 24px — verify any future bar-padding change
- * against `getBoundingClientRect()`, not eyeballing.
+ * Vertical sizing: `min-h-[67px]` with `items-center`, no `py-*`. `67px` is tuned so the
+ * gap from the "Sign out"/"Sign in" control's own bottom edge to this bar's `border-b`
+ * (measures ~15.5px) matches the gap from `CollectionEditView`/`GlobalEditView`'s
+ * document-title header's OWN `border-b` down to the TOP of its Preview/Save/Unpublish
+ * button row (also ~15.5px) — the developer's explicit comparison, both real rendered box
+ * edges (not a text glyph's ink-top, which earlier attempts matched instead and read
+ * visibly bigger than the button row despite a numerically close gap). The auth button
+ * here and that button row are the SAME height (36px, `size="lg"`), so under the SAME
+ * `min-h-*` + `items-center` centering technique a shared gap also yields a shared total
+ * height — this bar and the title header both measure 67px. Horizontal padding stays
+ * `px-6`, unchanged, matching `NextAdminPage`'s own content wrapper
+ * (`className="min-h-0 flex-1 p-6 pt-0"`) on BOTH sides, not just visually approximate it —
+ * a mismatched padding here is a recurring trap: `px-4` (16px) once looked "close enough"
+ * at a glance but was a real, measurable 8px off from the content's own 24px — verify any
+ * future bar-padding change against `getBoundingClientRect()`, not eyeballing.
+ * `AdminLayout`'s and `AdminSidebar`'s own `SidebarHeader` carry the SAME `min-h-[67px]`, so
+ * the two headers' `border-b` lines land at the same y — one continuous divider across
+ * sidebar and main column. That header's OWN horizontal padding (`px-4`, 16px each side) is
+ * NOT mirrored from this bar's `px-6` (24px) — it is sized against the sidebar header's own
+ * content instead: "VexCMS Admin"'s RENDERED TEXT left edge (measured via
+ * `Range.getBoundingClientRect()` on the text node, not the container's own box) lines up
+ * with "Collections"'s own rendered text edge one level down (`SidebarGroup`'s `p-2` (8px)
+ * plus `SidebarGroupLabel`'s own `px-2` (8px) puts that text 16px in from the sidebar's
+ * edge — `SidebarGroupLabel`'s CONTAINER box sits at only 8px; measuring the container
+ * instead of the text here was a bug in an earlier pass of this same change), and the
+ * `ThemeToggle`'s right inset is set to match that SAME 16px, not this bar's 24px.
+ *
+ * Publishes its OWN measured rendered height as `--vex-topbar-h` on `document.documentElement`
+ * (a `ResizeObserver` on the `<header>` itself, same pattern `DataTable.tsx` already uses for
+ * `--vex-table-header-h`) — the single source any `position: fixed`/`position: absolute`
+ * overlay that must start exactly at this bar's bottom border (`ListViewPeek`'s desktop
+ * panel; not the mobile bottom-sheet shape, whose `top-10` is a deliberate decorative reveal
+ * strip, unrelated to this bar's real height) reads via `top-[var(--vex-topbar-h,67px)]`,
+ * instead of a hardcoded pixel guess that silently goes stale the next time this bar's own
+ * height changes (measured regression: a prior height change left the peek's title row
+ * clipped behind this bar until the hardcoded guess was manually, separately updated).
  *
  * @param props.activeSlug - The active collection/media-collection slug, `"collections"` for
  *   the collections-only index route, `"globals"` for any globals route, or `undefined` on
@@ -346,6 +410,16 @@ function AdminTopNavDocCrumb(props: {
  * @returns The sticky top bar.
  */
 export default function AdminTopNav(props: { activeSlug?: string; activeDocID?: string }) {
+  const topbarRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = topbarRef.current;
+    if (!el) return;
+    const measure = () => document.documentElement.style.setProperty("--vex-topbar-h", `${el.offsetHeight}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const config = useVexConfig();
   const side = config.admin.sidebar.side;
   const isLeft = side === "left";
@@ -395,11 +469,11 @@ export default function AdminTopNav(props: { activeSlug?: string; activeDocID?: 
     const link = (
       <CrumbLink key={crumb.key} crumb={crumb} isLast={!hasDocSlot && i === baseCrumbs.length - 1} />
     );
-    return i === 0 ? [link] : [<Divider key={`div-${crumb.key}`} left={isLeft} size={16} />, link];
+    return i === 0 ? [link] : [<Divider key={`div-${crumb.key}`} left={isLeft} size={18} />, link];
   });
   if (hasDocSlot) {
     items.push(
-      <Divider key="div-doc" left={isLeft} size={16} />,
+      <Divider key="div-doc" left={isLeft} size={18} />,
       <Suspense key="doc" fallback={<Skeleton className="h-4 w-20 rounded" />}>
         <AdminTopNavDocCrumb
           collection={activeCollection!}
@@ -412,33 +486,35 @@ export default function AdminTopNav(props: { activeSlug?: string; activeDocID?: 
   const nav = isLeft ? items : items.slice().reverse();
 
   const crumbsEl = (
-    <div className="flex min-w-0 items-center gap-2 overflow-x-auto" suppressHydrationWarning>
+    <div className="flex min-w-0 items-center gap-2 overflow-x-auto text-lg" suppressHydrationWarning>
       {nav}
     </div>
   );
 
   return (
-    <header className="bg-background sticky top-0 z-100 flex h-12 shrink-0 items-center gap-2 border-b px-6">
+    <header ref={topbarRef} className="bg-background sticky top-0 z-100 flex min-h-[67px] shrink-0 items-center gap-2 border-b px-6">
       {side === "right" && <AuthControl currentHref={currentHref} />}
+      {side === "right" && <CurrentUserDisplay className="ml-2" />}
       {side === "right" && <div className="flex-1" />}
       {side === "right" ? (
         <>
           <ViewSiteButton className="mr-2" />
           {crumbsEl}
-          {/* `-mr-1.5`: the 28px icon button's 16px icon sits 6px inside its box — pulling the
+          {/* `-mr-2`: the 32px icon button's 16px icon sits 8px inside its box — pulling the
               box out by that inset puts the visible ICON on the content column's edge, the way
               `AuthControl`'s bordered button already lines up on the opposite side. */}
-          <SidebarTrigger side={side} className="-mr-1.5 hover:text-primary/90 transition-colors duration-300" />
+          <SidebarTrigger side={side} size="icon" className="-mr-2 hover:text-primary/90 transition-colors duration-300" />
         </>
       ) : (
         <>
-          {/* `-ml-1.5`: see the right-side branch above. */}
-          <SidebarTrigger side={side} className="-ml-1.5 hover:text-primary/90 transition-colors duration-300" />
+          {/* `-ml-2`: see the right-side branch above. */}
+          <SidebarTrigger side={side} size="icon" className="-ml-2 hover:text-primary/90 transition-colors duration-300" />
           {crumbsEl}
           <ViewSiteButton className="ml-2" />
         </>
       )}
       {side !== "right" && <div className="flex-1" />}
+      {side !== "right" && <CurrentUserDisplay className="mr-2" />}
       {side !== "right" && <AuthControl className="ml-2" currentHref={currentHref} />}
     </header>
   );

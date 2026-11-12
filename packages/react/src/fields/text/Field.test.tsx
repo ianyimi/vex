@@ -7,8 +7,10 @@ import {
   defineConfig,
   text,
   type CollectionConfig,
+  type FieldControlProps,
   type TextField,
 } from "@vexcms/core";
+import type { ComponentType } from "react";
 import { AppForm } from "../../forms";
 import { VexConfigContext } from "../../config/VexConfigContext";
 import { testCollection } from "../../testing/harness/accessFixtures";
@@ -219,7 +221,10 @@ describe("text: admin.mask", () => {
     const fieldDef = text({ label: "Phone", admin: { mask: "(999) 999-9999" } });
     renderMasked(fieldDef);
     await waitFor(() =>
-      expect(withMaskMock).toHaveBeenCalledWith("(999) 999-9999", { autoUnmask: true }),
+      expect(withMaskMock).toHaveBeenCalledWith("(999) 999-9999", {
+        rightAlign: false,
+        autoUnmask: true,
+      }),
     );
   });
 
@@ -227,5 +232,64 @@ describe("text: admin.mask", () => {
     const fieldDef = text({ label: "Title" });
     renderMasked(fieldDef);
     expect(withMaskMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("text: admin.components.Input override renders renderDefault as JSX", () => {
+  function JsxWrapOverride(
+    props: FieldControlProps<string> & { renderDefault: ComponentType<FieldControlProps<string>> },
+  ) {
+    const RenderDefault = props.renderDefault;
+    return <RenderDefault {...props} />;
+  }
+
+  function TextOverrideHarness(props: { fieldDef: TextField }) {
+    const form = useForm({ defaultValues: { testField: "" } });
+    return (
+      <AppForm form={form}>
+        <TextFieldAdmin
+          name="testField"
+          fieldDef={props.fieldDef}
+          readOnly={false}
+          collection={testCollection}
+        />
+      </AppForm>
+    );
+  }
+
+  it("keeps the same <input> DOM node mounted — and keystroke focus on it — across re-renders of TextFieldAdmin interleaved with typing", async () => {
+    // Built once, outside the harness — mirrors a real `fieldDef`, read off a
+    // stable config object and never recreated inline per render.
+    const fieldDef = text({
+      label: "Title",
+      admin: { components: { Input: [{ id: "test.jsx-wrap", component: JsxWrapOverride }] } },
+    });
+
+    // `TextFieldAdmin` is not memoized: any parent re-render (e.g. a sibling
+    // subscription to the whole form re-rendering the field tree, as
+    // `FieldSlotOutlet` does in production) re-invokes its function body,
+    // redefining its inline `renderMaskedControl`/`renderBareControl`
+    // closures — forced here via `rerender` so the regression doesn't depend
+    // on reproducing that exact production trigger.
+    function Harness(props: { tick: number }) {
+      void props.tick;
+      return <TextOverrideHarness fieldDef={fieldDef} />;
+    }
+
+    const user = userEvent.setup();
+    const { container, rerender } = render(<Harness tick={0} />);
+    const input = container.querySelector("input") as HTMLInputElement;
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    for (const [i, char] of ["a", "b", "c"].entries()) {
+      await user.type(input, char);
+      rerender(<Harness tick={i + 1} />);
+      // Still the exact same node — not unmounted/remounted by the re-render.
+      expect(container.querySelector("input")).toBe(input);
+      expect(document.activeElement).toBe(input);
+    }
+
+    expect(input.value).toBe("abc");
   });
 });

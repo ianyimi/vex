@@ -196,8 +196,8 @@ export function computeLivePreviewFrameGeometry(props: {
  *
  * The header's "Preview" link opens the same URL in a new tab. That tab is
  * reached over `BroadcastChannel` rather than `postMessage` — a
- * `rel="noreferrer"` link leaves no window reference behind — and its mount
- * handshake pulls the current values immediately.
+ * `rel="noreferrer"` link leaves no window reference behind — and its
+ * provider's ready message pulls the current values immediately.
  *
  * @param props.previewUrl - The resolved URL for the CURRENT form values.
  * @param props.collectionSlug - The collection or global slug being previewed.
@@ -251,11 +251,6 @@ export function LivePreviewPanel(props: {
     documentId: props.documentId,
     tempId: props.tempId,
     debounceMs: props.debounceMs,
-    // The embedded frame is the only surface this panel holds a reference to.
-    // A preview opened from the header link is a `target="_blank"` tab with no
-    // opener, so it is reached over `BroadcastChannel` instead — same origin,
-    // no reference needed, and its mount handshake pulls the current values
-    // immediately rather than waiting for the next keystroke.
     targetWindow: iframeRef.current?.contentWindow ?? null,
   });
 

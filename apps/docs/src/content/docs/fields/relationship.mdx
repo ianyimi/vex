@@ -120,6 +120,33 @@ are added to the selection list and can be removed individually. In the
 list-view table, each referenced document row shows the target collection's
 `admin.icon` beside its preview component (or title field as a fallback).
 
+## Populate
+
+A relationship field is stored as raw `Id`s — pass `populate: { <fieldKey>: true }` to
+`find`/`get`/`search`/`globals.get` to resolve it into the target document(s) instead
+(`depth` does the same automatically, to N levels, for every relationship/upload field on
+the collection). The target belongs to its OWN collection, so populate applies that
+collection's own `read` rule and field-permission map to every resolved target — the same
+decision a direct `get({ collection: <target> })` would make, independent of whatever rule
+let the caller read the document the relationship field lives on:
+
+```ts
+const post = await get({
+  ctx, config, id: postId, collection: "posts",
+  populate: { author: true },
+});
+post?.author; // Author[] — full target docs, when the caller may read "authors"
+```
+
+A caller who may not read the target collection at all gets a `HiddenDocument` placeholder
+in its place instead of the document — `{ _id, code: "ACCESS_DENIED", resource, action:
+"read" }` — and a caller who may read the target but not every field on it gets the target
+with its denied fields stripped. The admin panel renders a denied target as a locked row
+(`AccessDeniedItemRow` in the list-view table cell, a compact lock badge in the peek
+panel's Fields tab) rather than attempting its preview component. See [Access control →
+Populated relationships](/guides/access-control/#populated-relationships-honor-the-targets-own-read-rule)
+for the full behavior, including how `access: { bypass: true }` propagates.
+
 ## Querying by a relationship
 
 Every `relationship` field is stored as `v.array(v.id("slug"))`, whether `hasMany` is `true`

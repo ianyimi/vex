@@ -291,6 +291,41 @@ describe("get (server) — read RBAC enforcement", () => {
   });
 });
 
+describe("get (server) — a collection absent from access.resources entirely", () => {
+  // Regression: an internal self-identity lookup (session/user/organization,
+  // resolving WHO the caller is before any permission check can run) reads a
+  // collection that was never declared a `defineAccess` resource at all — not
+  // merely an undeclared action on a declared one. The deny-by-default
+  // posture (P-007) applies just the same, for every role, so this read must
+  // go through `access: { bypass: true }` rather than relying on an absent
+  // declaration to mean "allow".
+  test("denies even an admin-role caller when the resource itself is undeclared", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const id = await ctx.db.insert("authors", { name: "Lena" });
+        return get({ ctx, id, collection: "authors", config: rbacConfig, auth: adminAuth } as any);
+      }),
+    ).rejects.toThrow(VexAccessError);
+  });
+
+  test("access: { bypass: true } restores the read regardless of the undeclared resource", async () => {
+    const t = convexTest(schema, modules);
+    const doc = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("authors", { name: "Lena" });
+      return get({
+        ctx,
+        id,
+        collection: "authors",
+        config: rbacConfig,
+        auth: adminAuth,
+        access: { bypass: true },
+      } as any);
+    });
+    expect(doc).toMatchObject({ name: "Lena" });
+  });
+});
+
 // ── Constraint-object and callback forms interpreted against ONE document ──
 const constrainedPostsResource = defineCollection({
   slug: "posts",
@@ -828,5 +863,67 @@ describe("get (server) — commitTs ms conversion", () => {
       return get({ ctx, id, collection: "posts", config: mediaOnly });
     });
     expect((doc as unknown as Record<string, unknown>).updatedAt).toBe(1_700_000_000_000);
+  });
+});
+
+// ── Populate honors the target collection's own read rule ────────────────
+const authorsResource = defineCollection({
+  slug: "authors",
+  fields: { name: text() },
+});
+
+const populateRbacConfig = {
+  ...fixtureConfig,
+  access: defineAccess({
+    roles: ["editorNoAuthorRead"] as const,
+    resources: [postsResource, authorsResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      editorNoAuthorRead: { posts: { read: true }, authors: { read: false } },
+    },
+  }),
+} as unknown as VexConfig;
+
+const editorNoAuthorReadAuth = { user: { _id: "u4", roles: ["editorNoAuthorRead"] } };
+
+describe("get (server) — populate honors the target collection's own read rule", () => {
+  test("a populated target the caller cannot read on its own collection becomes a HiddenDocument placeholder", async () => {
+    const t = convexTest(schema, modules);
+    const doc = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const authorId = await ctx.db.insert("authors", { name: "Lena" });
+      const postId = await ctx.db.insert("posts", { title: "Hi", slug: "hi", author: [authorId] });
+      return get({
+        ctx,
+        id: postId,
+        collection: "posts",
+        populate: { author: true },
+        config: populateRbacConfig,
+        auth: editorNoAuthorReadAuth,
+      } as any);
+    });
+    const author = (doc as unknown as Record<string, unknown>).author as Record<string, unknown>[];
+    expect(author).toHaveLength(1);
+    expect(author[0]).toMatchObject({ code: "ACCESS_DENIED", resource: "authors", action: "read" });
+    expect(author[0].name).toBeUndefined();
+  });
+
+  test("access.bypass: true still populates the target in full, even though the config denies it", async () => {
+    const t = convexTest(schema, modules);
+    const doc = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const authorId = await ctx.db.insert("authors", { name: "Lena" });
+      const postId = await ctx.db.insert("posts", { title: "Hi", slug: "hi", author: [authorId] });
+      return get({
+        ctx,
+        id: postId,
+        collection: "posts",
+        populate: { author: true },
+        config: populateRbacConfig,
+        auth: editorNoAuthorReadAuth,
+        access: { bypass: true },
+      } as any);
+    });
+    const author = (doc as unknown as Record<string, unknown>).author as Record<string, unknown>[];
+    expect(author[0].name).toBe("Lena");
   });
 });

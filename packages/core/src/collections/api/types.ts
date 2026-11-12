@@ -1,10 +1,11 @@
 import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
 
-import type { CollectionSlug, DocumentBySlug } from "../../types/generated";
+import type { CollectionSlug, CollectionsPopulateMap, DocumentBySlug, PopulateMapEntry } from "../../types/generated";
 import { VexDocument } from "../../documents/types";
 import { VexConfig } from "../../config";
 import type {
   AccessCallOptions,
+  ApplyDepthPopulate,
   MutationCallActionFor,
   Populated,
   PopulateShape,
@@ -12,8 +13,6 @@ import type {
   PaginationOptions,
   PaginationResult,
   QueryCallActionFor,
-  RelationshipKeysOf,
-  RelationshipTargetOf,
   VexApiAuth,
 } from "../../db/types";
 import type { VexWhereNodeOf } from "../../access/queryConstraintTypes";
@@ -42,7 +41,7 @@ import type { VexVersionStatus } from "../../versions/constants";
  * queries (`get`) or scalar queries (`count`).
  *
  * @typeParam TCollectionSlug - The collection slug; used to narrow `populate` keys via
- *   `RelationshipKeysOf<TCollectionSlug>`. Defaults to the full `CollectionSlug` union.
+ *   `PopulateShape<TCollectionSlug>`. Defaults to the full `CollectionSlug` union.
  * @typeParam TPopulate - The populate object. Defaults to
  *   `Record<string, never>` (no relationships populated).
  *
@@ -88,7 +87,7 @@ export interface GenericQueryClientParams<
   auth?: never;
   /** Discriminator: client args MUST NOT supply `ctx`. */
   ctx?: never;
-  /** Recursive populate object, type-narrowed against `RelationshipKeysOf<TCollectionSlug>`. */
+  /** Recursive populate object, type-narrowed against `PopulateShape<TCollectionSlug>`. */
   populate?: TPopulate;
   /**
    * Auto-populate all relationship fields to this many levels.
@@ -151,7 +150,7 @@ export interface GenericQueryServerParams<
   /** Discriminator: server args MUST supply a Convex query context. */
   ctx: GenericQueryCtx<DataModel>;
   /**
-   * Recursive populate object, type-narrowed against `RelationshipKeysOf<TCollectionSlug>`.
+   * Recursive populate object, type-narrowed against `PopulateShape<TCollectionSlug>`.
    * Mutually exclusive with `depth` — becomes `never` when `D ≠ 0`.
    */
   populate?: [D] extends [0] ? TPopulate : never;
@@ -211,18 +210,23 @@ export interface GenericMutationServerParams<
 }
 
 /**
- * Computes the equivalent `PopulateShape` for automatically populating all
- * relationship fields on `TCollectionSlug` to `D` levels deep.
+ * Computes the equivalent `PopulateShape` for automatically populating every
+ * relationship/upload field on `TCollectionSlug` to `D` levels deep —
+ * including one nested inside a `group()`, an `array()` item, or a
+ * `blocks()` block (keyed by `blockType`), per the `CollectionsPopulateMap`
+ * registry `vex generate` augments.
  *
  * This is the type-level counterpart of `buildDepthPopulate`. The computed
  * shape is a valid `PopulateShape<TCollectionSlug>` and can be fed directly into
  * `Populated<TCollectionSlug, DepthPopulate<TCollectionSlug, D>>`.
  *
  * **How the counter works:** `_Counter` is a tuple of `0`s whose `length`
- * tracks how many levels have been descended. At the penultimate level
- * (`[..._Counter, 0]["length"] extends D`) fields are emitted as `true`
- * (populate, no further recursion). At intermediate levels they are emitted as
- * `{ populate: DepthPopulate<Target, D, [..._Counter, 0]> }`.
+ * tracks how many RELATIONSHIP/UPLOAD hops have been crossed — descending
+ * through a `group()`/`array()`/`blocks()` boundary within the SAME
+ * collection costs nothing, exactly like the runtime `buildDepthPopulate`.
+ * At the penultimate level (`[..._Counter, 0]["length"] extends D`) a leaf
+ * is emitted as `true` (populate, no further recursion). At intermediate
+ * levels it is emitted as `{ populate: DepthPopulate<Target, D, [..._Counter, 0]> }`.
  *
  * **Practical depth limit: 3.** TypeScript instantiation count grows
  * exponentially with D × relationship-key-count-per-collection. D=1,2,3 is
@@ -250,13 +254,56 @@ export type DepthPopulate<
   _Counter extends 0[] = [],
 > = _Counter["length"] extends D
   ? Record<string, never>
-  : [..._Counter, 0]["length"] extends D
-    ? { [K in RelationshipKeysOf<TCollectionSlug>]?: true }
-    : {
-        [K in RelationshipKeysOf<TCollectionSlug>]?: {
-          populate: DepthPopulate<RelationshipTargetOf<TCollectionSlug, K>, D, [..._Counter, 0]>;
-        };
-      };
+  : TCollectionSlug extends keyof CollectionsPopulateMap
+    ? ContainerDepthPopulate<CollectionsPopulateMap[TCollectionSlug], D, _Counter>
+    : Record<string, never>;
+
+/**
+ * Depth-populate options for one container level of the field tree — a
+ * collection's top-level fields, a `group()`'s own fields, or one
+ * `blocks()` block's own fields. @see {@link DepthPopulate}
+ */
+type ContainerDepthPopulate<
+  TMap extends Record<string, PopulateMapEntry>,
+  D extends number,
+  _Counter extends 0[],
+> = Prettify<{
+  [K in keyof TMap as FieldDepthPopulateOption<TMap[K], D, _Counter> extends never
+    ? never
+    : K]?: FieldDepthPopulateOption<TMap[K], D, _Counter>;
+}>;
+
+/** One field's depth-populate value, or `never` to drop the key entirely. @see {@link DepthPopulate} */
+type FieldDepthPopulateOption<
+  TEntry extends PopulateMapEntry,
+  D extends number,
+  _Counter extends 0[],
+> = TEntry extends { kind: "relationship" | "upload"; target: infer Target extends string }
+  ? [..._Counter, 0]["length"] extends D
+    ? true
+    : Target extends CollectionSlug
+      ? { populate: DepthPopulate<Target, D, [..._Counter, 0]> }
+      : true
+  : TEntry extends { kind: "group"; fields: infer TFields extends Record<string, PopulateMapEntry> }
+    ? keyof ContainerDepthPopulate<TFields, D, _Counter> extends never
+      ? never
+      : ContainerDepthPopulate<TFields, D, _Counter>
+    : TEntry extends {
+          kind: "blocks";
+          blocks: infer TBlocks extends Record<string, Record<string, PopulateMapEntry>>;
+        }
+      ? keyof {
+          [B in keyof TBlocks as keyof ContainerDepthPopulate<TBlocks[B], D, _Counter> extends never
+            ? never
+            : B]: ContainerDepthPopulate<TBlocks[B], D, _Counter>;
+        } extends never
+        ? never
+        : {
+            [B in keyof TBlocks as keyof ContainerDepthPopulate<TBlocks[B], D, _Counter> extends never
+              ? never
+              : B]?: ContainerDepthPopulate<TBlocks[B], D, _Counter>;
+          }
+      : never;
 
 /**
  * Return type of `find` / `get` / `search` when `depth` is provided instead
@@ -287,7 +334,18 @@ export type DepthPopulated<
       ? DocumentBySlug[TCollectionSlug]
       : never
     : TCollectionSlug extends keyof DocumentBySlug
-      ? Prettify<Populated<TCollectionSlug, DepthPopulate<TCollectionSlug, D>>>
+      ? // Not `Populated<TCollectionSlug, DepthPopulate<...>>`: `Populated`'s
+        // own second parameter is constrained to `extends PopulateShape<...>`,
+        // and proving `DepthPopulate`'s result satisfies that constraint (its
+        // mapped-type key domain is a separate, though equivalent, expression
+        // from `PopulateShape`'s own) used to require bridging with an
+        // `& PopulateShape<TCollectionSlug>` intersection — which multiplied
+        // two already-recursive container walks together and overflowed
+        // TypeScript's instantiation depth limit on a real, many-collection
+        // project. `ApplyDepthPopulate` skips the constraint check entirely:
+        // `DepthPopulate`'s walk is valid by construction, nothing needs to
+        // re-verify it.
+        Prettify<ApplyDepthPopulate<TCollectionSlug, DepthPopulate<TCollectionSlug, D>>>
       : never;
 
 // ── Client wrapper return contracts ─────────────────────────────────────────

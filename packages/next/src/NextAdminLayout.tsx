@@ -7,9 +7,10 @@ import { cookies } from "next/headers";
  * Next.js admin layout shell for VexCMS.
  *
  * A **server component** that reads the consolidated `vex-admin` cookie's
- * `sidebarOpen` field server-side (previously a dedicated
- * `sidebar_state` cookie) so the sidebar's open/closed state is correct on
- * first paint, with no client flash, and passes it, plus `authPromise`/
+ * `sidebarOpen`/`sidebarCounts` fields server-side (previously a dedicated
+ * `sidebar_state` cookie) so the sidebar's open/closed state AND its
+ * `<Suspense>` fallback's per-section skeleton row counts are correct on
+ * first paint, with no client flash, and passes them, plus `authPromise`/
  * `children`, to the
  * client leaf `NextAdminLayoutClient`. Config no longer crosses this
  * boundary at all — the admin panel's client tree gets its config from the
@@ -54,10 +55,15 @@ export async function NextAdminLayout(props: {
   authPromise?: Promise<VexApiAuth>;
 }) {
   const cookieStore = await cookies();
-  const sidebarOpen = parseAdminCookie({ cookieValue: cookieStore.get(ADMIN_COOKIE_NAME)?.value }).sidebarOpen ?? false;
+  const parsedCookie = parseAdminCookie({ cookieValue: cookieStore.get(ADMIN_COOKIE_NAME)?.value });
+  const sidebarOpen = parsedCookie.sidebarOpen ?? false;
 
   return (
-    <NextAdminLayoutClient authPromise={props.authPromise} sidebarOpen={sidebarOpen}>
+    <NextAdminLayoutClient
+      authPromise={props.authPromise}
+      sidebarOpen={sidebarOpen}
+      sidebarCounts={parsedCookie.sidebarCounts}
+    >
       {props.children}
     </NextAdminLayoutClient>
   );

@@ -178,20 +178,26 @@ export interface FrameworkAuthAdapter {
    */
   signInHref: (redirectTo: string) => string;
   /**
-   * Signs the current session out AND triggers whatever full, server-aware refresh the
-   * framework needs (Next.js: `signOut()` then `router.refresh()`) so the admin panel's
-   * own server-resolved auth state (`VexAuthProvider`, seeded by `NextAdminPage`) and any
-   * route guard re-evaluate against the now-signed-out session on return — landing on the
-   * sign-in page if anonymous admin access isn't configured, or the admin panel's own
-   * anonymous view if it is, exactly like a fresh unauthenticated request would.
+   * Signs the current session out, then hard-navigates (a full document load — e.g.
+   * `window.location.href = …`, never `router.push`/`router.refresh`/any other
+   * client-side transition) to `config.auth.signOut.redirectTo` once the session cookie
+   * is actually cleared. The admin shell (sidebar, top bar) must never re-render in a
+   * signed-out state — a client-side refresh keeps the admin layout mounted while queries
+   * re-run anonymously and a route guard redirects underneath it, which is exactly the
+   * multi-second "sidebar lingers, then a sign-in flash, then the destination" sequence
+   * this hard-navigation contract exists to avoid. The ONLY case a sign-in screen is seen
+   * is `redirectTo` itself pointing at the sign-in page.
+   *
    * `AdminTopNav` only calls this once and shows a pending state until it settles — the
-   * adapter owns the whole sequence, not just the Better Auth call.
+   * adapter owns the whole sequence (auth-client sign-out call AND the navigation), not
+   * just the Better Auth call.
    *
    * @returns A promise that resolves once the ENTIRE sign-out sequence (not just the
    *   auth-client call) completes — `AdminTopNav`'s own pending state matches its
    *   lifetime. Should resolve even on failure (matching `SessionButton.tsx`'s own "a
    *   stale client cache after a failed sign-out is worse than a redundant refresh"
-   *   reasoning) rather than rejecting and leaving the control stuck pending.
+   *   reasoning) rather than rejecting and leaving the control stuck pending — the hard
+   *   navigation itself should still run on failure, same reasoning.
    */
   signOut: () => Promise<void>;
 }

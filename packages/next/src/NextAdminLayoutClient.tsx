@@ -2,7 +2,7 @@
 // "use client" is injected by the tsup build banner for this entry (see
 // tsup.config.ts) so the emitted module carries the client boundary.
 import { useState, type ReactNode } from "react";
-import type { VexApiAuth } from "@vexcms/core";
+import type { SidebarSectionCounts, VexApiAuth } from "@vexcms/core";
 
 import { AdminLayout } from "@vexcms/react/admin";
 import NextImage from "next/image";
@@ -14,6 +14,7 @@ import { useNextNavigationBlocker } from "./navigation/useNextNavigationBlocker"
 import { useNextNavigate } from "./navigation/useNextNavigate";
 import { useNextIsRouteCovered } from "./navigation/useNextIsRouteCovered";
 import { useNextSearchParams } from "./navigation/useNextSearchParams";
+import { useNextAuthTransitionRefresh } from "./navigation/useNextAuthTransitionRefresh";
 import { useVexAdminAuthAdapter } from "./auth/VexAdminAuthAdapterContext";
 
 /**
@@ -44,6 +45,9 @@ import { useVexAdminAuthAdapter } from "./auth/VexAdminAuthAdapterContext";
  * @param props.authPromise - The in-flight `{ user, organization }` fetch,
  *   forwarded to `AdminLayout` so the sidebar resolves it in its OWN `<Suspense>` boundary —
  *   a slow auth round trip streams in the sidebar nav without blocking `children`.
+ * @param props.sidebarCounts - The caller's last-settled per-section sidebar item count, read
+ *   server-side from the `vex-admin` cookie by `NextAdminLayout` — forwarded to `AdminLayout`
+ *   so its `<Suspense>` fallback skeleton matches the settled nav's own per-section shape.
  * @returns The admin shell rendered from `children`, wrapped in `NuqsAdapter`
  * and the shared `AdminLayout`, wired with the active slug/document id derived
  * from `usePathname()` and Next.js `Link`/`Image` components.
@@ -52,7 +56,9 @@ export function NextAdminLayoutClient(props: {
   children: ReactNode;
   authPromise?: Promise<VexApiAuth>;
   sidebarOpen?: boolean;
+  sidebarCounts?: SidebarSectionCounts;
 }) {
+  useNextAuthTransitionRefresh();
   const livePathname = usePathname();
   const isRouteCovered = useNextIsRouteCovered();
   // Under a covering route (the sign-in modal) `usePathname()` is the modal's — keep the
@@ -87,6 +93,7 @@ export function NextAdminLayoutClient(props: {
           auth,
         }}
         sidebarOpen={props.sidebarOpen}
+        sidebarCounts={props.sidebarCounts}
       >
         {props.children}
       </AdminLayout>

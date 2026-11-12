@@ -30,24 +30,34 @@ export const VexAdminAuthAdapterContext = createContext<FrameworkAuthAdapter | u
 /**
  * Mounts the sign-in/out adapter for the admin panel's top-bar control.
  *
+ * `signOut` must hard-navigate (full document load) to the project's resolved
+ * `config.auth.signOut.redirectTo` once the session cookie clears — never
+ * `router.push`/`router.refresh`, which keep the admin layout mounted while
+ * queries re-run anonymously and the route guard redirects underneath it (the
+ * multi-second "sidebar lingers, then a sign-in flash" sequence this contract
+ * exists to avoid). See {@link FrameworkAuthAdapter.signOut} for the full contract.
+ *
  * @example
  * ```tsx
  * // ~/components/providers/client.tsx ("use client")
  * import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth";
- * import { useRouter } from "next/navigation";
  * import { signOut } from "~/auth/client";
  *
+ * import config from "~/vex.config";
+ *
  * function AuthAdapterProvider({ children }: { children: React.ReactNode }) {
- *   const router = useRouter();
  *   return (
  *     <VexAdminAuthAdapterProvider
  *       value={{
  *         signInHref: (redirectTo) => `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}`,
- *         signOut: () =>
- *           signOut()
- *             .then(() => router.refresh())
- *             .catch(() => router.refresh()), // a stale client cache after a failed
- *             // sign-out is worse than a redundant refresh — refresh either way.
+ *         signOut: () => {
+ *           const goToDestination = () => {
+ *             window.location.href = config.auth.signOut.redirectTo;
+ *           };
+ *           return signOut().then(goToDestination).catch(goToDestination);
+ *           // hard-navigate either way — a stale client cache after a failed
+ *           // sign-out is worse than a redundant navigation.
+ *         },
  *       }}
  *     >
  *       {children}

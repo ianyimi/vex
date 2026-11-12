@@ -6,3 +6,4 @@ export * from "./useLivePreviewServerUrl";
 export * from "./useLivePreviewSync";
 export * from "./livePreviewProtocol";
 export * from "./LivePreviewToggleAction";
+export * from "./useIsLivePreviewActive";

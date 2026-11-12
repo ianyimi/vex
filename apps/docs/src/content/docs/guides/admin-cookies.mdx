@@ -5,9 +5,10 @@ description: The two cookies the admin panel uses to remember your preferences a
 
 The admin panel persists a handful of per-browser UI preferences — table row density, a
 collection's filter-chip visibility, your local (unshared) saved views, last-seen row counts
-for the loading skeleton, the live-preview panel's open/closed state and split width, and the
-sidebar's collapsed state — so a page refresh renders correctly on the very first paint
-instead of flashing to a default and then snapping to the real value after hydration.
+for the loading skeleton, the live-preview panel's open/closed state and split width, the
+sidebar's collapsed state, and the sidebar's own last-seen per-section item counts — so a
+page refresh renders correctly on the very first paint instead of flashing to a default and
+then snapping to the real value after hydration.
 
 All of it lives in exactly **two** cookies, both scoped to your project's `basePath` (the
 `VexClientConfig.basePath` you pass to `defineConfig`, `/admin` by default) rather than the
@@ -24,6 +25,7 @@ One cookie, shared across the whole admin panel for this browser. JSON-encoded:
   density?: "comfortable" | "compact",
   sidebarOpen?: boolean,
   livePreview?: { panelOpen?: boolean; panelSize?: number },
+  sidebarCounts?: { collections?: number; globals?: number; media?: number },
 }
 ```
 
@@ -33,6 +35,16 @@ One cookie, shared across the whole admin panel for this browser. JSON-encoded:
   for**. Globals share this one field rather than each getting their own: you only ever view
   one global's edit page at a time, so remembering "the last state you left the panel in" is
   the state worth keeping.
+- `sidebarCounts` — the sidebar's three nav sections' (Collections/Globals/Media) own
+  last-settled item count, **for this signed-in caller specifically** (a caller with fewer
+  visible collections sees their own remembered count, not a shared default). Read
+  server-side so the sidebar's `<Suspense>` fallback (shown while the server resolves who
+  you are) renders the SAME number of skeleton rows, under the SAME section headers, that
+  the real, permission-filtered nav is about to settle with — instead of a fixed placeholder
+  count that pops into a visibly different shape (headers appearing, far more/fewer rows)
+  the moment auth resolves. A section with zero visible items writes `0`, not an absent
+  key — that section's header stays hidden on the next first paint too, matching the real
+  nav's own "nothing to show" behavior exactly.
 
 ## `vex-admin:<collection>`
 

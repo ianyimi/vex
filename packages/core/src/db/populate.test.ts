@@ -6,7 +6,8 @@ import { populateDocs } from "./populate";
 import type { PopulateShape } from "./types";
 import type { DocumentBySlug } from "../types/generated";
 import type { VexConfig } from "../config";
-
+import { defineAccess } from "../access/config";
+import { defineCollection, text } from "../index";
 import * as _generatedApi from "./test/convex/_generated/api";
 
 /** Explicit modules map for convex-test (replaces import.meta.glob which requires Vite). */
@@ -184,6 +185,299 @@ describe("populateDocs", () => {
     });
 
     expect(((result as any[])[0].author as DocumentBySlug["authors"][]).length).toBe(0);
+  });
+});
+
+describe("populateDocs — nested blocks()/array()/group()", () => {
+  test("populates a relationship nested directly inside a blocks() block", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const postId = await ctx.db.insert("posts", { title: "Linked", slug: "linked" });
+      const pageId = await ctx.db.insert("nestedPages", {
+        title: "Landing",
+        content: [{ blockType: "cta", id: "cta-1", link: [postId] }],
+      });
+      const page = await ctx.db.get(pageId);
+      return populateDocs(ctx, [page!], {
+        content: { cta: { link: true } },
+      } as PopulateShape);
+    });
+
+    const doc = (result as unknown as Record<string, unknown>[])[0];
+    const content = doc.content as Record<string, unknown>[];
+    const link = content[0].link as Record<string, unknown>[];
+    expect(link[0].title).toBe("Linked");
+  });
+
+  test("populates an upload nested inside array(group()) items", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const imageId = await ctx.db.insert("images", { filename: "cover.png" });
+      const pageId = await ctx.db.insert("nestedPages", {
+        title: "Gallery page",
+        gallery: [{ id: "g-1", caption: "First", asset: [imageId] }],
+      });
+      const page = await ctx.db.get(pageId);
+      return populateDocs(ctx, [page!], { gallery: { asset: true } } as PopulateShape);
+    });
+
+    const doc = (result as unknown as Record<string, unknown>[])[0];
+    const gallery = doc.gallery as Record<string, unknown>[];
+    const asset = gallery[0].asset as Record<string, unknown>[];
+    expect(asset[0].filename).toBe("cover.png");
+  });
+
+  test("populates an upload nested inside a plain group()", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const imageId = await ctx.db.insert("images", { filename: "og.png" });
+      const pageId = await ctx.db.insert("nestedPages", {
+        title: "SEO page",
+        seo: { ogImage: [imageId] },
+      });
+      const page = await ctx.db.get(pageId);
+      return populateDocs(ctx, [page!], { seo: { ogImage: true } } as PopulateShape);
+    });
+
+    const doc = (result as unknown as Record<string, unknown>[])[0];
+    const seo = doc.seo as Record<string, unknown>;
+    const ogImage = seo.ogImage as Record<string, unknown>[];
+    expect(ogImage[0].filename).toBe("og.png");
+  });
+
+  test("batches a nested field's ids across every matching block/item from every parent doc into one resolution pass", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const imageA = await ctx.db.insert("images", { filename: "a.png" });
+      const imageB = await ctx.db.insert("images", { filename: "b.png" });
+      const page1 = await ctx.db.insert("nestedPages", {
+        title: "One",
+        content: [
+          { blockType: "hero", id: "h-1", image: [imageA] },
+          { blockType: "cta", id: "c-1" }, // no link — different block type, same field key
+        ],
+      });
+      const page2 = await ctx.db.insert("nestedPages", {
+        title: "Two",
+        content: [{ blockType: "hero", id: "h-2", image: [imageB] }],
+      });
+      const docs = [(await ctx.db.get(page1))!, (await ctx.db.get(page2))!];
+      return populateDocs(ctx, docs, { content: { hero: { image: true } } } as PopulateShape);
+    });
+
+    const docs = result as unknown as Record<string, unknown>[];
+    const firstHero = (docs[0].content as Record<string, unknown>[])[0];
+    const secondHero = (docs[1].content as Record<string, unknown>[])[0];
+    expect((firstHero.image as Record<string, unknown>[])[0].filename).toBe("a.png");
+    expect((secondHero.image as Record<string, unknown>[])[0].filename).toBe("b.png");
+  });
+
+  test("recurses through a nested relationship's own `{ populate }` — crossing from a block into the target collection", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", { name: "Lena Park" });
+      const postId = await ctx.db.insert("posts", {
+        title: "Linked",
+        slug: "linked",
+        author: [authorId],
+      });
+      const pageId = await ctx.db.insert("nestedPages", {
+        title: "Landing",
+        content: [{ blockType: "cta", id: "cta-1", link: [postId] }],
+      });
+      const page = await ctx.db.get(pageId);
+      return populateDocs(ctx, [page!], {
+        content: { cta: { link: { populate: { author: true } } } },
+      } as PopulateShape);
+    });
+
+    const doc = (result as unknown as Record<string, unknown>[])[0];
+    const content = doc.content as Record<string, unknown>[];
+    const link = (content[0].link as Record<string, unknown>[])[0];
+    const author = (link.author as Record<string, unknown>[])[0];
+    expect(author.name).toBe("Lena Park");
+  });
+
+  test("a nested populated field not requested stays a raw id array", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const imageId = await ctx.db.insert("images", { filename: "cover.png" });
+      const pageId = await ctx.db.insert("nestedPages", {
+        title: "Gallery page",
+        gallery: [{ id: "g-1", asset: [imageId] }],
+      });
+      const page = await ctx.db.get(pageId);
+      return populateDocs(ctx, [page!], {} as PopulateShape);
+    });
+
+    const doc = (result as unknown as Record<string, unknown>[])[0];
+    const gallery = doc.gallery as Record<string, unknown>[];
+    const asset = gallery[0].asset as unknown[];
+    expect(typeof asset[0]).toBe("string");
+  });
+
+  test("mutating a nested block's populated field leaves the ORIGINAL input doc's nested array untouched", async () => {
+    const t = convexTest(schema, modules);
+    const { original, populated } = await t.run(async (ctx) => {
+      const imageId = await ctx.db.insert("images", { filename: "cover.png" });
+      const pageId = await ctx.db.insert("nestedPages", {
+        title: "Landing",
+        content: [{ blockType: "hero", id: "h-1", image: [imageId] }],
+      });
+      const page = (await ctx.db.get(pageId))!;
+      const populated = await populateDocs(ctx, [page], {
+        content: { hero: { image: true } },
+      } as PopulateShape);
+      return { original: page, populated };
+    });
+
+    const originalContent = original.content as unknown as Record<string, unknown>[];
+    const originalImage = originalContent[0].image as unknown[];
+    expect(typeof originalImage[0]).toBe("string"); // untouched — still a raw id
+
+    const populatedDoc = (populated as unknown as Record<string, unknown>[])[0];
+    const populatedContent = populatedDoc.content as Record<string, unknown>[];
+    expect((populatedContent[0].image as Record<string, unknown>[])[0].filename).toBe("cover.png");
+  });
+});
+
+/**
+ * `rbacConfig` adds an `access` matrix on top of `fixtureConfig`, declaring
+ * `authors` (the relationship TARGET `populateDocs` resolves below) as a
+ * resource — exercising the same read decision + field-permission map a
+ * direct `get({ collection: "authors" })` would apply, now reached through
+ * a populated `author` field on an unrelated `posts` document instead.
+ */
+const authorsResource = defineCollection({
+  slug: "authors",
+  fields: { name: text(), slug: text() },
+});
+
+const rbacConfig: VexConfig = {
+  ...fixtureConfig,
+  access: defineAccess({
+    roles: ["admin", "restricted", "fieldRestricted"] as const,
+    resources: [authorsResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      admin: { authors: true },
+      restricted: { authors: { read: false } },
+      // Ignores `data`/`user` — the map is static, mirroring the
+      // `get/server.test.ts` field-map fixture.
+      fieldRestricted: { authors: { read: () => ({ "*": true, name: false }) } },
+    },
+  }),
+} as unknown as VexConfig;
+
+const restrictedAuth = { user: { _id: "u1", roles: ["restricted"] } };
+const adminAuth = { user: { _id: "u2", roles: ["admin"] } };
+const fieldRestrictedAuth = { user: { _id: "u3", roles: ["fieldRestricted"] } };
+
+describe("populateDocs — RBAC enforcement", () => {
+  test("a role without read on the target collection gets a HiddenDocument placeholder instead of the doc", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", { name: "Lena Park" });
+      const postId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        author: [authorId],
+      });
+      const post = await ctx.db.get(postId);
+      return populateDocs(
+        ctx,
+        [post!],
+        { author: true } as PopulateShape,
+        undefined,
+        rbacConfig,
+        rbacConfig.access,
+        restrictedAuth,
+      );
+    });
+
+    const populated = (result as unknown as Record<string, unknown>[])[0].author as Record<string, unknown>[];
+    expect(populated).toHaveLength(1);
+    expect(populated[0]).toMatchObject({ code: "ACCESS_DENIED", resource: "authors", action: "read" });
+    expect(populated[0].name).toBeUndefined();
+  });
+
+  test("field map strips denied fields from an otherwise-readable populated target", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", { name: "Lena Park", slug: "lena" });
+      const postId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        author: [authorId],
+      });
+      const post = await ctx.db.get(postId);
+      return populateDocs(
+        ctx,
+        [post!],
+        { author: true } as PopulateShape,
+        undefined,
+        rbacConfig,
+        rbacConfig.access,
+        fieldRestrictedAuth,
+      );
+    });
+
+    const populated = (result as unknown as Record<string, unknown>[])[0].author as Record<string, unknown>[];
+    expect(populated).toHaveLength(1);
+    expect(populated[0].code).toBeUndefined(); // readable, not a placeholder
+    expect(populated[0].name).toBeUndefined(); // denied field stripped
+    expect(populated[0].slug).toBe("lena"); // undenied field kept
+  });
+
+  test("a permitted role gets the full populated target", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", { name: "Lena Park" });
+      const postId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        author: [authorId],
+      });
+      const post = await ctx.db.get(postId);
+      return populateDocs(
+        ctx,
+        [post!],
+        { author: true } as PopulateShape,
+        undefined,
+        rbacConfig,
+        rbacConfig.access,
+        adminAuth,
+      );
+    });
+
+    const populated = (result as unknown as Record<string, unknown>[])[0].author as DocumentBySlug["authors"][];
+    expect(populated[0].name).toBe("Lena Park");
+  });
+
+  test("access: undefined (the shape a bypassed/unconfigured top-level call forwards) returns full docs regardless of a restrictive config", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", { name: "Lena Park" });
+      const postId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        author: [authorId],
+      });
+      const post = await ctx.db.get(postId);
+      return populateDocs(
+        ctx,
+        [post!],
+        { author: true } as PopulateShape,
+        undefined,
+        rbacConfig,
+        undefined, // bypass: access resolves to undefined, same as an unconfigured call
+        restrictedAuth,
+      );
+    });
+
+    const populated = (result as unknown as Record<string, unknown>[])[0].author as DocumentBySlug["authors"][];
+    expect(populated[0].name).toBe("Lena Park");
   });
 });
 

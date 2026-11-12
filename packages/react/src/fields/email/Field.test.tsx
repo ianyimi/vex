@@ -203,7 +203,9 @@ describe("email: admin.mask", () => {
         <EmailMaskHarness fieldDef={fieldDef} />
       </VexConfigContext.Provider>,
     );
-    await waitFor(() => expect(withMaskMock).toHaveBeenCalledWith("email", { autoUnmask: true }));
+    await waitFor(() =>
+      expect(withMaskMock).toHaveBeenCalledWith("email", { rightAlign: false, autoUnmask: true }),
+    );
     expect(container.querySelector("input")?.getAttribute("type")).toBe("text");
   });
 

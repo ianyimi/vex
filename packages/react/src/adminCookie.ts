@@ -61,13 +61,22 @@ function writeCookieValue(name: string, serializedValue: string, basePath: strin
  * settings; losing a UI preference is not worth crashing the view.
  *
  * @param props.basePath - The project's `config.basePath` (`useVexConfig().basePath`) — the cookie's `Path` attribute.
- * @param props.patch - The fields to merge into the current cookie value.
+ * @param props.patch - The fields to merge into the current cookie value, OR a
+ *   function that COMPUTES them from the SAME fresh `current` this function
+ *   already reads — see {@link writeAdminCollectionCookie}'s own doc comment
+ *   for why a writer whose patch isn't a flat value needs this form
+ *   (`writeSidebarSectionCountsCookie`'s per-section merge, `sidebarSectionCountsCookie.ts`'s
+ *   `applySidebarSectionCountsUpdate`).
  */
-export function writeAdminCookie(props: { basePath: string; patch: Partial<Omit<AdminCookieGlobal, "v">> }): void {
+export function writeAdminCookie(props: {
+  basePath: string;
+  patch: Partial<Omit<AdminCookieGlobal, "v">> | ((current: AdminCookieGlobal) => Partial<Omit<AdminCookieGlobal, "v">>);
+}): void {
   try {
     const rawCurrent = readCookieValue(ADMIN_COOKIE_NAME);
     const current = parseAdminCookie({ cookieValue: rawCurrent });
-    const next: AdminCookieGlobal = { ...current, ...props.patch, v: 1 };
+    const patch = typeof props.patch === "function" ? props.patch(current) : props.patch;
+    const next: AdminCookieGlobal = { ...current, ...patch, v: 1 };
     const nextSerialized = serializeAdminCookie(next);
     if (rawCurrent !== undefined && decodeURIComponent(rawCurrent) === nextSerialized) return;
     writeCookieValue(ADMIN_COOKIE_NAME, nextSerialized, props.basePath);

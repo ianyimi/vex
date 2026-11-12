@@ -29,10 +29,17 @@ export function DocumentTimestamps(props: {
     <div
       role="group"
       aria-labelledby={labelId}
-      className="space-y-1 rounded-sm border-2 border-border p-3 text-sm"
+      aria-disabled="true"
+      data-disabled="true"
+      className="group/field space-y-1 rounded-sm border-2 border-border p-3 text-sm"
     >
-      <span id={labelId} className="text-muted-foreground">Created at</span>
-      <p>
+      <span
+        id={labelId}
+        className="text-muted-foreground group-data-[disabled=true]/field:opacity-50"
+      >
+        Created at
+      </span>
+      <p className="group-data-[disabled=true]/field:opacity-50">
         {formatDateFieldValue({
           value: props.creationTime,
           time: CREATED_AT_TIME,

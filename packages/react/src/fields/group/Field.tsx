@@ -34,6 +34,7 @@ function GroupFieldAdminInner(props: FieldComponentProps<{}, GroupFieldDef>) {
         index={props.index}
         fieldCount={Object.keys(props.fieldDef.fields).length}
         defaultOpen={!props.fieldDef.admin.defaultCollapsed}
+        readOnly={readOnly}
       >
         <RenderFields
           fields={props.fieldDef.fields}

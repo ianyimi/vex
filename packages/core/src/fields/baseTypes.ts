@@ -545,6 +545,42 @@ export interface BaseFieldInput<
   index?: FieldIndexConfigInput<TCollectionSlug, TFieldKey>;
   meta?: TFieldMeta;
   /**
+   * Other fields whose change re-runs THIS field's `validate()` on a partial
+   * write (`update`/`saveDraft`) — core already runs `validate()` when the
+   * field's OWN key changed; `dependsOn` adds more keys that also trigger
+   * it. `validate()` still only receives and reports on this field's own
+   * key/value — `dependsOn` only widens WHEN it runs, never what it
+   * validates. Has no effect on the strict pass (`publish`/`create`): every
+   * field's own key is already in that pass's changed set, so `dependsOn`
+   * there is purely redundant, never exclusionary.
+   *
+   * Resolved against the collection's/global's own top-level field keys —
+   * the same universe `index`'s `additionalFields` checks against — and
+   * validated at `defineCollection`/`defineGlobal` time: an unknown key
+   * throws `VexConfigError`. Declaring it on a field nested inside a
+   * `group()`/`array()`/`blocks()` is accepted by the type system (every
+   * field type shares this base) but has no runtime effect: `validateFields`
+   * only ever runs a TOP-LEVEL field's own `validate()` (see
+   * `fields/validate.ts`), so a nested field's `validate()`/`dependsOn`
+   * never individually runs regardless.
+   *
+   * @example
+   * ```ts
+   * endDate: date({
+   *   dependsOn: ["startDate"],
+   *   validate: dateValidator<typeof TABLE_SLUG_EVENTS>(
+   *     TABLE_SLUG_EVENTS,
+   *     ({ value, doc }) => {
+   *       if (typeof doc.startDate === "number" && typeof value === "number" && value <= doc.startDate) {
+   *         throw new VexError({ message: "End date must be after the start date." });
+   *       }
+   *     },
+   *   ),
+   * })
+   * ```
+   */
+  dependsOn?: readonly Exclude<FieldKeyOfResource<TCollectionSlug>, TFieldKey>[];
+  /**
    * Server-only async validation, run after the generated Zod schema passes.
    * @see {@link FieldValidate}
    */
@@ -591,6 +627,11 @@ export interface BaseField<
   interfaceType: string;
   meta: TFieldMeta;
   /**
+   * Other fields whose change re-runs this field's `validate()` on a partial
+   * write. @see {@link BaseFieldInput.dependsOn}
+   */
+  dependsOn?: readonly string[];
+  /**
    * Server-only async validation, run after the generated Zod schema passes.
    * @see {@link FieldValidate}
    */
@@ -633,6 +674,7 @@ export interface BaseUIFieldInput<
     | "index"
     | "interfaceDescription"
     | "validate"
+    | "dependsOn"
     | "admin"
   > {
   /** Admin UI configuration for this UI field. */
@@ -656,6 +698,7 @@ export interface BaseUIField<
     | "interfaceDescription"
     | "interfaceType"
     | "validate"
+    | "dependsOn"
     | "admin"
   > {
   /** Resolved admin UI configuration with all defaults applied. */

@@ -89,11 +89,13 @@ const AUTH_ADAPTER_KINDS = {
   "better-auth": "betterAuth",
 } as const;
 
-function anonymizeAuthAdapter(auth: VexConfig["auth"]): "none" | "betterAuth" | "custom" {
-  if (!auth) {
+function anonymizeAuthAdapter(
+  adapter: VexConfig["auth"]["adapter"],
+): "none" | "betterAuth" | "custom" {
+  if (!adapter) {
     return "none";
   }
-  return AUTH_ADAPTER_KINDS[auth.adapter.name as keyof typeof AUTH_ADAPTER_KINDS] ?? "custom";
+  return AUTH_ADAPTER_KINDS[adapter.name as keyof typeof AUTH_ADAPTER_KINDS] ?? "custom";
 }
 
 function anonymizeAccess(access: VexAccessConfig | undefined): AnonymizedConfig["features"]["access"] {
@@ -509,8 +511,8 @@ export function anonymizeConfig(props: { config: VexConfig }): AnonymizedConfig 
       slots: context.flags.slots || hasRootSlotOverrides(config.admin),
       inputMasks: context.flags.inputMasks || Object.keys(config.fields.inputMasks).length > 0,
       localization: false,
-      auth: config.auth !== undefined,
-      authAdapter: anonymizeAuthAdapter(config.auth),
+      auth: config.auth.adapter !== undefined,
+      authAdapter: anonymizeAuthAdapter(config.auth.adapter),
       access: anonymizeAccess(config.access),
       hookCount: resources.reduce(
         (sum, resource) => sum + Object.values(resource.hookCounts).reduce((a, b) => a + b, 0),

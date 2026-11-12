@@ -2,7 +2,7 @@ import { classifyTelemetryError, recordTelemetryEvent } from "@vexcms/telemetry"
 import { anonymizeConfig } from "@vexcms/telemetry/config";
 
 import { generateAndWrite, type GenerateResult } from "../lib/generateSchema.js";
-import { deployToProduction, stripCmdFlags } from "../lib/convexProcess.js";
+import { DEPLOY_FINAL_ONLY_FLAGS, deployToProduction, stripConvexFlags } from "../lib/convexProcess.js";
 import { loadConfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
 import { isServerConfigPath, resolveConfigPath } from "../lib/resolveConfigPath.js";
@@ -66,7 +66,10 @@ export async function deployCommand(options: DeployCommandOptions = {}): Promise
   // pushes strip --cmd/--cmd-url-env-var-name so the build command runs
   // once, on the final deploy below.
   const pushSchema = (pushCwd: string) =>
-    deployToProduction({ cwd: pushCwd, convexArgs: stripCmdFlags(convexArgs) });
+    deployToProduction({
+      cwd: pushCwd,
+      convexArgs: stripConvexFlags({ convexArgs, flags: DEPLOY_FINAL_ONLY_FLAGS }),
+    });
 
   let result: GenerateResult;
   try {

@@ -34,7 +34,7 @@ export async function generateMetadata({
  * with the editor's own token instead — `getBySlug` is published-only, so a
  * never-published (draft-only) post — e.g. a brand-new announcement before
  * its first publish — always resolved to `[]` there, and `PostContent` used
- * to start on the published query (its SSR snapshot of `useSitePreviewMode`
+ * to start on the published query (its SSR snapshot of `useIsLivePreviewActive`
  * is always `false`), flashing `NotFoundContent` before the client-side
  * preview query swapped in. Passing `draftMode` down makes `PostContent`'s
  * FIRST client render agree with this server render too (no hydration

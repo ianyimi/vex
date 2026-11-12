@@ -5,7 +5,8 @@ import { slugToPascalCase } from "./utils";
 /**
  * Converts a resolved `CollectionConfig` to a TypeScript `export interface` source string.
  *
- * Each generated interface extends `VexDocument` (inheriting `_id` and `_creationTime`)
+ * Each generated interface extends `VexDocumentShape` (inheriting `_id` and
+ * `_creationTime`, with NO index signature — see {@link VexDocumentShape})
  * and overrides `_id` with the branded Convex `Id<"slug">` type for that collection.
  * Optional fields (`field.required === false`) are emitted with the `?` modifier.
  * `select` fields with custom options emit a companion type alias above the interface,
@@ -23,7 +24,7 @@ import { slugToPascalCase } from "./utils";
  *   fields: { title: text({ required: true }), excerpt: text({ required: false }) },
  * });
  * collectionConfigToInterface({ collection });
- * // → 'export interface PostsDocument extends VexDocument {\n\t_id: Id<"posts">\n\ttitle: string\n\texcerpt?: string\n}'
+ * // → 'export interface PostsDocument extends VexDocumentShape {\n\t_id: Id<"posts">\n\ttitle: string\n\texcerpt?: string\n}'
  * ```
  *
  * @see {@link generateVexTypes} for the full-file generator that wraps this function
@@ -32,7 +33,7 @@ export function collectionConfigToInterface(props: { collection: CollectionConfi
   const { collection } = props;
   const dataFields = getDataFields({ fields: collection.fields });
   const fieldInterfaces = getFieldInterfaces(dataFields);
-  const interfaceStart = `export interface ${collection.interfaceName} extends VexDocument {\n
+  const interfaceStart = `export interface ${collection.interfaceName} extends VexDocumentShape {\n
     \t_id: Id<"${collection.slug}">${
       // Developer decision (binding, "access-system-fields"): `vex_status` is a
       // real, gateable field-permission key on a versioned collection, but it is

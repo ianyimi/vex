@@ -9,7 +9,6 @@ vi.mock("@convex/_generated/api", () => ({
 }));
 vi.mock("@convex-dev/react-query", () => ({ convexQuery: vi.fn((query: unknown) => ({ query })) }));
 vi.mock("@vexcms/richtext-plate/render", () => ({ RichText: () => null }));
-vi.mock("~/lib/useSitePreviewMode", () => ({ useSitePreviewMode: vi.fn(() => false) }));
 
 const useLivePreviewQueryMock = vi.fn();
 vi.mock("@vexcms/react", async (importOriginal) => {

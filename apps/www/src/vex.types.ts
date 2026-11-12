@@ -8,9 +8,9 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 
 import type { DataModel, Id } from "@convex/_generated/dataModel"
-import type { VexDocument, VexDocumentGlobal, RichTextDocument } from "@vexcms/core"
+import type { VexDocumentShape, VexDocumentGlobal, RichTextDocument } from "@vexcms/core"
 
-export interface UserDocument extends VexDocument {
+export interface UserDocument extends VexDocumentShape {
   _id: Id<"user">
   name: string
   email: string
@@ -185,7 +185,7 @@ export type PageBlock =
   | FaqBlock
   | CtaBlock
 
-export interface PagesDocument extends VexDocument {
+export interface PagesDocument extends VexDocumentShape {
   _id: Id<"pages">
   vex_status?: "draft" | "published"
   title: string
@@ -206,7 +206,7 @@ export interface PagesDocument extends VexDocument {
   updatedAt?: number
 }
 
-export interface Post extends VexDocument {
+export interface Post extends VexDocumentShape {
   _id: Id<"posts">
   vex_status?: "draft" | "published"
   title: string
@@ -238,7 +238,7 @@ export type HeaderBlock = {
   }[]
 }
 
-export interface HeadersDocument extends VexDocument {
+export interface HeadersDocument extends VexDocumentShape {
   _id: Id<"headers">
   name: string
   content?: HeaderBlock[]
@@ -263,14 +263,14 @@ export type FooterBlock = {
   }[]
 }
 
-export interface FootersDocument extends VexDocument {
+export interface FootersDocument extends VexDocumentShape {
   _id: Id<"footers">
   name: string
   content?: FooterBlock[]
   updatedAt?: number
 }
 
-export interface Theme extends VexDocument {
+export interface Theme extends VexDocumentShape {
   _id: Id<"themes">
   /**
    * Internal identifier for this theme. Used for idempotent lookups and admin
@@ -364,7 +364,7 @@ export interface Theme extends VexDocument {
 }
 
 type TestimonialSourceOption = "website" | "import" | "survey" | "referral"
-export interface Testimonial extends VexDocument {
+export interface Testimonial extends VexDocumentShape {
   _id: Id<"testimonials">
   /**
    * Who gave the testimonial.
@@ -410,7 +410,7 @@ export interface Testimonial extends VexDocument {
 }
 
 type ProductStatusOption = "draft" | "active" | "archived"
-export interface Product extends VexDocument {
+export interface Product extends VexDocumentShape {
   _id: Id<"products">
   /**
    * Product name.
@@ -467,7 +467,7 @@ export interface Product extends VexDocument {
 
 type LeadSourceOption = "website" | "referral" | "event" | "outbound"
 type LeadStatusOption = "new" | "contacted" | "qualified" | "won" | "lost"
-export interface Lead extends VexDocument {
+export interface Lead extends VexDocumentShape {
   _id: Id<"leads">
   /**
    * The lead's name.
@@ -508,7 +508,7 @@ export interface Lead extends VexDocument {
   updatedAt?: number
 }
 
-export interface SessionDocument extends VexDocument {
+export interface SessionDocument extends VexDocumentShape {
   _id: Id<"session">
   expiresAt: number
   token: string
@@ -520,7 +520,7 @@ export interface SessionDocument extends VexDocument {
   impersonatedBy?: string
 }
 
-export interface AccountDocument extends VexDocument {
+export interface AccountDocument extends VexDocumentShape {
   _id: Id<"account">
   accountId: string
   providerId: string
@@ -536,7 +536,7 @@ export interface AccountDocument extends VexDocument {
   updatedAt: number
 }
 
-export interface VerificationDocument extends VexDocument {
+export interface VerificationDocument extends VexDocumentShape {
   _id: Id<"verification">
   identifier: string
   value: string
@@ -545,7 +545,7 @@ export interface VerificationDocument extends VexDocument {
   updatedAt: number
 }
 
-export interface ApikeyDocument extends VexDocument {
+export interface ApikeyDocument extends VexDocumentShape {
   _id: Id<"apikey">
   configId: string
   name?: string
@@ -570,7 +570,7 @@ export interface ApikeyDocument extends VexDocument {
   metadata?: string
 }
 
-export interface JwksDocument extends VexDocument {
+export interface JwksDocument extends VexDocumentShape {
   _id: Id<"jwks">
   publicKey: string
   privateKey: string
@@ -580,7 +580,7 @@ export interface JwksDocument extends VexDocument {
   crv?: string
 }
 
-export interface Image extends VexDocument {
+export interface Image extends VexDocumentShape {
   _id: Id<"images">
   filename: string
   alt: string
@@ -840,6 +840,42 @@ declare module "@vexcms/core" {
         checkbox: "deleted"
         commitTs: "updatedAt"
       }
+    }
+    CollectionsPopulateMap: {
+      user: {}
+      pages: {
+        blocks: {
+          kind: "blocks"
+          blocks: { split: { image: { kind: "upload"; target: "images" } } }
+        }
+        ogImage: { kind: "upload"; target: "images" }
+      }
+      posts: { ogImage: { kind: "upload"; target: "images" } }
+      headers: {
+        content: {
+          kind: "blocks"
+          blocks: { header: { logoImage: { kind: "upload"; target: "images" } } }
+        }
+      }
+      footers: {
+        content: {
+          kind: "blocks"
+          blocks: { footer: { logoImage: { kind: "upload"; target: "images" } } }
+        }
+      }
+      themes: {}
+      testimonials: {
+        contributorId: { kind: "relationship"; target: "user" }
+        avatar: { kind: "relationship"; target: "images" }
+      }
+      products: { heroImage: { kind: "upload"; target: "images" } }
+      leads: {}
+      session: {}
+      account: {}
+      verification: {}
+      apikey: {}
+      jwks: {}
+      images: {}
     }
     GlobalsFieldTypeMap: {
       siteSettings: {

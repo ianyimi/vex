@@ -17,9 +17,9 @@ page being previewed is the same page a visitor gets; only the data is overlaid.
 3. On the public page, `LivePreviewProvider` keeps an `id → unsaved values` map, and
    `useLivePreview` overlays the entry matching the document your own query already
    fetched.
-4. A newly-opened preview surface sends a handshake on mount; the admin panel replies
-   with the current values immediately, so a duplicated tab catches up without waiting
-   for the next keystroke.
+4. Once listening, the provider posts a ready message; every open edit view replies with
+   its current values immediately, so a duplicated tab, or a page you just navigated or
+   reloaded to inside the preview, catches up without waiting for the next keystroke.
 
 On a narrow admin viewport — below the 768px mobile breakpoint, distinct from the
 simulated-width `breakpoints` toggle described below, which only applies to the
@@ -92,6 +92,8 @@ export default defineConfig({
       allowedOrigins: ["http://localhost:3000", "https://admin.example.com"],
       // Optional — defaults to 375 / 390 / sm / md / lg / xl / 2xl.
       // breakpoints: [{ label: "sm", width: 640, icon: "Smartphone" }],
+      // Optional — defaults to "allow". See "Signing out while preview is open" below.
+      // expiredSessions: "deny",
     },
   },
 })
@@ -130,6 +132,22 @@ The provider gates itself (see below), so a normal visitor pays for a disabled p
 and nothing else — and the route stays statically prerenderable, because nothing here
 reads `headers()` or `cookies()` on the server.
 
+Projects scaffolded with `create-vexcms` (either template) already ship the provider
+mount, the Draft Mode route and the proxy hand-off described below. They stay inert until a
+collection or global sets `admin.livePreview.url`.
+
+To switch a page's own query to a draft-reading variant while it is being previewed, read
+`useIsLivePreviewActive()`. It returns `false` during the server render and hydration,
+then the gate's real answer:
+
+```tsx
+const isPreviewing = useIsLivePreviewActive()
+const { data: page } = useLivePreviewQuery(
+  { ...convexQuery(isPreviewing ? api.pages.getBySlugPreview : api.pages.getBySlug, { slug }), initialData },
+  "pages",
+)
+```
+
 Then overlay your own query result:
 
 ```tsx
@@ -163,6 +181,23 @@ const { data: header } = useLivePreviewDocumentQuery(
   "headers",
 )
 ```
+
+## Navigating inside the preview
+
+Preview stays on for every page you open inside the panel or the pop-out tab. That holds
+for links, back/forward and reloads, including pages whose URL no longer carries
+`?vexLivePreview=1`. What updates where depends on how each page reads its data:
+
+| Data | Updates in the preview | What it takes |
+|---|---|---|
+| A document read through `useLivePreview`, `useLivePreviewQuery` or `useLivePreviewDocumentQuery` (headers, footers, globals in a layout, the page's own document) | On every keystroke | Already wired |
+| Lists and related documents on other pages, for a collection with `versions: { drafts: true, autosave: … }` | About a second after typing, once autosave writes the draft | List queries take a `preview` arg and call `find({ …, drafts: true })` when it is set; pass `preview: useIsLivePreviewActive()` |
+| A collection without drafts | On Save | A client query (`useQuery`, seeded with server `initialData`), not a server-component-only render |
+
+`find({ drafts: true })` returns one row per document, with a pending draft merged over its
+published row, so a preview list shows each document once, as its latest draft, plus
+documents that exist only as drafts. A caller without the `readDrafts` permission silently
+gets the published rows.
 
 ## Declaring previews in one place
 
@@ -305,7 +340,10 @@ The listener attaches only when **both** are true on the previewed page:
 
 - the URL carries `?vexLivePreview=1` (`LIVE_PREVIEW_QUERY_PARAM`) — the admin panel
   appends this to whatever `admin.livePreview.url` returns, so your resolver returns a
-  plain public path and never has to know about it, and
+  plain public path and never has to know about it — **or** the window is named
+  `LIVE_PREVIEW_WINDOW_NAME`, which the provider writes into an unnamed window the first
+  time the gate opens there, so later navigations inside that frame or tab stay in preview,
+  and
 - the `vex-live-preview` cookie (`LIVE_PREVIEW_COOKIE`) holds `"1"`.
 
 Your middleware sets that cookie, and only after verifying an admin session — session
@@ -340,6 +378,8 @@ async function grantPreviewIfRequested(request: NextRequest) {
   if (alreadyHandedOff) {
     return NextResponse.next()
   }
+  // Unverified callers continue without the hand-off: the route's signed-out
+  // branch redirects back to this same URL, so handing them off would loop.
   if ((await resolveSessionStatus()) !== "authenticated") {
     return NextResponse.next()
   }
@@ -377,6 +417,51 @@ that still returns `401` is no session AND no `redirect` param: a caller hitting
 route directly rather than through the middleware hand-off. The open-redirect guard on
 `redirect` — same-origin relative paths only — applies to every one of these outcomes.
 
+## Signing out while preview is open
+
+Signing out does not, on its own, touch either preview cookie: they are set by the
+Route Handler above, not by your auth library, so a plain `signOut()` call has no way
+to know about them. Two things close that gap, and work together:
+
+1. **`getBySlugPreview` never denies the published row.** Pass `drafts: true` to
+   `find` with no `access` override, the same as every example on this page — a
+   caller without `readDrafts` silently falls back to the published row (or `[]` if
+   none exists) instead of being denied the query outright. A session that expires
+   mid-preview still sees the live site, not a blank or "not found" page.
+2. **Every sign-out calls `disableLivePreview()`.** Import it from
+   `@vexcms/next/livePreview` and call it beside your identity-transition hook,
+   before the hard navigation or refresh that follows sign-out:
+
+   ```ts
+   import { disableLivePreview } from "@vexcms/next/livePreview/client"
+
+   // inside your signOut wrapper, before the hard navigation:
+   beginTransition(null)
+   void disableLivePreview() // fire-and-forget — never throws, never blocks sign-out
+   return signOut().then(goToDestination).catch(goToDestination)
+   ```
+
+   It issues a same-origin, credentialed `GET /api/vex/live-preview?disable=1` and
+   never follows the redirect it returns — it only needs the cookies cleared, not a
+   page load. Pass a different route path as its one argument if your project
+   mounted the Draft Mode route somewhere other than `/api/vex/live-preview`.
+
+That covers sign-out in the SAME tab the preview was opened from. A pop-out preview
+tab, or sign-out in an unrelated tab, still leaves the cookies on the OTHER tab until
+one of two things happens: that tab's own next request, or `admin.livePreview.expiredSessions`.
+
+**`admin.livePreview.expiredSessions: "deny"`** closes that remaining gap at the
+proxy/middleware layer instead of the client: set it in your root config, and every
+request carrying either preview cookie — with or without `?vexLivePreview=1` — gets
+one session check. An unauthenticated one is redirected to
+`/api/vex/live-preview?disable=1&redirect=<original path>`, clearing both cookies and
+reloading the page published, before it ever reaches your route handlers. The default,
+`"allow"`, leaves this check out entirely — not a content-secrecy gap either way
+(draft content always stays behind its own `readDrafts` check), but a stale cookie can
+keep serving the draft-only base layer's published fallback until it expires on its
+own. `"deny"` costs one extra session verification per preview-tagged request; `"allow"`
+costs none.
+
 Checklist for any project embedding a preview surface:
 
 - **Fail open on the public route.** An absent or stale session with
@@ -386,6 +471,9 @@ Checklist for any project embedding a preview surface:
 - **Never widen the allowlist to `"*"`.** Every incoming payload is still validated
   against the target collection's Zod schema, but same-origin is not the same guarantee
   as trustworthy.
+- **Call `disableLivePreview()` from every sign-out entry point.** See above.
+- **Set `admin.livePreview.expiredSessions: "deny"`** if a stale preview cookie
+  surviving past sign-out until it naturally expires is not acceptable for your project.
 
 ## Limits
 
@@ -399,3 +487,6 @@ Checklist for any project embedding a preview surface:
   appear until you save.
 - **The panel enables client-side**, after hydration — the previewed page renders no
   extra chrome of its own, so nothing shifts when it does.
+- **A window that already has a name is not sticky.** The provider never overwrites an
+  existing `window.name`, so a preview opened into a named window turns off on the first
+  navigation that drops `?vexLivePreview=1`.

@@ -72,6 +72,7 @@ const BARE_REQUIRED = [
   'convex/_generated/api.d.ts',
   'convex/_generated/dataModel.d.ts',
   'convex/_generated/server.d.ts',
+  'src/app/api/vex/live-preview/route.ts',
 ];
 
 const MARKETING_ONLY = [

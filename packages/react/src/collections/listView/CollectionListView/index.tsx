@@ -604,6 +604,7 @@ export function CollectionListView<
         collection={collection}
         canCreate={canCreate}
         canDelete={canDelete}
+        rows={liveRows}
         headerExtra={<RevalidateButton collection={collection.slug} />}
         initialPreferences={initialPreferences}
         initialLocalIndex={props.initialLocalIndex}

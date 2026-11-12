@@ -191,7 +191,7 @@ automatically:
 export type BodyBlock = HeadingBlock | ParagraphBlock | SpacerBlock;
 
 // Generated document interface
-export interface PagesDocument extends VexDocument {
+export interface PagesDocument extends VexDocumentShape {
   _id: Id<"pages">;
   body: BodyBlock[];
   // ...other fields
@@ -205,3 +205,36 @@ export type SpacerBlock = { blockType: "spacer"; blockName?: string; id: string;
 
 Set `interfaceName` on the blocks field to use a named union alias instead of
 the generated `BodyBlock[]` type.
+
+## Populating a relationship/upload field nested inside a block
+
+`populate`/`depth` reach a `relationship()`/`upload()` field declared on one of a
+`blocks()` field's own block types — keyed by the block's `blockType` slug:
+
+```ts
+const heroBlock = defineBlock({
+  slug: "hero",
+  label: "Hero",
+  fields: {
+    heading: text(),
+    image: upload({ to: "images" }),
+  },
+});
+
+const pages = defineCollection({
+  slug: "pages",
+  fields: {
+    content: blocks({ blocks: [heroBlock] }),
+  },
+});
+
+// `content` is the blocks() field; `hero` is the block's own `blockType`;
+// `image` is the upload() field declared on that block.
+get({ ctx, id, collection: "pages", populate: { content: { hero: { image: true } } } });
+```
+
+Every block type sharing the same field key gets its own nested shape — populating
+`content.hero.image` leaves a sibling `content.cta.link` (a different block type's own
+relationship) untouched unless it's requested too. A block nested inside another block's own
+`blocks()` field, or inside an `array()`/`group()` within a block's own fields, is reachable
+the same way the top level is: `content.container.children.nested_stat_group.stats.icon`.

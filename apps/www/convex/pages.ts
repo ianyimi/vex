@@ -1,4 +1,3 @@
-import { DRAFT_ACTIONS } from "@vexcms/core";
 import { v } from "convex/values";
 
 import { TABLE_SLUG_PAGES } from "~/db/constants";
@@ -34,33 +33,35 @@ export const getBySlug = query({
 /**
  * Returns the page document matching `slug`, preferring its draft row when one
  * exists — the live-preview base layer's authenticated counterpart to `getBySlug`
- * above. Called ONLY when `PageContent.tsx`'s `useSitePreviewMode` detects an active
+ * above. Called ONLY when `PageContent.tsx`'s `useIsLivePreviewActive` detects an active
  * live-preview session (`?vexLivePreview=1` plus the session-verified
  * `vex-live-preview` cookie `proxy.ts` sets); a normal page load never reaches this.
  *
- * Passes `drafts: true` so the default published-only filter does not apply, and
- * `access: { action: DRAFT_ACTIONS.readDrafts }` so a row only reaches the caller
- * when their RESOLVED session (never a client-supplied claim — `find` resolves `ctx`
- * through the bound `vexServerApi`'s `getAuth`) is granted `readDrafts` on `pages`.
- * `access.ts` grants this to `admin` only; every other caller — including the
- * anonymous role every unauthenticated request resolves to — is denied and gets an
- * empty array, never draft content. This query never bypasses access (contrast
- * `getBySlug`'s `access: { bypass: true }` above) — that is the whole point of it
- * existing as a second query rather than a flag on the first.
+ * Passes `drafts: true` with NO `access` override, so `find`'s own fallback decides:
+ * a RESOLVED session (never a client-supplied claim — `find` resolves `ctx` through the
+ * bound `vexServerApi`'s `getAuth`) granted `readDrafts` on `pages` gets the draft-merged
+ * row (`hasUnpublishedChanges` reflects whether a draft twin exists); everyone else —
+ * including the anonymous role every unauthenticated or signed-out request resolves
+ * to — silently falls back to the published-only row, the exact behavior `getBySlug`
+ * already gives them. A draft never reaches a caller without `readDrafts`, the same
+ * guarantee the old `access: { action: DRAFT_ACTIONS.readDrafts }` override gave, but
+ * without ALSO denying that caller the published row — the override used to make
+ * `find`'s fallback run under `readDrafts` too, which has no grant for anyone but
+ * `admin`, so every other caller (including one whose live-preview session just
+ * expired) got `[]` instead of the page they could see on `getBySlug`.
  *
  * @param args.slug - The page slug to preview.
- * @returns The draft row for `slug` if one exists, else the published row, else an
- *   empty array — the same shape `getBySlug` returns. Never throws: a denied or
- *   nonexistent-slug request both resolve to `[]`, indistinguishably.
+ * @returns The draft row for `slug` if the caller may read drafts, else the published
+ *   row, else an empty array — the same shape `getBySlug` returns. Never throws: a
+ *   nonexistent slug and a caller with nothing readable both resolve to `[]`.
  */
 export const getBySlugPreview = query({
   args: { slug: v.string() },
   handler: async (ctx, { slug }) => {
     // No `limit`: a published row and its draft twin both carry this slug until an
     // editor changes it, so both must be seen before choosing. The one-draft-per-
-    // document invariant bounds this at two rows. A caller without `readDrafts` gets
-    // `[]` (find's per-row check denies every row), never an error — so a denied
-    // request and a bad slug are indistinguishable.
+    // document invariant bounds this at two rows. No `access` override — see the
+    // doc comment above: `find`'s own fallback decides draft vs. published per caller.
     const matches = await find({
       ctx,
       collection: TABLE_SLUG_PAGES,
@@ -69,7 +70,6 @@ export const getBySlugPreview = query({
         range: (q) => q.eq("slug", slug),
       },
       drafts: true,
-      access: { action: DRAFT_ACTIONS.readDrafts },
     });
     // Prefer the draft: it's what the preview exists to show (also covers a
     // never-published draft, which is the only match).

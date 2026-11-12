@@ -47,6 +47,7 @@ import {
 } from "../../documents/useUnsavedChangesGuard";
 import { useVexDocQuery, useVexMutation } from "../../hooks";
 import { changedValues } from "../../forms/changedValues";
+import { applyVexFieldErrors } from "../../utils/errors";
 import { useVexConfig } from "../../config/VexConfigContext";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../../ui/resizable";
 import { InlineQueryError } from "../../ui/InlineQueryError";
@@ -293,21 +294,45 @@ function CollectionEditForm(
     fields: collection.fields,
     readableFieldKeys,
     onSubmit: async () => {
+      if (isVersioned) {
+        const changes = changedValues(form);
+        try {
+          const draftId = await saveDraftMutation({
+            collection: collection.slug,
+            id: activeDocumentId,
+            data: changes,
+            ...restoredFrom,
+          });
+          setActiveDocumentId(draftId as VexDocument["_id"]);
+          setViewedVersion(null);
+          resetWhenSaved(changes);
+        } catch (error) {
+          applyVexFieldErrors(form, error);
+          throw error;
+        }
+        return;
+      }
       const changes = changedValues(form);
       if (Object.keys(changes).length === 0) return;
-      await plainUpdateMutation.mutateAsync({
-        id: currentDocument._id,
-        collection: collection.slug,
-        data: changes,
-      });
+      try {
+        await plainUpdateMutation.mutateAsync({
+          id: currentDocument._id,
+          collection: collection.slug,
+          data: changes,
+        });
+      } catch (error) {
+        applyVexFieldErrors(form, error);
+        throw error;
+      }
       resetWhenSaved(changes);
     },
   });
 
-  // Only the non-versioned onSubmit path above still needs a dedicated mutation at this level —
-  // `DocumentSaveAction` owns the versioned write. Kept here (not inside the built-in) because `AppForm`'s
-  // native submit (Enter in a text field) still calls `form.handleSubmit`, which this `onSubmit`
-  // backs regardless of which button is visible.
+  // The one true write for this view — both `DocumentSaveAction`'s "Save"/"Save Draft"
+  // button (a plain `form.handleSubmit()` call, no mutation of its own) and `AppForm`'s
+  // native submit (Enter in a text field) land here, versioned or not: a single catch
+  // point for `applyVexFieldErrors` + rethrow, so a failed save of either kind counts as
+  // a submit attempt and `focusFirstFieldError` runs.
   const plainUpdateMutation = useVexMutation({
     collection: collection.slug,
     getChanges: ({ args }) => [

@@ -67,6 +67,7 @@ export function CheckboxField(props: CheckboxFieldProps): ReactNode {
       field={field}
       submissionAttempts={submissionAttempts}
       className={cn("py-2", props.className)}
+      readOnly={props.readOnly}
       before={
         <div className="flex flex-col gap-1">
           <div className="flex gap-2">

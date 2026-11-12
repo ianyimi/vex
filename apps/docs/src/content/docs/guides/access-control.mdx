@@ -476,6 +476,44 @@ Everything above is built from a small set of exports:
 a caller may receive or be allowed fewer keys than the type promises for their role. Narrowing
 those generic type parameters per role is tracked as a backlog item, not attempted here.
 
+## Populated relationships honor the target's own read rule
+
+`populate` (and `depth`, which auto-populates relationship/upload fields to N levels)
+resolves a relationship/upload field's stored id(s) into the target document — but that
+target belongs to its OWN collection, with its OWN `read` rule and field-permission map,
+independent of whatever rule let the caller read the document the field lives on.
+`find`/`get`/`search`/`globals.get` apply the target's own rule to every resolved target,
+exactly as a direct `get({ collection: <target> })` would — resolved once per target
+collection per call, then evaluated per document since a per-document rule reads that
+document's own data:
+
+- **Denied target** — the caller may not `read` the target collection at all, or the
+  target collection's per-document rule denies this specific row: the field holds a
+  `HiddenDocument` placeholder instead of the real document —
+  `{ _id, code: "ACCESS_DENIED", resource, action: "read" }` — never the target's own
+  fields.
+- **Field-scoped denial** — the caller may read the target document, just not every field
+  on it: the target comes back with its denied fields stripped, the same
+  `stripDeniedFields` treatment a direct read gets.
+- **`access: { bypass: true }`** on the top-level call skips RBAC for every target it
+  resolves too — bypass is never re-decided per target collection.
+
+```ts
+const post = await get({
+  ctx, config, id: postId, collection: "posts",
+  populate: { author: true },
+});
+
+// A caller without "read" on "authors":
+post?.author; // [{ _id: "...", code: "ACCESS_DENIED", resource: "authors", action: "read" }]
+```
+
+`@vexcms/react` renders the placeholder as a locked row in place of the target's own
+preview — `AccessDeniedItemRow` in the relationship list cell, `AccessDeniedChip` (a
+compact badge-shaped variant) in the peek panel's Fields tab — instead of the blank state
+an unreadable id would otherwise leave behind.
+
+
 ## Read-only public admin via `anonRole`
 
 `anonRole` supplies a fallback role when the caller has no session at all — the exact

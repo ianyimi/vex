@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { convexTest } from "convex-test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineAccess, defineGlobal, text, type GlobalConfig } from "@vexcms/core";
+import { ConvexError } from "convex/values";
 import type * as ConvexReactQuery from "@convex-dev/react-query";
 import type * as Documents from "../documents";
 import { GlobalEditView } from "./GlobalEditView";
@@ -150,6 +151,34 @@ describe("GlobalEditView — diff submit", () => {
 
     await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
     expect(convexMutationMock.mock.calls[0]?.[0]?.data).toEqual({ tagline: "new" });
+  });
+
+  it("focuses the field the server marked invalid after a rejected Save button click, not just native submit", async () => {
+    // `DocumentSaveAction`'s "Save" is `type="button"` — it calls `form.handleSubmit()`
+    // directly rather than relying on native form submission. Before the fix, this
+    // button performed its own mutation call with no rethrow, so a rejection never
+    // bumped `submissionAttempts`/`isSubmitSuccessful` and `AppForm`'s
+    // `failedSubmitAttempt` effect never ran `focusFirstFieldError` — this would pass
+    // even on a totally broken Save button if it still happened to hit the DOM via
+    // some other path, so the button click (not `fireEvent.submit`) is the point.
+    convexMutationMock.mockRejectedValueOnce(
+      new ConvexError({ message: "Site name already taken", field: "siteName" }),
+    );
+    const stored = { _creationTime: 1, _id: "g1", siteName: "old name", tagline: "old tagline" };
+    const utils = renderView(
+      createElement(GlobalEditView, {
+        global: testClientConfig.globals[0].slug,
+        initialData: stored as never,
+      }),
+      { convex: t },
+    );
+
+    const siteNameInput = utils.container.querySelector("#siteName") as HTMLInputElement;
+    fireEvent.change(siteNameInput, { target: { value: "new name" } });
+    fireEvent.click(utils.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
+    await waitFor(() => expect(siteNameInput).toHaveFocus());
   });
 });
 

@@ -411,6 +411,8 @@ export async function find<
           effectivePopulate,
           wantsDrafts,
           args.config,
+          access,
+          args.auth,
         )) as unknown as FindReturn<TCollectionSlug, TPopulate, D>);
 
   if (args.paginationOpts && convexPaginationResult) {

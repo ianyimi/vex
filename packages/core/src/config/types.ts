@@ -333,6 +333,42 @@ export interface VexClientConfigInput {
    * @see {@link AdminConfigInput} for all available options
    */
   admin?: AdminConfigInput;
+  /**
+   * Client-safe auth settings — currently just the admin panel's post-sign-out
+   * destination. The live auth adapter instance (`auth.adapter`) stays on the
+   * SERVER config (`VexServerConfigInput.auth`, layered on by
+   * `defineServerConfig()`); this group holds only the plain-data settings a
+   * signed-out browser needs, so they merge into the SAME resolved
+   * `config.auth` without duplicating the group name across client/server.
+   *
+   * **Defaults applied by `defineConfig()`:**
+   * ```ts
+   * { signOut: { redirectTo: "/" } } // lands on the main site
+   * ```
+   */
+  auth?: {
+    /**
+     * Post-sign-out destination for the admin panel's top-bar "Sign out"
+     * control (`AdminTopNav`'s `AuthControl`).
+     *
+     * The admin shell must never render in a signed-out state — once the
+     * session cookie is cleared, the framework adapter's `signOut()` performs
+     * a hard, full-document navigation (never a client-side transition)
+     * straight to this destination, so there is no intermediate "admin
+     * sidebar with no session" flash and no sign-in screen in between,
+     * unless `redirectTo` itself points at the sign-in page.
+     */
+    signOut?: {
+      /**
+       * Path (or full URL) to hard-navigate to once sign-out completes.
+       * Accepts the sign-in page itself, for a project that wants a visible
+       * "you are signed out" screen instead of landing on the main site.
+       *
+       * Default: `"/"`
+       */
+      redirectTo?: string;
+    };
+  };
   access?: VexAccessConfig;
   /** Content collections to register with the CMS. Defaults to `[]` if omitted. */
   collections?: CollectionConfig[];
@@ -564,6 +600,20 @@ export interface VexClientConfig {
    * @see {@link AuthCollectionConfig} for the shape
    */
   authCollections: AuthCollectionConfig[];
+  /**
+   * Resolved client-safe auth settings — always fully populated after
+   * defaults are applied. The adapter instance itself is layered on
+   * separately by `defineServerConfig()` (`VexConfig.auth.adapter`,
+   * server-only) — this resolved group holds only the plain-data settings,
+   * always present regardless of whether a server config ever runs.
+   */
+  auth: {
+    /** Post-sign-out destination the framework adapter's `signOut()` hard-navigates to. */
+    signOut: {
+      /** Path (or full URL) to hard-navigate to once sign-out completes. */
+      redirectTo: string;
+    };
+  };
   /** URL prefix for all admin panel routes — always set after defaults are applied. */
   basePath: string;
   /**
@@ -609,16 +659,17 @@ export interface VexClientConfig {
  */
 export interface VexConfig extends VexClientConfig {
   /**
-   * Auth configuration, present only when the server config registered an
-   * adapter. Mirrors `storage`'s shape: adapter instance under the group.
-   * `adapter` is required within the group — `config.auth` present ⇔ adapter
-   * present, so consumers check the group once and never null-check
-   * `adapter` inside it.
+   * Resolved auth configuration — always present (client-safe `signOut`
+   * settings default even with no auth provider), but `adapter` is present
+   * only when the server config registered one. Mirrors `storage`'s shape:
+   * adapter instance under the group, but here the group itself is never
+   * absent — check `config.auth.adapter` to test whether an adapter was
+   * registered, never `config.auth` itself.
    *
    * @see {@link VexAuthAdapter} for the adapter interface
    * @see {@link better-auth/src!betterAuthAdapter} for the Better Auth implementation
    */
-  auth?: { adapter: VexAuthAdapter };
+  auth: VexClientConfig["auth"] & { adapter?: VexAuthAdapter };
   /** Storage adapters and client-side upload functions, both always resolved. */
   storage: { clientUploads: ClientUploadMap; adapters: VexStorageAdapter[] };
   /**
