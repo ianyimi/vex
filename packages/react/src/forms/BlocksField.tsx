@@ -380,12 +380,12 @@ export function BlocksField<TBlock extends GenericBlockItem>(props: BlocksFieldP
   const headerActionsNode = props.headerActions?.({ pushMany, replaceAll });
 
   return (
-    <FormFieldLayout id={field.name} field={field} submissionAttempts={submissionAttempts} className={props.className}>
+    <FormFieldLayout id={field.name} field={field} submissionAttempts={submissionAttempts} className={props.className} readOnly={props.readOnly}>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
-              <span id={`${field.name}-label`} className="text-sm leading-none font-medium">
+              <span id={`${field.name}-label`} className="text-sm leading-none font-medium group-data-[disabled=true]/field:opacity-50">
                 {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
                 {label}
                 {props.required && <span className="text-red-500">*</span>}

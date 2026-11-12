@@ -8,7 +8,6 @@ vi.mock("@convex/_generated/api", () => ({
   api: { pages: { getBySlug: "pages.getBySlug", getBySlugPreview: "pages.getBySlugPreview" } },
 }))
 vi.mock("@convex-dev/react-query", () => ({ convexQuery: vi.fn((query: unknown) => ({ query })) }))
-vi.mock("~/lib/useSitePreviewMode", () => ({ useSitePreviewMode: vi.fn(() => false) }))
 vi.mock("~/components/WelcomePage", () => ({ WelcomePage: () => <div>Welcome</div> }))
 vi.mock("~/vexcms/blocks", () => ({ blockComponents: {} }))
 

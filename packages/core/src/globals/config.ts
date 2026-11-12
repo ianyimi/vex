@@ -1,4 +1,4 @@
-import { getDataFields, type AdminField } from "../fields";
+import { getDataFields, validateFieldDependsOn, type AdminField } from "../fields";
 import type { ComponentHKT } from "../components/types";
 import { slugToPascalCase } from "../collections/utils";
 import type {
@@ -91,6 +91,14 @@ export function defineGlobal<
   // fields — mirrors `defineCollection`'s guard. `getDataFields` itself
   // throws; called here purely for the side effect, result discarded.
   getDataFields({ fields: input.fields });
+
+  // Every field's `dependsOn` must name another of this global's own
+  // top-level field keys.
+  validateFieldDependsOn({
+    at: `defineGlobal: global "${input.slug}"`,
+    resourceNoun: "global",
+    fields: input.fields,
+  });
 
   return {
     ...input,

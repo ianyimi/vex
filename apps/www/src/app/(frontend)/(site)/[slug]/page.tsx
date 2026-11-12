@@ -59,7 +59,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
  * with the editor's own token instead — `getBySlug` is published-only, so a
  * document that has never been published always resolved to `[]` there, and
  * `PageContent` used to start on the published query (its SSR snapshot of
- * `useSitePreviewMode` is always `false`), flashing `WelcomePage` before the
+ * `useIsLivePreviewActive` is always `false`), flashing `WelcomePage` before the
  * client-side preview query swapped in. Passing `draftMode` down makes
  * `PageContent`'s FIRST client render agree with this server render too (no
  * hydration mismatch, no flash). The `<meta name="vex-session">` hint lets

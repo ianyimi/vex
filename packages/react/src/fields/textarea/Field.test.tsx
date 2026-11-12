@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { adminFieldToInputSchema, textarea, type CollectionConfig, type TextareaField } from "@vexcms/core";
+import {
+  adminFieldToInputSchema,
+  textarea,
+  type CollectionConfig,
+  type FieldControlProps,
+  type TextareaField,
+} from "@vexcms/core";
+import type { ComponentType } from "react";
 import { AppForm } from "../../forms";
 import { testCollection } from "../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../testing/fieldInputContract";
@@ -175,4 +182,51 @@ runFieldInputContractSuite({
       });
     });
   },
+});
+
+describe("textarea: admin.components.Input override renders renderDefault as JSX", () => {
+  function JsxWrapOverride(
+    props: FieldControlProps<string> & { renderDefault: ComponentType<FieldControlProps<string>> },
+  ) {
+    const RenderDefault = props.renderDefault;
+    return <RenderDefault {...props} />;
+  }
+
+  it("keeps the same <textarea> DOM node mounted — and keystroke focus on it — across re-renders of TextareaFieldAdmin interleaved with typing", async () => {
+    // Built once, outside the harness — mirrors a real `fieldDef`, read off a
+    // stable config object and never recreated inline per render.
+    const fieldDef = textarea({
+      label: "Bio",
+      admin: { components: { Input: [{ id: "test.jsx-wrap", component: JsxWrapOverride }] } },
+    });
+
+    // `TextareaFieldAdmin` is not memoized: any parent re-render (e.g. a
+    // sibling subscription to the whole form re-rendering the field tree, as
+    // `FieldSlotOutlet` does in production) re-invokes its function body,
+    // redefining its inline `renderBareControl` closure — forced here via
+    // `rerender` so the regression doesn't depend on reproducing that exact
+    // production trigger.
+    function Harness(props: { tick: number }) {
+      void props.tick;
+      return (
+        <TextareaValidationHarness fieldDef={fieldDef} collection={testCollection} initialValue="" />
+      );
+    }
+
+    const user = userEvent.setup();
+    const { container, rerender } = render(<Harness tick={0} />);
+    const control = container.querySelector("textarea") as HTMLTextAreaElement;
+    control.focus();
+    expect(document.activeElement).toBe(control);
+
+    for (const [i, char] of ["a", "b", "c"].entries()) {
+      await user.type(control, char);
+      rerender(<Harness tick={i + 1} />);
+      // Still the exact same node — not unmounted/remounted by the re-render.
+      expect(container.querySelector("textarea")).toBe(control);
+      expect(document.activeElement).toBe(control);
+    }
+
+    expect(control.value).toBe("abc");
+  });
 });

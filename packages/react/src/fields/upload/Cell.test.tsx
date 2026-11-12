@@ -121,6 +121,29 @@ runFieldCellContractSuite({
         expect(screen.getByText(mediaDoc.filename)).toBeInTheDocument();
         expect(screen.getByText("+1")).toBeInTheDocument();
       });
+
+      it("renders AccessDeniedItemRow's lock for a single HiddenDocument placeholder (populateDocs denied target) instead of crashing FilePreview", () => {
+        const queryClient = new QueryClient({
+          defaultOptions: { queries: { enabled: false } },
+        });
+        const value = [{ _id: "images_1", code: "ACCESS_DENIED", resource: "images", action: "read" }];
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value });
+        render(
+          withCellConfig(
+            <QueryClientProvider client={queryClient}>
+              <UploadFieldCell
+                value={value as never}
+                row={row}
+                fieldDef={options.fixture.fieldDef}
+                fieldKey="field"
+                isTitleField={false}
+                collection={collection}
+              />
+            </QueryClientProvider>,
+          ),
+        );
+        expect(screen.getByRole("button", { name: "Requires images/read" })).toBeInTheDocument();
+      });
     });
 
     // No per-cell `useQuery` fetch for a populated row (the N+1 this fix

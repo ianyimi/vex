@@ -91,6 +91,7 @@ export function DateField(props: DateFieldProps): ReactNode {
       field={field}
       submissionAttempts={submissionAttempts}
       className={props.className}
+      readOnly={props.readOnly}
     >
       {control}
     </FormFieldLayout>

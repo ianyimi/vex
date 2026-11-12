@@ -8,17 +8,17 @@ import {
   LIVE_PREVIEW_MESSAGE_SOURCE,
   isLivePreviewMessage,
   openLivePreviewBroadcastChannel,
-  livePreviewKeyFor,
   type LivePreviewUpdateMessage,
 } from "./livePreviewProtocol";
 
 /**
  * Posts the form's complete current values to the active preview target, on
  * both `BroadcastChannel` and (when a window reference is held) `postMessage`,
- * on every change, debounced. Also listens for a matching
- * `vex-live-preview-handshake` over `BroadcastChannel` and replies immediately
- * with the current values — recovering state for a tab this admin session
- * never opened itself.
+ * on every change, debounced. Also replies at once to a
+ * `vex-live-preview-ready` — over `BroadcastChannel` from any same-origin
+ * preview surface, or over `postMessage` from the exact frame this panel holds —
+ * so a preview page that just loaded or reloaded shows the current unsaved
+ * values without waiting for the next keystroke.
  *
  * @param props.form - The edit view's form instance.
  * @param props.collectionSlug - The collection or global slug being previewed.
@@ -65,18 +65,27 @@ export function useLivePreviewSync(props: {
       targetWindow?.postMessage(updateMessage, "*");
     }
 
+    function isReadyMessage(data: unknown): boolean {
+      return isLivePreviewMessage(data) && data.type === "vex-live-preview-ready";
+    }
+
     function handleChannelMessage(event: MessageEvent) {
-      if (!isLivePreviewMessage(event.data)) return;
-      if (event.data.type !== "vex-live-preview-handshake") return;
-      if (livePreviewKeyFor(event.data) !== previewKey) return;
-      postUpdate();
+      if (isReadyMessage(event.data)) postUpdate();
+    }
+
+    function handleWindowMessage(event: MessageEvent) {
+      if (targetWindow && event.source === targetWindow && isReadyMessage(event.data)) {
+        postUpdate();
+      }
     }
 
     channel?.addEventListener("message", handleChannelMessage);
+    window.addEventListener("message", handleWindowMessage);
     const syncTimeoutId = setTimeout(postUpdate, debounceMs);
 
     return () => {
       clearTimeout(syncTimeoutId);
+      window.removeEventListener("message", handleWindowMessage);
       channel?.close();
     };
   }, [values, previewKey, debounceMs, targetWindow, collectionSlug, documentId, tempId]);

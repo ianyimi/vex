@@ -71,6 +71,7 @@ export function TextareaField(props: TextareaFieldProps): ReactNode {
       before={props.before}
       counter={counter}
       className={props.className}
+      readOnly={props.readOnly}
     >
       {control}
     </FormFieldLayout>

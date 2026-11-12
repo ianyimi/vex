@@ -1,0 +1,174 @@
+name: "Resolve vex-www preview for a pull request"
+description: >-
+  Waits for the PR head commit's "Preview – vex-www" deployment to settle
+  (success / failure / Vercel skipped the build), then decides whether the
+  pull_request path should audit it, fall back to an earlier commit's
+  successful preview, or do nothing because the deployment_status event will
+  report instead.
+
+inputs:
+  github-token:
+    description: "Token used for the GitHub API calls"
+    required: true
+  pr-number:
+    description: "Pull request number"
+    required: true
+  head-sha:
+    description: "Head commit SHA of the pull request"
+    required: true
+
+outputs:
+  mode:
+    description: "run | skip | fail"
+    value: ${{ steps.resolve.outputs.mode }}
+  sha:
+    description: "Commit whose preview should be audited (run/skip only)"
+    value: ${{ steps.resolve.outputs.sha }}
+  url:
+    description: "Preview URL to audit (run/skip only)"
+    value: ${{ steps.resolve.outputs.url }}
+  reason:
+    description: "Human-readable explanation of the decision"
+    value: ${{ steps.resolve.outputs.reason }}
+  timed_out:
+    description: "true if the head settle-wait hit the 15 min poll timeout"
+    value: ${{ steps.resolve.outputs.timed_out }}
+
+runs:
+  using: composite
+  steps:
+    - id: resolve
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+      run: |
+        set -euo pipefail
+        ENV_NAME="Preview – vex-www"
+        POLL_INTERVAL=20
+        POLL_TIMEOUT=900
+
+        # --- Step 1: wait for the head commit's own vex-www deployment to settle. ---
+        # Both events fire for the same commit: this pull_request-triggered job must
+        # not race the deployment_status run. If the head build succeeds, the
+        # deployment_status run already reports `axe`/`lighthouse` for this SHA — do
+        # nothing here. If it fails, report that failure instead of silently
+        # auditing a stale earlier preview. Only once it's clear Vercel skipped the
+        # build (an `inactive` status, or its check run concluding skipped/neutral,
+        # or no deployment ever appearing) do we fall back to an older commit.
+        settled_mode=""
+        settled_state=""
+        settled_url=""
+        elapsed=0
+
+        while [ "$elapsed" -lt "$POLL_TIMEOUT" ]; do
+          dep_id=$(gh api -X GET "repos/${GITHUB_REPOSITORY}/deployments" -f sha="$HEAD_SHA" -f environment="$ENV_NAME" --jq '.[0].id // empty')
+
+          if [ -n "$dep_id" ]; then
+            read -r state url < <(gh api "repos/${GITHUB_REPOSITORY}/deployments/${dep_id}/statuses" --jq '(.[0].state // "") + " " + (.[0].target_url // "none")')
+            case "$state" in
+              success)
+                settled_mode="success"; settled_state="$state"; settled_url="$url"
+                break
+                ;;
+              failure | error)
+                settled_mode="failure"; settled_state="$state"
+                break
+                ;;
+              inactive)
+                settled_mode="skip"; settled_state="$state"
+                break
+                ;;
+              *) : ;; # pending/queued/in_progress: keep waiting
+            esac
+          else
+            # No deployment yet. Check whether Vercel's check run for this SHA has
+            # already concluded without ever creating one (it decided to skip).
+            check=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}/check-runs" --jq '[.check_runs[] | select(.app.slug == "vercel")] | sort_by(.started_at) | last | ((.status // "") + " " + (.conclusion // ""))' 2>/dev/null || echo "")
+            status_val=$(echo "$check" | cut -d' ' -f1)
+            conclusion_val=$(echo "$check" | cut -d' ' -f2)
+            if [ "$status_val" = "completed" ]; then
+              case "$conclusion_val" in
+                skipped | neutral)
+                  settled_mode="skip"; settled_state="check:$conclusion_val"
+                  break
+                  ;;
+                failure | cancelled | timed_out | action_required)
+                  settled_mode="failure"; settled_state="check:$conclusion_val"
+                  break
+                  ;;
+                *) : ;; # success-with-no-deployment-yet or unrecognized: keep waiting
+              esac
+            fi
+          fi
+
+          sleep "$POLL_INTERVAL"
+          elapsed=$((elapsed + POLL_INTERVAL))
+        done
+
+        if [ -z "$settled_mode" ]; then
+          settled_mode="skip"
+          settled_state="timeout-after-${POLL_TIMEOUT}s"
+          timed_out="true"
+        else
+          timed_out="false"
+        fi
+
+        if [ "$settled_mode" = "success" ]; then
+          {
+            echo "mode=skip"
+            echo "sha=${HEAD_SHA}"
+            echo "url=${settled_url}"
+            echo "timed_out=false"
+            echo "reason=Head commit ${HEAD_SHA}'s '${ENV_NAME}' deployment succeeded; the deployment_status event covers this check."
+          } >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        if [ "$settled_mode" = "failure" ]; then
+          {
+            echo "mode=fail"
+            echo "timed_out=false"
+            echo "reason=Head commit ${HEAD_SHA}'s '${ENV_NAME}' deployment/build ended in '${settled_state}'; not falling back to a stale earlier preview."
+          } >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # --- Step 2: head build was skipped (or we timed out waiting) — fall back. ---
+        # Walk the PR's commits newest-first for the most recent one with a
+        # successful "Preview – vex-www" deployment.
+        commits=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits" --paginate --jq '.[].sha' | tac)
+
+        found_sha=""
+        found_url=""
+
+        while IFS= read -r sha; do
+          [ -z "$sha" ] && continue
+          deployment_ids=$(gh api -X GET "repos/${GITHUB_REPOSITORY}/deployments" -f sha="$sha" -f environment="$ENV_NAME" --jq '.[].id')
+          for dep_id in $deployment_ids; do
+            success_url=$(gh api "repos/${GITHUB_REPOSITORY}/deployments/${dep_id}/statuses" --jq '[.[] | select(.state=="success")][0].target_url // empty')
+            if [ -n "$success_url" ]; then
+              found_sha="$sha"
+              found_url="$success_url"
+              break 2
+            fi
+          done
+        done <<< "$commits"
+
+        if [ -z "$found_sha" ]; then
+          {
+            echo "mode=fail"
+            echo "timed_out=${timed_out}"
+            echo "reason=Head commit ${HEAD_SHA}'s '${ENV_NAME}' build was skipped (${settled_state}), and no successful '${ENV_NAME}' deployment was found for any commit in this pull request."
+          } >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        {
+          echo "mode=run"
+          echo "sha=${found_sha}"
+          echo "url=${found_url}"
+          echo "timed_out=${timed_out}"
+          echo "reason=Head commit ${HEAD_SHA}'s '${ENV_NAME}' build was skipped (${settled_state}); auditing the most recent successful preview instead, from commit ${found_sha}."
+        } >> "$GITHUB_OUTPUT"

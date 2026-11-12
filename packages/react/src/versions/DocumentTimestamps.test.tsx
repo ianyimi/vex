@@ -21,4 +21,22 @@ describe("DocumentTimestamps", () => {
     });
     expect(group).toHaveTextContent(expected);
   });
+
+  // Regression (muted read-only label, developer report): "Created at" is
+  // ALWAYS a locked/system value (sourced from `_creationTime`, never
+  // editable), but its label carried no visual "disabled" treatment at
+  // all — a plain `text-muted-foreground` span with no
+  // `data-disabled`/`group/field` wiring, unlike every other locked/
+  // `admin.readOnly` field's label (muted via `FormFieldLayout`'s
+  // `data-disabled`). The group now carries `data-disabled="true"`
+  // unconditionally, and the label mutes through the same
+  // `group-data-[disabled=true]/field:opacity-50` convention every other
+  // field's label uses.
+  it("always marks its group disabled, muting the label like a locked/system field", () => {
+    const timestamp = Date.UTC(2025, 5, 15, 14, 30);
+    render(<DocumentTimestamps creationTime={timestamp} />);
+    const group = screen.getByRole("group");
+    expect(group).toHaveAttribute("data-disabled", "true");
+    expect(screen.getByText("Created at").className).toContain("group-data-[disabled=true]/field:opacity-50");
+  });
 });

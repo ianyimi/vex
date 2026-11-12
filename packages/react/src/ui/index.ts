@@ -35,3 +35,4 @@ export * from "./QueryErrorBoundary";
 export * from "./Icon";
 export * from "./ThemeProvider";
 export * from "./ThemeToggle";
+export * from "./UserDisplay";

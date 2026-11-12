@@ -13,6 +13,7 @@ import type * as auth_config from "../auth/config.js";
 import type * as auth_db from "../auth/db.js";
 import type * as auth_index from "../auth/index.js";
 import type * as auth_sessions from "../auth/sessions.js";
+import type * as demoAccounts from "../demoAccounts.js";
 import type * as footers from "../footers.js";
 import type * as headers from "../headers.js";
 import type * as http from "../http.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   "auth/db": typeof auth_db;
   "auth/index": typeof auth_index;
   "auth/sessions": typeof auth_sessions;
+  demoAccounts: typeof demoAccounts;
   footers: typeof footers;
   headers: typeof headers;
   http: typeof http;

@@ -29,10 +29,39 @@ describe("parseCliArgs", () => {
     expect(parseCliArgs(["deploy"]).convexArgs).toEqual([]);
   });
 
-  it("never populates convexArgs for a non-deploy command", () => {
-    const parsed = parseCliArgs(["dev", "--once", "--cwd", "/tmp/project"]);
+  it("forwards every flag vex doesn't own to convexArgs for dev, consuming --once and --cwd", () => {
+    const parsed = parseCliArgs([
+      "dev",
+      "--once",
+      "--tail-logs",
+      "always",
+      "--cwd",
+      "/tmp/project",
+      "--run=init:seed",
+      "-v",
+      "--start",
+      "next dev",
+    ]);
     expect(parsed.once).toBe(true);
     expect(parsed.cwd).toBe("/tmp/project");
-    expect(parsed.convexArgs).toEqual([]);
+    expect(parsed.convexArgs).toEqual(["--tail-logs", "always", "--run=init:seed", "-v", "--start", "next dev"]);
+  });
+
+  it("forwards --once on deploy and --json on dev instead of treating them as vex flags", () => {
+    const deploy = parseCliArgs(["deploy", "--once"]);
+    expect(deploy.once).toBe(false);
+    expect(deploy.convexArgs).toEqual(["--once"]);
+
+    const dev = parseCliArgs(["dev", "--json"]);
+    expect(dev.json).toBe(false);
+    expect(dev.convexArgs).toEqual(["--json"]);
+  });
+
+  it("collects no convexArgs for commands that wrap no Convex command", () => {
+    expect(parseCliArgs(["generate", "--tail-logs", "always"]).convexArgs).toEqual([]);
+    const telemetry = parseCliArgs(["telemetry", "status", "--json"]);
+    expect(telemetry.telemetryAction).toBe("status");
+    expect(telemetry.json).toBe(true);
+    expect(telemetry.convexArgs).toEqual([]);
   });
 });

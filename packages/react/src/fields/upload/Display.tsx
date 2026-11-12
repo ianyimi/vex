@@ -3,12 +3,28 @@
 import {
   isDisplayValueEmpty,
   type DisplayComponentProps,
+  type HiddenDocument,
   type TDocument,
   type UploadField,
   type VexMediaDocument,
 } from "@vexcms/core";
 import { Badge } from "../../ui/badge";
 import { FilePreview } from "../../media/FilePreview";
+import { AccessDeniedChip } from "../../access";
+import { useVexConfig } from "../../config/VexConfigContext";
+
+/**
+ * True when a populated field's item is a `populateDocs`-produced
+ * {@link HiddenDocument} placeholder rather than a real target doc.
+ *
+ * @param value - The populated field's item to check.
+ * @returns Whether `value` is a {@link HiddenDocument}.
+ */
+function isHiddenDocument(value: unknown): value is HiddenDocument {
+  return (
+    typeof value === "object" && value !== null && (value as Record<string, unknown>).code === "ACCESS_DENIED"
+  );
+}
 
 /**
  * Upload field read-only display, registered as
@@ -22,7 +38,10 @@ import { FilePreview } from "../../media/FilePreview";
  * single-item-plus-badge-count list-cell layout (a read-only display has
  * no fixed column width to summarize into) and NOT `UploadFieldCell`'s
  * own unpopulated-fallback query (showing every attached file, not just
- * the first, without fanning out N queries for a read-only panel).
+ * the first, without fanning out N queries for a read-only panel). A
+ * denied target (`populateDocs`'s `HiddenDocument` placeholder) renders
+ * `AccessDeniedChip` instead of attempting `FilePreview` on a doc that
+ * carries none of its required fields.
  *
  * @param props - Component props.
  * @returns One chip per attached file, or an em-dash for an empty upload field.
@@ -30,13 +49,25 @@ import { FilePreview } from "../../media/FilePreview";
 export function UploadFieldDisplay<TData extends TDocument = TDocument>(
   props: DisplayComponentProps<UploadField, TData>,
 ) {
+  const config = useVexConfig();
   const raw = Array.isArray(props.value) ? props.value : [];
   if (isDisplayValueEmpty(raw)) {
     return <span className="text-muted-foreground">—</span>;
   }
+  const targetCollection = config.mediaCollections.find((c) => c.slug === props.field.to);
   return (
     <div className="flex flex-wrap gap-1">
       {raw.map((item) => {
+        if (isHiddenDocument(item)) {
+          return (
+            <AccessDeniedChip
+              key={item._id}
+              resource={item.resource}
+              action={item.action}
+              label={targetCollection?.labels.singular ?? props.field.to}
+            />
+          );
+        }
         const isPopulated = typeof item === "object" && item !== null && "_id" in (item as object);
         const doc = isPopulated ? (item as VexMediaDocument) : undefined;
         const id = doc ? doc._id : String(item);

@@ -14,6 +14,11 @@ vi.mock("convex/nextjs", () => ({
   fetchQuery: vi.fn(),
 }));
 
+const { mockVexConfig } = vi.hoisted(() => ({
+  mockVexConfig: { admin: { livePreview: { expiredSessions: "allow" as "allow" | "deny" } } },
+}));
+vi.mock("~/vex.config", () => ({ default: mockVexConfig }));
+
 const mockedGetSessionCookie = vi.mocked(getSessionCookie);
 const mockedFetchQuery = vi.mocked(fetchQuery);
 
@@ -46,6 +51,58 @@ function pageRequest(options: {
 beforeEach(() => {
   mockedGetSessionCookie.mockReset();
   mockedFetchQuery.mockReset();
+});
+
+beforeEach(() => {
+  mockVexConfig.admin.livePreview.expiredSessions = "allow";
+});
+
+describe("proxy — admin.livePreview.expiredSessions: \"deny\"", () => {
+  beforeEach(() => {
+    mockVexConfig.admin.livePreview.expiredSessions = "deny";
+  });
+
+  it("passes through when there is no preview marker at all, without checking the session", async () => {
+    const response = await proxy(pageRequest({}));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(mockedGetSessionCookie).not.toHaveBeenCalled();
+  });
+
+  it("redirects to the disable route when the marker is present, no query param, and the session no longer verifies", async () => {
+    mockedGetSessionCookie.mockReturnValue(undefined);
+
+    const response = await proxy(pageRequest({ bypass: true, marker: "1" }));
+
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.pathname).toBe("/api/vex/live-preview");
+    expect(location.searchParams.get("disable")).toBe("1");
+    expect(location.searchParams.get("redirect")).toBe("/some-page");
+  });
+
+  it("passes through when the marker is present, no query param, and the session still verifies", async () => {
+    mockedGetSessionCookie.mockReturnValue("raw-token.signature");
+    mockedFetchQuery.mockResolvedValue({ user: { id: "admin-1" } });
+
+    const response = await proxy(pageRequest({ bypass: true, marker: "1" }));
+
+    expect(response.headers.get("location")).toBeNull();
+    expect(mockedFetchQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-checks the session even when both hand-off cookies are present, unlike \"allow\"", async () => {
+    mockedGetSessionCookie.mockReturnValue(undefined);
+
+    const response = await proxy(
+      pageRequest({ bypass: true, livePreview: true, marker: "1" }),
+    );
+
+    expect(mockedGetSessionCookie).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.searchParams.get("disable")).toBe("1");
+  });
 });
 
 describe("proxy", () => {

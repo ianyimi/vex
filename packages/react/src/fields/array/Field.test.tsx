@@ -26,9 +26,11 @@ import type { VexResourceSlug } from "@vexcms/core";
  * Mounts `ArrayFieldInput` behind a real `useForm` + `<AppForm>`, exposing the
  * array's live value through a probe so shape/order assertions don't need a
  * hand-mocked `FieldApi`. The `onSubmit` validator maps every Zod issue to its
- * own dot/bracket-path form field (`testField`, or `testField[0]` for an item
- * failure) — a flat single-path validator would only ever populate the
- * array's OWN top-level error, never surface a specific item's.
+ * own bracket/dot-path form field (`testField`, or `testField[0]` for an item
+ * failure — the same convention `ArrayFieldAdmin`'s own item naming and
+ * `utils/errors.ts`'s `issuePath` use) — a flat single-path validator would
+ * only ever populate the array's OWN top-level error, never surface a
+ * specific item's.
  */
 function ArrayHarness(props: {
   fieldDef: ArrayField<VexResourceSlug, ArrayType>;
@@ -47,7 +49,11 @@ function ArrayHarness(props: {
         if (result.success) return undefined;
         const fields: Record<string, string> = {};
         for (const issue of result.error.issues) {
-          fields[["testField", ...issue.path].join(".")] = issue.message;
+          const path = issue.path.reduce<string>(
+            (name, segment) => (typeof segment === "number" ? `${name}[${segment}]` : `${name}.${String(segment)}`),
+            "testField",
+          );
+          fields[path] = issue.message;
         }
         return { fields };
       },
@@ -194,6 +200,30 @@ runFieldInputContractSuite({
           .filter((el): el is HTMLInputElement => el.tagName === "INPUT");
         expect(inputs.map((el) => el.id)).toEqual(["testField[0]", "testField[1]"]);
         expect(inputs.map((el) => el.value)).toEqual(arrayFieldFixture.valid);
+      });
+
+      it("marks only the invalid item's own wrapper with [data-field-invalid], not just the array's (PrimitiveArrayItemControl, Field.tsx)", async () => {
+        const user = userEvent.setup();
+        const { container } = render(
+          <ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a", ""]} />,
+        );
+        await user.click(screen.getByRole("button", { name: /submit/i }));
+        await screen.findByText("This field is required.");
+
+        const secondInput = screen
+          .getAllByLabelText("Score", { exact: false })
+          .filter((el): el is HTMLInputElement => el.tagName === "INPUT")[1]!;
+        const markers = [...container.querySelectorAll("[data-field-invalid]")];
+        // In the real app `RenderFields`' `FieldSlotOutlet` also wraps the array
+        // FIELD itself (a second, outer marker) when one of its items errors —
+        // `ArrayHarness` mounts `ArrayFieldAdmin` standalone, without that outer
+        // wrapper, so here there is exactly the one marker: the invalid item's
+        // own, containing only its input and no marked descendant of its own.
+        const ownMarker = markers.find(
+          (el) => el.contains(secondInput) && el.querySelectorAll("[data-field-invalid]").length === 0,
+        );
+        expect(ownMarker).toBeTruthy();
+        expect(markers).toEqual([ownMarker]);
       });
 
       it("honors the item field's own admin.readOnly independently of the array's readOnly prop — FormArray forwards readOnly straight through without OR-ing the item's own admin flag (unlike FormGroup/FormBlocks)", async () => {

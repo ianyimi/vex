@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { NextAdminLayout } from "@vexcms/next/client";
 
-import { getToken, getUserOrg } from "~/auth/server";
+import { getToken, getUserOrgForVexApi } from "~/auth/server";
 import { ThemeLive } from "~/components/ThemeLive";
 import { ThemeStyle } from "~/components/ThemeStyle";
 
@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // `{children}` and this layout's own static chrome stream immediately instead of
   // waiting on a Convex round trip. `getUserOrg` is `cache()`-memoized (`auth/server.ts`):
   // this call and `page.tsx`'s own share ONE round trip, not two.
-  const authPromise = getUserOrg();
+  const authPromise = getUserOrgForVexApi();
   // Awaited, unlike `authPromise` above: `getToken()` is `cache()`-memoized AND, when a
   // valid JWT cookie is present, resolves from a local decode (no network round trip —
   // see `auth/server.ts`'s `jwtCache` comment), so this costs far less than `getUserOrg()`

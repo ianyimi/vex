@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 
 import type { DataModel, Id } from "@convex/_generated/dataModel"
-import type { VexDocument, VexDocumentGlobal, RichTextDocument } from "@vexcms/core"
+import type { VexDocumentShape, VexDocumentGlobal, RichTextDocument } from "@vexcms/core"
 
 export type HeroBlock = {
   blockType: "hero"
@@ -259,7 +259,7 @@ export type AnotherGroupNames = {
   list?: InnerGroup[]
 }
 
-export interface Page extends VexDocument {
+export interface Page extends VexDocumentShape {
   _id: Id<"pages">
   vex_status?: "draft" | "published"
   /**
@@ -320,7 +320,7 @@ export interface Page extends VexDocument {
   updatedAt?: number
 }
 
-export interface UserDocument extends VexDocument {
+export interface UserDocument extends VexDocumentShape {
   _id: Id<"user">
   name: string
   email: string
@@ -352,7 +352,7 @@ export type HeaderBlock = {
   }[]
 }
 
-export interface HeadersDocument extends VexDocument {
+export interface HeadersDocument extends VexDocumentShape {
   _id: Id<"headers">
   name: string
   content?: HeaderBlock[]
@@ -377,14 +377,14 @@ export type FooterBlock = {
   }[]
 }
 
-export interface FootersDocument extends VexDocument {
+export interface FootersDocument extends VexDocumentShape {
   _id: Id<"footers">
   name: string
   content?: FooterBlock[]
   updatedAt?: number
 }
 
-export interface Theme extends VexDocument {
+export interface Theme extends VexDocumentShape {
   _id: Id<"themes">
   /**
    * Internal identifier for this theme. Used for idempotent lookups and admin
@@ -478,7 +478,7 @@ export interface Theme extends VexDocument {
 }
 
 type ArticleStatusOption = "draft" | "review" | "published"
-export interface Article extends VexDocument {
+export interface Article extends VexDocumentShape {
   _id: Id<"articles">
   /**
    * Display title, shown as the document heading and in the admin table.
@@ -526,7 +526,7 @@ export interface Article extends VexDocument {
 }
 
 type CaseStudyStatusOption = "draft" | "review" | "published"
-export interface CaseStudy extends VexDocument {
+export interface CaseStudy extends VexDocumentShape {
   _id: Id<"case_studies">
   /**
    * Display title, shown as the document heading and in the admin table.
@@ -579,7 +579,7 @@ export interface CaseStudy extends VexDocument {
 
 type ChangelogEntryStatusOption = "draft" | "review" | "published"
 type ChangelogEntryReleaseTypeOption = "major" | "minor" | "patch"
-export interface ChangelogEntry extends VexDocument {
+export interface ChangelogEntry extends VexDocumentShape {
   _id: Id<"changelog">
   /**
    * Display title, shown as the document heading and in the admin table.
@@ -626,7 +626,7 @@ export interface ChangelogEntry extends VexDocument {
   updatedAt?: number
 }
 
-export interface Comment extends VexDocument {
+export interface Comment extends VexDocumentShape {
   _id: Id<"comments">
   /**
    * User who owns this document. Contributors are scoped to their own rows through
@@ -648,7 +648,7 @@ export interface Comment extends VexDocument {
   updatedAt?: number
 }
 
-export interface Post extends VexDocument {
+export interface Post extends VexDocumentShape {
   _id: Id<"posts">
   vex_status?: "draft" | "published"
   /**
@@ -681,6 +681,10 @@ export interface Post extends VexDocument {
 export type FieldsExampleInfo = {
   heading?: string
   bullets?: string[]
+  /**
+   * Demonstrates upload() nested directly inside a group() field.
+   */
+  coverImage?: Id<"images">[]
 }
 
 export type StatGroupBlock = {
@@ -689,7 +693,16 @@ export type StatGroupBlock = {
   id: string
   showHeading?: boolean
   heading?: string
-  stats?: { id?: string; value?: string; caption?: string }[]
+  stats?: {
+    id?: string
+    value?: string
+    caption?: string
+    /**
+     * Demonstrates upload() nested inside array(group()) inside blocks() — populate
+     * reaches this via `content.stat_group.stats.icon`.
+     */
+    icon?: Id<"images">[]
+  }[]
 }
 
 export type NestedStatGroupBlock = {
@@ -709,6 +722,7 @@ export type ContainerBlock = {
   meta?: {
     tag?: string
   }
+  relatedArticle?: Id<"articles">[]
   children?: NestedStatGroupBlock[]
 }
 
@@ -732,8 +746,10 @@ export type FieldsExampleDisplaySettings = {
 }
 type FieldsExampleStatusOption = "draft" | "published"
 type FieldsExampleTagsOption = "news" | "tutorial" | "release"
-export interface FieldsExample extends VexDocument {
+type FieldsExampleListingTypeOption = "sale" | "rent"
+export interface FieldsExample extends VexDocumentShape {
   _id: Id<"fields">
+  vex_status?: "draft" | "published"
   /**
    * Demonstrates email() with a custom searchIndex name.
    */
@@ -754,6 +770,15 @@ export interface FieldsExample extends VexDocument {
    * Demonstrates number() with tuple min/max.
    */
   rating?: number
+  /**
+   * Demonstrates number() with admin.mask: "decimal".
+   */
+  quantity?: number
+  /**
+   * Demonstrates number() with a currency-like admin.mask
+   * (radixPoint/groupSeparator/digits).
+   */
+  unitPrice?: number
   /**
    * Demonstrates checkbox().
    */
@@ -782,6 +807,15 @@ export interface FieldsExample extends VexDocument {
    * Demonstrates date() with a seconds-precision time picker.
    */
   eventAt?: number
+  /**
+   * Demonstrates validate()'s dependsOn: changing this re-runs endDate's validate().
+   */
+  startDate?: number
+  /**
+   * Must be after Start Date. dependsOn: ["startDate"] re-runs this check when Start
+   * Date changes, not only when End Date itself does.
+   */
+  endDate?: number
   /**
    * Demonstrates relationship() restricted to a single document.
    */
@@ -845,6 +879,12 @@ export interface FieldsExample extends VexDocument {
   fallbackB?: string
   conditionalNote?: string
   /**
+   * Demonstrates a select() controlling a row() child's admin.condition.
+   */
+  listingType?: FieldsExampleListingTypeOption[]
+  salePrice?: string
+  monthlyRent?: string
+  /**
    * Demonstrates tabs() and row() nested inside a group().
    */
   displaySettings?: FieldsExampleDisplaySettings
@@ -865,7 +905,7 @@ export interface FieldsExample extends VexDocument {
 }
 
 type TestimonialSourceOption = "website" | "import" | "survey" | "referral"
-export interface Testimonial extends VexDocument {
+export interface Testimonial extends VexDocumentShape {
   _id: Id<"testimonials">
   /**
    * Who gave the testimonial.
@@ -922,7 +962,7 @@ type TelemetryEventErrorCodeOption =
   | "storageConfigError"
   | "unknown"
 type TelemetryEventFrameworkOption = "next" | "tanstack" | "unknown"
-export interface TelemetryEvent extends VexDocument {
+export interface TelemetryEvent extends VexDocumentShape {
   _id: Id<"telemetryEvents">
   event: TelemetryEventEventOption[]
   schemaVersion: number
@@ -973,7 +1013,7 @@ type TelemetryProjectFieldTypesOption =
   | "row"
   | "ui"
 type TelemetryProjectAuthAdapterOption = "none" | "betterAuth" | "custom"
-export interface TelemetryProject extends VexDocument {
+export interface TelemetryProject extends VexDocumentShape {
   _id: Id<"telemetryProjects">
   projectId: string
   firstSeenAt: number
@@ -1025,7 +1065,7 @@ export interface TelemetryProject extends VexDocument {
   latestConfig?: unknown
 }
 
-export interface SessionDocument extends VexDocument {
+export interface SessionDocument extends VexDocumentShape {
   _id: Id<"session">
   expiresAt: number
   token: string
@@ -1039,7 +1079,7 @@ export interface SessionDocument extends VexDocument {
   activeTeamId?: string
 }
 
-export interface AccountDocument extends VexDocument {
+export interface AccountDocument extends VexDocumentShape {
   _id: Id<"account">
   accountId: string
   providerId: string
@@ -1055,7 +1095,7 @@ export interface AccountDocument extends VexDocument {
   updatedAt: number
 }
 
-export interface VerificationDocument extends VexDocument {
+export interface VerificationDocument extends VexDocumentShape {
   _id: Id<"verification">
   identifier: string
   value: string
@@ -1064,7 +1104,7 @@ export interface VerificationDocument extends VexDocument {
   updatedAt: number
 }
 
-export interface ApikeyDocument extends VexDocument {
+export interface ApikeyDocument extends VexDocumentShape {
   _id: Id<"apikey">
   configId: string
   name?: string
@@ -1089,7 +1129,7 @@ export interface ApikeyDocument extends VexDocument {
   metadata?: string
 }
 
-export interface JwksDocument extends VexDocument {
+export interface JwksDocument extends VexDocumentShape {
   _id: Id<"jwks">
   publicKey: string
   privateKey: string
@@ -1099,7 +1139,7 @@ export interface JwksDocument extends VexDocument {
   crv?: string
 }
 
-export interface OrganizationDocument extends VexDocument {
+export interface OrganizationDocument extends VexDocumentShape {
   _id: Id<"organization">
   name: string
   slug: string
@@ -1109,7 +1149,7 @@ export interface OrganizationDocument extends VexDocument {
   test?: string
 }
 
-export interface TeamDocument extends VexDocument {
+export interface TeamDocument extends VexDocumentShape {
   _id: Id<"team">
   name: string
   memberCount: number
@@ -1118,7 +1158,7 @@ export interface TeamDocument extends VexDocument {
   updatedAt?: number
 }
 
-export interface TeamMemberDocument extends VexDocument {
+export interface TeamMemberDocument extends VexDocumentShape {
   _id: Id<"teamMember">
   teamId: string
   userId: string
@@ -1126,7 +1166,7 @@ export interface TeamMemberDocument extends VexDocument {
   createdAt?: number
 }
 
-export interface MemberDocument extends VexDocument {
+export interface MemberDocument extends VexDocumentShape {
   _id: Id<"member">
   organizationId: string
   userId: string
@@ -1134,7 +1174,7 @@ export interface MemberDocument extends VexDocument {
   createdAt: number
 }
 
-export interface InvitationDocument extends VexDocument {
+export interface InvitationDocument extends VexDocumentShape {
   _id: Id<"invitation">
   organizationId: string
   email: string
@@ -1147,7 +1187,7 @@ export interface InvitationDocument extends VexDocument {
   roles: string[]
 }
 
-export interface Image extends VexDocument {
+export interface Image extends VexDocumentShape {
   _id: Id<"images">
   filename: string
   alt: string
@@ -1435,12 +1475,14 @@ declare module "@vexcms/core" {
           | "fallbackA"
           | "fallbackB"
           | "conditionalNote"
-        number: "rating"
+          | "salePrice"
+          | "monthlyRent"
+        number: "rating" | "quantity" | "unitPrice"
         checkbox: "isFeatured" | "showAdvanced" | "legacyFlag"
-        select: "status" | "tags"
+        select: "status" | "tags" | "listingType"
         color: "accentColor"
         url: "website"
-        date: "dueOn" | "eventAt"
+        date: "dueOn" | "eventAt" | "startDate" | "endDate"
         relationship: "relatedUser" | "relatedUsers"
         upload: "avatar" | "gallery"
         richtext: "body"
@@ -1593,6 +1635,87 @@ declare module "@vexcms/core" {
         checkbox: "deleted"
         commitTs: "updatedAt"
       }
+    }
+    CollectionsPopulateMap: {
+      pages: {
+        blocks: {
+          kind: "blocks"
+          blocks: {
+            split: { image: { kind: "upload"; target: "images" } }
+            cta: {
+              actions: {
+                kind: "group"
+                fields: { internalPage: { kind: "relationship"; target: "pages" } }
+              }
+            }
+          }
+        }
+        ogImage: { kind: "upload"; target: "images" }
+        testImage: { kind: "upload"; target: "images" }
+        themes: { kind: "relationship"; target: "themes" }
+      }
+      user: {}
+      headers: {
+        content: {
+          kind: "blocks"
+          blocks: { header: { logoImage: { kind: "upload"; target: "images" } } }
+        }
+      }
+      footers: {
+        content: {
+          kind: "blocks"
+          blocks: { footer: { logoImage: { kind: "upload"; target: "images" } } }
+        }
+      }
+      themes: {}
+      articles: {
+        authorId: { kind: "relationship"; target: "user" }
+        coverImage: { kind: "relationship"; target: "images" }
+      }
+      case_studies: { authorId: { kind: "relationship"; target: "user" } }
+      changelog: { authorId: { kind: "relationship"; target: "user" } }
+      comments: {
+        authorId: { kind: "relationship"; target: "user" }
+        article: { kind: "relationship"; target: "articles" }
+      }
+      posts: {
+        relatedPost: { kind: "relationship"; target: "posts" }
+        relatedArticle: { kind: "relationship"; target: "articles" }
+        relatedField: { kind: "relationship"; target: "fields" }
+      }
+      fields: {
+        relatedUser: { kind: "relationship"; target: "user" }
+        relatedUsers: { kind: "relationship"; target: "user" }
+        avatar: { kind: "upload"; target: "images" }
+        gallery: { kind: "upload"; target: "images" }
+        info: { kind: "group"; fields: { coverImage: { kind: "upload"; target: "images" } } }
+        content: {
+          kind: "blocks"
+          blocks: {
+            stat_group: {
+              stats: { kind: "group"; fields: { icon: { kind: "upload"; target: "images" } } }
+            }
+            container: { relatedArticle: { kind: "relationship"; target: "articles" } }
+          }
+        }
+      }
+      testimonials: {
+        contributorId: { kind: "relationship"; target: "user" }
+        avatar: { kind: "relationship"; target: "images" }
+      }
+      telemetryEvents: {}
+      telemetryProjects: {}
+      session: {}
+      account: {}
+      verification: {}
+      apikey: {}
+      jwks: {}
+      organization: {}
+      team: {}
+      teamMember: {}
+      member: {}
+      invitation: {}
+      images: {}
     }
     GlobalsFieldTypeMap: {
       nav: {

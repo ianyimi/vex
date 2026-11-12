@@ -168,7 +168,7 @@ export async function generateAndWrite(
         }
 
         // Push schema to Convex (uses running convex dev or standalone push)
-        const pushFn = options?.pushSchema ?? ((c: string) => waitForDeploy(c));
+        const pushFn = options?.pushSchema ?? ((c: string) => waitForDeploy({ cwd: c }));
         const deployed = await pushFn(cwd);
         if (!deployed) {
           migrationOk = false;

@@ -11,15 +11,14 @@ describe("isLivePreviewMessage", () => {
     expect(
       isLivePreviewMessage({
         source: LIVE_PREVIEW_MESSAGE_SOURCE,
-        type: "vex-live-preview-handshake",
-        collectionSlug: "pages",
+        type: "vex-live-preview-ready",
       }),
     ).toBe(true);
   });
 
   it("rejects null, primitives, and unrelated objects", () => {
     expect(isLivePreviewMessage(null)).toBe(false);
-    expect(isLivePreviewMessage("vex-live-preview-handshake")).toBe(false);
+    expect(isLivePreviewMessage("vex-live-preview-ready")).toBe(false);
     expect(isLivePreviewMessage({ source: "some-other-widget" })).toBe(false);
     expect(isLivePreviewMessage({})).toBe(false);
   });

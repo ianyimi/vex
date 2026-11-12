@@ -26,6 +26,41 @@ the auth package's own client-safe builder — for Better Auth, `betterAuthColle
 `@vexcms/better-auth/client`. `defineConfig()` merges the result (`authCollections`) with your
 user-defined collections via `mergeAuthCollections`.
 
+## Signing out of the admin panel
+
+`defineConfig()`'s client-safe `auth` group also carries the admin panel's post-sign-out
+destination — distinct from `server.auth.adapter` (the live adapter instance, server-only):
+
+```ts
+// vex.config.ts (client)
+export default defineConfig({
+  auth: { signOut: { redirectTo: "/goodbye" } }, // defaults to "/"
+  collections: [posts, authors],
+});
+```
+
+`AdminTopNav`'s "Sign out" control reads this through the framework adapter's `signOut()`
+(see the [framework adapters guide](/guides/framework-adapters/), Step 10, for the full
+contract): once the session cookie actually clears, `signOut()` performs a
+**hard, full-document navigation** straight to `config.auth.signOut.redirectTo` — never a
+client-side `router.push`/`router.refresh`. The admin shell (sidebar, top bar) must never
+render in a signed-out state; a client-side refresh instead keeps it mounted while every
+query re-runs anonymously and the route guard redirects underneath it, which is exactly the
+multi-second "sidebar lingers, then a sign-in flash, then the destination" sequence this
+hard navigation avoids. The only case a sign-in screen is ever seen after clicking "Sign
+out" is `redirectTo` itself pointing at the sign-in page.
+
+The same reasoning applies to a successful **sign-in**: a client-side `router.push`
+dispatched right after an unawaited `router.refresh()` can race that refresh's own RSC
+re-fetch for the pre-navigation route, and when the refresh resolves after the push has
+already started, the router can reconcile the stale pre-navigation tree over the pushed
+destination — credentials accepted, nothing visibly happens, yet the session is real (a
+browser back/forward reveals it). The templates' own `AuthViewProvider` sidesteps this
+entirely: its `navigate`/`replace` (passed to `@daveyplate/better-auth-ui`'s
+`AuthUIProvider`) hard-navigate the same way `signOut()` does, so sign-in success always
+lands on the requested deep link or the page you were on, with no client-side router state
+left for a stale refresh to clobber.
+
 ## Merge behavior
 
 Auth collections merge with user-defined collections field by field, not

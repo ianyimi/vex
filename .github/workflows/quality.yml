@@ -1,13 +1,18 @@
 name: quality
 
 on:
-  deployment_status
+  deployment_status:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [master, dev]
 
 # Every Vercel project posts its own deployment_status for the same commit, so
 # the group includes the environment; keyed on the SHA alone, a vex-docs event
-# cancels the in-flight vex-www run.
+# cancels the in-flight vex-www run. pull_request runs share the group with
+# their head SHA's deployment_status runs (environment slot "pull_request" so
+# a www deployment_status doesn't cancel the resolve step, and vice versa).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.deployment.sha }}-${{ github.event.deployment_status.environment }}
+  group: ${{ github.workflow }}-${{ github.event.deployment.sha || github.event.pull_request.head.sha }}-${{ github.event.deployment_status.environment || 'pull_request' }}
   cancel-in-progress: true
 
 # Every Vercel project's deployment triggers this workflow, and a PR lists only
@@ -17,50 +22,105 @@ concurrency:
 # job-level `if` would skip it before its `name` expression is evaluated, and
 # the PR would show the raw expression), names itself after the deployment,
 # and gates its steps on QUALITY_TARGET instead.
+#
+# Vercel skips the vex-www build (and so never posts a deployment_status
+# `success`) when a PR commit doesn't touch anything www builds from. The
+# pull_request path below covers that case: it walks the PR's commits
+# newest-first for the most recent one with a successful "Preview – vex-www"
+# deployment and audits that preview instead, reporting on the PR's head SHA
+# (where GitHub Actions attaches pull_request-triggered check runs). If the
+# head commit got its own successful preview, this path intentionally does
+# nothing — the deployment_status run already reports `axe`/`lighthouse` for
+# that SHA, and reporting them again here would race the same check names. If
+# no commit in the PR ever got a successful preview, the job fails (under the
+# required names) instead of silently passing.
 jobs:
+  resolve:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: read
+      pull-requests: read
+    outputs:
+      mode: ${{ steps.resolve.outputs.mode }}
+      sha: ${{ steps.resolve.outputs.sha }}
+      url: ${{ steps.resolve.outputs.url }}
+      reason: ${{ steps.resolve.outputs.reason }}
+      timed_out: ${{ steps.resolve.outputs.timed_out }}
+    steps:
+      - name: Checkout (for local composite action)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - id: resolve
+        uses: ./.github/actions/resolve-www-preview
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
+
   axe:
-    name: "${{ (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www') && 'axe' || format('axe (not run: {0})', github.event.deployment_status.environment) }}"
+    needs: resolve
+    if: always()
+    name: "${{ github.event_name == 'deployment_status' && ((github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www') && 'axe' || format('axe (not run: {0})', github.event.deployment_status.environment)) || ((needs.resolve.outputs.mode == 'run' || needs.resolve.outputs.mode == 'fail') && 'axe' || format('axe (not run: {0})', needs.resolve.outputs.mode)) }}"
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
-      QUALITY_TARGET: ${{ github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www' }}
+      QUALITY_TARGET: "${{ (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www') || (github.event_name == 'pull_request' && needs.resolve.outputs.mode == 'run') }}"
+      QUALITY_FAIL: "${{ github.event_name == 'pull_request' && needs.resolve.outputs.mode == 'fail' }}"
+      QUALITY_REF: "${{ github.event_name == 'deployment_status' && github.event.deployment.sha || needs.resolve.outputs.sha }}"
+      QUALITY_URL: "${{ github.event_name == 'deployment_status' && github.event.deployment_status.target_url || needs.resolve.outputs.url }}"
     steps:
       - name: Not the vex-www preview; nothing to audit
-        if: env.QUALITY_TARGET != 'true'
-        run: echo "Deployment ${{ github.event.deployment_status.environment }} (${{ github.event.deployment_status.state }}) is not audited."
+        if: env.QUALITY_TARGET != 'true' && env.QUALITY_FAIL != 'true'
+        run: |
+          if [ "${{ github.event_name }}" = "deployment_status" ]; then
+            echo "Deployment ${{ github.event.deployment_status.environment }} (${{ github.event.deployment_status.state }}) is not audited."
+          else
+            echo "${{ needs.resolve.outputs.reason }}"
+          fi
+
+      - name: No successful vex-www preview found for this PR
+        if: env.QUALITY_FAIL == 'true'
+        run: |
+          echo "::error::${{ needs.resolve.outputs.reason }}"
+          exit 1
 
       - name: Checkout
         if: env.QUALITY_TARGET == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.deployment.sha }}
+          ref: ${{ env.QUALITY_REF }}
 
-      - name: Setup pnpm
+      - name: Setup
         if: env.QUALITY_TARGET == 'true'
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      - name: Setup Node.js
-        if: env.QUALITY_TARGET == 'true'
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        uses: ./.github/actions/quality-setup
         with:
-          node-version: 22
-          cache: "pnpm"
+          playwright: "true"
 
-      - name: Install dependencies
-        if: env.QUALITY_TARGET == 'true'
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright Chromium
-        if: env.QUALITY_TARGET == 'true'
-        run: pnpm --filter www exec playwright install --with-deps chromium
+      - name: Write audit summary
+        if: env.QUALITY_TARGET == 'true' && github.event_name == 'pull_request'
+        run: |
+          if [ "${{ needs.resolve.outputs.timed_out }}" = "true" ]; then
+            echo "::warning::Timed out waiting ~15 min for the head commit's vex-www preview to settle; auditing the latest earlier successful preview as a best effort."
+          fi
+          {
+            echo "### axe preview audited"
+            echo ""
+            if [ "${{ needs.resolve.outputs.timed_out }}" = "true" ]; then
+              echo "**⚠️ Timed out waiting ~15 min for the head commit's own preview to settle — falling back as a best effort.**"
+              echo ""
+            fi
+            echo "Commit \`${{ needs.resolve.outputs.sha }}\`: ${{ needs.resolve.outputs.reason }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run axe suite against the preview
         if: env.QUALITY_TARGET == 'true'
         run: pnpm --filter www exec playwright test e2e/axe.e2e.ts
         env:
           CI: "1"
-          QUALITY_BASE_URL: ${{ github.event.deployment_status.target_url }}
+          QUALITY_BASE_URL: ${{ env.QUALITY_URL }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       - name: Summarize axe results
@@ -77,44 +137,65 @@ jobs:
           retention-days: 14
 
   lighthouse:
-    name: "${{ (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www') && 'lighthouse' || format('lighthouse (not run: {0})', github.event.deployment_status.environment) }}"
+    needs: resolve
+    if: always()
+    name: "${{ github.event_name == 'deployment_status' && ((github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www') && 'lighthouse' || format('lighthouse (not run: {0})', github.event.deployment_status.environment)) || ((needs.resolve.outputs.mode == 'run' || needs.resolve.outputs.mode == 'fail') && 'lighthouse' || format('lighthouse (not run: {0})', needs.resolve.outputs.mode)) }}"
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
-      QUALITY_TARGET: ${{ github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www' }}
+      QUALITY_TARGET: "${{ (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Preview – vex-www') || (github.event_name == 'pull_request' && needs.resolve.outputs.mode == 'run') }}"
+      QUALITY_FAIL: "${{ github.event_name == 'pull_request' && needs.resolve.outputs.mode == 'fail' }}"
+      QUALITY_REF: "${{ github.event_name == 'deployment_status' && github.event.deployment.sha || needs.resolve.outputs.sha }}"
+      QUALITY_URL: "${{ github.event_name == 'deployment_status' && github.event.deployment_status.target_url || needs.resolve.outputs.url }}"
     steps:
       - name: Not the vex-www preview; nothing to audit
-        if: env.QUALITY_TARGET != 'true'
-        run: echo "Deployment ${{ github.event.deployment_status.environment }} (${{ github.event.deployment_status.state }}) is not audited."
+        if: env.QUALITY_TARGET != 'true' && env.QUALITY_FAIL != 'true'
+        run: |
+          if [ "${{ github.event_name }}" = "deployment_status" ]; then
+            echo "Deployment ${{ github.event.deployment_status.environment }} (${{ github.event.deployment_status.state }}) is not audited."
+          else
+            echo "${{ needs.resolve.outputs.reason }}"
+          fi
+
+      - name: No successful vex-www preview found for this PR
+        if: env.QUALITY_FAIL == 'true'
+        run: |
+          echo "::error::${{ needs.resolve.outputs.reason }}"
+          exit 1
 
       - name: Checkout
         if: env.QUALITY_TARGET == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.deployment.sha }}
+          ref: ${{ env.QUALITY_REF }}
 
-      - name: Setup pnpm
+      - name: Setup
         if: env.QUALITY_TARGET == 'true'
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        uses: ./.github/actions/quality-setup
 
-      - name: Setup Node.js
-        if: env.QUALITY_TARGET == 'true'
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-          cache: "pnpm"
-
-      - name: Install dependencies
-        if: env.QUALITY_TARGET == 'true'
-        run: pnpm install --frozen-lockfile
+      - name: Write audit summary
+        if: env.QUALITY_TARGET == 'true' && github.event_name == 'pull_request'
+        run: |
+          if [ "${{ needs.resolve.outputs.timed_out }}" = "true" ]; then
+            echo "::warning::Timed out waiting ~15 min for the head commit's vex-www preview to settle; auditing the latest earlier successful preview as a best effort."
+          fi
+          {
+            echo "### lighthouse preview audited"
+            echo ""
+            if [ "${{ needs.resolve.outputs.timed_out }}" = "true" ]; then
+              echo "**⚠️ Timed out waiting ~15 min for the head commit's own preview to settle — falling back as a best effort.**"
+              echo ""
+            fi
+            echo "Commit \`${{ needs.resolve.outputs.sha }}\`: ${{ needs.resolve.outputs.reason }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run Lighthouse CI against the preview
         if: env.QUALITY_TARGET == 'true'
         run: pnpm --filter www exec lhci autorun
         env:
           CI: "1"
-          QUALITY_BASE_URL: ${{ github.event.deployment_status.target_url }}
+          QUALITY_BASE_URL: ${{ env.QUALITY_URL }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
       - name: Summarize Lighthouse results

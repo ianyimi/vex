@@ -2,13 +2,14 @@ import type { ReactNode } from "react"
 
 import { apiKeyClient } from "@better-auth/api-key/client"
 import { convexClient } from "@convex-dev/better-auth/client/plugins"
+import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth"
+import { disableLivePreview } from "@vexcms/next/livePreview/client"
+import { useAuthTransition } from "@vexcms/react"
 import { adminClient, anonymousClient } from "better-auth/client/plugins"
 import { createAuthClient } from "better-auth/react"
-import { useRouter } from "next/navigation"
 
-import { useAuthTransition } from "@vexcms/react"
-import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth"
 import { env } from "~/env.mjs"
+import config from "~/vex.config"
 
 /**
  * Global Better Auth client for this project.
@@ -40,12 +41,14 @@ authClient.$store.listen("$sessionSignal", () => {})
 /**
  * Mounts `VexAdminAuthAdapterProvider` (`@vexcms/next/auth`) so the admin
  * panel's top-bar sign-in/out control (`AdminTopNav`) has a `signInHref`/`signOut`
- * to call. `signOut` signs out then refreshes either way (success or failure — a
- * stale client cache after a failed sign-out is worse than a redundant refresh) so
- * the admin panel's server-resolved auth state and route guard re-evaluate.
+ * to call. `signOut` signs out, then hard-navigates (a full document load, NOT
+ * `router.refresh()`/`router.push()`) to `config.auth.signOut.redirectTo` — the
+ * admin shell must never render in a signed-out state, and a client-side refresh
+ * keeps it mounted while queries re-run anonymously and the route guard redirects
+ * underneath it (the multi-second "sidebar lingers, then a sign-in flash" sequence
+ * this hard navigation avoids).
  */
 export default function BetterAuthClientProvider({ children }: { children: ReactNode }) {
-  const router = useRouter()
   // Needs an `AuthTransitionProvider` ancestor — `ConvexClientProvider`
   // (`~/components/providers/convex.tsx`) mounts it one level up from this
   // component, same as `~/components/providers/client.tsx`'s nesting order.
@@ -70,9 +73,18 @@ export default function BetterAuthClientProvider({ children }: { children: React
           // also reactively catches this once `authClient.useSession()`
           // updates, so this call is a latency optimization, not the only path.
           beginTransition(null)
-          return signOut()
-            .then(() => router.refresh())
-            .catch(() => router.refresh())
+          // Clears any stale live-preview cookies left over from this tab or
+          // the pop-out preview tab — see `disableLivePreview`'s own doc
+          // comment. Fire-and-forget: it never throws, so it cannot block
+          // sign-out either way.
+          void disableLivePreview()
+          const goToDestination = () => {
+            window.location.href = config.auth.signOut.redirectTo
+          }
+          // Hard-navigate either way (success or failure) — a stale client
+          // cache after a failed sign-out is worse than a redundant navigation,
+          // and a full document load re-resolves auth state fresh regardless.
+          return signOut().then(goToDestination).catch(goToDestination)
         },
       }}
     >

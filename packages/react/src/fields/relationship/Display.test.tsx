@@ -54,4 +54,19 @@ describe("RelationshipFieldDisplay", () => {
     );
     expect(screen.getByText("—")).toBeInTheDocument();
   });
+
+  it("renders AccessDeniedChip's lock badge for a HiddenDocument placeholder (populateDocs denied target)", () => {
+    render(
+      <VexConfigProvider config={config}>
+        <RelationshipFieldDisplay
+          field={relationshipFieldFixture.fieldDef}
+          value={[{ _id: "doc_related_3", code: "ACCESS_DENIED", resource: "documents", action: "read" }]}
+          document={document}
+          collection={testCollection}
+        />
+      </VexConfigProvider>,
+    );
+    expect(screen.getByText(`Hidden ${relationshipTargetCollection.labels.singular}`)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Requires documents/read" })).toBeInTheDocument();
+  });
 });

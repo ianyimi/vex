@@ -1874,3 +1874,110 @@ polish (2026-11-10).
 **Why.** Vitest 4's GitHub Actions reporter hard-codes that heading (`SUMMARY_HEADER`); `jobSummary` only offers `enabled`, `outputPath`, `fileLinks`. Turbo runs packages in parallel into one `$GITHUB_STEP_SUMMARY`.
 
 **Lift.** Each `vitest.config.ts` (9 packages + `apps/www`, `apps/test`): when `VITEST_SUMMARY_DIR` is set, `jobSummary.outputPath` = `<dir>/<package>.md` (no local change). Workflows: set `VITEST_SUMMARY_DIR: ${{ runner.temp }}/vitest` on the test step, plus an `if: always()` step that writes `## <package>` + each report minus its own heading into `$GITHUB_STEP_SUMMARY` in a fixed order. Rendering is only checkable on a real CI run.
+
+---
+
+## Live preview: deep overlay across every query on a page
+
+**What.** A shape-agnostic `useLivePreviewData(data)` hook (plus list-returning query sugar)
+in `@vexcms/react`. It walks any query result (arrays, nested populated documents) and
+merges the editor's unsaved values into every object whose `_id`, or `vex_publishedId` for a
+merged draft row, has an overlay entry. List blocks, related-document queries and cards
+would then update on every keystroke, not only at autosave or Save.
+
+**Why.** After `2026-11-11-live-preview-cross-page`, other pages in the preview update about
+1s after typing for drafts+autosave collections, and only on Save for collections without
+drafts. Per-keystroke updates there need a client overlay that reaches documents the page
+didn't hand to `useLivePreview` itself.
+
+**Lift.** About 1 day for the hook, its identity-preserving memoization and tests. The
+overlay map must also store each update's `collectionSlug`, so a nested document's field
+config can be resolved. Every list block in `vex-examples` re-wired (about 0.5 day).
+
+**Blocked by.** The relationship-safe merge entry below: a deep walk spreads raw relationship
+ids over populated documents everywhere it reaches. Also an unverified fact: which id the
+admin sends as `documentId` for a versioned document with a linked draft (published `_id` vs
+the draft row's `_id`, which `mergeDraftCounterparts` puts on merged rows).
+
+**Why deferred.** It's new public API with unsettled semantics, and it can't fix list
+membership or order anyway; preview-aware `find({ drafts: true })` queries plus autosave
+already cover that from the server.
+
+**Where.** `.agent/docs/research/live-preview-cross-page.md` (Slice B1),
+`.agent/docs/specs/2026-11-11-live-preview-cross-page/spec.md` § Out of Scope.
+
+---
+
+## Live preview: relationship-safe overlay merge
+
+**What.** `useLivePreview` overlays with `{ ...doc, ...unsavedValues }`. The edit form holds
+`relationship()`/`upload()` values as raw id arrays, so a populated `author: [AuthorDoc]`
+becomes `author: ["id"]` in preview and renderers that read `author[0].slug` break. Fix: when
+the overlay's ids equal the base's ids, keep the base's populated documents. Pick a rule
+for when they differ: raw ids, a client fetch of the new targets, or keep the base and mark
+it stale.
+
+**Why.** A correctness bug in shipped API. The examples work around it: magazine's
+`convex/articles.ts` moves the populated author into a parallel `authorSummary` key and
+turns `author` back into ids, and `MediaImage` client-fetches raw ids. The workaround goes
+stale as soon as the editor changes the relationship.
+
+**Lift.** About 1 day, shared with the deep-overlay entry above (same merge function).
+Needs the field config of the overlaid collection, which the provider already looks up for
+validation.
+
+**Blocked by.** Nothing.
+
+**Why deferred.** It needs the "ids differ" rule decided, and the examples have a working
+workaround for launch. It's the one Slice-B item worth pulling forward if that workaround is
+judged unacceptable.
+
+**Where.** `.agent/docs/research/live-preview-cross-page.md` (gap 4, Slice B2).
+
+---
+
+## Live preview panel: navigation chrome
+
+**What.** In the admin preview panel: a readout of the frame's current path, "back to
+document" (reload the resolved `previewUrl`), and reload. Today the frame can wander
+anywhere with no indication, and any `previewUrl` change (e.g. a slug edit) yanks it back
+without warning.
+
+**Why.** Once preview survives navigation (`2026-11-11-live-preview-cross-page`), editors
+browse inside the panel and lose track of where they are.
+
+**Lift.** About 0.5–1 day. A same-origin frame can read `contentWindow.location`. A
+cross-origin `allowedOrigins` preview needs the provider to post a location message on
+route changes (`popstate` plus the framework's navigation events).
+
+**Blocked by.** Nothing.
+
+**Why deferred.** Convenience, not correctness; not needed to test the golden demo apps.
+
+**Where.** `.agent/docs/research/live-preview-cross-page.md` (gap 6, Slice B3).
+
+---
+
+## CLI opt-out for the base template's live-preview wiring
+
+**What.** A `create-vexcms` flag (e.g. `--no-live-preview`) that scaffolds `base-nextjs`
+without `<LivePreviewProvider>` in `app/layout.tsx`, without `src/app/api/vex/live-preview/route.ts`,
+and with the `proxy.ts` hand-off removed. Weigh against the package-side alternative:
+`VexConfigProvider` (already rendered at every template's root) mounts the provider itself,
+controlled by a config flag. That needs no template wiring and no CLI flag, but makes the
+mount implicit, and would remove the explicit `<LivePreviewProvider>` mount from every app.
+
+**Why.** From `2026-11-11-live-preview-cross-page`, base ships the wiring, inert until a
+collection sets `admin.livePreview.url`. Projects that never preview carry three pieces they
+must delete by hand.
+
+**Lift.** CLI flag: about 0.5 day. The overlay can't delete files, so removal goes in the
+installer's finalize step, like `finalizeMarketingOverlay()`, plus scaffold-smoke manifests
+per mode. Auto-mount: about 1 day, plus a cutover of every app's explicit mount.
+
+**Blocked by.** Nothing.
+
+**Why deferred.** Developer decision (2026-11-11): ship the wiring in base for 0.1.0, add the
+toggle later.
+
+**Where.** `.agent/docs/specs/2026-11-11-live-preview-cross-page/spec.md` Design Decisions 5–6.

@@ -47,10 +47,17 @@ function CommitTsFieldValue(props: { label: string; fieldDef: CommitTsFieldDef }
     <div
       role="group"
       aria-labelledby={labelId}
-      className="space-y-1 rounded-sm border-2 border-border p-3 text-sm"
+      aria-disabled="true"
+      data-disabled="true"
+      className="group/field space-y-1 rounded-sm border-2 border-border p-3 text-sm"
     >
-      <span id={labelId} className="text-muted-foreground">{props.label}</span>
-      <p>
+      <span
+        id={labelId}
+        className="text-muted-foreground group-data-[disabled=true]/field:opacity-50"
+      >
+        {props.label}
+      </span>
+      <p className="group-data-[disabled=true]/field:opacity-50">
         <TooltipProvider delay={1000}>
           <Tooltip>
             <TooltipTrigger render={<span>{formatted}</span>} />

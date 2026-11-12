@@ -1,14 +1,16 @@
 import { createElement, useState } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, waitFor, within, type RenderResult } from "@testing-library/react";
 import { convexTest } from "convex-test";
 import {
+  ADMIN_COOKIE_NAME,
   buildGetArgs,
   buildListViewFindQueryArgs,
   defineAccess,
   defineCollection,
   defineConfig,
   parseListViewUrlState,
+  parseSidebarSectionCountsCookie,
   resolveListViewQueryState,
   select,
   text,
@@ -17,6 +19,7 @@ import {
   VERSION_SYSTEM_FIELDS,
   type PaginationResult,
   type VexAccessConfig,
+  type VexApiAuth,
   type VexDocument,
   type VexMediaDocument,
 } from "@vexcms/core";
@@ -1460,6 +1463,21 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
       expect(utils.getAllByRole("row")).toHaveLength(3); // 1 header row + 2 data rows
     });
 
+    it("never wraps DataTable's root in a `grid place-items-center` container (regression: unstretched grid item let the table overflow the viewport at its full unclamped width — see MediaCollectionListView.tsx)", () => {
+      const utils = renderView(
+        createElement(MediaCollectionListView, {
+          collection: testClientConfig.mediaCollections[0].slug,
+          initialData: toPage<VexMediaDocument>(docs),
+        }),
+        { convex: t },
+      );
+      const table = utils.getAllByRole("table")[0]!;
+      const dataTableRoot = table.closest('[class*="overflow-hidden"][class*="rounded-md"]');
+      expect(dataTableRoot).not.toBeNull();
+      const wrapper = dataTableRoot!.parentElement!;
+      expect(wrapper.className).not.toMatch(/\bplace-items-center\b/);
+    });
+
     it("renders the empty state with zero items", () => {
       const utils = renderView(
         createElement(MediaCollectionListView, {
@@ -1925,6 +1943,31 @@ function describeAdminSidebar(options: { access?: VexAccessConfig }): void {
       expect(nav).toHaveAttribute("role", "navigation");
       expect(nav).toHaveAttribute("aria-label", "Admin navigation");
     });
+    it("persists each section's settled, permission-filtered item count to the sidebar cookie", async () => {
+      // `writeSidebarSectionCountsCookie` writes `Path=<config.basePath>` ("/admin" for
+      // `testClientConfig`'s default) — jsdom's own cookie jar filters `document.cookie` by
+      // the CURRENT page's URL vs. a cookie's own `Path` exactly like a real browser, so the
+      // write is invisible from the default test URL (`http://localhost:3000/`) unless jsdom's
+      // own location is first moved under that path (same precedent as `adminCookie.test.ts`'s
+      // own dedicated Path-attribute test).
+      const originalHref = window.location.href;
+      document.cookie = `${ADMIN_COOKIE_NAME}=; path=/admin; max-age=0`;
+      try {
+        window.history.pushState({}, "", "/admin");
+        renderWithVexProviders(mount(), { config: testClientConfig });
+        await waitFor(() => {
+          const match = document.cookie.match(new RegExp(`(?:^|; )${ADMIN_COOKIE_NAME}=([^;]*)`));
+          expect(match).not.toBeNull();
+          const counts = parseSidebarSectionCountsCookie({ cookieValue: match?.[1] });
+          // `testClientConfig` has no `access` configured, so `usePermission` passes every
+          // check unconditionally — all three of its one-entry sections settle at 1.
+          expect(counts).toEqual({ collections: 1, globals: 1, media: 1 });
+        });
+      } finally {
+        window.history.pushState({}, "", originalHref);
+        document.cookie = `${ADMIN_COOKIE_NAME}=; path=/admin; max-age=0`;
+      }
+    });
   });
 }
 
@@ -2027,6 +2070,88 @@ function describeAdminLayout(options: { access?: VexAccessConfig }): void {
       const skipLink = utils.container.querySelector('a[href="#main"]');
       expect(skipLink).not.toBeNull();
       expect(utils.container.querySelector("main#main")).not.toBeNull();
+    });
+
+    it("renders each section's header + N skeleton rows from sidebarCounts while authPromise is pending, hiding a 0-count section", () => {
+      const authPromise = new Promise<VexApiAuth>(() => {});
+      const utils = renderView(
+        createElement(AdminLayout, {
+          activeSlug: "posts",
+          authPromise,
+          sidebarCounts: { collections: 3, globals: 2, media: 0 },
+          children: createElement("div", null, "content"),
+        }),
+        { convex: t },
+      );
+      expect(utils.getByText("Collections")).toBeVisible();
+      expect(utils.getByText("Globals")).toBeVisible();
+      // Unlike `DashboardView`'s `Activity`-wrapped sections (which start visible and flip to
+      // `display:none`, retaining the DOM node), a section `Activity`-hidden from its very
+      // FIRST render never commits its children into the DOM at all — so "Media" is absent
+      // outright, not merely a hidden element `queryByText` can still find.
+      expect(utils.queryByText("Media")).toBeNull();
+      expect(utils.container.querySelectorAll('[data-slot="sidebar-menu-skeleton"]')).toHaveLength(5);
+      // Developer-reported fix: the header's `ThemeToggle` previously popped in alongside the
+      // real nav (absent from the skeleton entirely) — it must be present, at its final size
+      // and position, disabled, from this very first paint.
+      const toggleButton = utils.getByText("Toggle theme").closest("button");
+      expect(toggleButton).not.toBeNull();
+      expect(toggleButton).toBeDisabled();
+      expect(toggleButton).toHaveAttribute("aria-disabled", "true");
+    });
+
+    it("falls back to the config's declared section counts when no sidebarCounts cookie is given", () => {
+      const authPromise = new Promise<VexApiAuth>(() => {});
+      const utils = renderView(
+        createElement(AdminLayout, {
+          activeSlug: "posts",
+          authPromise,
+          children: createElement("div", null, "content"),
+        }),
+        { convex: t },
+      );
+      // `testClientConfig` declares exactly one collection, one global, one media collection.
+      expect(utils.container.querySelectorAll('[data-slot="sidebar-menu-skeleton"]')).toHaveLength(3);
+      expect(utils.getByText("Collections")).toBeVisible();
+      expect(utils.getByText("Globals")).toBeVisible();
+      expect(utils.getByText("Media")).toBeVisible();
+    });
+
+    it("swaps the skeleton for the real, permission-filtered nav once authPromise resolves", async () => {
+      // `Promise.withResolvers` isn't in this package's configured TS lib target (ES2022) —
+      // the executor form is the only option here, not a style choice (matches
+      // `useSavedListViewPrefetch.test.ts`'s own identical precedent).
+      let resolveAuth: (auth: VexApiAuth) => void = () => {};
+      const authPromise = new Promise<VexApiAuth>((resolve) => {
+        resolveAuth = resolve;
+      });
+      let utils: RenderResult;
+      await act(async () => {
+        utils = renderView(
+          createElement(AdminLayout, {
+            activeSlug: "posts",
+            authPromise,
+            sidebarCounts: { collections: 1, globals: 1, media: 1 },
+            children: createElement("div", null, "content"),
+          }),
+          { convex: t },
+        );
+      });
+      expect(utils!.container.querySelectorAll('[data-slot="sidebar-menu-skeleton"]').length).toBeGreaterThan(0);
+      expect(utils!.getByText("Toggle theme").closest("button")).toBeDisabled();
+      await act(async () => {
+        resolveAuth({ user: null });
+        await authPromise;
+      });
+      await waitFor(() => {
+        expect(utils!.container.querySelectorAll('[data-slot="sidebar-menu-skeleton"]')).toHaveLength(0);
+      });
+      const postsLink = utils!.container.querySelector(
+        'a[data-slot="sidebar-menu-button"][href="/admin/collections/posts"]',
+      );
+      expect(postsLink).not.toBeNull();
+      // Same header button stays in place (no pop-in/pop-out of its own) — now enabled.
+      expect(utils!.getByText("Toggle theme").closest("button")).not.toBeDisabled();
     });
   });
 }
@@ -2303,6 +2428,60 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
       fireEvent.click(utils.getByText("Sign out"));
       expect(signOut).toHaveBeenCalledTimes(1);
       await waitFor(() => expect(utils.getByText("Sign out").closest("button")).not.toBeDisabled());
+    });
+
+    it("shows the signed-in user's name to the right of the sign-in/out control", () => {
+      const utils = renderView(
+        createElement(
+          FrameworkComponentsContext.Provider,
+          { value: { auth: stubAuthAdapter } as FrameworkComponents },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        ),
+        {
+          convex: t,
+          access: options.access,
+          auth: { user: { _id: "user1", name: "Ada Lovelace", email: "ada@example.com" } },
+        },
+      );
+      expect(utils.getByText("Ada Lovelace")).toBeInTheDocument();
+    });
+
+    it("falls back to the user's email when no name is set", () => {
+      const utils = renderView(
+        createElement(
+          FrameworkComponentsContext.Provider,
+          { value: { auth: stubAuthAdapter } as FrameworkComponents },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        ),
+        { convex: t, access: options.access, auth: { user: { _id: "user1", email: "ada@example.com" } } },
+      );
+      expect(utils.getByText("ada@example.com")).toBeInTheDocument();
+    });
+
+    it("shows no user name/email when signed out, even with no auth adapter configured", () => {
+      const utils = renderView(
+        withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        { convex: t, access: options.access, auth: { user: null } },
+      );
+      expect(utils.queryByText("ada@example.com")).toBeNull();
+      expect(utils.container.querySelector("header img")).toBeNull();
+    });
+
+    it('shows no user name for an anonymous session ("isAnonymous: true")', () => {
+      const utils = renderView(
+        createElement(
+          FrameworkComponentsContext.Provider,
+          { value: { auth: stubAuthAdapter } as FrameworkComponents },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        ),
+        {
+          convex: t,
+          access: options.access,
+          auth: { user: { isAnonymous: true, name: "Anon", email: "anon@example.com" } },
+        },
+      );
+      expect(utils.queryByText("Anon")).toBeNull();
+      expect(utils.queryByText("anon@example.com")).toBeNull();
     });
 
     it("places the control at the far edge opposite the sidebar-trigger cluster when the sidebar is on the right", () => {

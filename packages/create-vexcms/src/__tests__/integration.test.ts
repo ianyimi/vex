@@ -400,7 +400,7 @@ describe('scaffolder hygiene (WP-5)', () => {
     expect(pkg.resolutions?.['@better-auth/passkey']).toBe(pkg.pnpm.overrides['@better-auth/passkey']);
   });
 
-  it('e: npm install --dry-run resolves without an ERESOLVE conflict', (ctx) => {
+  it.runIf(process.env.VEX_NETWORK_TESTS === '1')('e: npm install --dry-run resolves without an ERESOLVE conflict (network; VEX_NETWORK_TESTS=1)', (ctx) => {
     const result = spawnSync(
       'npm',
       ['install', '--dry-run', '--package-lock=false'],

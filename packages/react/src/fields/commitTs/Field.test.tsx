@@ -47,6 +47,25 @@ describe("CommitTsFieldAdmin", () => {
     expect(await screen.findByText("Jun 15, 2025 2:30:00 PM", {}, { timeout: 2000 })).toBeInTheDocument();
   });
 
+  // Regression (muted read-only label, developer report): `commitTs` is
+  // ALWAYS a locked/system field (never editable through the admin form —
+  // its value is stamped by Convex at commit), but its label used to carry
+  // no visual "disabled" treatment at all — a plain `text-muted-foreground`
+  // span with no `data-disabled`/`group/field` wiring, so it looked
+  // identical whether or not the surrounding form was read-only, unlike
+  // every other locked/`admin.readOnly` field's label (muted via
+  // `FormFieldLayout`'s `data-disabled`). The group now carries
+  // `data-disabled="true"` unconditionally, and the label/value opacity
+  // mutes through the same `group-data-[disabled=true]/field:opacity-50`
+  // convention every other field's label uses.
+  it("always marks its group disabled, muting the label like a locked/system field", () => {
+    const timestamp = Date.UTC(2025, 5, 15, 14, 30);
+    render(<CommitTsHarness fieldDef={commitTs({ label: "Updated At" })} initialValue={timestamp} />);
+    const group = screen.getByRole("group");
+    expect(group).toHaveAttribute("data-disabled", "true");
+    expect(screen.getByText("Updated At").className).toContain("group-data-[disabled=true]/field:opacity-50");
+  });
+
   it("falls back to the field's name when no label is set", () => {
     const timestamp = Date.UTC(2025, 5, 15, 14, 30);
     render(<CommitTsHarness fieldDef={commitTs({ label: "" })} initialValue={timestamp} />);

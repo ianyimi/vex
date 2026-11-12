@@ -341,6 +341,67 @@ export type CollectionsFieldTypeMap = GeneratedVexTypes extends {
   : Record<string, Record<string, never>>;
 
 /**
+ * One field's entry in {@link CollectionsPopulateMap} — mirrors the field
+ * tree down through `group()`/`array()`/`blocks()` boundaries that
+ * `CollectionsFieldTypeMap` stops at (it only indexes `getDataFields`'s
+ * flat, top-level-per-container output).
+ *
+ * - `relationship` / `upload` — a leaf: `target` is the collection the
+ *   field's ids resolve against.
+ * - `group` — `fields` is this group's OWN nested populate map (same shape
+ *   as a collection's top-level map).
+ * - `blocks` — `blocks` is keyed by each block's `blockType` slug, each
+ *   value that block's own nested populate map.
+ *
+ * `array()` never appears here: its own entry (built by
+ * `fieldsToPopulateMap`) IS its `items` field's entry — an array of
+ * relationship ids behaves like the relationship field itself, an array of
+ * `group()` items behaves like the group.
+ */
+export type PopulateMapEntry =
+  | { kind: "relationship" | "upload"; target: string }
+  | { kind: "group"; fields: Record<string, PopulateMapEntry> }
+  | { kind: "blocks"; blocks: Record<string, Record<string, PopulateMapEntry>> };
+
+/**
+ * Per-collection populate map. Augmented by `vex generate` from the user's
+ * collection configs — the structural counterpart of `CollectionsFieldTypeMap`,
+ * except it describes WHERE a relationship/upload field lives in the field
+ * tree (including nested inside `group()`/`array()`/`blocks()`) rather than
+ * just which top-level keys share a field type. Powers `PopulateShape` and
+ * `Populated` so `populate`/`depth` can reach a nested field, not only a
+ * top-level one.
+ *
+ * A field (or a `group()`/`blocks()` container holding nothing populatable
+ * at any depth) is omitted entirely — only reachable paths appear.
+ *
+ * Empty by default; the user's `vex.types.ts` augments it via `declare module
+ * "@vexcms/core"`.
+ *
+ * @example Generated content after running vex generate
+ * ```ts
+ * declare module "@vexcms/core" {
+ *   interface GeneratedVexTypes {
+ *     CollectionsPopulateMap: {
+ *       posts: {
+ *         author: { kind: "relationship"; target: "authors" };
+ *         body: {
+ *           kind: "blocks";
+ *           blocks: { hero: { image: { kind: "upload"; target: "images" } } };
+ *         };
+ *       };
+ *     };
+ *   }
+ * }
+ * ```
+ */
+export type CollectionsPopulateMap = GeneratedVexTypes extends {
+  CollectionsPopulateMap: infer M extends Record<string, Record<string, PopulateMapEntry>>;
+}
+  ? M
+  : Record<string, Record<string, never>>;
+
+/**
  * Union of all global slugs registered in this project's VexCMS config.
  *
  * - **Before `vex generate`:** resolves to `string`.
@@ -439,45 +500,28 @@ export type GlobalRelationshipKeysOf<TGlobalSlug extends GlobalSlug> =
     : never;
 
 /**
- * Populate options for a global — keys restricted to relationship fields via
- * `GlobalRelationshipKeysOf<TGlobalSlug>`. Mirrors `PopulateShape` for
- * collections; nested populate resolves to collection populate shapes since
- * globals relate to collections, not to other globals.
+ * Resolves a global relationship field's target collection slug — the
+ * global counterpart of `RelationshipTargetOf` (`db/types.ts`). Globals
+ * relate TO collections (never to other globals), so this always resolves
+ * into `DocumentBySlug`, never `GlobalDocumentBySlug`.
  *
- * @typeParam TGlobalSlug - The global slug.
+ * @see {@link GlobalPopulateShape}/{@link GlobalPopulated} in `db/types.ts`,
+ *   which consume this.
  */
-export type GlobalPopulateShape<TGlobalSlug extends GlobalSlug = GlobalSlug> = {
-  [K in GlobalRelationshipKeysOf<TGlobalSlug>]?: true | { populate: Record<string, unknown> };
-};
-
-/**
- * Return type of `globals.get` when `populate` is provided. Maps over
- * `GlobalDocumentBySlug[TGlobalSlug]` replacing each populated relationship
- * field's `string` type with `Doc<TargetSlug>[]`.
- *
- * Mirrors `Populated<TCollectionSlug, TPopulate>` from the collection API;
- * operates on `GlobalDocumentBySlug` instead of `DocumentBySlug`.
- *
- * @typeParam TGlobalSlug - The global slug.
- * @typeParam TPopulate - The populate options object.
- */
-export type GlobalPopulated<
+export type GlobalRelationshipTargetOf<
   TGlobalSlug extends GlobalSlug,
-  TPopulate extends GlobalPopulateShape<TGlobalSlug>,
+  TKey extends string,
 > = TGlobalSlug extends keyof GlobalDocumentBySlug
-  ? {
-      [K in keyof GlobalDocumentBySlug[TGlobalSlug]]: K extends keyof TPopulate
-        ? K extends string
-          ? GlobalDocumentBySlug[TGlobalSlug][K] extends string | undefined
-            ? // Relationship field: replace ID string with resolved doc array
-              TPopulate[K] extends { populate: infer _NestedPopulate }
-              ? Record<string, unknown>[] // nested populate — widened for now (see Out of Scope)
-              : Record<string, unknown>[]
-            : GlobalDocumentBySlug[TGlobalSlug][K]
-          : GlobalDocumentBySlug[TGlobalSlug][K]
-        : GlobalDocumentBySlug[TGlobalSlug][K];
-    }
-  : never;
+  ? TKey extends keyof GlobalDocumentBySlug[TGlobalSlug]
+    ? NonNullable<GlobalDocumentBySlug[TGlobalSlug][TKey]> extends ReadonlyArray<{
+        __tableName: infer T;
+      }>
+      ? T extends CollectionSlug
+        ? T
+        : CollectionSlug
+      : CollectionSlug
+    : CollectionSlug
+  : CollectionSlug;
 
 /**
  * The collection slugs `defineAccess` was configured with, as emitted by

@@ -93,6 +93,32 @@ describe("betterAuthAdapter", () => {
     expect(user?.fields.email?.admin?.readOnly).toBe(false);
   });
 
+  // Regression: `roles` is the `additionalFields` alias AP-027/the auth guide
+  // mandate for the admin plugin's role field, always declared with
+  // `input: false` (blocks Better Auth's own `/sign-up/email` and
+  // `/update-user`). Before this fix, `EDITABLE_FIELDS` only listed the
+  // singular `role`, so `roles` fell through to `admin.readOnly: true` +
+  // `meta.locked: true` — disabling it in every admin edit form for every
+  // caller, including an admin, with no way for a project to un-lock it.
+  // `input: false` governs client-writability only; it must not also drive
+  // the admin-UI readOnly stamp.
+  it("keeps a roles additionalField admin-UI-writable even though input: false blocks client sign-up/update-user", () => {
+    const adapter = betterAuthAdapter({
+      config: {
+        user: {
+          additionalFields: {
+            roles: { type: "string[]", defaultValue: ["user"], required: true, input: false },
+          },
+        },
+      },
+    });
+    const user = adapter.collections.find((c) => c.slug === "user");
+    expect(user?.fields.roles?.admin?.readOnly).toBe(false);
+    expect(user?.fields.roles?.meta?.locked).toBeUndefined();
+    // Still not client-writable via sign-up/update-user.
+    expect(adapter.clientWritableUserFields).not.toContain("roles");
+  });
+
   it("maps session.userId to relationship field", () => {
     const adapter = betterAuthAdapter();
     const session = adapter.collections.find((c) => c.slug === "session");

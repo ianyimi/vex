@@ -1,4 +1,5 @@
 import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs"
+import type { VexApiAuth } from "@vexcms/core"
 import { api } from "@convex/_generated/api"
 import { cache } from "react"
 
@@ -79,3 +80,24 @@ export const getToken = cache(getTokenUncached)
  * (see `convex/auth/api.ts`'s own `getUserOrg` handler).
  */
 export const getUserOrg = cache(() => fetchAuthQuery(api.auth.api.getUserOrg, {}))
+
+/**
+ * `getUserOrg()`'s `user`/`organization`, widened to
+ * `Record<string, unknown>` for callers that only need `VexApiAuth` (RBAC
+ * checks, `NextAdminPage`'s `authPromise`, the revalidate route) — never
+ * the concrete generated `UserDocument`/`OrganizationDocument` shapes
+ * `AuthServerProvider`'s `AuthProvider` needs.
+ *
+ * The cast is the documented bridge for a GENERIC-field-access consumer
+ * (`VexApiAuth.user`'s own doc comment: "shape is caller-defined") reading
+ * a generated document that is now deliberately closed (no index
+ * signature) — see `VexDocumentShape` in `@vexcms/core`.
+ */
+export async function getUserOrgForVexApi(): Promise<VexApiAuth> {
+  const result = await getUserOrg()
+  return {
+    ...result,
+    user: result.user as Record<string, unknown> | null,
+    organization: result.organization as Record<string, unknown> | undefined,
+  }
+}

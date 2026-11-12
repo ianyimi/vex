@@ -345,6 +345,26 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
             });
             expect(trigger.getAttribute("aria-expanded")).not.toBe(before);
           });
+
+          // Regression (muted read-only label, developer report): a
+          // container field's OWN label must visibly read as read-only too,
+          // not just its nested controls — `GroupField`'s accordion variant
+          // never forwarded `readOnly` to its own header at all (only to the
+          // nested `RenderFields` call), so this label never muted under
+          // ANY readOnly source (prop OR `fieldDef.admin.readOnly`).
+          it("marks its own label muted (data-disabled) when readOnly", async () => {
+            const seeded = buildSeededValue({ container, childFixture });
+            const { container: dom } = renderContainer({
+              Component,
+              fieldDef,
+              readOnly: true,
+              initialValue: seeded,
+            });
+            await act(async () => {});
+            const label = dom.querySelector(`#${FIELD_NAME}-label`);
+            expect(label).not.toBeNull();
+            expect(label!.closest('[data-disabled="true"]')).not.toBeNull();
+          });
         } else {
           const { fieldDef, labels } = buildItemContainerFieldDef({ container, childFixture });
           const emptyMessage = `No ${labels.plural} yet.`;
@@ -467,6 +487,27 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
               trigger.click();
             });
             expect(trigger.getAttribute("aria-expanded")).not.toBe(before);
+          });
+
+          // Regression (muted read-only label, developer report): a
+          // container field's OWN label must visibly read as read-only too,
+          // not just its nested controls — `ArrayField`/`BlocksField` built
+          // their own header `<span>` with a dead, UNNAMED
+          // `group-data-[disabled=true]:opacity-50` selector that never
+          // matched any real ancestor (`FormFieldLayout`'s `Field` carries
+          // the NAMED `group/field` scope), so the label never muted.
+          it("marks its own label muted (data-disabled) when readOnly", async () => {
+            const seeded = buildSeededValue({ container, childFixture });
+            const { container: dom } = renderContainer({
+              Component,
+              fieldDef,
+              readOnly: true,
+              initialValue: seeded,
+            });
+            await act(async () => {});
+            const label = dom.querySelector(`#${FIELD_NAME}-label`);
+            expect(label).not.toBeNull();
+            expect(label!.closest('[data-disabled="true"]')).not.toBeNull();
           });
         }
       });

@@ -6,14 +6,18 @@ import type { VexMutationCtx } from "../types/generated";
 import { getDataFields, isFieldConditionMet } from "./utils";
 
 /**
- * Runs each changed field's `validate()` against the merged document, skipping
- * fields whose key isn't in `keys` (unchanged on `update`, every field on
- * `create`), that don't define `validate`, or whose `admin.condition`
- * evaluates false — a condition-hidden field's `validate()` never runs,
- * matching `getFieldsInputSchema`'s schema-level skip. `doc` stands
- * in for both `data` and `siblingData` here: `validateFields` only ever runs
- * a TOP-LEVEL field's own `validate()` (a `group`/`array`/`blocks`
- * sub-field's `validate()`, if any, runs through the container field's own
+ * Runs each triggered field's `validate()` against the merged document. A
+ * field is triggered when its own key is in `keys` (unchanged on `update`,
+ * every field on `create`) OR when any key its `dependsOn` names is in
+ * `keys` — a field's own `dependsOn` only widens WHEN its `validate()` runs,
+ * never what it validates: the callback still only receives and reports on
+ * the field's own key/value. A field that defines no `validate`, or whose
+ * `admin.condition` evaluates false, is skipped regardless — a
+ * condition-hidden field's `validate()` never runs, matching
+ * `getFieldsInputSchema`'s schema-level skip. `doc` stands in for both
+ * `data` and `siblingData` here: `validateFields` only ever runs a
+ * TOP-LEVEL field's own `validate()` (a `group`/`array`/`blocks` sub-field's
+ * `validate()`/`dependsOn`, if any, runs through the container field's own
  * value, not individually), so the two are the same object at this depth —
  * exactly like `getFieldsInputSchema`'s top-level fields, where `siblingData`
  * is `data` itself.
@@ -46,7 +50,8 @@ export async function validateFields(props: {
   // Built once per write, not per field: it closes over nothing field-specific.
   const vex = createVexCallbackApi({ ctx: props.ctx, config: props.config });
   for (const [fieldKey, field] of Object.entries(getDataFields({ fields: props.fields }))) {
-    if (!keys.has(fieldKey) || !field.validate) continue;
+    const triggered = keys.has(fieldKey) || (field.dependsOn?.some((dependency) => keys.has(dependency)) ?? false);
+    if (!triggered || !field.validate) continue;
     if (!isFieldConditionMet({ field, data: props.doc, siblingData: props.doc })) continue;
     const validate = field.validate as unknown as (props: {
       value: unknown;

@@ -125,8 +125,32 @@ export const post = query({
 });
 ```
 
-`populate` resolves relationship fields into their target documents — pass the field keys
-you need; omit it and relationship fields stay raw `Id`s.
+`populate` resolves `relationship()`/`upload()` fields into their target documents — pass
+the field keys you need; omit it and those fields stay raw `Id`s. A field nested inside a
+`blocks()` block, an `array()` item, or a `group()` is reachable too: a `group()`/`array()`
+key nests directly (no wrapper), and a `blocks()` key nests one level further, keyed by the
+block's own `blockType` slug.
+
+```ts
+get({
+  ctx,
+  id: args.id,
+  collection: "pages",
+  populate: {
+    // `content` is a blocks() field; `hero` is one block's blockType;
+    // `image` is an upload() field declared on that block.
+    content: { hero: { image: true } },
+    // `seo` is a group() field; `ogImage` is an upload() nested inside it.
+    seo: { ogImage: true },
+  },
+});
+```
+
+`depth` auto-populates every relationship/upload field it can reach — including ones nested
+inside `blocks()`/`array()`/`group()` — to that many levels, without listing field keys by
+hand. Crossing from one collection into a populated target's OWN relationships costs one
+level; descending through a `blocks()`/`array()`/`group()` boundary within the SAME
+collection costs nothing.
 
 ## Full-text search: `search`
 

@@ -3,15 +3,16 @@ import type { GenericDataModel, GenericDocument } from "convex/server";
 import type {
   GlobalSlug,
   GlobalDocumentBySlug,
-  GlobalPopulateShape,
-  GlobalPopulated,
+  GlobalRelationshipKeysOf,
+  GlobalRelationshipTargetOf,
   VexDocumentGlobal,
 } from "../../../types/generated";
 import { populateDocs } from "../../../db/populate";
 import { buildDepthPopulate } from "../../../db/depth";
 import { convertCommitTsFieldsToMs } from "../../../db/documents";
 import { ADMIN_FIELDS } from "../../../fields";
-import type { Prettify } from "../../../db/types";
+import type { Prettify, PopulateShape, GlobalPopulateShape, GlobalPopulated, ApplyGlobalDepthPopulate } from "../../../db/types";
+import type { DepthPopulate } from "../../../collections/api/types";
 import {
   CRUD_ACTIONS,
   DRAFT_ACTIONS,
@@ -57,7 +58,31 @@ export interface GetGlobalServerArgs<
 }
 
 /**
+ * Computes the equivalent `GlobalPopulateShape` for auto-populating every
+ * relationship field on `TGlobalSlug` to `D` levels deep — the global
+ * counterpart of `DepthPopulate`. The first level (the global's own direct
+ * relationships) is walked here; crossing into each relationship's target
+ * COLLECTION hands off to `DepthPopulate` (starting its counter at `[0]`,
+ * since one level was already spent crossing from the global), so depth
+ * reaches a target's own nested `blocks()`/`array()`/`group()` fields
+ * exactly as a direct collection-to-collection `depth` would.
+ *
+ * @typeParam TGlobalSlug - The global slug to start from.
+ * @typeParam D - The depth as a literal number.
+ */
+export type GlobalDepthPopulate<TGlobalSlug extends GlobalSlug, D extends number> = {
+  [K in GlobalRelationshipKeysOf<TGlobalSlug>]?: D extends 1
+    ? true
+    : { populate: DepthPopulate<GlobalRelationshipTargetOf<TGlobalSlug, K & string>, D, [0]> };
+};
+
+/**
  * Return type of `getGlobal` — narrows by populate/depth presence.
+ *
+ * **Non-literal fallback:** `number extends D` short-circuits to the wide
+ * `VexDocumentGlobal & Record<string, unknown>` fallback, mirroring
+ * `DepthPopulated`'s own guard — `depth` is only called internally with
+ * literal values, so this only fires for a non-literal `number` variable.
  */
 export type GetGlobalReturn<
   TSlug extends GlobalSlug,
@@ -68,7 +93,17 @@ export type GetGlobalReturn<
     ? TSlug extends keyof GlobalDocumentBySlug
       ? GlobalDocumentBySlug[TSlug] | null
       : VexDocumentGlobal<TSlug> | null
-    : (VexDocumentGlobal<TSlug> & Record<string, unknown>) | null // depth — widened, see Out of Scope
+    : number extends D
+      ? (VexDocumentGlobal<TSlug> & Record<string, unknown>) | null
+      : TSlug extends keyof GlobalDocumentBySlug
+        ? // Not `GlobalPopulated<TSlug, GlobalDepthPopulate<...>>`: see
+          // `ApplyGlobalDepthPopulate`'s own doc comment — an
+          // `& GlobalPopulateShape<TSlug>` bridge would otherwise be needed to
+          // satisfy `GlobalPopulated`'s constrained second parameter, which
+          // multiplies two recursive container walks together and overflows
+          // TypeScript's instantiation depth limit on a real project.
+          Prettify<ApplyGlobalDepthPopulate<TSlug, GlobalDepthPopulate<TSlug, D>>> | null
+        : (VexDocumentGlobal<TSlug> & Record<string, unknown>) | null
   : TSlug extends keyof GlobalDocumentBySlug
     ? Prettify<GlobalPopulated<TSlug, TPopulate>> | null
     : never;
@@ -144,13 +179,13 @@ export async function getGlobal<
 
   let flat = flattenGlobalRow(row as Record<string, unknown>);
 
-  if (props.config?.access !== undefined) {
-    const { access, action, resource } = resolveAccessCall({
-      config: props.config,
-      access: props.access,
-      defaultAction: CRUD_ACTIONS.read,
-      resource: props.slug,
-    });
+  const { access, action, resource } = resolveAccessCall({
+    config: props.config,
+    access: props.access,
+    defaultAction: CRUD_ACTIONS.read,
+    resource: props.slug,
+  });
+  if (access !== undefined) {
     hasPermission({
       throwOnDenied: true,
       user: props.auth?.user ?? null,
@@ -192,9 +227,27 @@ export async function getGlobal<
   if (props.depth && props.depth > 0 && props.config) {
     const globalConfig = props.config.globals.find((g) => g.slug === props.slug);
     if (globalConfig) {
-      const depthPopulate = buildDepthPopulate<TPopulate>(props.config, props.slug, props.depth);
+      // Not `buildDepthPopulate<TPopulate>`: `TPopulate` here is
+      // `GlobalPopulateShape<TGlobalSlug>` (a global's own populate shape),
+      // never a collection's `PopulateShape` — `buildDepthPopulate`'s
+      // generic is the latter. The walked RESULT is passed to
+      // `populateDocs` as a plain runtime object below (cast, same as the
+      // explicit-populate branch just under this one); nothing here needs
+      // `TPopulate`'s own type.
+      const depthPopulate = buildDepthPopulate(props.config, props.slug, props.depth);
       if (depthPopulate && Object.keys(depthPopulate).length > 0) {
-        const [populated] = await populateDocs(props.ctx, [flat], depthPopulate, undefined, props.config);
+        const [populated] = await populateDocs(
+          props.ctx,
+          [flat],
+          // Globals aren't `CollectionSlug`-keyed, so `depthPopulate`'s real
+          // shape is never exactly `PopulateShape` — bridged the same way
+          // the explicit-populate branch below does.
+          depthPopulate as unknown as PopulateShape,
+          undefined,
+          props.config,
+          access,
+          props.auth,
+        );
         flat = populated as Record<string, unknown>;
       }
     }
@@ -205,9 +258,18 @@ export async function getGlobal<
     const [populated] = await populateDocs(
       props.ctx,
       [flat],
-      props.populate as Record<string, unknown>,
+      // `props.populate` is `GlobalPopulateShape<TGlobalSlug>` — structurally
+      // close to (but never exactly) a collection's `PopulateShape`, which is
+      // all `populateDocs`'s OWN generic can be instantiated with. The
+      // runtime walk (`populateDocs`/`populateContainers`) is generic over
+      // plain `Record<string, unknown>` keys regardless of which registry
+      // produced them, so this bridge is safe — only the TYPE PARAMETER,
+      // never the runtime behavior, is collection-specific.
+      props.populate as unknown as PopulateShape,
       undefined,
       props.config,
+      access,
+      props.auth,
     );
     flat = populated as Record<string, unknown>;
   }

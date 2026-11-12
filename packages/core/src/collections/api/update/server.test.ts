@@ -573,6 +573,64 @@ describe("update (server) — access enforcement", () => {
       expect((await ctx.db.get(id))?.featured).toBe(false);
     });
   });
+
+  // Regression (roles read-only bug report): the admin panel's edit view
+  // rendered a user's `roles` field disabled for every caller, including an
+  // admin — traced to `@vexcms/better-auth`'s field-mapping stamping
+  // `admin.readOnly`/`meta.locked` on `roles`, a CLIENT rendering concern
+  // unrelated to this server mutation's own RBAC enforcement. This proves the
+  // real security boundary: `vex:update` lets an admin write `roles` (the
+  // field mapper no longer locking it is what un-blocks the UI control), and
+  // still rejects the same write from a non-admin role that was never
+  // granted `update` on the resource — matching `defineAccess`'s default-deny
+  // posture, same as Better Auth's `input: false` still blocking the field on
+  // `/sign-up/email`/`/update-user` (`packages/better-auth/src/adapter.test.ts`).
+  test("lets an admin update a user's roles field, but denies the same write to a non-admin role", async () => {
+    const usersResource = defineCollection({
+      slug: "users",
+      timestamps: false,
+      fields: { name: text(), roles: text({ admin: { readOnly: false } }) },
+    });
+    const config = {
+      collections: [usersResource],
+      access: defineAccess({
+        roles: ["admin", "user"] as const,
+        resources: [usersResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          admin: { "*": true },
+          user: { "*": false },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    await withTransaction(async (ctx) => {
+      const id = await ctx.db.insert("users", { name: "Jamie", roles: "user" });
+
+      await update({
+        ctx,
+        id,
+        collection: "users",
+        config,
+        auth: { user: { roles: ["admin"] } },
+        data: { roles: "admin" },
+      });
+      expect((await ctx.db.get(id))?.roles).toBe("admin");
+
+      await expect(
+        update({
+          ctx,
+          id,
+          collection: "users",
+          config,
+          auth: { user: { roles: ["user"] } },
+          data: { roles: "admin" },
+        }),
+      ).rejects.toThrow(VexAccessError);
+      expect((await ctx.db.get(id))?.roles).toBe("admin"); // unchanged by the denied write
+    });
+  });
 });
 
 /** Runs `fn` inside a fresh `convexTest` transaction. */

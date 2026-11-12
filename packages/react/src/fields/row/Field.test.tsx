@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
 import { defineCollection, defineConfig, row, text } from "@vexcms/core";
 import { VexConfigProvider } from "../../config/VexConfigContext";
@@ -104,5 +105,67 @@ describe("FormRow", () => {
     }
     render(<Harness />);
     expect(screen.queryByLabelText("Note")).not.toBeInTheDocument();
+  });
+
+  it("gives a condition-hidden child no slot and lets its visible sibling take the full width", () => {
+    const field = row({
+      fields: {
+        price: text({
+          label: "Price",
+          admin: {
+            width: "40%",
+            condition: ({ data }) =>
+              typeof data === "object" && data !== null && "listingType" in data && (data as Record<string, unknown>).listingType === "sale",
+          },
+        }),
+        monthlyRent: text({ label: "Monthly Rent", admin: { width: "60%" } }),
+      },
+    });
+    renderHarness({ field, defaultValues: { listingType: "rent", price: "", monthlyRent: "" } });
+    expect(screen.queryByLabelText("Price")).not.toBeInTheDocument();
+    const rentWrapper = screen.getByLabelText("Monthly Rent").closest("div[style]") as HTMLElement;
+    expect(rentWrapper.style.getPropertyValue("--field-width")).toBe("100%");
+  });
+
+  it("re-flows the row when the controlling sibling field toggles", async () => {
+    const user = userEvent.setup();
+    const field = row({
+      fields: {
+        price: text({
+          label: "Price",
+          admin: {
+            width: "50%",
+            condition: ({ data }) =>
+              typeof data === "object" && data !== null && "listingType" in data && (data as Record<string, unknown>).listingType === "sale",
+          },
+        }),
+        monthlyRent: text({ label: "Monthly Rent", admin: { width: "50%" } }),
+      },
+    });
+    function Harness() {
+      const form = useForm({ defaultValues: { listingType: "rent", price: "", monthlyRent: "" } });
+      return (
+        <VexConfigProvider config={testConfig}>
+          <AppForm form={form}>
+            <FormRow field={field} fieldKey="layout" context={{ collection: baseCollection }} />
+            <button type="button" onClick={() => form.setFieldValue("listingType", "sale")}>
+              Switch to sale
+            </button>
+          </AppForm>
+        </VexConfigProvider>
+      );
+    }
+    render(<Harness />);
+    expect(screen.queryByLabelText("Price")).not.toBeInTheDocument();
+    const rentBefore = screen.getByLabelText("Monthly Rent").closest("div[style]") as HTMLElement;
+    expect(rentBefore.style.getPropertyValue("--field-width")).toBe("100%");
+
+    await user.click(screen.getByRole("button", { name: "Switch to sale" }));
+
+    expect(screen.getByLabelText("Price")).toBeInTheDocument();
+    const priceAfter = screen.getByLabelText("Price").closest("div[style]") as HTMLElement;
+    const rentAfter = screen.getByLabelText("Monthly Rent").closest("div[style]") as HTMLElement;
+    expect(priceAfter.style.getPropertyValue("--field-width")).toBe("calc(50% - 1rem * 0.5)");
+    expect(rentAfter.style.getPropertyValue("--field-width")).toBe("calc(50% - 1rem * 0.5)");
   });
 });

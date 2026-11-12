@@ -11,6 +11,7 @@ function Harness(props: {
   index?: number;
   submissionAttempts?: number;
   validate?: (value: string) => string | undefined;
+  readOnly?: boolean;
 }) {
   const form = useForm({
     defaultValues: { name: props.initialValue },
@@ -36,6 +37,7 @@ function Harness(props: {
             index={props.index}
             field={field}
             submissionAttempts={props.submissionAttempts ?? 0}
+            readOnly={props.readOnly}
           >
             <input
               id="name"
@@ -56,6 +58,24 @@ describe("FormFieldLayout", () => {
     render(<Harness initialValue="" label="Name" required index={2} />);
     const label = screen.getByText(/Name/).closest("label")!;
     expect(label.textContent).toBe("[3] - Name*");
+  });
+
+  // Regression (muted read-only label): a field the caller can't write
+  // (field permission map, `admin.readOnly`, or an auth-adapter-locked
+  // field) must visibly read as read-only, not just its (greyed-out, easy
+  // to miss) control. `readOnly` drives `data-disabled` on the outer
+  // `Field` group — `FieldLabel`/`FieldDescription`'s own
+  // `group-data-[disabled=true]/field:opacity-50` classes do the muting.
+  it("marks the field group disabled when readOnly, muting the label and description", () => {
+    render(<Harness initialValue="" label="Name" description="Helper text" readOnly />);
+    const group = screen.getByRole("group");
+    expect(group).toHaveAttribute("data-disabled", "true");
+  });
+
+  it("does not mark the field group disabled when readOnly is omitted", () => {
+    render(<Harness initialValue="" label="Name" />);
+    const group = screen.getByRole("group");
+    expect(group).not.toHaveAttribute("data-disabled");
   });
 
   it("renders no label block when label is omitted", () => {

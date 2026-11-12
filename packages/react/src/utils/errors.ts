@@ -52,6 +52,29 @@ export function getVexErrorMessage(error: unknown): string {
 }
 
 /**
+ * Joins a Zod issue's `path` into the dotted/bracketed form a nested field
+ * registers under — {@link matchesFieldNamePrefix}'s own convention: an
+ * object-key segment (`string`) is joined with `.`, an array-index segment
+ * (`number`) with `[index]` (no leading dot). The first segment never gets
+ * a leading separator, matching a top-level field's own name.
+ *
+ * @param path - A Zod issue's `path` array (`string | number` segments).
+ * @returns The joined form field name, e.g. `["tagList", 0]` → `"tagList[0]"`,
+ *   `["content", 2, "body"]` → `"content[2].body"`.
+ */
+function issuePath(path: readonly unknown[]): string {
+  return path
+    .map((segment, index) =>
+      typeof segment === "number"
+        ? `[${segment}]`
+        : index === 0
+          ? String(segment)
+          : `.${String(segment)}`,
+    )
+    .join("");
+}
+
+/**
  * Applies a caught write-mutation error's field-specific detail onto a
  * TanStack Form instance, so the SAME error display every field input
  * already renders through (`forms/FormFieldLayout.tsx`'s `isFieldShowingError`, which reads
@@ -70,8 +93,13 @@ export function getVexErrorMessage(error: unknown): string {
  * - `{ message, errors }` (a Zod schema failure) — `errors` is
  *   `ZodError.message`, which is `JSON.stringify(issues, null, 2)` by
  *   default (confirmed against the installed `zod` version), so it parses
- *   back into `{ path, message }[]`; every issue's `path[0]` names a
- *   top-level field.
+ *   back into `{ path, message }[]`; every issue's full `path` is joined into
+ *   the same dotted/bracketed form a nested field registers under
+ *   (`forms/useFieldErrorCount.ts`'s `matchesFieldNamePrefix` convention —
+ *   `.key` for an object segment, `[index]` for an array segment, e.g.
+ *   `path: ["tagList", 0]` becomes `"tagList[0]"`), not just its first
+ *   segment — a validator nested inside an array/group/block item otherwise
+ *   always marks the top-level field instead of the exact item.
  *
  * Never throws — an error that matches neither shape (or a Zod `errors`
  * string that fails to parse) is a silent no-op; `useVexMutation`'s own
@@ -131,7 +159,7 @@ export function applyVexFieldErrors(form: AnyFormApi, error: unknown): void {
       ) {
         continue;
       }
-      const fieldName = String((issue as { path: unknown[] }).path[0]);
+      const fieldName = issuePath((issue as { path: unknown[] }).path);
       const issueMessage = (issue as { message: string }).message;
       form.setFieldMeta(fieldName, (prev) => ({
         ...prev,

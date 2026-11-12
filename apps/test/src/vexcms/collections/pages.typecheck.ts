@@ -24,7 +24,7 @@ tabs<typeof TABLE_SLUG_PAGES>({
       label: "Content",
       fields: { title: text({ label: "Title" }) },
       // @ts-expect-error — "titlee" is a typo; `pages` has no such field.
-      admin: { condition: ({ data }) => data.titlee.length > 0 },
+      admin: { condition: ({ data }) => data.titlee.length > 0 }, // eslint-disable-line @typescript-eslint/no-unsafe-member-access -- unresolved by design: the line is the expected type error
     },
   ],
 });

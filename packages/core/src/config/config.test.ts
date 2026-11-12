@@ -108,6 +108,42 @@ describe("defineConfig — live preview defaults", () => {
   });
 });
 
+describe("defineConfig — admin.livePreview.expiredSessions", () => {
+  it("defaults to \"allow\" when omitted", () => {
+    const config = defineConfig();
+    expect(config.admin.livePreview.expiredSessions).toBe("allow");
+  });
+
+  it("passes through an explicit \"deny\" unchanged", () => {
+    const config = defineConfig({ admin: { livePreview: { allowedOrigins: [], expiredSessions: "deny" } } });
+    expect(config.admin.livePreview.expiredSessions).toBe("deny");
+  });
+
+  it("throws for an invalid value", () => {
+    expect(() =>
+      defineConfig({
+        admin: { livePreview: { allowedOrigins: [], expiredSessions: "nope" as never } },
+      }),
+    ).toThrow(/admin\.livePreview\.expiredSessions/);
+  });
+});
+
+// ── Sign-out redirect defaults ────────────────────────────────────────────────
+
+describe("defineConfig — sign-out redirect defaults", () => {
+  it("defaults redirectTo to the main site when auth.signOut is omitted", () => {
+    const config = defineConfig();
+    expect(config.auth.signOut.redirectTo).toBe("/");
+  });
+
+  it("honours a configured redirectTo", () => {
+    const config = defineConfig({
+      auth: { signOut: { redirectTo: "/goodbye" } },
+    });
+    expect(config.auth.signOut.redirectTo).toBe("/goodbye");
+  });
+});
+
 // ── Media collections ─────────────────────────────────────────────────────────
 
 describe("defineConfig with media collections", () => {
@@ -371,7 +407,7 @@ describe("defineServerConfig", () => {
     const collection = defineCollection({ slug: "users", fields: { email: text() } });
     const client = defineConfig({ authCollections: [collection] as never });
     const server = defineServerConfig({ config: client });
-    expect(server.auth).toBeUndefined();
+    expect(server.auth.adapter).toBeUndefined();
     expect(server.collections.map((c) => c.slug)).toContain("users");
   });
 
@@ -402,9 +438,10 @@ describe("defineServerConfig", () => {
     expect(server.types).toEqual(client.types);
   });
 
-  it("leaves auth undefined when no adapter is registered", () => {
+  it("leaves auth.adapter undefined when no adapter is registered, but keeps signOut resolved", () => {
     const server = defineServerConfig({ config: defineConfig() });
-    expect(server.auth).toBeUndefined();
+    expect(server.auth.adapter).toBeUndefined();
+    expect(server.auth.signOut).toEqual({ redirectTo: "/" });
   });
 
   it("carries the registered adapter through on the resolved auth group", () => {
@@ -413,7 +450,7 @@ describe("defineServerConfig", () => {
       config: defineConfig(),
       server: { auth: { adapter } },
     });
-    expect(server.auth).toEqual({ adapter });
+    expect(server.auth).toEqual({ adapter, signOut: { redirectTo: "/" } });
   });
 
   const usersWithRoles = defineCollection({

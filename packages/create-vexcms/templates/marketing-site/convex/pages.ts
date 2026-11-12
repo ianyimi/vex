@@ -1,4 +1,3 @@
-import { DRAFT_ACTIONS } from "@vexcms/core"
 import { v } from "convex/values"
 
 import { TABLE_SLUG_PAGES } from "~/db/constants"
@@ -35,22 +34,21 @@ export const getBySlug = query({
  * Returns the page document matching `slug`, preferring its draft row when
  * one exists — the live-preview base layer's authenticated counterpart to
  * `getBySlug` above. Called ONLY when `PageContent.tsx`'s
- * `useSitePreviewMode` detects an active live-preview session
+ * `useIsLivePreviewActive` detects an active live-preview session
  * (`?vexLivePreview=1` plus the session-verified `vex-live-preview` cookie
  * `proxy.ts` sets); a normal page load never reaches this.
  *
- * Passes `drafts: true` so the default published-only filter does not
- * apply, and `access: { action: DRAFT_ACTIONS.readDrafts }` so a row only
- * reaches the caller when their RESOLVED session (never a client-supplied
- * claim — `find` resolves `ctx` through the bound `vexServerApi`'s
- * `getAuth`) is granted `readDrafts` on `pages`. This query never bypasses
- * access (contrast `getBySlug`'s `access: { bypass: true }` above) — that is
- * the whole point of it existing as a second query rather than a flag on the
- * first.
+ * Passes `drafts: true` with NO `access` override, so `find`'s own fallback
+ * decides: a RESOLVED session (never a client-supplied claim — `find`
+ * resolves `ctx` through the bound `vexServerApi`'s `getAuth`) granted
+ * `readDrafts` on `pages` gets the draft-merged row; everyone else —
+ * including anonymous visitors and a caller whose live-preview session just
+ * expired — silently falls back to the published row instead of being
+ * denied entirely. A draft never reaches a caller without `readDrafts`.
  *
  * @param args.slug - The page slug to preview.
- * @returns The draft row for `slug` if one exists, else the published row,
- *   else an empty array — the same shape `getBySlug` returns.
+ * @returns The draft row for `slug` if the caller may read drafts, else the
+ *   published row, else an empty array — the same shape `getBySlug` returns.
  */
 export const getBySlugPreview = query({
   args: { slug: v.string() },
@@ -65,7 +63,6 @@ export const getBySlugPreview = query({
         range: (q) => q.eq("slug", slug),
       },
       drafts: true,
-      access: { action: DRAFT_ACTIONS.readDrafts },
     })
     // Prefer the draft: it's what the preview exists to show (also covers a
     // never-published draft, which is the only match).

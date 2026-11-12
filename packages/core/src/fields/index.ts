@@ -6,6 +6,7 @@ export * from "./inputSchemas";
 export * from "./interfaceGen";
 export * from "./utils";
 export * from "./validate";
+export * from "./validateFieldDependsOn";
 export * from "./mask";
 export * from "./ui";
 export * from "./tabs";

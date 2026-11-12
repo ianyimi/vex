@@ -6,6 +6,7 @@ import { fetchQuery } from "convex/nextjs";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { AUTH_COOKIE_PREFIX } from "~/db/constants";
+import vexConfig from "~/vex.config";
 
 /**
  * Public-route pass for this app — the only thing left in `proxy.ts`:
@@ -16,7 +17,11 @@ import { AUTH_COOKIE_PREFIX } from "~/db/constants";
  * even reached. `/admin/*` is excluded from `config.matcher` below, so this
  * function never runs for it at all; the gate now lives entirely in
  * `src/app/(vexcms)/admin/[[...path]]/page.tsx`, which fails closed the same
- * way this one used to (see that file's doc comment).
+ * way this one used to (see that file's doc comment). This proxy now imports
+ * `~/vex.config` too, but only to read one plain field —
+ * `admin.livePreview.expiredSessions` — not to drive route-by-route guard
+ * logic, so it does not reintroduce the per-collection/field bundle this
+ * comment used to warn about.
  *
  * **This is the marketing-site variant.** The base template guards every route
  * except a small allowlist, which is right for a private app and wrong here:
@@ -25,9 +30,11 @@ import { AUTH_COOKIE_PREFIX } from "~/db/constants";
  * `/features` and `/roadmap` straight to sign-in. There is no session gate
  * here at all anymore — the only thing this proxy does is hand a request
  * carrying `?vexLivePreview=1` off to `/api/vex/live-preview`
- * (`createVexDraftModeRoute`) once a verified admin session backs it. Fails
- * **open** — an unauthenticated or unverifiable session here renders the
- * page normally rather than redirecting.
+ * (`createVexDraftModeRoute`) once a verified admin session backs it, and
+ * (in `"deny"` mode) clear a live-preview session whose auth has expired.
+ * Fails **open** — an unauthenticated or unverifiable session here renders
+ * the page normally rather than redirecting, except when it is carrying a
+ * live-preview marker and `expiredSessions` is `"deny"` (see below).
  *
  * **Why a hand-off instead of setting a cookie directly, like before.** Live
  * preview of a document that has never been published needs Next.js Draft
@@ -47,35 +54,58 @@ import { AUTH_COOKIE_PREFIX } from "~/db/constants";
  * alone would then skip the hand-off — and never re-enable Draft Mode — for
  * up to the rest of that hour.
  *
- * **Not re-verifying the session on every short-circuited reload.** A request
- * carrying both cookies could, in principle, have had its session revoked
- * since the hand-off (signed out elsewhere) — strictly that means Draft Mode
- * stays on past sign-out until one of the two cookies above expires. Closing
- * that gap would mean calling `resolveSessionStatus` (a Convex round trip) on
- * every single live-preview-iframe reload instead of only the first one per
- * cookie lifetime, which is the exact cost this cookie pair exists to avoid —
- * not cheap, so left open rather than added here. It is not a content-secrecy
- * gap either way: Draft Mode only changes which branch a page takes, and the
- * actual draft content stays gated behind each query's own `readDrafts`
- * permission check, same as `createVexDraftModeRoute`'s own posture.
+ * **Re-verifying the session on an expired-preview check — `admin.livePreview.expiredSessions`.**
+ * A request carrying either live-preview cookie — the marker or Draft Mode's
+ * own `__prerender_bypass` — could, in principle, have had its session
+ * revoked since the hand-off: signed out in this tab (the pop-out preview
+ * tab calling the app's sign-out route) or another one, or a natural session
+ * expiry. Left alone (`"allow"`, the default), that means Draft Mode stays on
+ * past sign-out until one of the two cookies expires on its own — not a
+ * content-secrecy gap either way, since Draft Mode only changes which branch
+ * a page takes and draft content stays gated behind each query's own
+ * `readDrafts` check, but an anonymous visitor can be served the draft-only
+ * base layer's published fallback (or nothing) instead of the live site in
+ * the meantime. Setting `admin.livePreview.expiredSessions: "deny"` closes
+ * that gap: any request carrying either cookie — with or without
+ * `?vexLivePreview=1` — calls `resolveSessionStatus` once, and when the
+ * session no longer verifies, redirects to
+ * `/api/vex/live-preview?disable=1&redirect=<this path>` to clear both
+ * cookies and reload the page published. `/api/vex/live-preview` itself is
+ * excluded from `config.matcher` below, so that redirect can never loop.
  *
  * @param request - The incoming request.
- * @returns `NextResponse.next()`, or a redirect to the Draft Mode hand-off.
+ * @returns `NextResponse.next()`, or a redirect to the Draft Mode hand-off
+ *   or the expired-session disable route.
  */
 export async function proxy(request: NextRequest) {
-  if (request.nextUrl.searchParams.get(LIVE_PREVIEW_QUERY_PARAM) !== "1") {
+  const hasLivePreviewCookie = request.cookies.get(LIVE_PREVIEW_COOKIE)?.value === "1";
+  const hasDraftBypassCookie = request.cookies.has(DRAFT_MODE_BYPASS_COOKIE);
+  const hasPreviewMarker = hasLivePreviewCookie || hasDraftBypassCookie;
+  const wantsHandOff = request.nextUrl.searchParams.get(LIVE_PREVIEW_QUERY_PARAM) === "1";
+  const expiredSessionsDeny = vexConfig.admin.livePreview.expiredSessions === "deny";
+
+  if (!wantsHandOff && !(expiredSessionsDeny && hasPreviewMarker)) {
     return NextResponse.next();
   }
 
-  const alreadyHandedOff =
-    request.cookies.get(LIVE_PREVIEW_COOKIE)?.value === "1" &&
-    request.cookies.has(DRAFT_MODE_BYPASS_COOKIE);
-  if (alreadyHandedOff) {
+  const alreadyHandedOff = hasLivePreviewCookie && hasDraftBypassCookie;
+  if (!expiredSessionsDeny && alreadyHandedOff) {
     return NextResponse.next();
   }
 
   const sessionStatus = await resolveSessionStatus(request);
+
   if (sessionStatus !== "authenticated") {
+    if (expiredSessionsDeny && hasPreviewMarker) {
+      const disableUrl = new URL("/api/vex/live-preview", request.url);
+      disableUrl.searchParams.set("disable", "1");
+      disableUrl.searchParams.set("redirect", request.nextUrl.pathname + request.nextUrl.search);
+      return NextResponse.redirect(disableUrl);
+    }
+    return NextResponse.next();
+  }
+
+  if (!wantsHandOff || alreadyHandedOff) {
     return NextResponse.next();
   }
 
@@ -113,6 +143,8 @@ export const config = {
   // paths; here the public site IS the product, so the gate names the private
   // surfaces explicitly. Anything added under `(vexcms)` must be added here.
   // `admin` is excluded on purpose — its gate lives in the admin page itself,
-  // not here (see the doc comment on `proxy` above).
-  matcher: ["/((?!admin|_next/static|_next/image|favicon.ico).*)"],
+  // not here (see the doc comment on `proxy` above). `api` (including
+  // `/api/vex/live-preview`) is excluded too — the expired-session disable
+  // redirect above targets that route, and intercepting it here would loop.
+  matcher: ["/((?!admin|api|_next/static|_next/image|favicon.ico).*)"],
 };

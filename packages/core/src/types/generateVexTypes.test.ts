@@ -76,7 +76,7 @@ describe("generateVexTypes — richtext import", () => {
       'import type { DataModel, Id } from "@convex/_generated/dataModel"',
     );
     expect(output).toContain(
-      'import type { VexDocument, VexDocumentGlobal, RichTextDocument } from "@vexcms/core"',
+      'import type { VexDocumentShape, VexDocumentGlobal, RichTextDocument } from "@vexcms/core"',
     );
     expect(output).toContain("body: RichTextDocument");
   });
@@ -119,8 +119,8 @@ describe("generateVexTypes — document interfaces", () => {
       ],
     }) })
     const output = generateVexTypes({ config });
-    expect(output).toContain("export interface PostsDocument extends VexDocument {");
-    expect(output).toContain("export interface AuthorsDocument extends VexDocument {");
+    expect(output).toContain("export interface PostsDocument extends VexDocumentShape {");
+    expect(output).toContain("export interface AuthorsDocument extends VexDocumentShape {");
   });
 
   it("always includes _id and _creationTime in every interface", () => {
@@ -134,7 +134,7 @@ describe("generateVexTypes — document interfaces", () => {
     }) })
     const output = generateVexTypes({ config });
     expect(output).toContain('_id: Id<"posts">');
-    expect(output).toContain("extends VexDocument");
+    expect(output).toContain("extends VexDocumentShape");
     expect(output).not.toContain("_creationTime: number");
   });
 
@@ -207,7 +207,7 @@ describe("generateVexTypes — document interfaces", () => {
       ],
     }) })
     const output = generateVexTypes({ config });
-    expect(output).toContain("export interface BlogPostsDocument extends VexDocument {");
+    expect(output).toContain("export interface BlogPostsDocument extends VexDocumentShape {");
   });
 
   it("generates an email field as a plain string, through the same generic interfaceType path as text", () => {

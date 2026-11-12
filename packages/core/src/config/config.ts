@@ -96,6 +96,15 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
     });
   }
 
+  const expiredSessions = config?.admin?.livePreview?.expiredSessions;
+  if (expiredSessions !== undefined && expiredSessions !== "allow" && expiredSessions !== "deny") {
+    throw new Error(
+      `defineConfig: admin.livePreview.expiredSessions must be "allow" or "deny", got ${JSON.stringify(
+        expiredSessions,
+      )}.`,
+    );
+  }
+
   // `autoMigrate` is not declared on `SchemaConfigInput`, so a TypeScript caller cannot
   // set it — but a JS config, a spread, or a stale project can. The CLI reads it
   // (`generateSchema.ts`) and would run a full migration orchestration over a diff that
@@ -125,6 +134,7 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
         breakpoints: config?.admin?.livePreview?.breakpoints ?? DEFAULT_LIVE_PREVIEW_BREAKPOINTS,
         collections: config?.admin?.livePreview?.collections ?? {},
         globals: config?.admin?.livePreview?.globals ?? {},
+        expiredSessions: config?.admin?.livePreview?.expiredSessions ?? "allow",
       },
       sidebar: {
         side: "left",
@@ -182,6 +192,11 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
             overrides: config?.admin?.components?.edit?.actionsMenu?.overrides ?? {},
           },
         },
+      },
+    },
+    auth: {
+      signOut: {
+        redirectTo: config?.auth?.signOut?.redirectTo ?? "/",
       },
     },
     storage: {
@@ -286,7 +301,10 @@ export function defineServerConfig(props: {
 
   return {
     ...config,
-    auth: server?.auth ? { adapter: server.auth.adapter } : undefined,
+    auth: {
+      ...config.auth,
+      ...(server?.auth ? { adapter: server.auth.adapter } : {}),
+    },
     storage: {
       clientUploads: config.storage.clientUploads,
       adapters: server?.storage?.adapters ?? [],

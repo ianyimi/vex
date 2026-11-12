@@ -22,7 +22,7 @@ import { PostContent } from "./PostContent";
  * with the editor's own token instead — `getBySlug` is published-only, so a
  * never-published (draft-only) post always resolved to `[]` there, and
  * `PostContent` used to start on the published query (its SSR snapshot of
- * `useSitePreviewMode` is always `false`), flashing `NotFoundContent` before
+ * `useIsLivePreviewActive` is always `false`), flashing `NotFoundContent` before
  * the client-side preview query swapped in. Passing `draftMode` down makes
  * `PostContent`'s FIRST client render agree with this server render too (no
  * hydration mismatch, no flash). The `<meta name="vex-session">` hint lets

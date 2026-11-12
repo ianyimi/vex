@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -227,5 +227,102 @@ describe("MultiSelect a11y", () => {
     expect(screen.getByRole("button", { name: "Remove Alpha" })).toHaveFocus();
     await user.keyboard("{Enter}");
     expect(screen.queryByRole("button", { name: "Remove Alpha" })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The bug this guards: `MultiSelectTrigger` used to wrap only the 16px
+ * chevron in `PopoverTrigger`, so `MultiSelectContent`'s `w-(--anchor-width)`
+ * sized the popup to that chevron — an effectively invisible popup — and
+ * clicking anywhere else in the field row did nothing.
+ */
+describe("MultiSelect popup anchoring and row click", () => {
+  const rect = (width: number): DOMRect =>
+    ({
+      width,
+      height: 36,
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: width,
+      bottom: 36,
+      toJSON: () => ({}),
+    }) as DOMRect;
+
+  it("anchors the popup's --anchor-width to the full trigger row, not just the inner combobox button", async () => {
+    const user = userEvent.setup();
+    render(
+      <MultiSelect>
+        <MultiSelectTrigger aria-label="Tags">
+          <MultiSelectValue placeholder="Pick tags" />
+        </MultiSelectTrigger>
+        <MultiSelectContent>
+          <MultiSelectItem value="a">Alpha</MultiSelectItem>
+        </MultiSelectContent>
+      </MultiSelect>,
+    );
+    const combobox = screen.getByRole("combobox", { name: "Tags" });
+    const row = combobox.parentElement!;
+    // The row (the field's full width) and the inner combobox button (just
+    // the chevron) get distinguishable mocked widths — jsdom's real layout
+    // always measures zero — so only whichever one is wired up as the
+    // positioner's `anchor` can produce a 300px `--anchor-width`.
+    row.getBoundingClientRect = () => rect(300);
+    combobox.getBoundingClientRect = () => rect(16);
+
+    await user.click(combobox);
+    await screen.findByRole("option", { name: "Alpha" });
+
+    await waitFor(() => {
+      const anchored = Array.from(document.querySelectorAll<HTMLElement>("*")).find((el) =>
+        el.style.getPropertyValue("--anchor-width"),
+      );
+      expect(anchored?.style.getPropertyValue("--anchor-width")).toBe("300px");
+    });
+  });
+
+  it("opens when clicking the row's non-interactive area, not just the trigger button", async () => {
+    const user = userEvent.setup();
+    render(
+      <MultiSelect>
+        <MultiSelectTrigger aria-label="Tags">
+          <MultiSelectValue placeholder="Pick tags" />
+        </MultiSelectTrigger>
+        <MultiSelectContent>
+          <MultiSelectItem value="a">Alpha</MultiSelectItem>
+        </MultiSelectContent>
+      </MultiSelect>,
+    );
+    const combobox = screen.getByRole("combobox", { name: "Tags" });
+    expect(combobox).toHaveAttribute("aria-expanded", "false");
+
+    // "Pick tags" is the placeholder text rendered by `MultiSelectValue`, a
+    // sibling of the combobox button inside the row — not the button itself.
+    await user.click(screen.getByText("Pick tags"));
+
+    expect(combobox).toHaveAttribute("aria-expanded", "true");
+    await screen.findByRole("option", { name: "Alpha" });
+  });
+
+  it("opens on ArrowDown while the combobox button has focus", async () => {
+    const user = userEvent.setup();
+    render(
+      <MultiSelect>
+        <MultiSelectTrigger aria-label="Tags">
+          <MultiSelectValue placeholder="Pick tags" />
+        </MultiSelectTrigger>
+        <MultiSelectContent>
+          <MultiSelectItem value="a">Alpha</MultiSelectItem>
+        </MultiSelectContent>
+      </MultiSelect>,
+    );
+    const combobox = screen.getByRole("combobox", { name: "Tags" });
+    combobox.focus();
+    expect(combobox).toHaveAttribute("aria-expanded", "false");
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(combobox).toHaveAttribute("aria-expanded", "true");
   });
 });

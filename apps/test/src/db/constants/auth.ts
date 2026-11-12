@@ -6,6 +6,13 @@ export const USER_ROLES = {
   /** Can only touch content they authored. */
   contributor: "contributor",
   /**
+   * Read/update access to the `fields` testing-ground collection and the admin
+   * panel, but no access at all to the `user` collection — demonstrates
+   * `AccessDeniedItemRow` (the locked relationship row) on `fields.relatedUser`,
+   * which points at a `user` document this role can never read.
+   */
+  reviewer: "reviewer",
+  /**
    * Anonymous demo sessions from the header's Admin button. Mirrors `apps/www`'s
    * `user` role exactly: read-only admin browsing plus switching the admin theme.
    */

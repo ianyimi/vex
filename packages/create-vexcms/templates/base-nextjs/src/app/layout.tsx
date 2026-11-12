@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 
 import "./globals.css"
 
+import { LivePreviewProvider } from "@vexcms/react"
 import { Geist, Geist_Mono } from "next/font/google"
 
 import ClientProviders from "~/components/providers/client"
@@ -41,13 +42,22 @@ export default function RootLayout({
       <body>
         <ServerProviders>
           <ClientProviders>
-            {children}
-            {/* `@auth` parallel slot (`app/@auth/`), sibling of this layout —
-                covers both `(frontend)` and `(vexcms)` since both groups share
-                this root. Rendered after `children` so the intercepted
-                `/auth/[pathname]` dialog/full-screen card portals/paints over
-                whichever page (site or admin) triggered it. */}
-            {auth}
+            {/* Wraps the whole app: the overlay only reaches consumers inside
+                the provider. It reads collections, globals and allowed origins
+                from `VexConfigContext`, and gates itself on the
+                session-verified cookie plus `?vexLivePreview=1` (or the
+                preview window name it writes on first activation), so every
+                public route stays prerenderable. Inert until a collection or
+                global sets `admin.livePreview.url`. */}
+            <LivePreviewProvider>
+              {children}
+              {/* `@auth` parallel slot (`app/@auth/`), sibling of this layout —
+                  covers both `(frontend)` and `(vexcms)` since both groups share
+                  this root. Rendered after `children` so the intercepted
+                  `/auth/[pathname]` dialog/full-screen card portals/paints over
+                  whichever page (site or admin) triggered it. */}
+              {auth}
+            </LivePreviewProvider>
           </ClientProviders>
         </ServerProviders>
       </body>

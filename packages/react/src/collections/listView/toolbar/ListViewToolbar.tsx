@@ -183,11 +183,15 @@ function ListToolbarOverflowStage(props: {
 }
 
 /**
- * Renders the collection list's toolbar row: the inline bulk group (when a
- * selection exists, left of everything else), the
+ * Renders the collection list's toolbar row: the
  * always-visible group (`list.toolbar`'s `vex.list.search` plus any
- * non-collapsible project contribution), and the collapsible group (Copy
- * link, `vex.list.columns`, Rows-per-load).
+ * non-collapsible project contribution), the collapsible group (Copy
+ * link, `vex.list.columns`, Rows-per-load), and — rendered LAST, after
+ * every other left-row child including the Filter chips,
+ * `ListViewModifiedControls`, and the hidden-filter lock badge
+ * (`SavedListViewHiddenFilterBadge`) — the inline bulk/selection group
+ * (when a selection exists). Nothing rendered before it in DOM order may
+ * ever shift position when a selection appears or disappears.
  *
  * The collapse itself is pure CSS, not `ResizeObserver`
  * measurement — the server render is the final render — and the folded
@@ -238,25 +242,12 @@ export function ListViewToolbar(props: ListViewToolbarProps): ReactNode {
   const pageSize = list.urlState.size ?? list.collection.admin.view.state.pageSize;
 
   const hasSelection = list.selection.selectedIds.length > 0;
-  const allLoadedSelected =
-    props.rows.length > 0 &&
-    props.rows.every((row) => list.selection.selectedIds.includes(row._id as string));
 
   const bulkGroup: ReactNode | undefined = !hasSelection ? undefined : (
     <div className="flex shrink-0 items-center gap-2">
       <span aria-live="polite" className="text-sm text-muted-foreground">
         {list.selection.selectedIds.length} selected
       </span>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={allLoadedSelected}
-        onClick={() =>
-          list.selection.setSelectedIds(props.rows.map((row) => row._id as string))
-        }
-      >
-        Select all {props.rows.length} loaded
-      </Button>
       <SlotOutlet<ListViewRowSlotProps>
         slotId={SLOT_IDS.list.bulkActions}
         builtins={listBulkActionsBuiltins()}
@@ -287,7 +278,6 @@ export function ListViewToolbar(props: ListViewToolbarProps): ReactNode {
        * alike — to one shared center line, on every wrapped line.
        */}
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-        {bulkGroup}
         {/*
          * `empty:hidden` on every wrapper in this row: an empty wrapper (no search
          * field, no toolbar contributions, no active filter/modified state) is still a
@@ -313,17 +303,10 @@ export function ListViewToolbar(props: ListViewToolbarProps): ReactNode {
           <ListViewColumnsAction />
         </span>
         {/*
-         * Filter never leaves the search row: it has its own `shrink-0` span, hidden
-         * at narrow widths while rows are selected (same rule as the eye + chips group
-         * below), and never participates in a wrap decision.
+         * Filter never leaves the search row: it has its own `shrink-0` span and never
+         * participates in a wrap decision.
          */}
-        <span
-          className={
-            hasSelection
-              ? "hidden shrink-0 items-center gap-2 @lg/list:inline-flex"
-              : "flex shrink-0 items-center gap-2"
-          }
-        >
+        <span className="flex shrink-0 items-center gap-2">
           <SlotOutlet<ListViewFiltersSlotProps>
             slotId={SLOT_IDS.list.filters}
             builtins={listFiltersContributions()}
@@ -345,18 +328,8 @@ export function ListViewToolbar(props: ListViewToolbarProps): ReactNode {
          * after Filter it moves whole to a new line (`min-w-0` lets it shrink rather
          * than overflow), where the eye and chips wrap among themselves, flush with
          * the toolbar's left edge.
-         *
-         * `hidden @lg/list:flex` (not `cn("flex", …)`, which would apply two base
-         * `display` utilities at once) hides it at narrow widths while rows are
-         * selected.
          */}
-        <span
-          className={
-            hasSelection
-              ? "hidden min-w-0 flex-wrap items-center gap-2 @lg/list:flex empty:hidden"
-              : "flex min-w-0 flex-wrap items-center gap-2 empty:hidden"
-          }
-        >
+        <span className="flex min-w-0 flex-wrap items-center gap-2 empty:hidden">
           <ListViewFilterVisibilityToggle
             collection={list.collection}
             // `VexWhereNodeOf<unknown>` → `VexWhereNode<string>`, the
@@ -395,6 +368,17 @@ export function ListViewToolbar(props: ListViewToolbarProps): ReactNode {
             />
           )}
         </span>
+        {/*
+         * The bulk/selection group renders LAST among this row's children — after
+         * toolbar contributions, columns, Filter, the chips, `ListViewModifiedControls`,
+         * AND the hidden-filter lock badge — so nothing that existed before a
+         * selection ever shifts position when selection appears or disappears; only
+         * this trailing item changes. A dedicated wrapper span isn't needed:
+         * `bulkGroup` is already its own flex item (`shrink-0`), so it participates
+         * in this same outer `flex-wrap` row directly, wrapping onto a new line on
+         * its own exactly like every other item here does.
+         */}
+        {bulkGroup}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <span className="hidden @2xl/list:inline-flex">

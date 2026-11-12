@@ -11,6 +11,7 @@ import {
 } from "@vexcms/core";
 import { fieldToDisplayComponent } from "../../../../fields";
 import { ScrollSection } from "../../../../ui/ScrollSection";
+import { Skeleton } from "../../../../ui/skeleton";
 import { PeekCopyButton, peekFieldCopyText } from "./ListViewPeekCopyButton";
 
 /**
@@ -41,60 +42,92 @@ function PeekFieldRow(props: {
 /**
  * The `ListViewPeek` Fields tab — one {@link PeekFieldRow} per readable field,
  * split out of `ListPeekPanel`'s own body verbatim
- * (Phase 3 component-folder split, no behavior change). Receives the
- * already-loaded, POPULATED `document` (same shape `props.rows` holds) and
- * the same `visibleFieldEntries`/`canReadField` gating `ListPeekPanel`
- * already resolved — this component does no system-field access-gating work of
- * its own, only renders what it's handed.
+ * (Phase 3 component-folder split, no behavior change). Renders the SAME
+ * structure whether `props.document` has resolved or is still pending
+ * (`ListPeekPanel`'s own Suspense fallback) — every row (ID, Created when
+ * readable, then each visible field) always renders with its real
+ * label/key; only the VALUE slot swaps to a `Skeleton` while pending. This
+ * is deliberate, not incidental: the fallback used to be a hand-rolled,
+ * structurally unrelated placeholder (a handful of generic skeleton bars,
+ * no labels/keys/tabs at all) that could never stay in sync with this
+ * component's own real layout — collapsing both states into ONE component
+ * makes that drift structurally impossible instead of merely tested
+ * against.
  *
- * @param props.document - The populated document (`props.rows`'s own depth), never `null`/`undefined` — the caller only mounts this tab once a document has resolved.
- * @param props.visibleFieldEntries - `[key, field]` entries the caller may read, in declaration order (`useVisibleFields`'s own return).
- * @param props.canReadField - Resolves whether a system key (`_creationTime`) is readable — gates the "Created" row.
+ * @param props.peekId - The id being peeked — used for the ID row's value while `props.document` is still pending (the id is already known synchronously, before any fetch resolves).
+ * @param props.document - The populated document (`props.rows`'s own depth), or `undefined` while `ListPeekSuspended`'s own fetch is still in flight — the caller mounts this tab either way now (never gates it behind a resolved document).
+ * @param props.visibleFieldEntries - `[key, field]` entries the caller may read, in declaration order (`useVisibleFields`'s own return) — already populated even while `document` is pending, for every field with no `admin.condition` (the common case).
+ * @param props.canReadField - Resolves whether a system key (`_creationTime`) is readable — gates the "Created" row, independent of `document`.
  * @param props.collection - Forwarded to each field's `Display` component.
- * @returns The Fields tab's scrollable row list: ID, Created (when readable), then every visible field.
+ * @returns The Fields tab's scrollable row list: ID, Created (when readable), then every visible field — each row's value a `Skeleton` while `props.document` is `undefined`.
  */
 export function ListViewPeekFieldsTab<TDocument extends VexDocument = VexDocument>(props: {
-  document: TDocument;
+  peekId: string;
+  document: TDocument | undefined;
   visibleFieldEntries: Array<[string, AdminDataField]>;
   canReadField: (field: string) => boolean;
   collection: CollectionConfig | MediaCollectionConfig;
 }): ReactNode {
   const document = props.document;
+  const idValue = document !== undefined ? document._id : props.peekId;
 
   // `_creationTime` can be ABSENT once a role's field map stops
   // listing it (`new Date(undefined)
   // .toISOString()` threw "RangeError: Invalid time value" before this
-  // guard existed). The "Created" row now shows only when the value is
-  // BOTH present AND actually readable (`canReadField("_creationTime")`
-  // — `_id` is the only permanently ungateable key) — the `typeof`
-  // check stays as defense-in-depth regardless of what `canReadField`
-  // says, since a genuinely missing value must never reach `new Date`.
+  // guard existed). The "Created" row shows once the value is BOTH present
+  // AND actually readable (`canReadField("_creationTime")` — `_id` is the
+  // only permanently ungateable key); while `document` is still pending,
+  // `canReadField` alone decides whether the row (with a skeleton value)
+  // shows at all — every document carries `_creationTime`, so this is never
+  // a visible-then-gone flicker once the real value lands. The `typeof`
+  // check stays as defense-in-depth regardless of what `canReadField` says,
+  // since a genuinely missing value must never reach `new Date`.
   const canReadCreationTime = props.canReadField("_creationTime");
   const creationIso =
-    typeof document._creationTime === "number" && canReadCreationTime
+    document !== undefined && typeof document._creationTime === "number" && canReadCreationTime
       ? new Date(document._creationTime).toISOString()
       : undefined;
   const creationRelative =
-    typeof document._creationTime === "number" && canReadCreationTime
+    document !== undefined && typeof document._creationTime === "number" && canReadCreationTime
       ? formatDistanceToNow(new Date(document._creationTime), { addSuffix: true })
       : undefined;
+  const showCreatedRow = document !== undefined ? creationIso !== undefined : canReadCreationTime;
 
   return (
     <ScrollSection className="h-full">
-      <PeekFieldRow label="ID" fieldKey="_id" copyText={document._id}>
-        <span className="font-mono text-xs break-all">{document._id}</span>
+      <PeekFieldRow label="ID" fieldKey="_id" copyText={idValue}>
+        <span className="font-mono text-xs break-all">{idValue}</span>
       </PeekFieldRow>
-      {creationIso !== undefined ? (
-        <PeekFieldRow label="Created" fieldKey="_creationTime" copyText={creationIso}>
-          <div className="space-y-0.5">
-            <p>{creationIso}</p>
-            <p className="text-xs text-muted-foreground">
-              {document._creationTime} · {creationRelative}
-            </p>
-          </div>
+      {showCreatedRow ? (
+        <PeekFieldRow
+          label="Created"
+          fieldKey="_creationTime"
+          copyText={creationIso ?? ""}
+          disabled={creationIso === undefined}
+        >
+          {creationIso !== undefined ? (
+            <div className="space-y-0.5">
+              <p>{creationIso}</p>
+              <p className="text-xs text-muted-foreground">
+                {document!._creationTime} · {creationRelative}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          )}
         </PeekFieldRow>
       ) : null}
       {props.visibleFieldEntries.map(([key, fieldDef]) => {
+        if (document === undefined) {
+          return (
+            <PeekFieldRow key={key} label={fieldDef.label} fieldKey={key} copyText="" disabled>
+              <Skeleton className="h-4 w-2/3" />
+            </PeekFieldRow>
+          );
+        }
         const value = (document as Record<string, unknown>)[key];
         const FieldDisplay = fieldToDisplayComponent(fieldDef.type);
         const isEmpty = isDisplayValueEmpty(value);

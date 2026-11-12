@@ -883,3 +883,78 @@ describe("publish (server) — commitTs on-policy", () => {
     },
   );
 });
+
+describe("publish (server) — owner rules on a first-ever publish", () => {
+  const ownedPosts = defineCollection({
+    slug: "posts",
+    fields: {
+      title: text(),
+      slug: text({ required: true }),
+      author: relationship({ collection: { slug: "authors" } }),
+    },
+    versions: { drafts: true },
+  });
+  const ownerConfig = {
+    collections: [ownedPosts],
+    access: {
+      enabled: true,
+      roles: ["author"],
+      defaultPermissionMode: "allow",
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        author: {
+          posts: {
+            publish: ({ user, data }: { user: { _id?: string }; data?: { author?: string[] } }) =>
+              data?.author?.[0] === user._id,
+          },
+        },
+      },
+    },
+  } as unknown as VexConfig;
+
+  test("the owner may publish a draft-only document that was never published", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const ownerId = await ctx.db.insert("authors", { name: "A", slug: "a" });
+      const draftId = await ctx.db.insert("posts", {
+        title: "Mine",
+        slug: "mine",
+        author: [ownerId],
+        vex_status: "draft",
+      });
+      const publishedId = await publish({
+        ctx,
+        config: ownerConfig,
+        collection: "posts",
+        id: draftId,
+        auth: { user: { _id: ownerId, roles: ["author"] } } as never,
+      });
+      const row = await ctx.db.get(publishedId as GenericId<"posts">);
+      expect(row?.vex_status).toBe("published");
+    });
+  });
+
+  test("a non-owner is still denied the same first-ever publish", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const ownerId = await ctx.db.insert("authors", { name: "A", slug: "a" });
+      const otherId = await ctx.db.insert("authors", { name: "B", slug: "b" });
+      const draftId = await ctx.db.insert("posts", {
+        title: "Mine",
+        slug: "mine",
+        author: [ownerId],
+        vex_status: "draft",
+      });
+      await expect(
+        publish({
+          ctx,
+          config: ownerConfig,
+          collection: "posts",
+          id: draftId,
+          auth: { user: { _id: otherId, roles: ["author"] } } as never,
+        }),
+      ).rejects.toThrow(/posts\/publish/);
+    });
+  });
+});

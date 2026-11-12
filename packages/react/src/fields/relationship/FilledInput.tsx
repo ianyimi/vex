@@ -11,6 +11,7 @@ import {
   VexAccessError,
 } from "@vexcms/core";
 import { Button, Draggable, DragHandle, Droppable, Skeleton, Icon } from "../../ui";
+import { AccessDeniedItemRow } from "../../access";
 import { get } from "../../client";
 import { resolveRelationshipPreview } from "./preview";
 import { formatDateFieldValue } from "../date/utils";
@@ -180,7 +181,8 @@ function RelationshipItemRow({
   });
   const document = doc as VexDocument | null | undefined;
 
-  const accessError = (error as ReturnType<typeof useQuery<any, VexAccessError>>["error"])?.data;
+  const errorData = (error as ReturnType<typeof useQuery<any, VexAccessError>>["error"])?.data;
+  const isAccessDenied = errorData?.code === "ACCESS_DENIED";
   const Preview = resolveRelationshipPreview({ fieldDef, targetCollection });
   const updatedAt =
     document &&
@@ -194,17 +196,24 @@ function RelationshipItemRow({
       <div className="flex w-full items-center gap-2 font-mono">
         {showDragHandle && (
           <DragHandle
-            disabled={readOnly || Boolean(accessError)}
+            disabled={readOnly || Boolean(errorData)}
             aria-label={`Reorder ${
               document ? ((document as Record<string, unknown>)[targetCollection.admin.useAsTitle] as string | undefined) ?? document._id : "item"
             }`}
           />
         )}
         {!document ? (
-          !accessError ? (
+          !errorData ? (
             <Skeleton className="h-10 w-10" />
+          ) : isAccessDenied ? (
+            <AccessDeniedItemRow
+              resource={errorData.resource}
+              action={errorData.action}
+              field={errorData.field}
+              label={targetCollection.labels.singular}
+            />
           ) : (
-            <p className="w-full text-center text-destructive">{accessError.message}</p>
+            <p className="w-full text-center text-destructive">{errorData.message}</p>
           )
         ) : (
           <div className="flex min-w-0 flex-col py-1.5">
@@ -232,7 +241,7 @@ function RelationshipItemRow({
             )}
           </div>
         )}
-        {!document && !accessError && <Skeleton className="h-4 w-xs" />}
+        {!document && !errorData && <Skeleton className="h-4 w-xs" />}
       </div>
       <Button
         variant="ghost"
@@ -240,7 +249,7 @@ function RelationshipItemRow({
         type="button"
         title="Remove"
         onClick={onRemove}
-        disabled={readOnly || Boolean(accessError)}
+        disabled={readOnly || Boolean(errorData)}
         icon="X"
         iconPosition="center"
       />

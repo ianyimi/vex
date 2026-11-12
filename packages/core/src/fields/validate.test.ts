@@ -161,4 +161,62 @@ describe("validateFields", () => {
       }),
     ).resolves.toBeUndefined();
   });
+
+  it("dependsOn: re-runs a field's validate() when a key it depends on changed, even though its own key didn't", async () => {
+    const collection = defineCollection({
+      slug: "events",
+      fields: {
+        startDate: text(),
+        endDate: text({
+          dependsOn: ["startDate"],
+          validate: ({ value, doc }) => {
+            // `doc` is `unknown` here (no `vex generate` registry in this test
+            // env to pin `TCollectionSlug`'s document shape) — the same
+            // structural fallback `TDocument` itself uses.
+            const siblingDoc = doc as Record<string, unknown>;
+            if (typeof siblingDoc.startDate === "string" && typeof value === "string" && value <= siblingDoc.startDate) {
+              throw new Error("End date must be after the start date.");
+            }
+          },
+        }),
+      },
+    });
+    await expect(
+      validateFields({
+        fields: collection.fields,
+        doc: { startDate: "2026-02-01", endDate: "2026-01-01" },
+        // Only `startDate` changed — `endDate` itself did not.
+        keys: ["startDate"],
+        ctx: fixtureCtx,
+        config: fixtureConfig,
+      }),
+    ).rejects.toMatchObject({
+      data: { field: "endDate", message: "End date must be after the start date." },
+    });
+  });
+
+  it("dependsOn: does not run a field's validate() when an unrelated key changed", async () => {
+    const collection = defineCollection({
+      slug: "events",
+      fields: {
+        title: text(),
+        startDate: text(),
+        endDate: text({
+          dependsOn: ["startDate"],
+          validate: () => {
+            throw new Error("should not run");
+          },
+        }),
+      },
+    });
+    await expect(
+      validateFields({
+        fields: collection.fields,
+        doc: { title: "Updated", startDate: "2026-01-01", endDate: "2026-02-01" },
+        keys: ["title"],
+        ctx: fixtureCtx,
+        config: fixtureConfig,
+      }),
+    ).resolves.toBeUndefined();
+  });
 });

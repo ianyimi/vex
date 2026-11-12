@@ -170,6 +170,69 @@ describe("prepareEdit", () => {
     expect(calls).toEqual(["slug"]);
   });
 
+  test('validateKeys: "changed" also re-runs a field\'s validate() when a dependsOn key changed, even though its own key didn\'t', async () => {
+    const calls: string[] = [];
+    const eventsWithDependsOn = defineCollection({
+      slug: "events",
+      fields: {
+        startDate: text(),
+        endDate: text({
+          dependsOn: ["startDate"],
+          validate: () => {
+            calls.push("endDate");
+          },
+        }),
+      },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const stored = { startDate: "2026-01-01", endDate: "2026-02-01" };
+      await prepareEdit({
+        ctx,
+        config: fixtureConfig,
+        target: { kind: "collection", config: eventsWithDependsOn },
+        action: CRUD_ACTIONS.update,
+        storedDoc: stored as never,
+        changes: { startDate: "2026-01-15" },
+        partial: true,
+        validateKeys: "changed",
+      });
+    });
+    expect(calls).toEqual(["endDate"]);
+  });
+
+  test('validateKeys: "changed" does not run a field\'s validate() when neither its own key nor a dependsOn key changed', async () => {
+    const calls: string[] = [];
+    const eventsWithDependsOn = defineCollection({
+      slug: "events",
+      fields: {
+        title: text(),
+        startDate: text(),
+        endDate: text({
+          dependsOn: ["startDate"],
+          validate: () => {
+            calls.push("endDate");
+          },
+        }),
+      },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const stored = { title: "Original", startDate: "2026-01-01", endDate: "2026-02-01" };
+      await prepareEdit({
+        ctx,
+        config: fixtureConfig,
+        target: { kind: "collection", config: eventsWithDependsOn },
+        action: CRUD_ACTIONS.update,
+        storedDoc: stored as never,
+        changes: { title: "Updated" },
+        partial: true,
+        validateKeys: "changed",
+      });
+    });
+    expect(calls).toEqual([]);
+  });
+
   test('validateKeys: "all" runs every field\'s validate(), not just changed fields, and returns the full transformed document as the patch, not a delta', async () => {
     const calls: string[] = [];
     const postsWithValidators = defineCollection({

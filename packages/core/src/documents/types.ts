@@ -26,6 +26,33 @@ export interface VexDocument {
 }
 
 /**
+ * Closed base for GENERATED per-collection document interfaces (`vex
+ * generate`'s `export interface PostsDocument extends VexDocumentShape`) —
+ * `_id`/`_creationTime` only, no index signature.
+ *
+ * `VexDocument`'s own `[key: string]: unknown` catch-all is what every
+ * untyped/pre-generation consumer needs (a document whose field names
+ * aren't statically known), but an interface that INHERITS it stops being
+ * `Omit`-safe: with an index signature present, `keyof` widens to `string`
+ * for THAT interface, so `Omit<ArticlesDocument, "body">["status"]`
+ * degrades a literal union (e.g. `"draft" | "published"`) to `unknown`
+ * even though direct property access (`doc.status`) still returns the
+ * literal type. A generated interface's own field names are always
+ * statically known, so it never needed the catch-all for itself — only
+ * code accepting an UNTYPED document generically needs it, and that code
+ * constrains against `VexDocument`/`TDocument` directly, not a concrete
+ * generated interface.
+ *
+ * @see {@link VexDocument} for the permissive, index-signature-carrying base
+ */
+export interface VexDocumentShape {
+  /** Convex document ID string. */
+  _id: string;
+  /** Unix timestamp (milliseconds) when the document was created. */
+  _creationTime: number;
+}
+
+/**
  * Alias for `VexDocument` that also satisfies `Record<string, unknown>`.
  *
  * Use this type when a generic `Record` index signature is required alongside

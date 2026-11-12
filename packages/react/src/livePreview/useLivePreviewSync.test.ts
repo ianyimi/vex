@@ -48,6 +48,8 @@ function renderWithForm(targetWindow: Window | null) {
   return result;
 }
 
+const readyMessage = { source: LIVE_PREVIEW_MESSAGE_SOURCE, type: "vex-live-preview-ready" };
+
 describe("useLivePreviewSync", () => {
   it("posts a debounced full-snapshot update over BroadcastChannel and postMessage", async () => {
     const postMessage = vi.fn();
@@ -77,44 +79,55 @@ describe("useLivePreviewSync", () => {
     expect(FakeBroadcastChannel.instances.at(-1)?.postMessage).toHaveBeenCalled();
   });
 
-  it("replies immediately over BroadcastChannel to a matching handshake", async () => {
+  it("replies over BroadcastChannel to a ready message", async () => {
     renderWithForm(null);
     await act(async () => vi.advanceTimersByTime(150));
     const channel = FakeBroadcastChannel.instances.at(-1);
     channel?.postMessage.mockClear();
 
-    await act(async () => {
-      channel?.emit({
-        source: LIVE_PREVIEW_MESSAGE_SOURCE,
-        type: "vex-live-preview-handshake",
-        collectionSlug: "pages",
-        documentId: "doc1",
-      });
-    });
+    await act(async () => channel?.emit(readyMessage));
 
     expect(channel?.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "vex-live-preview-update",
         documentId: "doc1",
+        values: { title: "Draft" },
       }),
     );
   });
 
-  it("ignores a handshake for a different document", async () => {
-    renderWithForm(null);
+  it("replies to a ready message posted by the frame it holds", async () => {
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    const frameWindow = frame.contentWindow;
+    if (!frameWindow) throw new Error("jsdom iframe has no contentWindow");
+    const postMessage = vi.spyOn(frameWindow, "postMessage").mockImplementation(() => undefined);
+    renderWithForm(frameWindow);
     await act(async () => vi.advanceTimersByTime(150));
-    const channel = FakeBroadcastChannel.instances.at(-1);
-    channel?.postMessage.mockClear();
+    postMessage.mockClear();
 
     await act(async () => {
-      channel?.emit({
-        source: LIVE_PREVIEW_MESSAGE_SOURCE,
-        type: "vex-live-preview-handshake",
-        collectionSlug: "pages",
-        documentId: "some-other-doc",
-      });
+      window.dispatchEvent(new MessageEvent("message", { data: readyMessage, source: frameWindow }));
     });
 
-    expect(channel?.postMessage).not.toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "vex-live-preview-update", documentId: "doc1" }),
+      "*",
+    );
+    frame.remove();
+  });
+
+  it("ignores a ready message from a window it does not hold", async () => {
+    const postMessage = vi.fn();
+    const heldWindow = { postMessage } as unknown as Window;
+    renderWithForm(heldWindow);
+    await act(async () => vi.advanceTimersByTime(150));
+    postMessage.mockClear();
+
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent("message", { data: readyMessage, source: window }));
+    });
+
+    expect(postMessage).not.toHaveBeenCalled();
   });
 });

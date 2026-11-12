@@ -12,6 +12,7 @@ function makeConfig(overrides: Partial<LivePreviewConfig> = {}): LivePreviewConf
     breakpoints: DEFAULT_LIVE_PREVIEW_BREAKPOINTS,
     collections: {},
     globals: {},
+    expiredSessions: "allow",
     ...overrides,
   };
 }

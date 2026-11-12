@@ -29,10 +29,15 @@ import type { VersionedTargetRows } from "./resolveVersionedTarget";
  * brand-new document, and every `saveDraft` patch lands flatly on that
  * same complete set), so `{ ...toUserFields(draftRow ?? publishedRow),
  * ...data }`, passed as `prepareEdit`'s `changes` — merged over
- * `storedDoc` (the current published row's fields, or `{}` when none
- * exists yet) via `prepareEdit`'s own `{ ...storedDoc, ...changes }` step
+ * `storedDoc` via `prepareEdit`'s own `{ ...storedDoc, ...changes }` step
  * — reproduces the full intended content, the same "every field, no
- * partial merge" shape `create`'s own strict pass already has.
+ * partial merge" shape `create`'s own strict pass already has. `storedDoc`
+ * is the current published row's fields when one exists; on a FIRST-EVER
+ * publish it falls back to the draft row, because `hasPermission`
+ * evaluates owner rules against `storedDoc` — an empty `{}` there denied
+ * every owner-scoped publish before the document existed publicly, while
+ * the draft row carries the very ownership fields the rule reads (the
+ * same row `saveDraft` already authorizes against).
  *
  * Validates STRICTLY (`partial: false, validateKeys: "all"` — decision 4): a
  * draft may be incomplete, a published document may not.
@@ -117,7 +122,7 @@ export async function publishShared<DataModel extends GenericDataModel>(props: {
     action: DRAFT_ACTIONS.publish,
     access: props.access,
     auth: props.auth,
-    storedDoc: (publishedRow ? props.rows.toUserFields(publishedRow) : {}) as never,
+    storedDoc: ((publishedRow ?? draftRow) ? props.rows.toUserFields((publishedRow ?? draftRow)!) : {}) as never,
     // Draft-pair pagination fix follow-up: the document's own id, so a
     // field validator's uniqueness check (e.g. `assertUniqueAmongPublished`,
     // reading `doc._id`) can exclude THIS document's own row instead of

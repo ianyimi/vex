@@ -69,6 +69,12 @@ const slug = text({
 })
 ```
 
+`renderDefault` keeps one identity across re-renders of the field — safe to
+call directly (`props.renderDefault(props)`, shown above) or to render as
+JSX (`<RenderDefault {...props} />`) to wrap the built-in control; either
+way the control underneath never unmounts (and, for an `<input>`, never
+loses focus) just because the field re-rendered.
+
 `Input`/`Cell`/`Label`/`Description` are override chains; `beforeInput`/
 `afterInput` are additive contribution lists. No built-in contributes to
 `field.label` or `field.description` yet — every field's Input still renders

@@ -107,6 +107,32 @@ describe("CollectionEditView — diff submit", () => {
     await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
     expect(convexMutationMock.mock.calls[0]?.[0]?.data).toEqual({ title: "edited" });
   });
+
+  it("focuses the field the server marked invalid after a rejected Save button click, not just native submit", async () => {
+    // `DocumentSaveAction`'s "Save" is `type="button"` — it calls `form.handleSubmit()`
+    // directly rather than relying on native form submission. Before the fix, this
+    // button performed its own mutation call with no rethrow, so a rejection never
+    // bumped `submissionAttempts`/`isSubmitSuccessful` and `AppForm`'s
+    // `failedSubmitAttempt` effect never ran `focusFirstFieldError` — this would pass
+    // even on a totally broken Save button if it still happened to hit the DOM via
+    // some other path, so the button click (not `fireEvent.submit`) is the point.
+    convexMutationMock.mockRejectedValueOnce(
+      new ConvexError({ message: "Title already taken", field: "title" }),
+    );
+    const doc = await t.run((ctx) => ctx.db.insert("documents", { status: "b", title: "a" }));
+    const stored = await t.run((ctx) => ctx.db.get(doc));
+    const utils = renderView(
+      createElement(CollectionEditView, { collection: testCollection.slug, documentId: doc, initialData: stored }),
+      { convex: t },
+    );
+
+    const titleInput = utils.container.querySelector("#title") as HTMLInputElement;
+    fireEvent.change(titleInput, { target: { value: "new title" } });
+    fireEvent.click(utils.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
+    await waitFor(() => expect(titleInput).toHaveFocus());
+  });
 });
 
 describe("CollectionEditView — live preview split", () => {

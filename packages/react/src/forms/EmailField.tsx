@@ -71,6 +71,7 @@ export function EmailField(props: EmailFieldProps): ReactNode {
       after={props.after}
       counter={counter}
       className={props.className}
+      readOnly={props.readOnly}
     >
       {control}
     </FormFieldLayout>

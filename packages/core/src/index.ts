@@ -48,6 +48,7 @@ export * from "./utils";
 export * from "./framework";
 export * from "./errors";
 export * from "./adminCookie";
+export * from "./sidebarSectionCountsCookie";
 export type { VexWhere, VexWhereNode } from "./db/queryArgs";
 export { validateWhereNode, whereToNode } from "./db/queryArgs";
 export * from "./documents";

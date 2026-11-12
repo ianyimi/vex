@@ -1,4 +1,3 @@
-import { DRAFT_ACTIONS } from "@vexcms/core";
 import { v } from "convex/values";
 
 import { TABLE_SLUG_PAGES } from "~/db/constants";
@@ -75,16 +74,18 @@ export const getBySlug = query({
 /**
  * Returns the page matching `slug`, preferring its draft row when one exists — the
  * live-preview base layer's authenticated counterpart to `getBySlug`. Called only when
- * `PageContent.tsx`'s `useSitePreviewMode` detects an active preview session.
+ * `PageContent.tsx`'s `useIsLivePreviewActive` detects an active preview session.
  *
- * Never bypasses access: `drafts: true` lifts the published-only filter, and
- * `access: { action: DRAFT_ACTIONS.readDrafts }` means a row reaches the caller only
- * when their resolved session holds `readDrafts` on `pages`. Everyone else — including
- * anonymous visitors — gets `[]`, never draft content.
+ * Passes `drafts: true` with NO `access` override, so `find`'s own fallback decides:
+ * a resolved session holding `readDrafts` on `pages` gets the draft-merged row;
+ * everyone else — including anonymous visitors and a caller whose live-preview
+ * session just expired — silently falls back to the published row instead of being
+ * denied entirely. A draft never reaches a caller without `readDrafts`.
  *
  * @param args.slug - The page slug to preview.
- * @returns The draft row if one exists, else the published row, else `[]` — the same
- *   shape `getBySlug` returns. A denied request and a bad slug are indistinguishable.
+ * @returns The draft row if the caller may read drafts, else the published row,
+ *   else `[]` — the same shape `getBySlug` returns. A denied request and a bad
+ *   slug are indistinguishable.
  */
 export const getBySlugPreview = query({
   args: { slug: v.string() },
@@ -99,7 +100,6 @@ export const getBySlugPreview = query({
         range: (q) => q.eq("slug", slug),
       },
       drafts: true,
-      access: { action: DRAFT_ACTIONS.readDrafts },
     });
     const draft = matches.find((doc) => doc.vex_status === "draft");
     return draft ? [draft] : matches.filter((doc) => doc.vex_status === "published");

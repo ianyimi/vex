@@ -96,7 +96,7 @@ rules:
     examples: ["form/AppFormContext.ts", "context/VexConfigContext.ts"]
     counter_examples: ["app-form-context.ts", "AppForm.ts (missing suffix)"]
   - id: auth-file-roles
-    pattern: '^(access|client|AuthViewProvider|hasPermission|options|permissions|plugins|schema|server|serverUtils|types)(\.typecheck)?\.tsx?$'
+    pattern: '^(access|client|AuthViewProvider|hasPermission|options|permissions|plugins|schema|server|serverUtils|types)(\.typecheck|\.test)?\.tsx?$'
     scope: ["apps/test/src/auth/**", "apps/www/src/auth/**"]
     description: Host-app auth files use fixed role names separating client/server/util/config concerns. RBAC adds `access` (the `defineAccess` matrix), `hasPermission` (the app-side check wrapper), and `plugins` (the better-auth plugin list). `schema` is the client-safe half of the auth options — model names, additional fields, and the plugin descriptor map — imported by BOTH `options.ts` and `vex.config.ts` so they cannot drift; it must stay free of server imports. `AuthViewProvider` is the fixed role for the `AuthUIProvider` mount that wraps `AuthView` at its two render sites — it is the one `.tsx` file here distinguishing from the plain client/server/util roles, which are all `.ts`. A role may carry a `<role>.typecheck.ts` sibling — a pure compile-time assertion file (P-008) that `tsc` enforces; it pins the role's generated/registry-derived types (e.g. `access.typecheck.ts` pins slug-aware action unions). See /dev/naming-conventions/#auth-file-roles.
     examples: ["auth/client.tsx", "auth/server.ts", "auth/serverUtils.ts", "auth/access.ts", "auth/plugins.ts", "auth/schema.ts", "auth/AuthViewProvider.tsx"]

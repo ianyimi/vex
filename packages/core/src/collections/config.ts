@@ -1,6 +1,6 @@
 import pluralize from "pluralize-esm";
 
-import { AdminField, CollectionFieldMeta, commitTs, getDataFields } from "../fields";
+import { AdminField, CollectionFieldMeta, commitTs, getDataFields, validateFieldDependsOn } from "../fields";
 import { ComponentHKT, resolveComponentContributions, SLOT_IDS } from "../components";
 import { CollectionSlug } from "../types";
 import { toTitleCase } from "../utils";
@@ -408,6 +408,15 @@ export function defineCollection<
   // reserved `"default"`), `where`/sort/searchField/columns — also runs here,
   // inside `validateSavedListViewConfig`, over
   validateSavedListViewConfig({ collection });
+
+  // Every field's `dependsOn` must name another of this collection's own
+  // top-level field keys — checked against the same flattened universe
+  // `resolveCollectionIndexes` uses for a field-level index's `additionalFields`.
+  validateFieldDependsOn({
+    at: `defineCollection: collection "${collection.slug}"`,
+    resourceNoun: "collection",
+    fields: collection.fields,
+  });
 
   // Attached non-enumerably — never shows up in `Object.keys`/JSON/an
   // ordinary spread (`{ ...collection }`), only a reader that names this

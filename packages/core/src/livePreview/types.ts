@@ -241,6 +241,29 @@ export interface LivePreviewConfigInput {
   collections?: LivePreviewCollectionMap;
   /** Preview settings per global. Mirrors {@link LivePreviewConfigInput.collections}. */
   globals?: LivePreviewGlobalMap;
+  /**
+   * What happens when a request carries an active live-preview session (the
+   * `vex-live-preview` marker cookie or Next's own Draft Mode
+   * `__prerender_bypass` cookie) but the visitor's auth session no longer
+   * verifies as signed in — e.g. they signed out in another tab, or the
+   * session expired, while the live-preview pop-out tab stayed open.
+   *
+   * - `"allow"` (default) — today's behavior: the stale cookies are left
+   *   alone until they expire on their own. Not a content-secrecy gap either
+   *   way — Draft Mode only changes which branch a page takes, and draft
+   *   content stays gated behind each query's own `readDrafts` check — but an
+   *   anonymous visitor can be served the draft-only base layer's published
+   *   fallback (or nothing, if the document was never published) instead of
+   *   the live site, until one of the two cookies naturally expires.
+   * - `"deny"` — the project's `proxy.ts` checks the session on any request
+   *   carrying either cookie (with or without the live-preview query param)
+   *   and, when it no longer verifies, redirects through
+   *   `/api/vex/live-preview?disable=1` to clear both cookies and reload the
+   *   page published.
+   *
+   * @defaultValue `"allow"`
+   */
+  expiredSessions?: "allow" | "deny";
 }
 
 /** Resolved root-level `livePreview` config after `defineConfig()` applies defaults. */
@@ -251,4 +274,6 @@ export interface LivePreviewConfig {
   collections: LivePreviewCollectionMap;
   /** Per-global settings; `{}` when the project declared none. */
   globals: LivePreviewGlobalMap;
+  /** Resolved `expiredSessions` behavior — always present; defaults to `"allow"`. */
+  expiredSessions: "allow" | "deny";
 }

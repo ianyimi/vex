@@ -147,6 +147,7 @@ export type {
 } from "./livePreview/LivePreviewContext";
 export { useLivePreviewServerUrl } from "./livePreview/useLivePreviewServerUrl";
 export { useLivePreviewSync } from "./livePreview/useLivePreviewSync";
+export { useIsLivePreviewActive } from "./livePreview/useIsLivePreviewActive";
 
 // shadcn UI primitives — explicit re-exports, skipping `data-table`, `dnd`,
 // `sidebar` and `resizable` (the admin's own primitives, `@vexcms/react/admin`)

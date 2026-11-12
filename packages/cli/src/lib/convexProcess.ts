@@ -54,16 +54,20 @@ function detectPackageManager(cwd: string): PackageManager {
 /**
  * Spawn `convex dev` with piped stdout/stderr so we can detect
  * deployment events. Output is forwarded to the console.
- * @param cwd - Directory to run `convex dev` in; also used to detect the
- * package manager to spawn it through.
+ * @param props - Input props.
+ * @param props.cwd - Directory to run `convex dev` in; also used to detect
+ * the package manager to spawn it through.
+ * @param props.convexArgs - Flags forwarded verbatim to `convex dev` (e.g.
+ * `--tail-logs always`, `--start 'next dev'`, `--configure existing`).
  * @returns The spawned, detached child process. It is also stored as the
  * module-level singleton so `waitForDeploy` and `killConvexDev` can await
  * or terminate it later; it resolves nothing itself and may still be
  * starting up when this returns.
  */
-export function startConvexDev(cwd: string): ChildProcess {
+export function startConvexDev(props: { cwd: string; convexArgs?: string[] }): ChildProcess {
+  const { cwd } = props;
   const pm = detectPackageManager(cwd);
-  const fullArgs = [...pm.args, "convex", "dev"];
+  const fullArgs = [...pm.args, "convex", "dev", ...(props.convexArgs ?? [])];
 
   logger.info(`Starting convex dev (${pm.cmd})...`);
 
@@ -132,23 +136,29 @@ export function startConvexDev(cwd: string): ChildProcess {
  * Wait for the running `convex dev` process to complete its next deployment.
  *
  * Returns `true` if deployment succeeded, `false` if it failed or timed out.
- * If no convex dev process is running, falls back to running `convex dev --once`.
- * @param cwd - Directory to run the standalone fallback push in when no
- * `convex dev` process is currently managed.
- * @param timeoutMs - Milliseconds to wait for the next deploy event before
- * giving up and resolving `false`. Defaults to 60 seconds.
+ * If no convex dev process is running, falls back to a standalone
+ * `convex dev --once` push (see `buildDevOnceArgs`).
+ * @param props - Input props.
+ * @param props.cwd - Directory to run the standalone fallback push in when
+ * no `convex dev` process is currently managed.
+ * @param props.convexArgs - Flags forwarded to the standalone fallback
+ * push; ignored while a managed `convex dev` process is running, which
+ * already received them at start.
+ * @param props.timeoutMs - Milliseconds to wait for the next deploy event
+ * before giving up and resolving `false`. Defaults to 60 seconds.
  * @returns A promise that resolves `true` once the managed `convex dev`
  * process reports a successful deploy, or `false` if it reports failure,
  * the wait times out, or (when no process is managed) the standalone push
  * fails.
  */
-export function waitForDeploy(
-  cwd: string,
-  timeoutMs = 60_000,
-): Promise<boolean> {
-  // No managed process — fall back to standalone push
+export function waitForDeploy(props: {
+  cwd: string;
+  convexArgs?: string[];
+  timeoutMs?: number;
+}): Promise<boolean> {
+  const { cwd, convexArgs = [], timeoutMs = 60_000 } = props;
   if (!convexChild) {
-    return Promise.resolve(pushSchemaStandalone(cwd));
+    return Promise.resolve(runConvexCommand(cwd, buildDevOnceArgs(convexArgs)));
   }
 
   return new Promise<boolean>((resolve) => {
@@ -211,15 +221,25 @@ export async function killConvexDev(): Promise<void> {
 }
 
 /**
- * Push the current schema by running `convex dev --once` (typecheck and
- * codegen disabled). Used as the fallback push when `waitForDeploy` is
- * called without a managed `convex dev` process — e.g. `vex dev --once`,
- * or a schema migration that does not override `pushSchema`.
- * @param cwd - Directory to run the `convex` command in.
- * @returns `true` if the push succeeded, `false` otherwise.
+ * Build the argv (after `convex`) for a standalone one-shot push:
+ * `dev --once` plus every forwarded flag. Typecheck and codegen default to
+ * `disable` (vex already generated the schema, and a push should not fail
+ * on an unrelated type error) unless the caller passed its own
+ * `--typecheck` / `--codegen`, in either `--flag value` or `--flag=value`
+ * form.
+ * @param convexArgs - Flags forwarded from the vex command line.
+ * @returns The argv for `convex`, e.g. `["dev", "--once", "--typecheck",
+ * "disable", "--codegen", "disable", "--tail-logs", "disable"]`.
  */
-function pushSchemaStandalone(cwd: string): boolean {
-  return runConvexCommand(cwd, ["dev", "--once", "--typecheck", "disable", "--codegen", "disable"]);
+export function buildDevOnceArgs(convexArgs: string[]): string[] {
+  const sets = (flag: string) => convexArgs.some((arg) => arg === flag || arg.startsWith(`${flag}=`));
+  return [
+    "dev",
+    "--once",
+    ...(sets("--typecheck") ? [] : ["--typecheck", "disable"]),
+    ...(sets("--codegen") ? [] : ["--codegen", "disable"]),
+    ...convexArgs,
+  ];
 }
 
 /**
@@ -238,25 +258,35 @@ export function deployToProduction(props: { cwd: string; convexArgs?: string[] }
 }
 
 /**
- * Strip `--cmd` and `--cmd-url-env-var-name` (and their values) from
- * `convexArgs`, preserving the order of everything else. Used for `vex
- * deploy`'s auto-migration interim pushes so a caller-passed build command
- * runs exactly once, on the final deploy, not on every interim schema push.
- * @param convexArgs - Flags as collected by `parseCliArgs`.
- * @returns `convexArgs` with every `--cmd`/`--cmd-url-env-var-name` pair removed.
+ * Remove the given value-taking flags (and their values) from `convexArgs`,
+ * preserving the order of everything else. Handles both `--flag value` and
+ * `--flag=value`. Used for interim schema pushes, so a flag that triggers
+ * work after a push (`convex deploy --cmd`, `convex dev --run`) runs once,
+ * on the final push, not on every interim one.
+ * @param props - Input props.
+ * @param props.convexArgs - Flags as collected by `parseCliArgs`.
+ * @param props.flags - Flag names to remove, e.g. `["--cmd", "--cmd-url-env-var-name"]`.
+ * @returns `convexArgs` without the named flags or their values.
  */
-export function stripCmdFlags(convexArgs: string[]): string[] {
+export function stripConvexFlags(props: { convexArgs: string[]; flags: string[] }): string[] {
   const stripped: string[] = [];
-  for (let i = 0; i < convexArgs.length; i++) {
-    const arg = convexArgs[i];
-    if (arg === "--cmd" || arg === "--cmd-url-env-var-name") {
-      i++; // also skip the flag's value
+  for (let i = 0; i < props.convexArgs.length; i++) {
+    const arg = props.convexArgs[i];
+    if (props.flags.includes(arg)) {
+      i++;
       continue;
     }
+    if (props.flags.some((flag) => arg.startsWith(`${flag}=`))) continue;
     stripped.push(arg);
   }
   return stripped;
 }
+
+/** `convex deploy` flags that run the project's build; final deploy only. */
+export const DEPLOY_FINAL_ONLY_FLAGS = ["--cmd", "--cmd-url-env-var-name"];
+
+/** `convex dev` flags that run something after a push; final push only. */
+export const DEV_FINAL_ONLY_FLAGS = ["--run", "--run-component", "--start"];
 
 function runConvexCommand(
   cwd: string,

@@ -15,6 +15,7 @@ import {
 } from "@vexcms/core";
 import { ArrowDownIcon, ArrowUpIcon, CopyIcon, TrashIcon } from "lucide-react";
 import { ArrayField, fieldDescribedBy, GroupField, isFieldShowingError, useFieldContext, useFormContext } from "../../forms";
+import { useFieldErrorCount } from "../../forms/useFieldErrorCount";
 import type { ReactHKT } from "../../adapter";
 import { VexConfigContext } from "../../config";
 import { SlotOutlet } from "../../slots/SlotOutlet";
@@ -112,10 +113,19 @@ const builtinItemActions: ComponentContributionInput<ReactHKT, ArrayItemActionsP
  * still announces each item's position even though the digit is only shown
  * visually in the row's gutter.
  *
+ * Wrapped in the same `[data-field-invalid]` marker `RenderFields.tsx`'s
+ * `FieldSlotOutlet` stamps on every other leaf field — a group-shaped item
+ * gets this for free from its own `RenderFields` call (`ArrayFieldAdminInner`'s
+ * `renderItem`, below), but a primitive item bypasses `RenderFields` entirely
+ * (its own `*FieldAdmin` is mounted directly, no `fieldset`/label chrome),
+ * so without this wrapper `AppForm.tsx`'s `focusFirstFieldError` never finds
+ * a target narrower than the whole array field.
+ *
  * @param props - The item's form path (`name`), its field definition, its
  *   position in the array, the enclosing collection/global (forwarded
  *   unchanged), and whether the array (and therefore the item) is read-only.
- * @returns The item type's admin field, mounted at `name`.
+ * @returns The item type's admin field, mounted at `name`, wrapped in its own
+ *   `[data-field-invalid]` marker.
  */
 function PrimitiveArrayItemControl(props: {
   name: string;
@@ -128,14 +138,17 @@ function PrimitiveArrayItemControl(props: {
   if (!ItemFieldAdmin) {
     throw new Error("invalid array.items field type set");
   }
+  const errorCount = useFieldErrorCount({ names: [props.name] });
   return (
-    <ItemFieldAdmin
-      name={props.name}
-      fieldDef={props.itemType}
-      index={props.index}
-      readOnly={props.readOnly}
-      collection={props.collection}
-    />
+    <div data-field-invalid={errorCount > 0 ? "" : undefined}>
+      <ItemFieldAdmin
+        name={props.name}
+        fieldDef={props.itemType}
+        index={props.index}
+        readOnly={props.readOnly}
+        collection={props.collection}
+      />
+    </div>
   );
 }
 

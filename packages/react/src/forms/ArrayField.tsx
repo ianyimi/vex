@@ -111,6 +111,7 @@ export function ArrayField<TItem>(props: ArrayFieldProps<TItem>): ReactNode {
       field={field}
       submissionAttempts={submissionAttempts}
       className={props.className}
+      readOnly={props.readOnly}
     >
       <div className="flex flex-col gap-3 rounded-sm border-2 px-3 py-2">
         <div className="flex flex-col gap-1">
@@ -118,7 +119,7 @@ export function ArrayField<TItem>(props: ArrayFieldProps<TItem>): ReactNode {
             <div className="flex min-w-0 items-center gap-2">
               <span
                 id={`${field.name}-label`}
-                className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+                className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]/field:pointer-events-none group-data-[disabled=true]/field:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
               >
                 {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
                 {label}

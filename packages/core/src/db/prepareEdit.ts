@@ -156,7 +156,7 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
       ctx: props.ctx,
       commitTs: props.ctx.db.vars.commitTs,
       collection: props.target.config,
-    })) as TDocument;
+    })) as unknown as TDocument;
   } else if (props.target.kind === "global" && props.target.config.hooks.beforeChange) {
     transformedFields = (await props.target.config.hooks.beforeChange({
       operation,
@@ -164,7 +164,7 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
       ctx: props.ctx,
       commitTs: props.ctx.db.vars.commitTs,
       global: props.target.config,
-    })) as TDocument;
+    })) as unknown as TDocument;
   }
 
   const changedKeys = new Set(Object.keys(props.changes));

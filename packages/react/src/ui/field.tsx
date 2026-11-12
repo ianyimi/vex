@@ -109,6 +109,7 @@ export function FieldDescription({ className, ...props }: ComponentProps<"p">) {
       className={cn(
         "text-muted-foreground text-left text-[0.8rem] [[data-variant=legend]+&]:-mt-1.5 leading-normal font-normal group-has-[[data-orientation=horizontal]]/field:text-balance",
         "[&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4",
+        "group-data-[disabled=true]/field:opacity-50",
         className,
       )}
       data-slot="field-description"
@@ -198,10 +199,11 @@ export function FieldGroupBox(props: {
 }): ReactNode {
   return (
     <div
-      className={cn("flex flex-col", props.className)}
+      className={cn("group/field flex flex-col", props.className)}
       role="group"
       aria-labelledby={props.labelId}
       aria-disabled={props.disabled}
+      data-disabled={props.disabled || undefined}
     >
       {props.label}
       <Activity mode={props.description ? "visible" : "hidden"}>

@@ -141,6 +141,52 @@ const schema = defineSchema({
     src: v.optional(v.string()),
     deleted: v.optional(v.boolean()),
   }),
+
+  // Nested-populate fixture (`populate.test.ts`, `depth.test.ts` nested
+  // coverage): a `blocks()` field with two block types — one carrying an
+  // `upload()`, one carrying a `relationship()` — plus an `array()` of
+  // `group()` items with a nested `upload()`, and a `group()` field with a
+  // nested `upload()`. Mirrors exactly how `blocksFieldToValidator`/
+  // `arrayFieldToValidator`/`groupFieldToValidator` shape real block/array/
+  // group data: block items carry `blockType`/`blockName`/`id` plus their
+  // own fields inline; array-of-group items carry an `id`; a group is a
+  // single nested object, never an array.
+  nestedPages: defineTable({
+    title: v.optional(v.string()),
+    content: v.optional(
+      v.array(
+        v.union(
+          v.object({
+            blockType: v.literal("hero"),
+            blockName: v.optional(v.string()),
+            id: v.string(),
+            heading: v.optional(v.string()),
+            image: v.optional(v.array(v.id("images"))),
+          }),
+          v.object({
+            blockType: v.literal("cta"),
+            blockName: v.optional(v.string()),
+            id: v.string(),
+            link: v.optional(v.array(v.id("posts"))),
+          }),
+        ),
+      ),
+    ),
+    gallery: v.optional(
+      v.array(
+        v.object({
+          id: v.optional(v.string()),
+          caption: v.optional(v.string()),
+          asset: v.optional(v.array(v.id("images"))),
+        }),
+      ),
+    ),
+    seo: v.optional(
+      v.object({
+        ogImage: v.optional(v.array(v.id("images"))),
+      }),
+    ),
+  }),
 });
 
 export default schema;
@@ -175,6 +221,7 @@ declare module "@vexcms/core" {
       authors: DocumentByName<FixtureDM, "authors">;
       organizations: DocumentByName<FixtureDM, "organizations">;
       users: DocumentByName<FixtureDM, "users">;
+      nestedPages: DocumentByName<FixtureDM, "nestedPages">;
     };
     CollectionsFieldTypeMap: {
       posts: {
@@ -191,6 +238,27 @@ declare module "@vexcms/core" {
       };
       users: {
         text: "name" | "roles";
+      };
+    };
+    CollectionsPopulateMap: {
+      posts: {
+        author: { kind: "relationship"; target: "authors" };
+        parent: { kind: "relationship"; target: "posts" };
+        cover: { kind: "upload"; target: "images" };
+      };
+      authors: {
+        organization: { kind: "relationship"; target: "organizations" };
+      };
+      nestedPages: {
+        content: {
+          kind: "blocks";
+          blocks: {
+            hero: { image: { kind: "upload"; target: "images" } };
+            cta: { link: { kind: "relationship"; target: "posts" } };
+          };
+        };
+        gallery: { kind: "group"; fields: { asset: { kind: "upload"; target: "images" } } };
+        seo: { kind: "group"; fields: { ogImage: { kind: "upload"; target: "images" } } };
       };
     };
   }

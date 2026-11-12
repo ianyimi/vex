@@ -7,25 +7,87 @@ vi.mock("node:child_process", () => ({
   spawn: vi.fn(),
 }));
 
-import { deployToProduction, stripCmdFlags } from "./convexProcess";
+import {
+  buildDevOnceArgs,
+  DEPLOY_FINAL_ONLY_FLAGS,
+  deployToProduction,
+  DEV_FINAL_ONLY_FLAGS,
+  stripConvexFlags,
+  waitForDeploy,
+} from "./convexProcess";
 
-describe("stripCmdFlags", () => {
-  it("strips --cmd and its value", () => {
-    expect(stripCmdFlags(["--cmd", "pnpm build"])).toEqual([]);
-  });
-
-  it("strips --cmd-url-env-var-name and its value", () => {
-    expect(stripCmdFlags(["--cmd-url-env-var-name", "VITE_CONVEX_URL"])).toEqual([]);
-  });
-
-  it("strips both while keeping unrelated flags, in order", () => {
+describe("stripConvexFlags", () => {
+  it("strips the deploy build flags and their values, keeping everything else in order", () => {
     expect(
-      stripCmdFlags(["--preview-create", "x", "--cmd", "pnpm build", "--cmd-url-env-var-name", "VITE_CONVEX_URL"]),
+      stripConvexFlags({
+        convexArgs: ["--preview-create", "x", "--cmd", "pnpm build", "--cmd-url-env-var-name", "VITE_CONVEX_URL"],
+        flags: DEPLOY_FINAL_ONLY_FLAGS,
+      }),
     ).toEqual(["--preview-create", "x"]);
   });
 
-  it("leaves args with no --cmd flags untouched", () => {
-    expect(stripCmdFlags(["--preview-create", "x"])).toEqual(["--preview-create", "x"]);
+  it("strips the dev post-push flags in both --flag value and --flag=value form", () => {
+    expect(
+      stripConvexFlags({
+        convexArgs: ["--tail-logs", "always", "--run", "init:seed", "--run-component=workflow", "--start", "next dev", "-v"],
+        flags: DEV_FINAL_ONLY_FLAGS,
+      }),
+    ).toEqual(["--tail-logs", "always", "-v"]);
+  });
+
+  it("leaves args with none of the flags untouched", () => {
+    expect(stripConvexFlags({ convexArgs: ["--preview-create", "x"], flags: DEPLOY_FINAL_ONLY_FLAGS })).toEqual([
+      "--preview-create",
+      "x",
+    ]);
+  });
+});
+
+describe("buildDevOnceArgs", () => {
+  it("disables typecheck and codegen by default and appends the forwarded flags", () => {
+    expect(buildDevOnceArgs(["--env-file", ".env.test"])).toEqual([
+      "dev",
+      "--once",
+      "--typecheck",
+      "disable",
+      "--codegen",
+      "disable",
+      "--env-file",
+      ".env.test",
+    ]);
+  });
+
+  it("lets a forwarded --typecheck or --codegen=… replace the default", () => {
+    expect(buildDevOnceArgs(["--typecheck", "enable", "--codegen=enable"])).toEqual([
+      "dev",
+      "--once",
+      "--typecheck",
+      "enable",
+      "--codegen=enable",
+    ]);
+  });
+});
+
+describe("waitForDeploy without a managed convex dev process", () => {
+  beforeEach(() => {
+    execFileSync.mockReset();
+  });
+
+  it("runs a standalone convex dev --once push carrying the forwarded flags", async () => {
+    await expect(waitForDeploy({ cwd: "/project", convexArgs: ["--env-file", ".env.test"] })).resolves.toBe(true);
+
+    const [, argv] = execFileSync.mock.calls[0];
+    expect(argv.slice(argv.indexOf("convex"))).toEqual([
+      "convex",
+      "dev",
+      "--once",
+      "--typecheck",
+      "disable",
+      "--codegen",
+      "disable",
+      "--env-file",
+      ".env.test",
+    ]);
   });
 });
 

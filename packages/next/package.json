@@ -58,6 +58,11 @@
       "import": "./dist/livePreview/index.js",
       "types": "./dist/livePreview/index.d.ts"
     },
+    "./livePreview/client": {
+      "source": "./src/livePreview/client.ts",
+      "import": "./dist/livePreview/client.js",
+      "types": "./dist/livePreview/client.d.ts"
+    },
     "./seo": {
       "source": "./src/seo/index.ts",
       "import": "./dist/seo/index.js",

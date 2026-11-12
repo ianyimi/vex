@@ -592,6 +592,8 @@ export const fields = defineTable({
   settings: v.optional(v.any()),
   title: v.optional(v.string()),
   rating: v.optional(v.number()),
+  quantity: v.optional(v.number()),
+  unitPrice: v.optional(v.number()),
   isFeatured: v.optional(v.boolean()),
   status: v.optional(v.array(v.union(v.literal("draft"), v.literal("published")))),
   tags: v.optional(
@@ -601,6 +603,8 @@ export const fields = defineTable({
   website: v.optional(v.string()),
   dueOn: v.optional(v.number()),
   eventAt: v.optional(v.number()),
+  startDate: v.optional(v.number()),
+  endDate: v.optional(v.number()),
   relatedUser: v.optional(v.array(v.id("user"))),
   relatedUsers: v.optional(v.array(v.id("user"))),
   avatar: v.optional(v.array(v.id("images"))),
@@ -617,7 +621,11 @@ export const fields = defineTable({
     )
   ),
   info: v.optional(
-    v.object({ heading: v.optional(v.string()), bullets: v.optional(v.array(v.string())) })
+    v.object({
+      heading: v.optional(v.string()),
+      bullets: v.optional(v.array(v.string())),
+      coverImage: v.optional(v.array(v.id("images"))),
+    })
   ),
   content: v.optional(
     v.array(
@@ -634,6 +642,7 @@ export const fields = defineTable({
                 id: v.optional(v.string()),
                 value: v.optional(v.string()),
                 caption: v.optional(v.string()),
+                icon: v.optional(v.array(v.id("images"))),
               })
             )
           ),
@@ -645,6 +654,7 @@ export const fields = defineTable({
           label: v.optional(v.string()),
           note: v.optional(v.string()),
           meta: v.optional(v.object({ tag: v.optional(v.string()) })),
+          relatedArticle: v.optional(v.array(v.id("articles"))),
           children: v.optional(
             v.array(
               v.object({
@@ -694,6 +704,9 @@ export const fields = defineTable({
   fallbackA: v.optional(v.string()),
   fallbackB: v.optional(v.string()),
   conditionalNote: v.optional(v.string()),
+  listingType: v.optional(v.array(v.union(v.literal("sale"), v.literal("rent")))),
+  salePrice: v.optional(v.string()),
+  monthlyRent: v.optional(v.string()),
   displaySettings: v.optional(
     v.object({
       columns: v.optional(v.number()),
@@ -715,10 +728,16 @@ export const fields = defineTable({
     )
   ),
   updatedAt: v.optional(v.commitTs()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  vex_publishedAt: v.optional(v.number()),
+  vex_publishedId: v.optional(v.id("fields")),
+  vex_activeVersion: v.optional(v.number()),
 })
   .index("by_relatedUser", ["relatedUser"])
   .index("by_relatedUsers", ["relatedUsers"])
   .index("by_updatedAt", ["updatedAt"])
+  .index("by_status", ["vex_status"])
+  .index("by_published", ["vex_publishedId"])
   .searchIndex("search_fields_contactEmail", {
     searchField: "contactEmail",
     filterFields: [],

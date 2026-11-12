@@ -2,7 +2,7 @@ import { canAccessAdminPanel } from "@vexcms/core";
 import { NextAdminPage } from "@vexcms/next/server";
 import { redirect } from "next/navigation";
 
-import { getToken, getUserOrg } from "~/auth/server";
+import { getToken, getUserOrgForVexApi } from "~/auth/server";
 import { TOUR_PATH } from "~/lib/routes";
 import config from "~/vex.config.server";
 
@@ -125,7 +125,7 @@ function buildAdminRequestPath(
 async function loadAdminSession() {
   try {
     const token = await getToken();
-    const auth = await getUserOrg();
+    const auth = await getUserOrgForVexApi();
     return { token, auth };
   } catch {
     return null;

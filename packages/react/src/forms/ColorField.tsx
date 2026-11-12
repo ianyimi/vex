@@ -236,6 +236,7 @@ export function ColorField(props: ColorFieldProps): ReactNode {
         field={field}
         submissionAttempts={submissionAttempts}
         className={props.className}
+        readOnly={props.readOnly}
       >
         {control}
       </FormFieldLayout>
@@ -349,6 +350,7 @@ export function ColorField(props: ColorFieldProps): ReactNode {
       field={field}
       submissionAttempts={submissionAttempts}
       className={props.className}
+      readOnly={props.readOnly}
     >
       {row}
     </FormFieldLayout>

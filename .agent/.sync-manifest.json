@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at_sha": "e49d7ac3fbbc61c09e78e931c9effba1d57562b1",
+  "generated_at_sha": "7c362ccd22407f1203129cfee2fc3cbf4fb4217e",
   "entries": [
     {
       "path": ".agent/context-rules.yaml",
@@ -89,7 +89,7 @@
     {
       "path": ".omp/agents/release.md",
       "kind": "generated",
-      "target_or_hash": "6d8809f36e7eb6d83cd283815a3e6f3abcee2a2df93aa1c3d3a1f7d38102fcf0",
+      "target_or_hash": "3779101307f16aff2eb0800a058e49d9aaf6dbf9e27faf1920fef8cb532e226f",
       "platform": "omp"
     },
     {
@@ -1019,7 +1019,7 @@
     {
       "path": ".omp/prompts/release.md",
       "kind": "generated",
-      "target_or_hash": "997949b24996b01720a21211e678e6d3c84d824db61516f0ca6898448fadbdd8",
+      "target_or_hash": "44fb04ce294be8cfb09fb2f248ceca913c24c8caa7f40e5e9a984ad83e7274e2",
       "platform": "omp"
     },
     {

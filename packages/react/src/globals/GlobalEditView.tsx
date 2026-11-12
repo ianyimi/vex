@@ -47,6 +47,7 @@ import { RenderFields } from "../fields/RenderFields";
 import { FormCompactProvider } from "../forms/FormCompactContext";
 import { DocumentTimestamps } from "../versions/DocumentTimestamps";
 import { applyFieldPermissionReadOnly } from "../fields/applyFieldPermissionReadOnly";
+import { applyVexFieldErrors } from "../utils/errors";
 import { useVexConfig } from "../config/VexConfigContext";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
 import { InlineQueryError } from "../ui/InlineQueryError";
@@ -241,14 +242,41 @@ function GlobalEditForm(
       // A global has no separate create view: before the first save,
       // `globalDoc` is undefined and `value` carries the field defaults,
       // which a diff (built against those same defaults) would omit.
+      if (isVersioned) {
+        try {
+          if (!globalDoc) {
+            await saveDraftMutation({ global: global.slug, data: value, ...restoredFrom });
+            form.reset();
+            return;
+          }
+          const changes = changedValues(form);
+          await saveDraftMutation({ global: global.slug, data: changes, ...restoredFrom });
+          setViewedVersion(null);
+          resetWhenSaved(changes);
+        } catch (error) {
+          applyVexFieldErrors(form, error);
+          throw error;
+        }
+        return;
+      }
       if (!globalDoc) {
-        await mutateAsync({ slug: global.slug, data: value });
+        try {
+          await mutateAsync({ slug: global.slug, data: value });
+        } catch (error) {
+          applyVexFieldErrors(form, error);
+          throw error;
+        }
         form.reset();
         return;
       }
       const changes = changedValues(form);
       if (Object.keys(changes).length === 0) return;
-      await mutateAsync({ slug: global.slug, data: changes });
+      try {
+        await mutateAsync({ slug: global.slug, data: changes });
+      } catch (error) {
+        applyVexFieldErrors(form, error);
+        throw error;
+      }
       resetWhenSaved(changes);
     },
   });

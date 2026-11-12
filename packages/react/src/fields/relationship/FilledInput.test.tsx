@@ -6,6 +6,8 @@ import { ConvexQueryClient } from "@convex-dev/react-query";
 import { ConvexProvider, type ConvexReactClient } from "convex/react";
 import { convexTest } from "convex-test";
 import { describe, expect, it, vi } from "vitest";
+import { ConvexError } from "convex/values";
+import { VexAccessError } from "@vexcms/core";
 import type {
   CollectionConfig,
   CollectionFieldMeta,
@@ -21,7 +23,16 @@ import {
 } from "./testFixture";
 import { RelationshipFilledState } from "./FilledInput";
 import { DndProvider } from "../../ui/dnd";
+import * as clientModule from "../../client";
 
+// Mocked around the real module (not replaced wholesale) so every OTHER test in
+// this file that lets `RelationshipItemRow` call the real `get()` (-> convexQuery
+// over the fake convex client) keeps working unchanged. Only the two access-error
+// tests below override `get`'s return value per-call via `mockReturnValueOnce`.
+vi.mock("../../client", async (importOriginal) => {
+  const actual = await importOriginal<typeof clientModule>();
+  return { ...actual, get: vi.fn(actual.get) };
+});
 const targetCollection = relationshipTargetCollection as CollectionConfig;
 
 async function renderFilled(
@@ -134,5 +145,38 @@ describe("RelationshipFilledState", () => {
     await screen.findByText("Bravo");
     expect(screen.getByLabelText("Reorder Alpha")).toBeInTheDocument();
     expect(screen.getByLabelText("Reorder Bravo")).toBeInTheDocument();
+  });
+
+  it("shows the locked 'Hidden' row (no raw message) for a VexAccessError, with the denied permission in its tooltip trigger", async () => {
+    const actualClient = await vi.importActual<typeof clientModule>("../../client");
+    vi.mocked(clientModule.get).mockReturnValue({
+      queryKey: ["relationship-access-denied-test"],
+      queryFn: () =>
+        Promise.reject(
+          new VexAccessError({ resource: "user", action: "read", message: "You cannot read this" }),
+        ),
+    } as never);
+    try {
+      await renderFilled({ docIds: ["fake-id"] });
+      expect(await screen.findByText(`Hidden ${targetCollection.labels.singular}`)).toBeInTheDocument();
+      expect(screen.queryByText("You cannot read this")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Requires user/read" })).toBeInTheDocument();
+    } finally {
+      vi.mocked(clientModule.get).mockImplementation(actualClient.get as never);
+    }
+  });
+
+  it("keeps showing a non-access error's raw message", async () => {
+    const actualClient = await vi.importActual<typeof clientModule>("../../client");
+    vi.mocked(clientModule.get).mockReturnValue({
+      queryKey: ["relationship-generic-error-test"],
+      queryFn: () => Promise.reject(new ConvexError({ code: "NOT_FOUND", message: "Document not found" })),
+    } as never);
+    try {
+      await renderFilled({ docIds: ["fake-id"] });
+      expect(await screen.findByText("Document not found")).toBeInTheDocument();
+    } finally {
+      vi.mocked(clientModule.get).mockImplementation(actualClient.get as never);
+    }
   });
 });

@@ -72,6 +72,7 @@ export function NumberField(props: NumberFieldProps): ReactNode {
       before={props.before}
       after={props.after}
       className={props.className}
+      readOnly={props.readOnly}
     >
       {control}
     </FormFieldLayout>

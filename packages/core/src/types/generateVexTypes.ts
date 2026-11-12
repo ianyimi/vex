@@ -1,7 +1,7 @@
 import { collectionConfigToInterface } from "../collections/interfaceGen";
 import type { VexConfig } from "../config/types";
 import { globalConfigToInterface } from "../globals";
-import { ADMIN_FIELDS, fieldsToFieldTypeMap, type AdminField } from "../fields";
+import { ADMIN_FIELDS, fieldsToFieldTypeMap, fieldsToPopulateMap, type AdminField } from "../fields";
 import { STORAGE_ADAPTER_PROTOCOLS } from "../media";
 import { resolveCollectionIndexes } from "../collections/resolveCollectionIndexes";
 import { CustomActionsInput } from "../access";
@@ -74,8 +74,8 @@ function hasRichTextField(fields: Record<string, AdminField>): boolean {
  *
  * When there are no collections, returns only the auto-generated header.
  * When collections are present, the output contains:
- * - Imports for `Id` (from `@convex/_generated/dataModel`) and `VexDocument` (from `@vexcms/core`)
- * - One `export interface` per collection, extending `VexDocument` with a branded `Id<"slug">` for `_id`
+ * - Imports for `Id` (from `@convex/_generated/dataModel`) and `VexDocumentShape` (from `@vexcms/core`)
+ * - One `export interface` per collection, extending `VexDocumentShape` with a branded `Id<"slug">` for `_id`
  * - `export type CollectionSlug` — union of all collection slugs
  * - `export type DocumentBySlug` — map of slug to document interface
  * - `declare module '@vexcms/core'` block that augments `GeneratedVexTypes`, narrowing
@@ -95,8 +95,8 @@ function hasRichTextField(fields: Record<string, AdminField>): boolean {
  * const contents = generateVexTypes({ config });
  * // Writes to vex.types.ts:
  * // import type { Id } from "@convex/_generated/dataModel"
- * // import type { VexDocument } from "@vexcms/core"
- * // export interface PostsDocument extends VexDocument { _id: Id<"posts">; title: string }
+ * // import type { VexDocumentShape } from "@vexcms/core"
+ * // export interface PostsDocument extends VexDocumentShape { _id: Id<"posts">; title: string }
  * // export type CollectionSlug = "posts"
  * // export type DocumentBySlug = { posts: PostsDocument }
  * // declare module "@vexcms/core" { interface GeneratedVexTypes { ... } }
@@ -120,7 +120,7 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     /* eslint-disable perfectionist/sort-object-types */
     /* eslint-disable @typescript-eslint/no-empty-object-type */\n\n
     import type { DataModel, Id } from "@convex/_generated/dataModel"
-    import type { VexDocument, VexDocumentGlobal${needsRichTextImport ? ", RichTextDocument" : ""} } from "@vexcms/core"\n
+    import type { VexDocumentShape, VexDocumentGlobal${needsRichTextImport ? ", RichTextDocument" : ""} } from "@vexcms/core"\n
   `;
 
   const hasCollections = allCollections.length > 0;
@@ -155,6 +155,10 @@ export function generateVexTypes(props: { config: VexConfig }): string {
 
   const collectionsFieldTypeMap = allCollections
     .map((c) => fieldsToFieldTypeMap({ key: c.slug, fields: c.fields }))
+    .join("\n");
+
+  const collectionsPopulateMap = allCollections
+    .map((c) => fieldsToPopulateMap({ key: c.slug, fields: c.fields }))
     .join("\n");
 
   const globalsFieldTypeMap = config.globals
@@ -211,6 +215,7 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     \t\tDocumentBySlug: {\n${documentsBySlug}\n}
     \t\tGlobalDocumentBySlug: {\n${globalDocumentsBySlug}\n}
     \t\tCollectionsFieldTypeMap: {\n${collectionsFieldTypeMap}\n}
+    \t\tCollectionsPopulateMap: {\n${collectionsPopulateMap}\n}
     \t\tGlobalsFieldTypeMap: {\n${globalsFieldTypeMap}\n}
     \t\tIndexFieldsBySlug: {\n${indexFieldsBySlug}\n}
     \t\tCustomActionsBySlug: {\n${customActionsBySlug}\n}

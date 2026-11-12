@@ -193,6 +193,54 @@ with structured `data` (an error code, a conflicting document id, etc.). Whateve
 is re-thrown as one `ConvexError` carrying the failing field's key, so the admin panel can
 attribute the failure to the right input. Returning normally accepts the value.
 
+### Re-running `validate()` when another field changes
+
+On a partial write (`update`, `saveDraft`), `validate()` runs only for fields whose own key
+changed — a validator that reads `doc` to check ANOTHER field's value still won't re-run just
+because that other field changed. List those keys on `dependsOn`:
+
+```ts
+import { textValidator, VexError } from "@vexcms/core";
+import { TABLE_SLUG_BOOKINGS } from "~/db/constants";
+
+text({
+  // Declared on `room`, but a clash depends on `startTime`/`endTime` too: changing
+  // either time while leaving `room` untouched must still re-check this room for
+  // an overlap, not just the other way around.
+  dependsOn: ["startTime", "endTime"],
+  validate: textValidator(TABLE_SLUG_BOOKINGS, async ({ value, doc, vex }) => {
+    const sameRoom = await vex.find({
+      collection: TABLE_SLUG_BOOKINGS,
+      withIndex: { name: "by_room", range: (q) => q.eq("room", value) },
+    });
+    const clash = sameRoom.find(
+      (booking) =>
+        booking._id !== doc._id &&
+        (doc.startTime as number) < (booking.endTime as number) &&
+        (doc.endTime as number) > (booking.startTime as number),
+    );
+    if (clash) {
+      throw new VexError({
+        code: "ROOM_TIME_CLASH",
+        message: "This room is already booked for an overlapping time.",
+      });
+    }
+  }),
+}),
+```
+
+`dependsOn` only widens WHEN `validate()` runs — not what it validates: the callback above
+still only receives `room`'s own `value`, and a failure still attaches to `room`, the field
+that declared the validator. It has no effect on `create`/`publish`: every field's own key is
+already in that write's changed set, so there is nothing for `dependsOn` to add.
+
+Keys are resolved against the collection's/global's own top-level field keys — the same
+universe `index`'s `additionalFields` checks against — and checked at
+`defineCollection`/`defineGlobal` time: a `dependsOn` entry naming an unknown field throws
+before the project ever runs. Declaring it on a field nested inside a `group()`/`array()`/
+`blocks()` has no effect, for the same reason `validate()` itself has none there: both only
+run for a field at the top level.
+
 ### Two tiers, summarized
 
 | Tier | Where it runs | Source |

@@ -4,13 +4,28 @@ import type { ReactNode } from "react";
 
 import {
   type CellComponentProps,
+  type HiddenDocument,
   type RelationshipField,
   type TDocument,
 } from "@vexcms/core";
 import { adminHref } from "../../admin/adminHref";
 import { useVexConfig } from "../../config/VexConfigContext";
+import { AccessDeniedItemRow } from "../../access";
 import { VexLink } from "../../ui";
 import { resolveRelationshipPreview } from "./preview";
+
+/**
+ * True when a populated field's item is a `populateDocs`-produced
+ * {@link HiddenDocument} placeholder rather than a real target doc.
+ *
+ * @param value - The populated field's item to check.
+ * @returns Whether `value` is a {@link HiddenDocument}.
+ */
+function isHiddenDocument(value: unknown): value is HiddenDocument {
+  return (
+    typeof value === "object" && value !== null && (value as Record<string, unknown>).code === "ACCESS_DENIED"
+  );
+}
 
 /**
  * Relationship field cell for the collection list-view data table.
@@ -23,7 +38,8 @@ import { resolveRelationshipPreview } from "./preview";
  * - 0 docs → em-dash placeholder.
  * - 1 doc → resolved preview component (`resolveRelationshipPreview` precedence:
  *   field-level override > target collection's preview > default). The default
- *   renders `doc[useAsTitle] ?? doc._id` as plain text.
+ *   renders `doc[useAsTitle] ?? doc._id` as plain text. A denied target
+ *   (`HiddenDocument` placeholder) renders `AccessDeniedItemRow` instead.
  * - > 1 docs → `"{count} {pluralLabel}"` using `targetCollection.labels.plural`.
  * - Unpopulated IDs → `"{count} item(s)"` fallback.
  *
@@ -69,17 +85,23 @@ export function RelationshipFieldCell<TData extends TDocument = TDocument>(
     );
   }
 
-  const docs = rawValue as TDocument[];
+  const docs = rawValue as (TDocument | HiddenDocument)[];
   const targetCollection = config.collections.find((c) => c.slug === fieldDef.collection.slug);
 
   if (docs.length === 1) {
+    const doc = docs[0];
+    if (isHiddenDocument(doc)) {
+      return wrap(
+        <AccessDeniedItemRow
+          resource={doc.resource}
+          action={doc.action}
+          label={targetCollection?.labels.singular ?? fieldDef.collection.slug}
+        />,
+      );
+    }
     const Preview = resolveRelationshipPreview({ fieldDef, targetCollection });
     return wrap(
-      <Preview
-        doc={docs[0]}
-        fieldKey={fieldKey}
-        config={(targetCollection ?? props.collection) as never}
-      />,
+      <Preview doc={doc} fieldKey={fieldKey} config={(targetCollection ?? props.collection) as never} />,
     );
   }
 

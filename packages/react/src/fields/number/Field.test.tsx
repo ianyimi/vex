@@ -7,8 +7,10 @@ import {
   number,
   numberFieldToInputSchema,
   type CollectionConfig,
+  type FieldControlProps,
   type NumberField,
 } from "@vexcms/core";
+import type { ComponentType } from "react";
 import { AppForm } from "../../forms";
 import { VexConfigContext } from "../../config/VexConfigContext";
 import { testCollection } from "../../testing/harness/accessFixtures";
@@ -305,7 +307,9 @@ describe("number: admin.mask", () => {
   it("renders type=text and lazily applies the mask when admin.mask is set", async () => {
     const fieldDef = number({ label: "Amount", admin: { mask: "decimal" } });
     const { container } = renderMasked(fieldDef);
-    await waitFor(() => expect(withMaskMock).toHaveBeenCalledWith("decimal", { autoUnmask: true }));
+    await waitFor(() =>
+      expect(withMaskMock).toHaveBeenCalledWith("decimal", { rightAlign: false, autoUnmask: true }),
+    );
     expect(container.querySelector("input")?.getAttribute("type")).toBe("text");
   });
 
@@ -318,10 +322,72 @@ describe("number: admin.mask", () => {
     expect(input.value).toBe("");
   });
 
+  it("initializes Inputmask only once while typing a sequence of digits (regression: caret reset to 0)", async () => {
+    const fieldDef = number({ label: "Amount", admin: { mask: "decimal" } });
+    const { container } = renderMasked(fieldDef);
+    await waitFor(() => expect(withMaskMock).toHaveBeenCalledTimes(1));
+    const input = container.querySelector("input") as HTMLInputElement;
+    const user = userEvent.setup();
+    await user.type(input, "1234");
+    // `resolveFieldMask` re-resolves a fresh (but equal) mask object on
+    // every one of the four re-renders this triggers; `withMask` must
+    // still only be called once, or Inputmask tears down and re-inits on
+    // every keystroke, resetting the caret to the front of the input.
+    expect(withMaskMock).toHaveBeenCalledTimes(1);
+  });
+
   it("renders the ordinary controlled type=number input when no mask resolves", () => {
     const fieldDef = number({ label: "Amount" });
     const { container } = renderMasked(fieldDef);
     expect(withMaskMock).not.toHaveBeenCalled();
     expect(container.querySelector("input")?.getAttribute("type")).toBe("number");
+  });
+});
+
+describe("number: admin.components.Input override renders renderDefault as JSX", () => {
+  function JsxWrapOverride(
+    props: FieldControlProps<number> & { renderDefault: ComponentType<FieldControlProps<number>> },
+  ) {
+    const RenderDefault = props.renderDefault;
+    return <RenderDefault {...props} />;
+  }
+
+  it("keeps the same <input> DOM node mounted — and keystroke focus on it — across re-renders of NumberFieldAdmin interleaved with typing", async () => {
+    // Built once, outside the harness — mirrors a real `fieldDef`, read off a
+    // stable config object and never recreated inline per render.
+    const fieldDef = number({
+      label: "Quantity",
+      admin: { components: { Input: [{ id: "test.jsx-wrap", component: JsxWrapOverride }] } },
+    });
+
+    // `NumberFieldAdmin` is not memoized: any parent re-render (e.g. a sibling
+    // subscription to the whole form re-rendering the field tree, as
+    // `FieldSlotOutlet` does in production) re-invokes its function body,
+    // redefining its inline `renderMaskedControl`/`renderBareControl`
+    // closures — forced here via `rerender` so the regression doesn't depend
+    // on reproducing that exact production trigger.
+    function Harness(props: { tick: number }) {
+      void props.tick;
+      return (
+        <NumberHarness fieldDef={fieldDef} collection={testCollection} initialValue={undefined} />
+      );
+    }
+
+    const user = userEvent.setup();
+    const { container, rerender } = render(<Harness tick={0} />);
+    const input = container.querySelector("input") as HTMLInputElement;
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    for (let i = 0; i < 3; i++) {
+      await user.type(input, String(i));
+      rerender(<Harness tick={i + 1} />);
+      // Still the exact same node — not unmounted/remounted by the re-render.
+      expect(container.querySelector("input")).toBe(input);
+      expect(document.activeElement).toBe(input);
+    }
+
+    // `type="number"` normalizes leading zeros away (DOM-sanitized to "1", then "12").
+    expect(screen.getByTestId("value-probe").textContent).toBe("12");
   });
 });

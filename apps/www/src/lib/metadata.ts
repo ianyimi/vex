@@ -112,7 +112,7 @@ export async function generatePageMetadata(props: { slug?: string }): Promise<Me
 
     let pageData: Record<string, unknown> | undefined
     if (props.slug) {
-      const pages = (await vex.query(api.pages.getBySlug, { slug: props.slug })) as
+      const pages = (await vex.query(api.pages.getBySlug, { slug: props.slug })) as unknown as
         | Record<string, unknown>[]
         | undefined
       pageData = pages?.[0]
@@ -153,7 +153,7 @@ export async function generatePostMetadata(props: { slug: string }): Promise<Met
       return { title: "Untitled" }
     }
 
-    const posts = (await vex.query(api.posts.getBySlug, { slug: props.slug })) as
+    const posts = (await vex.query(api.posts.getBySlug, { slug: props.slug })) as unknown as
       | Record<string, unknown>[]
       | undefined
     const postData = posts?.[0]

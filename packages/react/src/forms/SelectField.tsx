@@ -82,6 +82,7 @@ export function SelectField(props: SelectFieldProps): ReactNode {
         field={field}
         submissionAttempts={submissionAttempts}
         className={props.className}
+        readOnly={props.readOnly}
       >
         {control}
       </FormFieldLayout>
@@ -92,7 +93,7 @@ export function SelectField(props: SelectFieldProps): ReactNode {
     const inlineLabel = (
       <span
         id={`${idPrefix}-label`}
-        className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+        className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]/field:pointer-events-none group-data-[disabled=true]/field:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
       >
         {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
         {props.label}
@@ -152,6 +153,7 @@ export function SelectField(props: SelectFieldProps): ReactNode {
         submissionAttempts={submissionAttempts}
         description={props.description}
         className={props.className}
+        readOnly={props.readOnly}
         before={
           <div className="flex flex-col gap-1.5">
             {inlineLabel}
@@ -204,6 +206,7 @@ export function SelectField(props: SelectFieldProps): ReactNode {
       field={field}
       submissionAttempts={submissionAttempts}
       className={props.className}
+      readOnly={props.readOnly}
     >
       {control}
     </FormFieldLayout>

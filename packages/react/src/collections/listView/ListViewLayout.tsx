@@ -28,7 +28,7 @@ import type { ListViewRowSlotProps } from "./rowActions/ListViewRowOpenAction";
 /** Props for {@link ListViewLayout}. */
 export interface ListViewLayoutProps<TDoc extends TDocument = TDocument> {
   collection: CollectionConfig;
-  /** Omit when `tableSlot` is given — the caller renders its own `DataTable` there instead, with its own `rows`. Used for `ListViewToolbar`'s "N selected" bulk bar only in that case; defaults to `[]`, harmless since nothing can be selected before rows exist. */
+  /** Omit when `tableSlot` is given AND nothing can ever be selected — the caller renders its own `DataTable` there instead, with its own `rows`. Still read by `ListViewToolbar`'s "N selected"/"Select all N loaded" bulk bar even with `tableSlot` set, since selection (`useListViewContext().selection`) is independent of which component actually renders the rows — the caller MUST forward its own loaded-rows state here too, or the bulk bar undercounts (`CollectionListView`'s `liveRows`). */
   rows?: TDoc[];
   /** Omit when `tableSlot` is given — the caller builds its own columns for its own `DataTable` there. */
   columns?: ColumnDef<TDoc>[];
@@ -78,8 +78,9 @@ export interface ListViewLayoutProps<TDoc extends TDocument = TDocument> {
 /**
  * Renders a collection's list view around the seven `list.*` slots (S17/S18): a header row
  * (`list.header.actions`), a toolbar/filter area (`ListViewToolbar`'s `list.toolbar`, `list.filters`)
- * with an inline bulk-selection group ahead of it while rows are selected, the table flanked by
- * `list.beforeTable`/`list.afterTable`, and a per-row ⋯ menu (`list.row.actions`).
+ * with an inline bulk-selection group trailing every other toolbar control (including the
+ * Filter chips and the hidden-filter lock badge) while rows are selected, the
+ * table flanked by `list.beforeTable`/`list.afterTable`, and a per-row ⋯ menu (`list.row.actions`).
  *
  * The root element is a named size container, `@container/list` — every
  * narrower-container variant downstream (`ListViewToolbar`'s CSS collapse, later steps' view-tab

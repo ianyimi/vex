@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
  * Draft Mode (the live-preview iframe) fetches through `pages.getBySlugPreview`
  * with the editor's own token instead of `getBySlug` — the published-only query
  * always resolved to `[]` for a never-published page, and `PageContent` used to
- * start on the published query (its SSR snapshot of `useSitePreviewMode` is
+ * start on the published query (its SSR snapshot of `useIsLivePreviewActive` is
  * always `false`), flashing `WelcomePage` before the client-side preview query
  * swapped in. Passing `draftMode` down makes `PageContent`'s FIRST client render
  * agree with this server render too. The `<meta name="vex-session">` hint lets

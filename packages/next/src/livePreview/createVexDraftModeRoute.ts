@@ -131,11 +131,6 @@ export function createVexDraftModeRoute(props: CreateVexDraftModeRouteProps): {
       draft.enable();
 
       const response = NextResponse.redirect(new URL(redirectResult.target, request.url));
-      // Mirrors what `grantPreviewIfRequested` used to set directly: the
-      // advisory marker `useSitePreviewMode`/`LivePreviewProvider` read
-      // client-side, and (together with the real `__prerender_bypass` cookie
-      // `.enable()` just set) the loop-breaking signal the proxy checks on the
-      // way back through so it does not redirect here a second time.
       response.cookies.set(LIVE_PREVIEW_COOKIE, "1", {
         httpOnly: false,
         maxAge: LIVE_PREVIEW_COOKIE_MAX_AGE_SECONDS,

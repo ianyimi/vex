@@ -1,4 +1,3 @@
-import { DRAFT_ACTIONS } from "@vexcms/core";
 import { v } from "convex/values";
 
 import { TABLE_SLUG_POSTS } from "~/db/constants";
@@ -43,13 +42,17 @@ export const getBySlug = query({
  * Returns the post matching `slug`, preferring its draft row when one exists — the
  * live-preview base layer's authenticated counterpart to `getBySlug`, same contract
  * as `pages.getBySlugPreview`. Called only when `PostContent.tsx`'s
- * `useSitePreviewMode` detects an active preview session.
+ * `useIsLivePreviewActive` detects an active preview session.
  *
- * Never bypasses access: a row reaches the caller only when their session holds
- * `readDrafts` on `posts` (`~/auth/access.ts`). Everyone else gets `[]`.
+ * Passes `drafts: true` with NO `access` override, so `find`'s own fallback decides:
+ * a session holding `readDrafts` on `posts` (`~/auth/access.ts`) gets the
+ * draft-merged row; everyone else — including a caller whose live-preview session
+ * just expired — silently falls back to the published row instead of being denied
+ * entirely. A draft never reaches a caller without `readDrafts`.
  *
  * @param args.slug - The post slug to preview.
- * @returns The draft row if one exists, else the published row, else `[]`.
+ * @returns The draft row if the caller may read drafts, else the published row,
+ *   else `[]`.
  */
 export const getBySlugPreview = query({
   args: { slug: v.string() },
@@ -63,7 +66,6 @@ export const getBySlugPreview = query({
         range: (q) => q.eq("slug", slug),
       },
       drafts: true,
-      access: { action: DRAFT_ACTIONS.readDrafts },
     });
     const draft = matches.find((doc) => doc.vex_status === "draft");
     return draft ? [draft] : matches.filter((doc) => doc.vex_status === "published");

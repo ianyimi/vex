@@ -20,9 +20,13 @@ const readOnly = {
  *   every action it does not name, drafts included — the same default-deny posture
  *   that already denies `create`/`update`/`delete` here. `anonRole` resolves
  *   to `user`, so this is also what an unauthenticated visitor gets.
- * `convex/pages.ts`'s `getBySlugPreview` is the only caller that requests `readDrafts`
- * explicitly (`access: { action: DRAFT_ACTIONS.readDrafts }`); every other draft
- * action is exercised only from the admin panel, which always runs as `admin`.
+ * `convex/pages.ts`'s `getBySlugPreview` passes `drafts: true` with NO `access`
+ * override — it relies on `find`'s own per-caller fallback (`readDrafts` granted →
+ * draft-merged row; not granted → published row) rather than requesting
+ * `readDrafts` explicitly, so a caller without it falls back to the published row
+ * instead of being denied the row entirely. Every explicit draft action
+ * (`saveDraft`/`publish`/`unpublish`/`deleteVersions`) is still exercised only from
+ * the admin panel, which always runs as `admin`.
  */
 export const access = defineAccess({
   anonRole: USER_ROLES.user,

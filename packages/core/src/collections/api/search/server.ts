@@ -373,6 +373,8 @@ export async function search<
           effectivePopulate,
           args.drafts,
           args.config,
+          access,
+          args.auth,
         )) as DocReturnItem<TCollectionSlug, TPopulate, D>[]);
 
   if (args.paginationOpts) {

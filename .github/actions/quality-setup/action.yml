@@ -1,0 +1,29 @@
+name: "Quality suite setup"
+description: "Installs the toolchain shared by the axe and lighthouse jobs (the caller checks out the audited commit first: a local action can only load after checkout)"
+
+inputs:
+  playwright:
+    description: "Whether to install the Playwright Chromium browser (axe suite only)"
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+    - name: Setup Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: 22
+        cache: "pnpm"
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Install Playwright Chromium
+      if: inputs.playwright == 'true'
+      shell: bash
+      run: pnpm --filter www exec playwright install --with-deps chromium

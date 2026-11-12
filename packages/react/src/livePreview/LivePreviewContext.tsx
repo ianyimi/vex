@@ -6,19 +6,19 @@ import { useQuery } from "@tanstack/react-query";
 import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
 import {
   getFieldsInputSchema,
-  LIVE_PREVIEW_COOKIE,
   LIVE_PREVIEW_ID_PARAM,
-  LIVE_PREVIEW_QUERY_PARAM,
+  LIVE_PREVIEW_WINDOW_NAME,
   type DocumentByResourceSlug,
   type VexResourceSlug,
 } from "@vexcms/core";
 import { useVexConfig } from "../config/VexConfigContext";
+import { useIsLivePreviewActive } from "./useIsLivePreviewActive";
 import {
   LIVE_PREVIEW_MESSAGE_SOURCE,
   isLivePreviewMessage,
   openLivePreviewBroadcastChannel,
   livePreviewKeyFor,
-  type LivePreviewHandshakeMessage,
+  type LivePreviewReadyMessage,
 } from "./livePreviewProtocol";
 
 /**
@@ -43,41 +43,11 @@ type LivePreviewContextValue = {
 const LivePreviewContext = createContext<LivePreviewContextValue | null>(null);
 
 /**
- * Decides whether preview mode is active for this page load.
- *
- * Requires BOTH signals, and reads them after mount rather than during render:
- * - `?vexLivePreview=1` — the editor's explicit request, carried by the link.
- * - `vex-live-preview` — the marker cookie the project's middleware sets only
- *   after verifying the request carried a valid admin session.
- *
- * Reading them in an effect (rather than during render) is what keeps the
- * host page statically prerenderable: no `next/headers` call, and no
- * server/client divergence on the first render pass. The only thing that
- * appears post-hydration is the fixed-position indicator, which is out of
- * document flow and so shifts nothing.
- *
- * @returns `true` once both signals are confirmed present in the browser.
- */
-function useLivePreviewEnabled(): boolean {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    const previewRequested =
-      new URLSearchParams(window.location.search).get(LIVE_PREVIEW_QUERY_PARAM) === "1";
-    const sessionVerified = document.cookie
-      .split("; ")
-      .some((cookie) => cookie === `${LIVE_PREVIEW_COOKIE}=1`);
-    setEnabled(previewRequested && sessionVerified);
-  }, []);
-
-  return enabled;
-}
-
-/**
  * Mounts the live-preview listener (both `postMessage` and `BroadcastChannel`)
- * for the subtree it wraps, once {@link useLivePreviewEnabled} confirms both the
- * query param and the session-verified marker cookie are present. Otherwise it
- * renders `children` untouched, at zero cost.
+ * for the subtree it wraps, once {@link useIsLivePreviewActive} confirms the
+ * session-verified marker cookie and a preview request (the query param, or
+ * the preview window name this provider writes on first activation) are both
+ * present. Otherwise it renders `children` untouched, at zero cost.
  *
  * Renders no visual affordance either way: the admin panel frames the preview
  * and owns its controls.
@@ -98,10 +68,15 @@ export function LivePreviewProvider(props: { children: ReactNode }) {
   const config = useVexConfig();
   const { collections, globals } = config;
   const allowedOrigins = config.admin.livePreview.allowedOrigins;
-  const enabled = useLivePreviewEnabled();
+  const isActive = useIsLivePreviewActive();
   const [valuesById, setValuesById] = useState<Map<string, Record<string, unknown>>>(
     () => new Map(),
   );
+
+  useEffect(() => {
+    if (!isActive) return;
+    if (window.name === "") window.name = LIVE_PREVIEW_WINDOW_NAME;
+  }, [isActive]);
 
   // Chrome's scroll anchoring follows the element it anchored to. Reordering
   // blocks moves that element, so the viewport jumps to wherever the block
@@ -110,7 +85,7 @@ export function LivePreviewProvider(props: { children: ReactNode }) {
   // where the editor's viewport must stay put while content underneath it
   // rearranges, so anchoring is off for exactly as long as preview is on.
   useEffect(() => {
-    if (!enabled) return;
+    if (!isActive) return;
     // Both elements: suppression applies to the subtree it is set on, and
     // setting it on `<html>` alone leaves `<body>`'s children anchorable —
     // verified, the jump still happened with only the root styled.
@@ -124,10 +99,10 @@ export function LivePreviewProvider(props: { children: ReactNode }) {
         element.style.overflowAnchor = previousOverflowAnchors[index] ?? "";
       });
     };
-  }, [enabled]);
+  }, [isActive]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!isActive) return;
 
     function applyIncomingValues(data: unknown) {
       if (!isLivePreviewMessage(data)) return;
@@ -199,52 +174,31 @@ export function LivePreviewProvider(props: { children: ReactNode }) {
     const channel = openLivePreviewBroadcastChannel();
     channel?.addEventListener("message", handleBroadcastMessage);
 
+    const readyMessage: LivePreviewReadyMessage = {
+      source: LIVE_PREVIEW_MESSAGE_SOURCE,
+      type: "vex-live-preview-ready",
+    };
+    channel?.postMessage(readyMessage);
+    const previewHostWindow = window.parent !== window ? window.parent : window.opener;
+    previewHostWindow?.postMessage(readyMessage, "*");
     return () => {
       window.removeEventListener("message", handleWindowMessage);
       channel?.close();
     };
-  }, [enabled, allowedOrigins, collections, globals]);
+  }, [isActive, allowedOrigins, collections, globals]);
 
   const contextValue = useMemo<LivePreviewContextValue>(
     () => ({ valuesById, globalSlugs: new Set(globals.map((global) => global.slug)) }),
     [valuesById, globals],
   );
 
-  if (!enabled) return <>{props.children}</>;
+  if (!isActive) return <>{props.children}</>;
 
   return (
     <LivePreviewContext.Provider value={contextValue}>
       {props.children}
     </LivePreviewContext.Provider>
   );
-}
-
-/**
- * Announces one render site to the admin panel on mount and whenever the
- * document identity it previews changes, over both transports. Internal to
- * `useLivePreview` — not exported.
- */
-function useLivePreviewHandshake(props: {
-  collectionSlug: string;
-  documentId?: string;
-  tempId?: string;
-}): void {
-  useEffect(() => {
-    const handshakeMessage: LivePreviewHandshakeMessage = {
-      source: LIVE_PREVIEW_MESSAGE_SOURCE,
-      type: "vex-live-preview-handshake",
-      collectionSlug: props.collectionSlug,
-      documentId: props.documentId,
-      tempId: props.tempId,
-    };
-
-    const previewParentWindow = window.parent !== window ? window.parent : window.opener;
-    previewParentWindow?.postMessage(handshakeMessage, "*");
-
-    const channel = openLivePreviewBroadcastChannel();
-    channel?.postMessage(handshakeMessage);
-    return () => channel?.close();
-  }, [props.collectionSlug, props.documentId, props.tempId]);
 }
 
 /**
@@ -260,12 +214,11 @@ function useLivePreviewSearchParam(paramName: string): string | null {
 
 /**
  * Overlays unsaved editor values onto a document a consumer already fetched.
- * `collectionSlug` accepts a global's slug too — the same overlay serves both,
- * and announces this render site to the admin panel via the mount handshake.
+ * `collectionSlug` accepts a global's slug too — the same overlay serves both.
  *
  * `collectionSlug` is a required second argument, not inferred from `doc` —
  * it is what types `doc`/the return value to the exact generated document interface for that
- * collection. It also supplies the handshake/update messages' `collectionSlug`,
+ * collection. It also supplies the update message's `collectionSlug`,
  * which has no other source once `doc` is `null`.
  *
  * @param doc - The document as fetched by the consumer's own query, or
@@ -292,12 +245,6 @@ export function useLivePreview<TCollectionSlug extends VexResourceSlug = VexReso
   const savedDocId = isGlobal
     ? collectionSlug
     : (doc as { _id?: string } | null | undefined)?._id;
-
-  useLivePreviewHandshake({
-    collectionSlug,
-    documentId: savedDocId,
-    tempId: savedDocId ? undefined : (previewId ?? undefined),
-  });
 
   return useMemo(() => {
     if (!valuesById) return doc;

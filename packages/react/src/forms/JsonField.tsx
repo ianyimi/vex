@@ -99,6 +99,7 @@ export function JsonField(props: JsonFieldProps): ReactNode {
         field={field}
         submissionAttempts={submissionAttempts}
         className={props.className}
+        readOnly={props.readOnly}
       >
         {control}
       </FormFieldLayout>
@@ -115,6 +116,7 @@ export function JsonField(props: JsonFieldProps): ReactNode {
         field={field}
         submissionAttempts={submissionAttempts}
         className={props.className}
+        readOnly={props.readOnly}
       >
         <JsonEditor
           id={field.name}
@@ -173,6 +175,7 @@ export function JsonField(props: JsonFieldProps): ReactNode {
       submissionAttempts={submissionAttempts}
       description={props.description}
       className={props.className}
+      readOnly={props.readOnly}
       after={parseError ? <p className="text-[0.8rem] text-destructive">{parseError}</p> : undefined}
       labelContent={
         <div className="flex items-center justify-between gap-2">

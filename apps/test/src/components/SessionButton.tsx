@@ -1,7 +1,8 @@
 "use client";
 
+import { disableLivePreview } from "@vexcms/next/livePreview/client";
 import { buttonVariants, cn } from "@vexcms/react";
-import { LogIn, LogOut, LoaderCircle } from "lucide-react";
+import { LoaderCircle, LogIn, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
@@ -93,6 +94,11 @@ export function SessionButton({
       disabled={isSigningOut}
       onClick={() => {
         setIsSigningOut(true);
+        // Clears any stale live-preview cookies left over from this tab or
+        // the pop-out preview tab — see `disableLivePreview`'s own doc
+        // comment. Fire-and-forget: it never throws, so it cannot block
+        // sign-out either way.
+        void disableLivePreview();
         signOut()
           .then(() => {
             router.refresh();

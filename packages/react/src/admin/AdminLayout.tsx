@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useEffect, type ReactNode } from "react";
+import { Activity, Suspense, use, useEffect, type ReactNode } from "react";
 import { icons } from "lucide-react";
 import {
   LIST_VIEW_CONFIG_COOKIES,
@@ -9,6 +9,7 @@ import {
   localSavedListViewsCookieName,
   livePreviewLayoutCookieName,
   livePreviewPanelCookieName,
+  type SidebarSectionCounts,
   type VexApiAuth,
 } from "@vexcms/core";
 import {
@@ -24,6 +25,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -33,6 +35,7 @@ import {
   Toaster,
   TooltipProvider,
   ThemeProvider,
+  ThemeToggle,
 } from "../ui";
 
 /**
@@ -92,6 +95,15 @@ export interface AdminLayoutProps {
    */
   authPromise?: Promise<VexApiAuth>;
   sidebarOpen?: boolean;
+  /**
+   * The admin sidebar's last-settled per-section item count (read
+   * server-side from the `vex-admin` cookie's `sidebarCounts` field,
+   * `parseSidebarSectionCountsCookie`) — forwarded to `AdminSidebarSkeleton`
+   * so the `<Suspense>` fallback shown while `authPromise` is in flight
+   * renders the SAME per-section header/row shape the real nav is about to
+   * settle with, instead of a generic placeholder count.
+   */
+  sidebarCounts?: SidebarSectionCounts;
 }
 
 /**
@@ -167,7 +179,7 @@ export function AdminLayout(props: AdminLayoutProps) {
   }, []);
 
   const sidebar = props.authPromise ? (
-    <Suspense fallback={<AdminSidebarSkeleton />}>
+    <Suspense fallback={<AdminSidebarSkeleton sidebarCounts={props.sidebarCounts} />}>
       <AuthedSidebar
         authPromise={props.authPromise}
         activeSlug={props.activeSlug}
@@ -280,44 +292,72 @@ function AuthedSidebar(props: {
 }
 
 /**
- * Generic sidebar skeleton shown while `authPromise` is in flight (streamed
- * first paint, Decision NN) — no nav labels, no collection names or counts,
- * so a denied/unauthenticated caller never sees anything project-specific in
- * the shell (even the UNFILTERED collection COUNT is
- * config-derived information the generic shell must not leak). A FIXED
- * placeholder row count, not read from `useVexConfig()` — the sidebar is its
- * own scrollable column (`SidebarContent`'s own `overflow-auto` inside a
- * viewport-pinned `h-svh` wrapper, `ui/sidebar.tsx`), so however many real
- * rows replace these placeholders, nothing OUTSIDE the sidebar (the main
- * content's position) ever shifts — only the sidebar's own internal content
- * may grow/shrink/scroll, which is an accepted, contained difference, not a
- * page-level layout shift.
+ * Sidebar skeleton shown while `authPromise` is in flight (streamed first
+ * paint) — mirrors `AppSidebar`'s own three fixed sections (Collections/
+ * Globals/Media), each with its OWN header + skeleton-row count, instead of
+ * one flat, unlabelled, fixed-count placeholder list. Developer-reported
+ * fix: the previous generic 6-row skeleton popped into a visibly different
+ * shape (section headers appearing, far more/fewer rows than 6) the moment
+ * `authPromise` resolved and the real, permission-filtered nav swapped in —
+ * a large layout shift for a project with many collections. Each section's
+ * row count comes from `props.sidebarCounts` (the `vex-admin` cookie's
+ * `sidebarCounts` field, read server-side via
+ * `parseSidebarSectionCountsCookie` — the caller's OWN last-settled count
+ * for that section, so a returning caller with fewer visible collections
+ * than another sees THEIR OWN remembered count, not a shared default),
+ * falling back to the config's own declared (unfiltered) section size on a
+ * cookie-less first visit — the closest available guess before anything
+ * is known about this caller. A section whose remembered/declared count is
+ * `0` hides its header entirely, the same way `AppSidebar` already hides an
+ * empty section once `auth` resolves, so that transition is a no-op too.
+ * Also renders a `disabled` `ThemeToggle` in the header — same icon/size/position as
+ * `AppSidebar`'s own real one — another developer-reported pop-in: the header previously
+ * had only the "VexCMS Admin" label here, so the toggle button itself popped in (not just
+ * changed state) the instant the real sidebar swapped in.
  *
- * @returns A `Sidebar` filled with fixed-count placeholder rows (no real
- *   nav labels, collection names, or counts).
+ * @param props.sidebarCounts - The caller's last-settled per-section item count, or `undefined` on a cookie-less first visit.
+ * @returns A `Sidebar` filled with per-section headers and skeleton rows matching the settled nav's own shape.
  */
-function AdminSidebarSkeleton() {
+function AdminSidebarSkeleton(props: { sidebarCounts?: SidebarSectionCounts }) {
   const config = useVexConfig();
-  const SKELETON_ROW_COUNT = 6;
+  const sections: { key: "collections" | "globals" | "media"; label: string; count: number }[] = [
+    {
+      key: "collections",
+      label: "Collections",
+      count: props.sidebarCounts?.collections ?? config.collections.length,
+    },
+    { key: "globals", label: "Globals", count: props.sidebarCounts?.globals ?? config.globals.length },
+    {
+      key: "media",
+      label: "Media",
+      count: props.sidebarCounts?.media ?? config.mediaCollections.length,
+    },
+  ];
   return (
     <Sidebar side={config.admin.sidebar.side} collapsible={config.admin.sidebar.collapsible}>
-      <SidebarHeader className="flex h-12 justify-center border-b">
+      <SidebarHeader className="flex min-h-[67px] justify-center border-b px-4">
         <div className="flex items-center justify-between">
-          <span className="px-2 font-mono text-sm font-semibold tracking-tight">VexCMS Admin</span>
+          <span className="font-mono text-base font-semibold tracking-tight">VexCMS Admin</span>
+          <ThemeToggle size="icon-lg" disabled />
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
-                <SidebarMenuItem key={i}>
-                  <SidebarMenuSkeleton showIcon />
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {sections.map((section) => (
+          <Activity key={section.key} mode={section.count > 0 ? "visible" : "hidden"}>
+            <SidebarGroup>
+              <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {Array.from({ length: section.count }).map((_, i) => (
+                    <SidebarMenuItem key={i}>
+                      <SidebarMenuSkeleton showIcon />
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </Activity>
+        ))}
       </SidebarContent>
     </Sidebar>
   );

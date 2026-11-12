@@ -18,8 +18,9 @@ export const LIVE_PREVIEW_COLLECTION_PARAM = "vexLivePreviewCollection";
 /**
  * Marker cookie the project's own middleware sets after verifying a
  * `LIVE_PREVIEW_QUERY_PARAM` request carries a valid admin session.
- * `LivePreviewProvider` requires BOTH this cookie and the query param before
- * it attaches a transport listener.
+ * `useIsLivePreviewActive` — and so `LivePreviewProvider` — requires this
+ * cookie AND a preview request: the query param, or a window already carrying
+ * {@link LIVE_PREVIEW_WINDOW_NAME}.
  *
  * A cookie rather than a request header specifically so the public page stays
  * statically prerenderable: reading a header (`next/headers`) in a layout opts
@@ -35,6 +36,16 @@ export const LIVE_PREVIEW_COOKIE = "vex-live-preview";
  * preview mode soon after.
  */
 export const LIVE_PREVIEW_COOKIE_MAX_AGE_SECONDS = 60 * 60;
+
+/**
+ * `window.name` of a live-preview surface. `LivePreviewProvider` writes it into
+ * an unnamed window the first time preview activates there through
+ * {@link LIVE_PREVIEW_QUERY_PARAM}, and `useIsLivePreviewActive` accepts it in
+ * place of that param. A window's name survives every navigation inside its
+ * iframe or tab and is never shared with another tab, so a reload or an in-site
+ * link that drops the query param keeps the preview on.
+ */
+export const LIVE_PREVIEW_WINDOW_NAME = "vex-live-preview";
 
 /**
  * Prefix of the per-collection/global cookie remembering whether the admin
