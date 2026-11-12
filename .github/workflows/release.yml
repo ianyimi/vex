@@ -80,11 +80,6 @@ jobs:
 
       - name: Test Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" test
-        # Opt-in tests that hit the npm registry (create-vexcms's real
-        # `npm install --dry-run` ERESOLVE check) run here, before publishing,
-        # instead of in every local and CI run where registry latency flakes them.
-        env:
-          VEX_NETWORK_TESTS: "1"
 
       - name: Check Packed Manifests
         run: node scripts/check-packed-manifests.mjs

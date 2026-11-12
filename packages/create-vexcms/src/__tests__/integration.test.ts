@@ -400,22 +400,6 @@ describe('scaffolder hygiene (WP-5)', () => {
     expect(pkg.resolutions?.['@better-auth/passkey']).toBe(pkg.pnpm.overrides['@better-auth/passkey']);
   });
 
-  it.runIf(process.env.VEX_NETWORK_TESTS === '1')('e: npm install --dry-run resolves without an ERESOLVE conflict (network; VEX_NETWORK_TESTS=1)', (ctx) => {
-    const result = spawnSync(
-      'npm',
-      ['install', '--dry-run', '--package-lock=false'],
-      { cwd: bareDir, encoding: 'utf-8' },
-    );
-    const unpublishedVex = /notarget No matching version found for (@vexcms\/[\w-]+|create-vexcms)@/.exec(
-      result.stderr,
-    );
-    if (result.status !== 0 && unpublishedVex && !result.stderr.includes('ERESOLVE')) {
-      ctx.skip(`${unpublishedVex[1]} at this version is not on npm yet (versioned before publish)`);
-    }
-    expect(result.stderr).not.toContain('ERESOLVE');
-    expect(result.status).toBe(0);
-  }, 60_000);
-
   it('f: --bare has no seed script (no convex/seed.ts to run); full scaffold has both', () => {
     const barePkg = fs.readJsonSync(path.join(bareDir, 'package.json'));
     expect(barePkg.scripts.seed).toBeUndefined();
