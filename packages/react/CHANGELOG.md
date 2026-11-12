@@ -1,5 +1,333 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.38
+
+### Minor Changes
+
+- 637ce11: Fixed a layout shift on admin refresh: with the sidebar open, the Collections/Globals/Media
+  section headers and their items used to pop in after the server resolved the signed-in
+  caller — the `<Suspense>` fallback (`AdminSidebarSkeleton`) rendered one flat, unlabelled,
+  fixed 6-row placeholder regardless of how many items the settled, permission-filtered nav
+  was about to show, so a project with many collections (or a caller with few visible ones)
+  saw a large shape change the instant `authPromise` resolved.
+
+  The sidebar now remembers each section's own last-settled item count in the consolidated
+  `vex-admin` cookie's new `sidebarCounts` field (`@vexcms/core`'s
+  `parseSidebarSectionCountsCookie`/`applySidebarSectionCountsUpdate`, following the list
+  view's own row-count cookie conventions) — read server-side (`NextAdminLayout`) and
+  threaded through to `AdminSidebarSkeleton`, which renders the SAME per-section headers and
+  skeleton-row counts the real nav is about to settle with, falling back to the config's own
+  declared section sizes on a cookie-less first visit. A section settled at `0` items hides
+  its header on the next first paint too, the same way the real nav already does. Counts are
+  scoped per BROWSER (not per caller), so the very first load after a caller signs in may
+  still show their predecessor's count for one refresh, self-correcting from then on.
+  `AppSidebar` persists each section's real count via a new `writeSidebarSectionCountsCookie`
+  (`@vexcms/react`); `writeAdminCookie` gained a functional-patch form (matching
+  `writeAdminCollectionCookie`'s own) to support the merge.
+
+  Also fixed a second pop-in in the same header: the loading skeleton's `ThemeToggle` was
+  missing outright (only the "VexCMS Admin" label rendered), so the toggle button itself
+  appeared for the first time the moment the real sidebar mounted. `ThemeToggle` gained a
+  `disabled` prop (renders the SAME icon/size/position, `disabled` + `aria-disabled`, dropdown
+  inert) so the skeleton can render it in place from first paint; the real, enabled toggle
+  replaces it the same way the rest of the header's content does.
+
+  Fixed a third, unrelated bug surfaced during the same investigation: the sidebar's
+  permission-filtered nav is resolved from `authPromise` exactly ONCE per server render
+  (`AuthedSidebar`'s `use()` call) and never re-evaluated afterward — a caller whose session
+  ended in ANOTHER tab (or expired) while this tab sat on an already-rendered admin page kept
+  seeing their stale, previously-authorized nav indefinitely, correcting only once some
+  navigation happened to occur (Next re-fetches the dynamic `/admin` layout, including a fresh
+  `authPromise`, on every navigation already — sign-out from the SAME tab was already fine,
+  since it hard-navigates). `@vexcms/next` gained `useNextAuthTransitionRefresh`, mounted by
+  `NextAdminLayoutClient`: it calls `router.refresh()` whenever `@vexcms/react`'s
+  `useAuthTransition()` — the SAME reactive identity signal `usePaginatedQuery`/
+  `useVexListQuery` already key their own stale-push detection off — reports the caller's
+  identity changed, with no navigation of its own to carry the refetch. `router.refresh()`
+  feeds `AdminLayout` a brand-new, still-pending `authPromise`, which re-suspends its existing
+  `<Suspense>` boundary to `AdminSidebarSkeleton` and then resolves under the CURRENT identity
+  — re-filtering the nav and re-persisting the sidebar section-count cookie for whoever is
+  signed in now, via the same existing mechanisms above.
+
+  Fixed a hydration mismatch on `ThemeToggle`'s icon surfaced by the skeleton change above
+  (adding a SECOND `ThemeToggle` instance to the loading fallback created a real risk the
+  generic `theme === "system"` coincidence previously masked): the icon now explicitly gates
+  on a new `mounted` flag (`ThemeProvider`'s context value) — `false` identically on the
+  server and the client's first render (it only ever flips inside an effect, same timing as
+  the `.dark` class itself), rendering the theme-neutral `"SunMoon"` icon until then,
+  regardless of `defaultTheme` or a persisted `localStorage` theme that differs from it.
+  Covered by a new `renderToString`-vs-`hydrateRoot` regression test
+  (`ThemeToggle.ssrHydration.test.tsx`) for both a persisted "dark" and "light" theme, and for
+  the disabled skeleton placeholder.
+
+### Patch Changes
+
+- 637ce11: Admin sign-out now lands immediately on a configurable destination instead of lingering on
+  the signed-out admin shell for seconds. `defineConfig()` gains a client-safe `auth.signOut.redirectTo`
+  option (default `"/"`) alongside the existing server-only `auth.adapter` — both resolve onto
+  the SAME `config.auth` group, merged by `defineServerConfig()` rather than replaced, so
+  `config.auth` is now always present (check `config.auth.adapter` to test whether an adapter
+  was registered, not `config.auth` itself).
+
+  `FrameworkAuthAdapter.signOut`'s contract changes: it must now sign out, then hard-navigate
+  (a full document load, never `router.push`/`router.refresh`/any client-side transition) to the
+  resolved `config.auth.signOut.redirectTo` once the session cookie clears. The admin shell must
+  never re-render in a signed-out state — a client-side refresh previously kept the sidebar/top
+  bar mounted while queries re-ran anonymously and the route guard redirected underneath it,
+  producing a multi-second "sidebar lingers, then a sign-in flash" sequence. `apps/test`,
+  `apps/www`, and the `base-nextjs` template's `BetterAuthClientProvider.signOut` all switch to
+  `window.location.href = config.auth.signOut.redirectTo`.
+
+  The same client/server navigation race affected sign-IN: the templates' shared
+  `AuthViewProvider` previously passed `router.push`/`router.replace` as `@daveyplate/better-auth-ui`'s
+  `navigate`/`replace`, with `onSessionChange: () => router.refresh()`. Because `router.refresh()`
+  returns no real promise, the library's `navigate(redirectTo)` call fired immediately after,
+  while the refresh's own RSC re-fetch for the pre-navigation route was still in flight — when
+  that refresh resolved after the push had already started (worse under a slow first compile),
+  Next's router could reconcile the stale pre-navigation tree over the pushed route: credentials
+  accepted, nothing visibly happened, yet the session was real (confirmed on back/forward).
+  `AuthViewProvider` now passes hard-navigating `navigate`/`replace` (`window.location.href`/`.replace`)
+  and drops `onSessionChange` entirely — there is no client-side router state left to race.
+
+- 637ce11: `AdminTopNav`'s top bar now shows the signed-in caller to the right of the sign-in/out
+  control, via a new reusable `UserDisplay` (`@vexcms/react`'s `ui/UserDisplay.tsx`): a small
+  circular avatar on the left plus a two-line name/email layout — name as the header line,
+  email underneath in muted/subheader text (email alone when no name is set; nothing when
+  neither is present). The avatar falls back through three tiers: the user's own `image`,
+  then the auth user collection's configured `admin.icon` (resolved from
+  `access.userCollectionSlug`), then a generic single-user icon. `UserDisplay` is
+  presentation-only (plain `name`/`email`/`image`/`fallbackIcon`/`className` props, no context
+  reads), so it is reusable anywhere a caller has already resolved those fields. Reads the
+  same `useVexAuth()` the sign-in/out control itself reads, so the two never disagree about
+  who is signed in, and renders nothing for every signed-out shape the control already treats
+  as signed out (`user === null` or `user.isAnonymous === true`).
+
+  The bar's vertical sizing is now `min-h-[67px]` with `items-center` (no `py-*`) — tuned so
+  the gap from the "Sign out"/"Sign in" control's own bottom edge to the bar's `border-b`
+  (measures ~16px) matches the gap from `CollectionEditView`/`GlobalEditView`'s document-title
+  header's `border-b` down to the TOP of its Preview/Save Draft/Unpublish button row (also
+  ~15.5px) — both real rendered box edges, not a text glyph's ink-top (an earlier attempt
+  matched the `<h1>`'s line-box top instead, which read visibly bigger despite a numerically
+  close gap, since a line box's top sits well above its glyphs' visible ink). Horizontal
+  padding is unchanged (`px-6`). Its content scaled up one design-token step to match: the
+  sign-in/out button and "View site" button from `default`/`icon` to `lg`/`icon-lg`, the
+  sidebar trigger from `icon-sm` to `icon`, the breadcrumb trail to `text-lg` with 16px crumb
+  icons (was 14px), and the breadcrumb dividers to 18px (was 16px). `AdminLayout`'s and
+  `AdminSidebar`'s own `SidebarHeader` (and its loading skeleton) now carry the same
+  `min-h-[67px]` (plus a `text-base` title) — the sidebar header's `border-b` line lines up
+  with the top bar's at the same height (one continuous divider across the sidebar and main
+  column). That header's OWN horizontal padding is `px-4` (16px each side), independent of
+  the top bar's `px-6` — sized instead against the sidebar header's own content: "VexCMS
+  Admin"'s rendered text left edge lines up exactly with "Collections"'s own rendered text
+  edge one level down in the nav, and the `ThemeToggle`'s right inset matches that same 16px.
+  `ThemeToggle` gained an optional `size` prop (forwarded to its underlying `Button`, default
+  `"icon"` unchanged) so `AdminSidebar` could bump it to `icon-lg` alongside everything else.
+
+  `AdminTopNav` now publishes its own measured rendered height as a `--vex-topbar-h` CSS
+  custom property on `document.documentElement` (a `ResizeObserver` on the `<header>`
+  itself, the same pattern `DataTable.tsx` already uses for `--vex-table-header-h`) — the
+  single source for any `position: fixed`/`position: absolute` overlay that must start
+  exactly at the top bar's bottom border. `ListViewPeek`'s desktop panel (the "Inspect" peek)
+  now reads `top-[var(--vex-topbar-h,67px)]` instead of a hardcoded `top-12` (48px) that
+  assumed the top bar's PRE-this-release height and silently went stale the moment the top
+  bar's own height changed, clipping the peek's title row behind it. The mobile bottom-sheet
+  shape's `top-10` is untouched — it's a deliberate decorative reveal strip (matching
+  `LivePreviewMobileOverlay`'s own bottom sheet), not derived from the top bar's height, so
+  it was never affected by this drift.
+
+  Fixed a PRE-EXISTING (predates this release's top-bar work) hydration mismatch in
+  `ListViewPeek`'s resize handle: `clampPeekWidth` branched on `typeof window === "undefined"`
+  DURING RENDER, so the server always rendered `aria-valuemax="9007199254740991"` while the
+  client rendered the real clamped value, mismatching on every deep-linked `?peek=<id>` load.
+  Fixed by seeding a `viewportWidth` state as `undefined` (identical on the server and the
+  client's first render — never a direct `window.innerWidth` read in render) and measuring
+  the real value in a `useEffect` after mount, kept live on resize — the same
+  seed-then-measure-after-mount shape `useLivePreviewPanelMinSize` already uses. No other
+  `position: fixed`/`position: absolute` overlay (the live-preview split panel, sheets) had
+  the same problem — both already measure post-mount.
+
+- 637ce11: Fixes the "Save blocked but nothing scrolled to the error" bug — three compounding gaps,
+  not just one:
+
+  - **`DocumentSaveAction`'s "Save"/"Save Draft" button never counted as a submit attempt.**
+    It performed its own `saveDraft`/`update`/`upsert` mutation directly and, on rejection,
+    called `applyVexFieldErrors` but never rethrew (`fix-silent-save-and-create-form`'s own
+    fix stopped there) — so TanStack Form's `submissionAttempts`/`isSubmitSuccessful` never
+    changed and `AppForm`'s `failedSubmitAttempt` effect (the only caller of
+    `focusFirstFieldError`) never ran, for ANY field, on ANY edit view, regardless of nesting.
+    The button now does only `form.handleSubmit()`; the versioned/non-versioned write itself
+    moved into `CollectionEditView`'s and `GlobalEditView`'s own `onSubmit` (now the single
+    path both this button and native submit share), each catching, applying, and rethrowing.
+    A bonus of routing through `handleSubmit()`: a client-side schema failure now blocks the
+    write before any network call, same as every other form in the app.
+  - **`applyVexFieldErrors` collapsed a nested server error onto the wrong (top-level) field.**
+    A Zod issue's `path` was joined down to `path[0]` only — an array item's own validation
+    failure (`["tagList", 0]`) landed on `tagList`'s meta, never `tagList[0]`'s. Now joins the
+    full path with the same `.key`/`[index]` convention every nested field registers under.
+  - **A primitive array item's own invalid state was never marked in the DOM.** Every other
+    leaf field gets a `[data-field-invalid]` wrapper from `RenderFields`'s `FieldSlotOutlet`;
+    `array()`'s scalar (non-group) item type mounted its admin field directly, bypassing it.
+    `focusFirstFieldError` could only ever resolve to the whole array, landing on whichever
+    control happened to be first in DOM order — now the item's own wrapper exists, so the
+    exact invalid item is what gets scrolled to and focused.
+
+- 637ce11: Fixed the list view peek (Inspect) panel's loading skeleton showing nearly nothing: the
+  `<Suspense>` fallback (`ListPeekPanel`'s own `document === undefined` branch, shown while a
+  deep-linked peek — one whose id isn't among the list's already-loaded rows — is still
+  fetching) used to render 5 structurally unrelated `Skeleton` bars with no header, no tabs,
+  and no field labels/keys at all, collapsing the header down to just the close button
+  (`titleValue` was `undefined` the same way a genuinely not-found document's is). Investigated
+  live on `:3020` (the "Fields" collection's own `Field Example` fixture) via a forced Suspense
+  path (a filtered list, then a client-side `peek=` navigation to an id excluded by that
+  filter), confirmed against `ListViewPeek.test.tsx`'s existing "suspends with the loading
+  skeleton" case.
+
+  `ListViewPeekFieldsTab` now accepts `document: TDocument | undefined` and renders the SAME
+  row list either way — ID (the real `peekId`, known synchronously, no fetch needed), Created
+  (when the system key is readable), then one row per `visibleFieldEntries` with its real
+  label/key — only swapping each row's VALUE slot for a `Skeleton` while `document` is still
+  pending. `ListPeekPanel`'s own content ternary collapsed from three branches to two (not-found
+  vs. everything else): the Fields/JSON tabs now mount identically whether pending or loaded,
+  so the fallback can never drift from the settled structure as a second, hand-maintained tree.
+  `ListViewPeekJsonTab` already carried its own independent `rawDocument`-pending skeleton, so
+  it needed no changes. `conditionFields` (`ListPeekPanel`) no longer blanket-returns `{}`
+  whenever `document` is `null`/`undefined` — it evaluates each field's `admin.condition`
+  against `{}` instead (`isFieldConditionMet` already returns `true` for any field with no
+  condition, regardless of `data`), so the common case (no conditional fields at all) resolves
+  its full field set during the Suspense fallback too.
+
+  Also fixed the header's own position text ("Field Example · 2 of 4") shifting the
+  `useAsTitle` title horizontally/vertically as it appeared — reproduced live by diffing the
+  title's own measured rect with/without that line present (a 6px vertical shift, 53px→49px
+  header height), since the title+position block had no reserved height and the header's
+  `items-center` re-centered it differently once the second line's row was added. The title
+  block now reserves a fixed `h-4` slot for the position line unconditionally — filled with the
+  real "N of M" string when settled with a known row index, a `Skeleton` while pending, or left
+  empty (reserved, not removed) for a settled deep-linked peek with no row list to wrap within
+  — so the title's own position is identical across all three states. The avatar and the
+  Edit/Previous/Next controls render in the same pending state too (Edit needs only
+  `peekId`/`collection.slug`, both already known before any fetch resolves).
+
+  Added structural-parity coverage (`ListViewPeek.test.tsx`): the pending state shows the same
+  labels/keys/tabs the settled state does (checked synchronously, before `waitFor`, and again
+  after resolution), and the position-text slot keeps its `h-4` reserved height across a real
+  string, a loading skeleton, and the empty no-row-list case.
+
+- 637ce11: Fix the collection list view's bulk/selection group shifting every other toolbar control, and
+  remove a broken "Select all N loaded" control.
+
+  **Selection-group ordering.** Selecting a row used to render the "N selected"/bulk-actions
+  group FIRST in `ListViewToolbar`'s row, pushing Search, Columns, Filter, the Filter chips,
+  `ListViewModifiedControls`, and the hidden-filter lock badge (`SavedListViewHiddenFilterBadge`)
+  all one group to the right — and back again on Clear. The bulk group now renders LAST among
+  every left-row child, after all of the above, in the same shared `flex-wrap` row they already
+  share (wrapping onto a new line on its own exactly like a filter chip does at narrow widths).
+  Nothing that existed before a selection ever moves when one appears or disappears.
+
+  **`CollectionListView` now forwards `rows` to `ListViewLayout`.** It always renders its own
+  `DataTable` through `tableSlot`, so `ListViewLayout`'s `rows` prop — the one `ListViewToolbar`'s
+  bulk bar reads for its loaded-row count — was never passed, silently defaulting to `[]`. The
+  bulk bar always read 0 loaded rows regardless of the real page size.
+
+  **Removed "Select all N loaded".** It was redundant with the `DataTable` header checkbox,
+  which already selects every loaded row, and inherited the above undercount bug. The bulk
+  group now shows only the selection count, `list.bulkActions` contributions, and Clear.
+
+- 637ce11: Live preview now survives navigation inside the preview. Once the gate opens through
+  `?vexLivePreview=1`, the provider names its window `LIVE_PREVIEW_WINDOW_NAME` (new in
+  `@vexcms/core`), and the gate accepts that name in place of the query param. Links, back/forward
+  and reloads inside the panel or pop-out tab keep the overlay on, and a freshly loaded page
+  announces itself with a ready message that every open edit view answers immediately. The
+  per-document mount handshake is gone.
+
+  New `useIsLivePreviewActive()` hook in `@vexcms/react`: the same gate the provider uses
+  (session-verified cookie plus the query param or the preview window name), `false` during
+  server render and hydration. Use it to pick a draft-reading query while previewing; it replaces
+  the per-app `useSitePreviewMode` copy.
+
+  `create-vexcms`: the `base-nextjs` template (and so `--bare`) now ships the preview wiring: the
+  `<LivePreviewProvider>` mount, `/api/vex/live-preview` (`createVexDraftModeRoute`), and the
+  proxy hand-off, which runs only for a verified session. It stays inert until a collection sets
+  `admin.livePreview.url`. The marketing-site template's `src/lib/useSitePreviewMode.ts` is
+  removed in favour of the hook.
+
+- 637ce11: Masked number inputs no longer reset the caret to the start of the field on every keystroke.
+  `resolveFieldMask` resolves a brand-new (but value-equal) mask object on every render, and
+  `useFieldMask`'s `useCallback` depended on that object by reference — so typing into a masked
+  `number()` field (e.g. `admin.mask: "decimal"`) tore down and re-initialized Inputmask after each
+  character, which reset `selectionStart` to `0` and inserted digits at the front instead of the end.
+  `useFieldMask` now memoizes the mask by a serialized value key, so Inputmask only reinitializes
+  when the mask's actual value changes, not on every re-render.
+- 637ce11: Fixed the media collection list view (`/admin/collections/<slug>` for an upload collection,
+  e.g. Images) widening the whole admin main column past the viewport — the table's left edge
+  pushed off-screen and the topbar got cut off on the right. `MediaCollectionListView` wrapped
+  its `DataTable` in a `grid place-items-center` container; as an uncentered grid item, `DataTable`
+  sized to its full unclamped intrinsic width (every column's declared/default pixel width summed)
+  and was then centered, overflowing the viewport equally on both sides whenever that sum exceeded
+  the available width — most visible for an anonymous session, which has no saved per-field
+  column-width cookie and so renders every column at its 192px default. The wrapper div is removed
+  (matching `CollectionListView`'s own un-wrapped `DataTable`); `DataTable`'s own root already
+  supplies the `rounded-md border` and owns its own horizontal scroll containment, so the table now
+  always scrolls inside its own frame instead of widening the page.
+- 637ce11: **Breaking: a populated relationship/upload target is now access-checked against its OWN
+  collection's `read` rule and field-permission map, instead of being returned unconditionally.**
+  `populateDocs` (used by `find`/`get`/`search`/`globals.get`, via `populate` and `depth`)
+  previously resolved every relationship/upload field's target id(s) with a raw, unchecked
+  `ctx.db` batch fetch — a caller who could read the document the field lives on got the full
+  target document back regardless of whether they could read the TARGET collection at all.
+  Populate now applies that target's own `read` rule (and field-permission map) exactly as a
+  direct `get({ collection: <target> })` would — resolved once per target collection per call,
+  then evaluated per document, since a per-document rule reads that document's own data:
+
+  - A target the caller may not read at all becomes a new `HiddenDocument` placeholder in its
+    place — `{ _id, code: "ACCESS_DENIED", resource, action: "read" }` — never the target's own
+    fields. The `Populated<...>` type now includes this placeholder in every populated array's
+    element type.
+  - A target the caller may read, but not every field on, keeps its denied fields stripped —
+    unchanged target shape, same `stripDeniedFields` treatment a direct read already gets.
+  - `access: { bypass: true }` on the top-level call still populates every target in full —
+    bypass propagates, it is never re-decided per target collection.
+  - Draft-exclusion behavior (a populated target's own `vex_status` filtering) is unchanged.
+
+  **Migration:** if your config declares `access` and a role could previously read a document
+  with a populated relationship/upload field pointing at a collection that role canNOT read,
+  that field's items are now `HiddenDocument` placeholders instead of full documents — audit
+  `access.ts` for any resource your roles read only _through_ a relationship, not directly, and
+  grant `read` on the target collection if the populated value should stay visible.
+
+  **Client (`@vexcms/react`):** the relationship field's list-view cell
+  (`fields/relationship/Cell.tsx`) and its read-only peek-panel display
+  (`fields/relationship/Display.tsx`) render a denied target as a locked row — reusing
+  `AccessDeniedItemRow` (full-width list cell) and a new compact `AccessDeniedChip` (inline
+  among the peek panel's other chips) instead of attempting the target's preview component on a
+  placeholder that carries none of its fields.
+
+- 637ce11: Relationship and upload item rows now render a neutral locked row (`Lock` icon, muted "Hidden {label}" text, and an `Info` tooltip button naming the denied `resource/action`) instead of the raw `VexAccessError` message in red, for a target document the viewer may not read. Non-access errors still render their raw message as before. The shared row lives in `access/AccessDeniedItemRow.tsx`, used by both `fields/relationship/FilledInput.tsx` and `fields/upload/FilledInput.tsx`.
+- 637ce11: `row()`'s `FormRow` now sizes each child's slot from its own live `admin.condition` instead of the static schema: a condition-hidden child reserves no slot and its visible siblings share the freed width, reactively re-flowing as the controlling sibling field changes. A row with every child condition-hidden still renders nothing. Previously a conditionally hidden child kept an empty reserved slot because widths were resolved before `FieldConditionGate` evaluated each child's condition deeper in the tree.
+- 637ce11: Field `Input` overrides keep their input mounted while typing. The `renderDefault` an override
+  receives was a new function every render (number fields built it inline), so an override that
+  rendered it as JSX remounted the real input and lost focus after each keystroke. `renderDefault`
+  now has a stable identity for every field type and always calls the latest control, so both
+  `renderDefault(props)` and `<RenderDefault {...props} />` are safe.
+
+  Masked number inputs are left-aligned like unmasked ones. Inputmask's numeric aliases
+  (`numeric`, `decimal`, `integer`, `currency`, `percentage`) right-align by default; field masks now
+  pass `rightAlign: false` unless a mask's own `options` say otherwise.
+
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+  - @vexcms/core@0.1.0-alpha.38
+  - @vexcms/better-auth@0.1.0-alpha.38
+
 ## 0.1.0-alpha.37
 
 ### Patch Changes

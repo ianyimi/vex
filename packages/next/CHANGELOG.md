@@ -1,5 +1,154 @@
 # @vexcms/admin-next
 
+## 0.1.0-alpha.38
+
+### Minor Changes
+
+- 637ce11: Fixed a layout shift on admin refresh: with the sidebar open, the Collections/Globals/Media
+  section headers and their items used to pop in after the server resolved the signed-in
+  caller — the `<Suspense>` fallback (`AdminSidebarSkeleton`) rendered one flat, unlabelled,
+  fixed 6-row placeholder regardless of how many items the settled, permission-filtered nav
+  was about to show, so a project with many collections (or a caller with few visible ones)
+  saw a large shape change the instant `authPromise` resolved.
+
+  The sidebar now remembers each section's own last-settled item count in the consolidated
+  `vex-admin` cookie's new `sidebarCounts` field (`@vexcms/core`'s
+  `parseSidebarSectionCountsCookie`/`applySidebarSectionCountsUpdate`, following the list
+  view's own row-count cookie conventions) — read server-side (`NextAdminLayout`) and
+  threaded through to `AdminSidebarSkeleton`, which renders the SAME per-section headers and
+  skeleton-row counts the real nav is about to settle with, falling back to the config's own
+  declared section sizes on a cookie-less first visit. A section settled at `0` items hides
+  its header on the next first paint too, the same way the real nav already does. Counts are
+  scoped per BROWSER (not per caller), so the very first load after a caller signs in may
+  still show their predecessor's count for one refresh, self-correcting from then on.
+  `AppSidebar` persists each section's real count via a new `writeSidebarSectionCountsCookie`
+  (`@vexcms/react`); `writeAdminCookie` gained a functional-patch form (matching
+  `writeAdminCollectionCookie`'s own) to support the merge.
+
+  Also fixed a second pop-in in the same header: the loading skeleton's `ThemeToggle` was
+  missing outright (only the "VexCMS Admin" label rendered), so the toggle button itself
+  appeared for the first time the moment the real sidebar mounted. `ThemeToggle` gained a
+  `disabled` prop (renders the SAME icon/size/position, `disabled` + `aria-disabled`, dropdown
+  inert) so the skeleton can render it in place from first paint; the real, enabled toggle
+  replaces it the same way the rest of the header's content does.
+
+  Fixed a third, unrelated bug surfaced during the same investigation: the sidebar's
+  permission-filtered nav is resolved from `authPromise` exactly ONCE per server render
+  (`AuthedSidebar`'s `use()` call) and never re-evaluated afterward — a caller whose session
+  ended in ANOTHER tab (or expired) while this tab sat on an already-rendered admin page kept
+  seeing their stale, previously-authorized nav indefinitely, correcting only once some
+  navigation happened to occur (Next re-fetches the dynamic `/admin` layout, including a fresh
+  `authPromise`, on every navigation already — sign-out from the SAME tab was already fine,
+  since it hard-navigates). `@vexcms/next` gained `useNextAuthTransitionRefresh`, mounted by
+  `NextAdminLayoutClient`: it calls `router.refresh()` whenever `@vexcms/react`'s
+  `useAuthTransition()` — the SAME reactive identity signal `usePaginatedQuery`/
+  `useVexListQuery` already key their own stale-push detection off — reports the caller's
+  identity changed, with no navigation of its own to carry the refetch. `router.refresh()`
+  feeds `AdminLayout` a brand-new, still-pending `authPromise`, which re-suspends its existing
+  `<Suspense>` boundary to `AdminSidebarSkeleton` and then resolves under the CURRENT identity
+  — re-filtering the nav and re-persisting the sidebar section-count cookie for whoever is
+  signed in now, via the same existing mechanisms above.
+
+  Fixed a hydration mismatch on `ThemeToggle`'s icon surfaced by the skeleton change above
+  (adding a SECOND `ThemeToggle` instance to the loading fallback created a real risk the
+  generic `theme === "system"` coincidence previously masked): the icon now explicitly gates
+  on a new `mounted` flag (`ThemeProvider`'s context value) — `false` identically on the
+  server and the client's first render (it only ever flips inside an effect, same timing as
+  the `.dark` class itself), rendering the theme-neutral `"SunMoon"` icon until then,
+  regardless of `defaultTheme` or a persisted `localStorage` theme that differs from it.
+  Covered by a new `renderToString`-vs-`hydrateRoot` regression test
+  (`ThemeToggle.ssrHydration.test.tsx`) for both a persisted "dark" and "light" theme, and for
+  the disabled skeleton placeholder.
+
+- 637ce11: Fixes a live-preview bug where signing out — in the pop-out preview tab, or in any tab
+  while a preview was open elsewhere — left the `__prerender_bypass` (Next Draft Mode)
+  and `vex-live-preview` marker cookies set. A public page's `getBySlugPreview` query,
+  now running for an anonymous caller, used to come back `[]` under those stale cookies,
+  so the page rendered its "not found"/welcome fallback instead of the published content.
+
+  **`getBySlugPreview` no longer denies the published row.** Every project's
+  `convex/pages.ts` and `convex/posts.ts` (apps, and the `create-vexcms` templates) passed
+  `drafts: true` alongside an explicit `access: { action: DRAFT_ACTIONS.readDrafts }` —
+  that override made `find`'s own published-row fallback run under the `readDrafts`
+  action too, so a caller without that permission (anonymous included) was denied the
+  query outright instead of falling back to the published row. Dropping the override
+  restores `find`'s normal per-caller behavior: a session with `readDrafts` still gets the
+  draft-merged row; everyone else gets the published row, or `[]` if none exists — never
+  draft content either way.
+
+  **New `@vexcms/next/livePreview/client` export: `disableLivePreview(path?)`.** Call it from
+  every sign-out entry point, alongside the existing identity-transition hook and before
+  the hard navigation/refresh that follows. It issues a same-origin, credentialed,
+  non-following `GET <path>?disable=1` (default path `/api/vex/live-preview`) against the
+  project's Draft Mode route, clearing both cookies. Fire-and-forget and never throws, so
+  a failed request can never block sign-out. `apps/www`, `apps/test`, and both
+  `create-vexcms` templates' sign-out wrappers (`BetterAuthClientProvider`'s `signOut`,
+  and `SessionButton`) now call it.
+
+  **New setting: `admin.livePreview.expiredSessions: "allow" | "deny"`** (default
+  `"allow"`, matching today's behavior). Setting it to `"deny"` closes the remaining gap
+  for a preview left open in an unrelated tab: every `proxy.ts` now checks the session
+  once on any request carrying either preview cookie — with or without
+  `?vexLivePreview=1` — and redirects an unauthenticated one through
+  `/api/vex/live-preview?disable=1&redirect=<path>` before it reaches your route
+  handlers, reloading the page published.
+
+### Patch Changes
+
+- 637ce11: Admin sign-out now lands immediately on a configurable destination instead of lingering on
+  the signed-out admin shell for seconds. `defineConfig()` gains a client-safe `auth.signOut.redirectTo`
+  option (default `"/"`) alongside the existing server-only `auth.adapter` — both resolve onto
+  the SAME `config.auth` group, merged by `defineServerConfig()` rather than replaced, so
+  `config.auth` is now always present (check `config.auth.adapter` to test whether an adapter
+  was registered, not `config.auth` itself).
+
+  `FrameworkAuthAdapter.signOut`'s contract changes: it must now sign out, then hard-navigate
+  (a full document load, never `router.push`/`router.refresh`/any client-side transition) to the
+  resolved `config.auth.signOut.redirectTo` once the session cookie clears. The admin shell must
+  never re-render in a signed-out state — a client-side refresh previously kept the sidebar/top
+  bar mounted while queries re-ran anonymously and the route guard redirected underneath it,
+  producing a multi-second "sidebar lingers, then a sign-in flash" sequence. `apps/test`,
+  `apps/www`, and the `base-nextjs` template's `BetterAuthClientProvider.signOut` all switch to
+  `window.location.href = config.auth.signOut.redirectTo`.
+
+  The same client/server navigation race affected sign-IN: the templates' shared
+  `AuthViewProvider` previously passed `router.push`/`router.replace` as `@daveyplate/better-auth-ui`'s
+  `navigate`/`replace`, with `onSessionChange: () => router.refresh()`. Because `router.refresh()`
+  returns no real promise, the library's `navigate(redirectTo)` call fired immediately after,
+  while the refresh's own RSC re-fetch for the pre-navigation route was still in flight — when
+  that refresh resolved after the push had already started (worse under a slow first compile),
+  Next's router could reconcile the stale pre-navigation tree over the pushed route: credentials
+  accepted, nothing visibly happened, yet the session was real (confirmed on back/forward).
+  `AuthViewProvider` now passes hard-navigating `navigate`/`replace` (`window.location.href`/`.replace`)
+  and drops `onSessionChange` entirely — there is no client-side router state left to race.
+
+- 637ce11: **Breaking:** `disableLivePreview` and `DEFAULT_LIVE_PREVIEW_ROUTE_PATH` move from
+  `@vexcms/next/livePreview` to the new client-safe `@vexcms/next/livePreview/client`. The
+  `livePreview` entry also exports `createVexDraftModeRoute`, which imports `next/headers`, so a
+  client component (a sign-out button) importing `disableLivePreview` from it failed `next build`.
+  Update the import path.
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+  - @vexcms/core@0.1.0-alpha.38
+  - @vexcms/react@0.1.0-alpha.38
+
 ## 0.1.0-alpha.37
 
 ### Patch Changes

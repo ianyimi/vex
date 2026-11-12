@@ -1,5 +1,271 @@
 # @vexcms/core
 
+## 0.1.0-alpha.38
+
+### Minor Changes
+
+- 637ce11: Fixed a layout shift on admin refresh: with the sidebar open, the Collections/Globals/Media
+  section headers and their items used to pop in after the server resolved the signed-in
+  caller — the `<Suspense>` fallback (`AdminSidebarSkeleton`) rendered one flat, unlabelled,
+  fixed 6-row placeholder regardless of how many items the settled, permission-filtered nav
+  was about to show, so a project with many collections (or a caller with few visible ones)
+  saw a large shape change the instant `authPromise` resolved.
+
+  The sidebar now remembers each section's own last-settled item count in the consolidated
+  `vex-admin` cookie's new `sidebarCounts` field (`@vexcms/core`'s
+  `parseSidebarSectionCountsCookie`/`applySidebarSectionCountsUpdate`, following the list
+  view's own row-count cookie conventions) — read server-side (`NextAdminLayout`) and
+  threaded through to `AdminSidebarSkeleton`, which renders the SAME per-section headers and
+  skeleton-row counts the real nav is about to settle with, falling back to the config's own
+  declared section sizes on a cookie-less first visit. A section settled at `0` items hides
+  its header on the next first paint too, the same way the real nav already does. Counts are
+  scoped per BROWSER (not per caller), so the very first load after a caller signs in may
+  still show their predecessor's count for one refresh, self-correcting from then on.
+  `AppSidebar` persists each section's real count via a new `writeSidebarSectionCountsCookie`
+  (`@vexcms/react`); `writeAdminCookie` gained a functional-patch form (matching
+  `writeAdminCollectionCookie`'s own) to support the merge.
+
+  Also fixed a second pop-in in the same header: the loading skeleton's `ThemeToggle` was
+  missing outright (only the "VexCMS Admin" label rendered), so the toggle button itself
+  appeared for the first time the moment the real sidebar mounted. `ThemeToggle` gained a
+  `disabled` prop (renders the SAME icon/size/position, `disabled` + `aria-disabled`, dropdown
+  inert) so the skeleton can render it in place from first paint; the real, enabled toggle
+  replaces it the same way the rest of the header's content does.
+
+  Fixed a third, unrelated bug surfaced during the same investigation: the sidebar's
+  permission-filtered nav is resolved from `authPromise` exactly ONCE per server render
+  (`AuthedSidebar`'s `use()` call) and never re-evaluated afterward — a caller whose session
+  ended in ANOTHER tab (or expired) while this tab sat on an already-rendered admin page kept
+  seeing their stale, previously-authorized nav indefinitely, correcting only once some
+  navigation happened to occur (Next re-fetches the dynamic `/admin` layout, including a fresh
+  `authPromise`, on every navigation already — sign-out from the SAME tab was already fine,
+  since it hard-navigates). `@vexcms/next` gained `useNextAuthTransitionRefresh`, mounted by
+  `NextAdminLayoutClient`: it calls `router.refresh()` whenever `@vexcms/react`'s
+  `useAuthTransition()` — the SAME reactive identity signal `usePaginatedQuery`/
+  `useVexListQuery` already key their own stale-push detection off — reports the caller's
+  identity changed, with no navigation of its own to carry the refetch. `router.refresh()`
+  feeds `AdminLayout` a brand-new, still-pending `authPromise`, which re-suspends its existing
+  `<Suspense>` boundary to `AdminSidebarSkeleton` and then resolves under the CURRENT identity
+  — re-filtering the nav and re-persisting the sidebar section-count cookie for whoever is
+  signed in now, via the same existing mechanisms above.
+
+  Fixed a hydration mismatch on `ThemeToggle`'s icon surfaced by the skeleton change above
+  (adding a SECOND `ThemeToggle` instance to the loading fallback created a real risk the
+  generic `theme === "system"` coincidence previously masked): the icon now explicitly gates
+  on a new `mounted` flag (`ThemeProvider`'s context value) — `false` identically on the
+  server and the client's first render (it only ever flips inside an effect, same timing as
+  the `.dark` class itself), rendering the theme-neutral `"SunMoon"` icon until then,
+  regardless of `defaultTheme` or a persisted `localStorage` theme that differs from it.
+  Covered by a new `renderToString`-vs-`hydrateRoot` regression test
+  (`ThemeToggle.ssrHydration.test.tsx`) for both a persisted "dark" and "light" theme, and for
+  the disabled skeleton placeholder.
+
+- 637ce11: Admin sign-out now lands immediately on a configurable destination instead of lingering on
+  the signed-out admin shell for seconds. `defineConfig()` gains a client-safe `auth.signOut.redirectTo`
+  option (default `"/"`) alongside the existing server-only `auth.adapter` — both resolve onto
+  the SAME `config.auth` group, merged by `defineServerConfig()` rather than replaced, so
+  `config.auth` is now always present (check `config.auth.adapter` to test whether an adapter
+  was registered, not `config.auth` itself).
+
+  `FrameworkAuthAdapter.signOut`'s contract changes: it must now sign out, then hard-navigate
+  (a full document load, never `router.push`/`router.refresh`/any client-side transition) to the
+  resolved `config.auth.signOut.redirectTo` once the session cookie clears. The admin shell must
+  never re-render in a signed-out state — a client-side refresh previously kept the sidebar/top
+  bar mounted while queries re-ran anonymously and the route guard redirected underneath it,
+  producing a multi-second "sidebar lingers, then a sign-in flash" sequence. `apps/test`,
+  `apps/www`, and the `base-nextjs` template's `BetterAuthClientProvider.signOut` all switch to
+  `window.location.href = config.auth.signOut.redirectTo`.
+
+  The same client/server navigation race affected sign-IN: the templates' shared
+  `AuthViewProvider` previously passed `router.push`/`router.replace` as `@daveyplate/better-auth-ui`'s
+  `navigate`/`replace`, with `onSessionChange: () => router.refresh()`. Because `router.refresh()`
+  returns no real promise, the library's `navigate(redirectTo)` call fired immediately after,
+  while the refresh's own RSC re-fetch for the pre-navigation route was still in flight — when
+  that refresh resolved after the push had already started (worse under a slow first compile),
+  Next's router could reconcile the stale pre-navigation tree over the pushed route: credentials
+  accepted, nothing visibly happened, yet the session was real (confirmed on back/forward).
+  `AuthViewProvider` now passes hard-navigating `navigate`/`replace` (`window.location.href`/`.replace`)
+  and drops `onSessionChange` entirely — there is no client-side router state left to race.
+
+- 637ce11: Fix `vex generate`d document interfaces losing a field's literal type under `Omit`/`Pick`.
+  Every generated interface (`export interface PostsDocument extends VexDocument { ... }`)
+  inherited `VexDocument`'s own `[key: string]: unknown` catch-all index signature — harmless
+  for direct property access (`doc.status` still returned the literal union), but an index
+  signature widens `keyof` to `string` for that interface, so `Omit<PostsDocument, "body">
+["status"]` degraded a literal union like `"draft" | "published"` to `unknown`.
+
+  Generated document interfaces now extend a new, closed `VexDocumentShape` (`_id`/
+  `_creationTime` only, no index signature) instead. `VexDocument` itself — and every other
+  type built on it (`TDocument`, `VexVersionDocument`, `VexMediaDocument`) — is unchanged and
+  still carries the permissive index signature every generic/pre-generation consumer needs
+  (`<T extends VexDocument>`/`<TData extends TDocument>` across `@vexcms/react`, a document
+  whose field names aren't statically known).
+
+  **BREAKING (type-level only, no runtime change):** a generated document is no longer
+  structurally assignable to a variable or parameter typed exactly `VexDocument`/`TDocument` —
+  TypeScript requires an explicit index signature for that direction of assignment, which a
+  closed interface no longer has. This was verified to have ZERO real call sites across
+  `@vexcms/core`, `@vexcms/react`, `@vexcms/next`, and both `apps/test`/`apps/www` (every
+  `<T extends VexDocument>` site in the admin panel receives its document generically, inferred
+  from loosely-typed runtime data, never a directly-typed concrete document) — a full
+  `pnpm typecheck` across the monorepo is clean. The two real sites that DID break were app-level
+  boundaries assigning a concrete generated document (`UserDocument`, `OrganizationDocument`)
+  into `VexApiAuth.user`/`.organization` (`Record<string, unknown>`-typed by design, for
+  `hasPermission`'s dynamic `user[access.userRolesField]` read) — fixed with an explicit
+  `as Record<string, unknown>` cast at that one boundary per app (`getUserOrgForVexApi` in
+  `apps/test`/`apps/www`'s own `auth/server.ts`), not a core change. If your own project assigns
+  a `vex generate`d document directly to `VexDocument`/`TDocument` (rather than letting a
+  generic parameter infer it), add the same cast at that boundary.
+
+  Run `vex generate` to regenerate `vex.types.ts` with the closed interfaces.
+
+- 637ce11: Fixes a live-preview bug where signing out — in the pop-out preview tab, or in any tab
+  while a preview was open elsewhere — left the `__prerender_bypass` (Next Draft Mode)
+  and `vex-live-preview` marker cookies set. A public page's `getBySlugPreview` query,
+  now running for an anonymous caller, used to come back `[]` under those stale cookies,
+  so the page rendered its "not found"/welcome fallback instead of the published content.
+
+  **`getBySlugPreview` no longer denies the published row.** Every project's
+  `convex/pages.ts` and `convex/posts.ts` (apps, and the `create-vexcms` templates) passed
+  `drafts: true` alongside an explicit `access: { action: DRAFT_ACTIONS.readDrafts }` —
+  that override made `find`'s own published-row fallback run under the `readDrafts`
+  action too, so a caller without that permission (anonymous included) was denied the
+  query outright instead of falling back to the published row. Dropping the override
+  restores `find`'s normal per-caller behavior: a session with `readDrafts` still gets the
+  draft-merged row; everyone else gets the published row, or `[]` if none exists — never
+  draft content either way.
+
+  **New `@vexcms/next/livePreview/client` export: `disableLivePreview(path?)`.** Call it from
+  every sign-out entry point, alongside the existing identity-transition hook and before
+  the hard navigation/refresh that follows. It issues a same-origin, credentialed,
+  non-following `GET <path>?disable=1` (default path `/api/vex/live-preview`) against the
+  project's Draft Mode route, clearing both cookies. Fire-and-forget and never throws, so
+  a failed request can never block sign-out. `apps/www`, `apps/test`, and both
+  `create-vexcms` templates' sign-out wrappers (`BetterAuthClientProvider`'s `signOut`,
+  and `SessionButton`) now call it.
+
+  **New setting: `admin.livePreview.expiredSessions: "allow" | "deny"`** (default
+  `"allow"`, matching today's behavior). Setting it to `"deny"` closes the remaining gap
+  for a preview left open in an unrelated tab: every `proxy.ts` now checks the session
+  once on any request carrying either preview cookie — with or without
+  `?vexLivePreview=1` — and redirects an unauthenticated one through
+  `/api/vex/live-preview?disable=1&redirect=<path>` before it reaches your route
+  handlers, reloading the page published.
+
+- 637ce11: `populate`/`depth` now reach a `relationship()`/`upload()` field nested inside a `blocks()`
+  block, an `array()` item, or a `group()` — not only top-level fields. The populate shape
+  mirrors the field tree: a `group()`/`array()` key nests directly (`{ seo: { ogImage: true } }`),
+  a `blocks()` key nests one level further, keyed by the block's own `blockType` slug
+  (`{ content: { hero: { image: true } } }`). `tabs()`/`row()`/`collapsible()` need no special
+  handling — their fields were already hoisted to the containing level.
+
+  The augmented `CollectionsPopulateMap` registry (emitted by `vex generate`, mirroring
+  `CollectionsFieldTypeMap`) drives both the compile-time `PopulateShape`/`Populated` types and
+  the runtime walk (`populateDocs`, `buildDepthPopulate`); every target collection's own read
+  rule, field-permission map, `HiddenDocument` placeholder, and draft exclusion apply to a
+  nested target exactly as they already did for a top-level one, batched per target collection
+  across EVERY nesting level in one call (never once per block/array item).
+
+  `PopulateShape<TCollectionSlug>` now also accepts a top-level `upload()` field key (previously
+  type-restricted to `relationship()` keys only, even though the runtime already resolved
+  `upload()` fields the same way).
+
+  **Depth cost:** crossing from one collection into a populated target's own relationships
+  costs one depth level, same as before. Descending through a `blocks()`/`array()`/`group()`
+  boundary within the SAME collection costs nothing.
+
+  Run `vex generate` (or `vex dev`) to refresh `vex.types.ts` with the new
+  `CollectionsPopulateMap` entries before nested populate type-checks in your project.
+
+### Patch Changes
+
+- 637ce11: A field's `validate()` gains `dependsOn`: other field keys whose change also re-runs this
+  field's validator on a partial write (`update`/`saveDraft`). Previously `validate()` only ran
+  for a field whose own key changed, so a validator checking ANOTHER field's value (a room/time
+  overlap check, an end date that must follow a start date) never re-ran when only that other
+  field changed. `dependsOn` only widens WHEN `validate()` runs — not what it validates: the
+  callback still only receives and reports on the field's own key/value, and is unaffected on
+  the strict pass (`create`/`publish`, where every field's own key is already in the changed
+  set). Resolved against the collection's/global's own top-level field keys — the same universe
+  `index`'s `additionalFields` checks against — and validated at `defineCollection`/
+  `defineGlobal` time: an unknown key throws a `VexConfigError`.
+- 637ce11: Fix `getGlobal` (and the `globals.get` client wrapper) losing a populated/depth-populated
+  relationship field's real target type. `GlobalPopulated` detected "is this a relationship
+  field" by checking whether the global's own declared field type was `string | undefined` —
+  a global relationship field is actually stored (and typed) as `Id<Target>[]`, same as a
+  collection's, so that check never matched and the branch that would have narrowed to the
+  resolved target document was unreachable: every populated global relationship resolved to
+  the widened `Record<string, unknown>[]` at the type level regardless of its real target,
+  even though the runtime always returned the correct document.
+
+  `GlobalPopulated` now resolves a populated global relationship to the real target
+  COLLECTION's document (`Populated`/`PopulateShape` from the collection side, recursed through
+  `{ populate }` the same way), and `GetGlobalReturn`'s `depth` branch — previously widened
+  outright (`VexDocumentGlobal & Record<string, unknown>`) — narrows the same way through a new
+  `GlobalDepthPopulate` type, which hands off into the target collection's own `DepthPopulate`
+  once it crosses from the global into a collection (so depth also reaches a target's own
+  nested `blocks()`/`array()`/`group()` fields).
+
+  No runtime change — `getGlobal`'s resolved values were already correct; only the compile-time
+  type is fixed.
+
+- 637ce11: Live preview now survives navigation inside the preview. Once the gate opens through
+  `?vexLivePreview=1`, the provider names its window `LIVE_PREVIEW_WINDOW_NAME` (new in
+  `@vexcms/core`), and the gate accepts that name in place of the query param. Links, back/forward
+  and reloads inside the panel or pop-out tab keep the overlay on, and a freshly loaded page
+  announces itself with a ready message that every open edit view answers immediately. The
+  per-document mount handshake is gone.
+
+  New `useIsLivePreviewActive()` hook in `@vexcms/react`: the same gate the provider uses
+  (session-verified cookie plus the query param or the preview window name), `false` during
+  server render and hydration. Use it to pick a draft-reading query while previewing; it replaces
+  the per-app `useSitePreviewMode` copy.
+
+  `create-vexcms`: the `base-nextjs` template (and so `--bare`) now ships the preview wiring: the
+  `<LivePreviewProvider>` mount, `/api/vex/live-preview` (`createVexDraftModeRoute`), and the
+  proxy hand-off, which runs only for a verified session. It stays inert until a collection sets
+  `admin.livePreview.url`. The marketing-site template's `src/lib/useSitePreviewMode.ts` is
+  removed in favour of the hook.
+
+- 637ce11: **Breaking: a populated relationship/upload target is now access-checked against its OWN
+  collection's `read` rule and field-permission map, instead of being returned unconditionally.**
+  `populateDocs` (used by `find`/`get`/`search`/`globals.get`, via `populate` and `depth`)
+  previously resolved every relationship/upload field's target id(s) with a raw, unchecked
+  `ctx.db` batch fetch — a caller who could read the document the field lives on got the full
+  target document back regardless of whether they could read the TARGET collection at all.
+  Populate now applies that target's own `read` rule (and field-permission map) exactly as a
+  direct `get({ collection: <target> })` would — resolved once per target collection per call,
+  then evaluated per document, since a per-document rule reads that document's own data:
+
+  - A target the caller may not read at all becomes a new `HiddenDocument` placeholder in its
+    place — `{ _id, code: "ACCESS_DENIED", resource, action: "read" }` — never the target's own
+    fields. The `Populated<...>` type now includes this placeholder in every populated array's
+    element type.
+  - A target the caller may read, but not every field on, keeps its denied fields stripped —
+    unchanged target shape, same `stripDeniedFields` treatment a direct read already gets.
+  - `access: { bypass: true }` on the top-level call still populates every target in full —
+    bypass propagates, it is never re-decided per target collection.
+  - Draft-exclusion behavior (a populated target's own `vex_status` filtering) is unchanged.
+
+  **Migration:** if your config declares `access` and a role could previously read a document
+  with a populated relationship/upload field pointing at a collection that role canNOT read,
+  that field's items are now `HiddenDocument` placeholders instead of full documents — audit
+  `access.ts` for any resource your roles read only _through_ a relationship, not directly, and
+  grant `read` on the target collection if the populated value should stay visible.
+
+  **Client (`@vexcms/react`):** the relationship field's list-view cell
+  (`fields/relationship/Cell.tsx`) and its read-only peek-panel display
+  (`fields/relationship/Display.tsx`) render a denied target as a locked row — reusing
+  `AccessDeniedItemRow` (full-width list cell) and a new compact `AccessDeniedChip` (inline
+  among the peek panel's other chips) instead of attempting the target's preview component on a
+  placeholder that carries none of its fields.
+
+- 637ce11: Owner-scoped `publish` rules now work on a document's first-ever publish. `publish` authorized
+  against the published row's fields, which don't exist before the first publish, so an owner rule
+  reading the stored document (`data.author`) saw `{}` and denied every first publish while allowing
+  republishes. Authorization now falls back to the draft row — the same row `saveDraft` already
+  authorizes against — when no published row exists; republish behavior is unchanged.
+
 ## 0.1.0-alpha.37
 
 ### Patch Changes

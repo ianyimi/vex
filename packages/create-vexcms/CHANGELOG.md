@@ -1,5 +1,68 @@
 # create-vexcms
 
+## 0.1.0-alpha.38
+
+### Patch Changes
+
+- 637ce11: **Fix (regression from the raw-API `config`-required change):** `convex/auth/api.ts`'s
+  `getUserOrg` resolves WHO the caller is — it reads the session/user/organization rows
+  by the Convex-identity-supplied ids before any permission check can even run — so its
+  three `get()` calls now pass `access: { bypass: true }`, in `apps/www`, `apps/test` and
+  the `base-nextjs` template. Once those calls started threading a real `config` (required
+  per the raw-API change), the deny-by-default access posture applied to them too: `session`/
+  `user`/`organization` are never declared `defineAccess` resources, so every caller — admin
+  included — was denied and the admin panel became unreachable on a fresh scaffold.
+- 637ce11: Live preview now survives navigation inside the preview. Once the gate opens through
+  `?vexLivePreview=1`, the provider names its window `LIVE_PREVIEW_WINDOW_NAME` (new in
+  `@vexcms/core`), and the gate accepts that name in place of the query param. Links, back/forward
+  and reloads inside the panel or pop-out tab keep the overlay on, and a freshly loaded page
+  announces itself with a ready message that every open edit view answers immediately. The
+  per-document mount handshake is gone.
+
+  New `useIsLivePreviewActive()` hook in `@vexcms/react`: the same gate the provider uses
+  (session-verified cookie plus the query param or the preview window name), `false` during
+  server render and hydration. Use it to pick a draft-reading query while previewing; it replaces
+  the per-app `useSitePreviewMode` copy.
+
+  `create-vexcms`: the `base-nextjs` template (and so `--bare`) now ships the preview wiring: the
+  `<LivePreviewProvider>` mount, `/api/vex/live-preview` (`createVexDraftModeRoute`), and the
+  proxy hand-off, which runs only for a verified session. It stays inert until a collection sets
+  `admin.livePreview.url`. The marketing-site template's `src/lib/useSitePreviewMode.ts` is
+  removed in favour of the hook.
+
+- 637ce11: Fixes a live-preview bug where signing out — in the pop-out preview tab, or in any tab
+  while a preview was open elsewhere — left the `__prerender_bypass` (Next Draft Mode)
+  and `vex-live-preview` marker cookies set. A public page's `getBySlugPreview` query,
+  now running for an anonymous caller, used to come back `[]` under those stale cookies,
+  so the page rendered its "not found"/welcome fallback instead of the published content.
+
+  **`getBySlugPreview` no longer denies the published row.** Every project's
+  `convex/pages.ts` and `convex/posts.ts` (apps, and the `create-vexcms` templates) passed
+  `drafts: true` alongside an explicit `access: { action: DRAFT_ACTIONS.readDrafts }` —
+  that override made `find`'s own published-row fallback run under the `readDrafts`
+  action too, so a caller without that permission (anonymous included) was denied the
+  query outright instead of falling back to the published row. Dropping the override
+  restores `find`'s normal per-caller behavior: a session with `readDrafts` still gets the
+  draft-merged row; everyone else gets the published row, or `[]` if none exists — never
+  draft content either way.
+
+  **New `@vexcms/next/livePreview/client` export: `disableLivePreview(path?)`.** Call it from
+  every sign-out entry point, alongside the existing identity-transition hook and before
+  the hard navigation/refresh that follows. It issues a same-origin, credentialed,
+  non-following `GET <path>?disable=1` (default path `/api/vex/live-preview`) against the
+  project's Draft Mode route, clearing both cookies. Fire-and-forget and never throws, so
+  a failed request can never block sign-out. `apps/www`, `apps/test`, and both
+  `create-vexcms` templates' sign-out wrappers (`BetterAuthClientProvider`'s `signOut`,
+  and `SessionButton`) now call it.
+
+  **New setting: `admin.livePreview.expiredSessions: "allow" | "deny"`** (default
+  `"allow"`, matching today's behavior). Setting it to `"deny"` closes the remaining gap
+  for a preview left open in an unrelated tab: every `proxy.ts` now checks the session
+  once on any request carrying either preview cookie — with or without
+  `?vexLivePreview=1` — and redirects an unauthenticated one through
+  `/api/vex/live-preview?disable=1&redirect=<path>` before it reaches your route
+  handlers, reloading the page published.
+
 ## 0.1.0-alpha.37
 
 ### Patch Changes

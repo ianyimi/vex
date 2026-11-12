@@ -1,5 +1,37 @@
 # www
 
+## 0.1.0-alpha.38
+
+### Patch Changes
+
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+- Updated dependencies [637ce11]
+  - @vexcms/core@0.1.0-alpha.38
+  - @vexcms/react@0.1.0-alpha.38
+  - @vexcms/next@0.1.0-alpha.38
+  - @vexcms/better-auth@0.1.0-alpha.38
+  - @vexcms/file-storage-convex@0.1.0-alpha.38
+  - @vexcms/richtext-plate@0.1.0-alpha.38
+
 ## 0.1.0-alpha.37
 
 ### Patch Changes
