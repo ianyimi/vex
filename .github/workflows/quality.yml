@@ -87,11 +87,16 @@ jobs:
           echo "::error::${{ needs.resolve.outputs.reason }}"
           exit 1
 
+      - name: Checkout
+        if: env.QUALITY_TARGET == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.QUALITY_REF }}
+
       - name: Setup
         if: env.QUALITY_TARGET == 'true'
         uses: ./.github/actions/quality-setup
         with:
-          ref: ${{ env.QUALITY_REF }}
           playwright: "true"
 
       - name: Write audit summary
@@ -159,11 +164,15 @@ jobs:
           echo "::error::${{ needs.resolve.outputs.reason }}"
           exit 1
 
+      - name: Checkout
+        if: env.QUALITY_TARGET == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.QUALITY_REF }}
+
       - name: Setup
         if: env.QUALITY_TARGET == 'true'
         uses: ./.github/actions/quality-setup
-        with:
-          ref: ${{ env.QUALITY_REF }}
 
       - name: Write audit summary
         if: env.QUALITY_TARGET == 'true' && github.event_name == 'pull_request'

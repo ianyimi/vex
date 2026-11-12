@@ -1,10 +1,7 @@
 name: "Quality suite setup"
-description: "Checks out the audited commit and installs the toolchain shared by the axe and lighthouse jobs"
+description: "Installs the toolchain shared by the axe and lighthouse jobs (the caller checks out the audited commit first: a local action can only load after checkout)"
 
 inputs:
-  ref:
-    description: "Commit SHA to check out"
-    required: true
   playwright:
     description: "Whether to install the Playwright Chromium browser (axe suite only)"
     required: false
@@ -13,11 +10,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Checkout
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        ref: ${{ inputs.ref }}
-
     - name: Setup pnpm
       uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
