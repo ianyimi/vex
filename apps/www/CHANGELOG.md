@@ -1,5 +1,28 @@
 # www
 
+## 0.1.0-alpha.39
+
+### Patch Changes
+
+- Updated dependencies [dc4302b]
+- Updated dependencies [dc4302b]
+- Updated dependencies [dc4302b]
+- Updated dependencies [46ad684]
+- Updated dependencies [dc4302b]
+- Updated dependencies [dc4302b]
+- Updated dependencies [dc4302b]
+- Updated dependencies [dc4302b]
+- Updated dependencies [dc4302b]
+- Updated dependencies [dc4302b]
+- Updated dependencies [dc4302b]
+- Updated dependencies [dc4302b]
+  - @vexcms/react@0.1.0-alpha.39
+  - @vexcms/next@0.1.0-alpha.39
+  - @vexcms/core@0.1.0-alpha.39
+  - @vexcms/file-storage-convex@0.1.0-alpha.39
+  - @vexcms/richtext-plate@0.1.0-alpha.39
+  - @vexcms/better-auth@0.1.0-alpha.39
+
 ## 0.1.0-alpha.38
 
 ### Patch Changes

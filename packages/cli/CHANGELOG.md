@@ -1,5 +1,7 @@
 # @vexcms/cli
 
+## 0.1.0-alpha.39
+
 ## 0.1.0-alpha.38
 
 ### Patch Changes

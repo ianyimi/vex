@@ -1,5 +1,244 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.39
+
+### Patch Changes
+
+- dc4302b: Two developer-reported `useNextAuthTransitionRefresh` (`@vexcms/next`) races fixed:
+
+  1. **Admin sidebar flash on every page load.** `AuthTransitionProvider`'s `expectedIdentity`
+     (`@vexcms/react`) always starts `null`; an already-signed-in caller's own
+     `authClient.useSession()` watcher resolves asynchronously a tick after mount, producing a
+     `null → <id>` "bootstrap" transition on effectively every `/admin` load even though the
+     SSR'd page already reflects that identity. `useNextAuthTransitionRefresh` treated this as a
+     real change and called `router.refresh()`, re-suspending the sidebar's `<Suspense>`
+     boundary right after first paint — the sidebar settles, then visibly re-flashes. The hook
+     now exempts exactly this one bootstrap transition (the first observed, only when moving
+     away from the unresolved `null` baseline) while still refreshing for every later
+     transition, including a later `<id> → null` (the hook's actual purpose: another tab signing
+     out, or a session dying while this tab sits idle).
+  2. **Sign-out: admin shell lingers, sign-in page flashes, before the real destination lands.**
+     A same-tab sign-out's `beginTransition(null)` call (made synchronously, before the sign-out
+     adapter's own hard navigation, which only runs after an async `signOut()` round trip)
+     ALSO triggered this hook's `router.refresh()` — a soft, client-side re-render of the now
+     signed-out admin route that can complete, redirect to the sign-in route via the admin's own
+     guard, and paint, all before the hard navigation takes over. `AuthTransitionState.beginTransition`
+     (`@vexcms/react`) gains an optional second argument, `{ skipRefresh?: boolean }`; a new
+     `AuthTransitionState.consumeSkipRefresh()` lets `useNextAuthTransitionRefresh` skip its own
+     refresh for a transition the caller already knows triggers its own navigation.
+     `VexAdminAuthAdapterContext`'s documented `signOut` contract (`@vexcms/next`) now calls
+     `beginTransition(null, { skipRefresh: true })`; `create-vexcms`'s `base-nextjs` template and
+     `apps/test`/`apps/www` are updated to match.
+
+  **Breaking:** none — `options` is optional; every existing `beginTransition(identity)` call
+  site keeps working unchanged.
+
+- dc4302b: `useCanAccessAdminPanel()` now works on public pages, not just inside `/admin`.
+
+  **Root cause.** The hook read `VexAuthContext`, seeded only by `VexAuthProvider` in the
+  admin server layout — on a site header (every public route) no provider was mounted, so
+  the hook silently returned `false` for every visitor, including a real signed-in admin.
+  `create-vexcms`'s `marketing-site` template hit this directly: its seeded header called the
+  hook to gate an "Admin" link, and the link could never render for anyone.
+
+  **Fix.** The hook now resolves the caller from either of two sources, picked by whether a
+  `VexAuthProvider` ancestor exists:
+
+  - **Inside `/admin`** — unchanged: the server-resolved `{ user, organization }`
+    `VexAuthProvider` seeds, synchronous, `isPending` always `false`.
+  - **Outside `/admin`** — new `VexSessionAdapterProvider`/`VexSessionAdapter`, a thin bridge
+    around the host app's own reactive client session (Better Auth's
+    `authClient.useSession()`, typically), mounted once at the app root beside the existing
+    root `VexConfigProvider` (which already carries `access` to every route per P-004).
+
+  **Breaking:** the hook now returns `{ canAccess: boolean; isPending: boolean }` instead of a
+  plain `boolean` — a public-page caller resolves asynchronously, so a header has to decide
+  what to render _before_ the session settles. Reserve the link's own fixed-size slot
+  invisibly (`aria-hidden`, same classes, no text) while `isPending`, instead of omitting it,
+  so the link never pops in after the rest of the header has already painted (zero layout
+  shift) — the same "always occupy the slot" treatment `SessionButton`-style sign-in/out
+  controls already use. Both branches still fail closed: no access config, no adapter
+  mounted, a resolved signed-out caller, or a resolved role lacking `adminPanel.access` all
+  answer `{ canAccess: false, isPending: false }`.
+
+  `apps/test`, `apps/www`, and both `create-vexcms` templates (`base-nextjs`,
+  `marketing-site`) now mount `VexSessionAdapterProvider` at the app root. The
+  `marketing-site` template's seeded header updates to the new tri-state return and the
+  zero-layout-shift placeholder.
+
+- dc4302b: `isHiddenDocument` is now exported from `@vexcms/core` — a generic `isHiddenDocument<T>(value: T | HiddenDocument): value is HiddenDocument` type predicate that narrows a populated `Doc | HiddenDocument` union both ways (to `HiddenDocument` in the `true` branch, back to `T` in the `false` branch, no cast needed on either side).
+
+  Previously this guard was declared privately five times — once in `@vexcms/core`'s own `populateDocs` (`db/populate.ts`), and once each in `@vexcms/react`'s relationship/upload `Cell.tsx`/`Display.tsx` — every copy typed `value: unknown`, so consumers outside the library (example apps rendering a populated field) couldn't reuse it and had to hand-write their own `ACCESS_DENIED` guard instead. All five private copies now import the shared `@vexcms/core` export.
+
+- 46ad684: Fixed a latent race in `usePaginatedQuery`, `useVexListQuery`'s search-mode branch, and `usePaginatedSearch`: `isPending` used to come straight off TanStack Query's own raw fetch status, which can flip to `false` one render before the hook's own sync effect has actually committed the resolved page into `results`/`documents` — a real render with `isPending: false` and an empty array even though the query has rows. Rare locally, but reliable on a slower CI runner (surfaced as a flaky `useSavedListViews.loadMoreParity.test.tsx` failure). `isPending` now stays `true` until the first page for the current query identity has genuinely been committed; Load More, view/sort/filter switches, and auth transitions keep their existing "dim the current rows, don't skeleton" behavior unchanged.
+- dc4302b: Bumped `patch` despite being breaking, per this track's own `config-client-server-split`
+  convention — see that changeset's note on the `alpha` pre-release base.
+
+  **Breaking:** `useLivePreviewQuery`'s and `useLivePreviewDocumentQuery`'s overridable `TData`
+  generic no longer `extends` the raw `DocumentByResourceSlug<TCollectionSlug>[]`/
+  `DocumentByResourceSlug<TCollectionSlug> | null`. A `populate`-resolved Convex query handler
+  can (and routinely does) declare a return type like `Promise<PopulatedHeadersDocument>` whose
+  fields are never assignable to their raw, un-populated counterparts — an upload/relationship
+  field resolves to the real referenced document (`logoImage: Image[]`), not the `Id<"images">[]`
+  the raw generated interface still declares. The CONSTRAINED override generic added by
+  `react-theme-region-scope-and-live-preview-inference` rejected exactly the populated types it
+  exists for, so every consumer backing either hook with a populated query still needed
+  `convexQuery(...) as never` on the call and a second cast on the destructured result — the
+  `alpha38-replay.md` note calling this "a different, still-open gap … confirmed NOT fixed" is
+  now resolved.
+
+  `TData` still defaults to the raw document type when not given explicitly, so every
+  unparameterized call site is source-compatible. `LivePreviewQueryResult`'s/
+  `LivePreviewDocumentQueryResult`'s `data` field now derives from `TData` (`TData[number]`/
+  `Exclude<TData, null>`) instead of always being the raw document, so a consumer overriding
+  `TData` gets the destructured result correctly typed too — no second cast.
+
+  ```tsx
+  const { data: header } = useLivePreviewDocumentQuery<
+    "headers",
+    PopulatedHeadersDocument | null
+  >({ ...convexQuery(api.headers.getFirst, {}), initialData }, "headers");
+  // `header` is `PopulatedHeadersDocument | undefined` — no cast on the call or the result.
+  ```
+
+  No runtime change.
+
+- dc4302b: Read-only fields now mute their filled values, matching the existing muted label treatment
+  (the same `opacity-50` a disabled label/input already gets). A relationship field's single
+  or `hasMany` item name text, an upload field's filename/alt text, a rich text field's
+  rendered content, a blocks field's block-type badge, and a select field's chip/tag text all
+  dim to `opacity-50` when their field is read-only — the relationship/upload thumbnail image
+  and the color field's swatch block are deliberately left untouched. The JSON/code editor's
+  own read-only dimming is corrected from `opacity-80` to the same `opacity-50` every other
+  read-only control uses. The date and color fields already muted their filled value correctly
+  (a `disabled`-styled native `<input>`/trigger) and needed no change.
+- dc4302b: Fixed the relationship picker modal reopening itself immediately after the first
+  selection on a freshly loaded document/global form.
+
+  Root cause: every `relationship()` field's picker dialog shares the exact same
+  `MODALS.relationshipPicker` nuqs url key (only the value — the open field's own
+  name — distinguishes which one is open), so a document with more than one
+  `relationship()` field (e.g. `siteSettings.activeTheme` + `siteSettings.adminTheme`,
+  both pointed at `themes`) has multiple independent `useQueryState` subscriptions
+  to that same key. `RelationshipFieldAdmin`'s `handleSelect` (`fields/relationship/Field.tsx`)
+  called `field.handleChange(ids)` — which flips the form from pristine to dirty and
+  re-renders every sibling field on the page — BEFORE `closePicker()`'s url-clearing
+  write had settled (`void closePicker()`, never awaited). A sibling relationship
+  field's own query-state subscription could resync from that still-stale "open" url
+  during the resulting re-render cascade, reopening the dialog moments after it
+  closed. Reproduced only on a freshly loaded page (an already-warm page settles the
+  write well within a render cycle); closing it again, and every subsequent
+  selection, always worked.
+
+  `handleSelect` now `await`s `closePicker()` fully before calling
+  `field.handleChange`, so the picker's url is already cleared by the time any
+  sibling field re-renders.
+
+- dc4302b: **Fixed: a saved view's hidden-filter lock badge now only covers conditions on fields the
+  current caller can't read — a condition on a READABLE field is always shown as a filter chip,
+  whether or not some OTHER condition in the same view names an unreadable one.**
+
+  Previously, a `config`/`default` view's `hasHiddenFilter`/`hiddenFilterCount`
+  (`toClientSavedListViewConfig`) treated ANY declared `where` as fully hidden, by design,
+  regardless of field readability — a view filtering on a perfectly readable field (e.g. a
+  preset "Active" tab filtering on `status`) showed the lock badge with nothing to actually
+  explain. A `shared` view's own saved filter (`useSavedListViews`'s `toEntry`) had the opposite
+  bug: it DID check readability, but all-or-nothing — one unreadable condition anywhere in the
+  tree hid the WHOLE tree, including sibling conditions on fields the caller could read.
+
+  Both now split the `where` tree leaf-by-leaf via a new shared `splitWhereByReadability`
+  (`@vexcms/core`): every condition on a readable field survives into a new `visibleWhere`
+  field on `VexClientViewConfig`/`SavedListViewEntry`, and only the truly unreadable conditions
+  are counted into `hiddenFilterCount`. An `and` node splits per child; an `or`/`not` node is
+  shown or hidden as a whole (splitting a single branch out of an `or` would misrepresent what
+  the query actually matches).
+
+  **Client:** `toClientSavedListViewConfig` now takes a required `isFieldReadable` predicate
+  (previously computed its all-or-nothing result with no readability check at all).
+  `@vexcms/react`'s `ListViewFilterChips` gained a `lockedWhere` prop — a `config`/`default`
+  view's own readable condition(s) now render as non-removable, locked chips (with a small
+  lock icon) alongside the normal editable ones, via a new `ListViewContext.lockedFilterWhere`.
+  A new `isFieldReadable(resolved, field)` export on `@vexcms/core`'s `access` module
+  (`ALWAYS_READABLE_FIELD_KEYS` + `isFieldAllowed`) backs both this and the existing
+  `useCanReadField` hook, which now calls it instead of re-implementing the same check.
+
+- dc4302b: `ThemeProvider`'s `mounted`-flip effect (gates `ThemeToggle`'s enable/icon-switch) now runs
+  via a plain `useEffect` instead of `useIsomorphicLayoutEffect`/`useLayoutEffect`. Developer-
+  reported bug: on a real streamed admin page (sidebar resolved via `use(authPromise)` inside a
+  `<Suspense>` boundary), `ThemeToggle` stayed disabled indefinitely even once the real,
+  permission-filtered nav had settled — `mounted` never flipped, reproducible only with a real
+  streamed/hydrated render (never with a synchronous CSR-only render). A layout effect is
+  scheduled as part of the same commit as any sibling Suspense boundary and React defers/re-
+  fires layout effects around that boundary's reveal; a passive effect is not. This specific
+  effect has no paint-timing requirement (`ThemeToggle`'s own doc comment: the enable/icon-
+  switch is never visible as a layout shift), so there is no correctness cost to the swap. The
+  theme-class-applying effect (FOUC-sensitive) stays a layout effect.
+- dc4302b: Bumped `patch` despite being breaking, per this track's own `config-client-server-split`
+  convention — see that changeset's note on the `alpha` pre-release base.
+
+  `@vexcms/core` now exports `vexFindQuery`/`vexGetQuery`/`vexSearchQuery` — typed, zero-cast
+  direct network calls to `find`/`get`/`search` for any plain `{ query(ref, args) }` client
+  (`VexServerClient` from `@vexcms/next`, `ConvexHttpClient`, `ConvexReactClient`), mirroring
+  `@vexcms/react/client`'s `find`/`get`/`search` without a TanStack Query dependency. Also
+  exports the underlying `findFuncRef`/`getFuncRef`/`searchFuncRef`/`buildFindArgs`/
+  `buildSearchArgs`/`buildGetQuery` builders and the `FindClientArgs`/`FindClientPaginatedArgs`/
+  `GetClientArgs`/`SearchClientArgs`/`SearchClientPaginatedArgs`/`VexNetworkQueryClient` types
+  (moved here from `@vexcms/react`, which now re-exports them for backwards compatibility).
+  `@vexcms/react/client`'s `find`/`get`/`search` are unchanged at the call site; internally
+  they now delegate to the same core builders instead of duplicating the funcRef cast.
+
+  **Breaking:** `buildThemeCss`'s `theme` prop is now typed `object` instead of
+  `Record<string, unknown>` — a closed, generated per-collection document (`vex generate`'s
+  `ThemeDocument extends VexDocumentShape`, no index signature) was never assignable to
+  `Record<string, unknown>` even though every property is `unknown`-compatible; callers reading
+  a real generated `Theme` document needed `theme as Record<string, unknown>` to call this. The
+  `Record<string, unknown>` cast moved inside `buildThemeCss` itself. No runtime change.
+
+  `AccessIndexedFieldWithValue<S, V>` now intersects its output with
+  `AccessIndexedFieldFor<S>`, so a field it resolves is provably assignable where
+  `AccessIndexedFieldFor<S>` is expected (`readWhere`/`indexedEqCheck`'s own `field` param) —
+  previously this required a cast at the call site (an unbound generic `F` couldn't be proven
+  to extend `AccessIndexedFieldFor<S>` without evaluating the mapped type). No runtime change.
+
+- dc4302b: Fixed layout shift on edit-view refresh for `upload`/`relationship` fields (single and
+  `hasMany`), verified live against `apps/test`: the pending-row skeleton no longer resizes once
+  the referenced document loads.
+
+  `FilePreview`'s `mediaDoc` prop is now optional — passing no doc (or `isPending`) renders its
+  existing spinner through the exact same sized/radius'd wrapper box the settled thumbnail uses,
+  instead of callers keeping a second, hand-sized `<Skeleton>` in sync with it. `UploadItemRow`
+  had drifted to `h-12 w-12` (48px) for that second skeleton against the real thumbnail's
+  `size={44}` (44px) — a real, reported 4px shift on every upload row once its media doc
+  resolved. It now renders `FilePreview` unconditionally (pending or settled) for an always-
+  identical box (measured live: 48px row height, zero delta across reload), and its
+  filename/mimetype/ALT-tag skeletons reuse the settled row's exact wrapper classes (`truncate
+text-sm`/`text-xs`, the real `@lg/form`-responsive ALT wrapper, the real `InputTag`), with
+  `inline-block` skeleton placeholders so each line's height comes from the same
+  `text-sm`/`text-xs` font-metric strut the real text uses — never a separately maintained pixel
+  guess.
+
+  `RelationshipItemRow`'s pending state previously reserved a `h-10 w-10` square thumbnail slot
+  that the settled row never actually has (relationship rows render title/updated-at text only,
+  no image) — a layout shift in both directions depending on content length. It now renders the
+  same `flex flex-col py-1.5` text box in both states, with the collection icon (config-known,
+  not document-dependent) rendered for real pre-resolve too, and the title/updated-at lines'
+  presence driven by the same config-known slots. The title skeleton mirrors the settled `Default
+RelationshipPreview`'s exact nesting — an outer `truncate` span wrapping an inner `text-[13px]`
+  span — rather than flattening both classes onto one span: live measurement caught that the
+  flattened version's "normal" line-height strut measured ~4.5px shorter at that different
+  nesting depth, a residual shift the structural fix removes (measured live: 56px row height,
+  zero delta across reload).
+
+  `RelationshipDocumentList`'s (the relationship picker's search-results tab) pending rows
+  carried an unrelated `h-10` skeleton bar against the real `py-1.5`/`text-[13px]` button rows —
+  fixed the same way, reusing the real row's shell classes and `hasMany` checkbox box.
+
+- Updated dependencies [dc4302b]
+- Updated dependencies [dc4302b]
+- Updated dependencies [dc4302b]
+  - @vexcms/core@0.1.0-alpha.39
+  - @vexcms/better-auth@0.1.0-alpha.39
+
 ## 0.1.0-alpha.38
 
 ### Minor Changes
