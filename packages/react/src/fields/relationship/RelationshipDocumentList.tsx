@@ -116,7 +116,25 @@ export function RelationshipDocumentList({
       {isPending ? (
         <div className="flex flex-col gap-2 py-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
+            // Same `flex w-full items-center gap-2 … px-3 py-1.5 text-[13px]`
+            // shell the settled row below renders — its `py-1.5` padding +
+            // `text-[13px]` line (and the hasMany checkbox box, same `h-4
+            // w-4`) are what settle the row's real height, so a `<Skeleton>`
+            // dropped in place of the previous unrelated `h-10` bar no longer
+            // resizes once results load.
+            <button
+              key={i}
+              type="button"
+              disabled
+              className="flex w-full items-center gap-2 rounded px-3 py-1.5 text-left text-[13px]"
+            >
+              {fieldDef.hasMany && (
+                <span className="grid h-4 w-4 flex-shrink-0 place-items-center rounded-sm border border-input" />
+              )}
+              <span className="flex-1 truncate">
+                <Skeleton className="inline-block h-3 w-40 align-middle" />
+              </span>
+            </button>
           ))}
         </div>
       ) : isError ? (

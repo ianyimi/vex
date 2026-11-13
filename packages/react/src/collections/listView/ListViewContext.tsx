@@ -131,20 +131,37 @@ export interface ListViewContextState<TDoc extends TDocument = TDocument> {
   staleFilterField?: string;
   /**
    * The filter `ListViewFilterBuilder`/`ListViewFilterChips`/the eye toggle should
-   * DISPLAY and let the user edit — distinct from `urlState.filter` alone: a
+   * DISPLAY and let the user EDIT — distinct from `urlState.filter` alone: a
    * SHARED view's own saved filter never reaches `urlState.filter` for an
    * unmodified link (its state isn't URL-embedded the way a local view's
    * is), so without this, a readable shared filter was invisible — no
    * chips, no eye toggle, no "Filter N" count — for EVERY caller, not just
    * one who can't read a field in it. `urlState.filter` (set or explicitly
-   * cleared) always wins when present; otherwise, an ACTIVE, FULLY READABLE
-   * shared view's own `where` (`activeView.hasHiddenFilter === false`)
-   * substitutes — editing it writes a real `urlState.filter`, same as
-   * editing any other filter. `undefined` for a declared (config/default)
-   * view's hidden filter OR an unreadable shared one — both stay
-   * `SavedListViewHiddenFilterBadge`-only, by design, never a chip.
+   * cleared) always wins when present; otherwise, an ACTIVE shared view's
+   * own `visibleWhere` (`SavedListViewEntry.visibleWhere` —
+   * `splitWhereByReadability`'s output, already narrowed to conditions on
+   * fields the caller can read) substitutes — editing it writes a real
+   * `urlState.filter`, same as editing any other filter. A condition on
+   * an UNREADABLE field never reaches here even when a sibling condition
+   * in the same view IS readable — only that one stays
+   * `SavedListViewHiddenFilterBadge`-only. `undefined` for a declared
+   * (config/default) view, whose own readable portion is a LOCKED chip
+   * instead ({@link lockedFilterWhere}, never user-editable).
    */
   effectiveFilterWhere?: VexWhereNodeOf<unknown>;
+  /**
+   * The portion of the ACTIVE `config`/`default` view's own declared
+   * `where` that's safe to show as a LOCKED (non-removable) filter chip —
+   * every condition on a field the current caller can read
+   * (`SavedListViewEntry.visibleWhere` for a `config`/`default` source;
+   * `undefined` for every other source, and for a `config`/`default`
+   * view with no readable condition at all). Distinct from {@link
+   * effectiveFilterWhere}, which is EDITABLE state and only ever a
+   * `shared`/`local`/URL filter — a config view's own condition is never
+   * user-editable, so it renders through a separate, remove-button-less
+   * chip instead.
+   */
+  lockedFilterWhere?: VexWhereNodeOf<unknown>;
 }
 
 /** Default value is `null` so a consumer rendered outside any provider throws instead of reading stale state. */

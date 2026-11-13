@@ -2,6 +2,7 @@ import { ConvexError } from "convex/values"
 
 import { TABLE_SLUG_USERS } from "~/db/constants"
 import { USER_ROLES } from "~/db/constants/auth"
+import { find, update } from "~/vexcms/api"
 
 import { query } from "../_generated/server"
 import { vexMutation as mutation } from "../vex"
@@ -13,7 +14,7 @@ import { vexMutation as mutation } from "../vex"
 export const isBootstrapped = query({
   args: {},
   handler: async (ctx) => {
-    const allUsers = await ctx.db.query(TABLE_SLUG_USERS).collect()
+    const allUsers = await find({ ctx, collection: TABLE_SLUG_USERS, access: { bypass: true } })
     return allUsers.some((user) => user.roles?.includes(USER_ROLES.admin))
   },
 })
@@ -33,16 +34,19 @@ export const promoteFirstAdmin = mutation({
       throw new ConvexError("Not authenticated")
     }
 
-    const currentUser = await ctx.db
-      .query(TABLE_SLUG_USERS)
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first()
+    const [currentUser] = await find({
+      ctx,
+      collection: TABLE_SLUG_USERS,
+      withIndex: { name: "by_email", range: (q) => q.eq("email", identity.email!) },
+      limit: 1,
+      access: { bypass: true },
+    })
 
     if (!currentUser) {
       throw new ConvexError("User not found")
     }
 
-    const allUsers = await ctx.db.query(TABLE_SLUG_USERS).collect()
+    const allUsers = await find({ ctx, collection: TABLE_SLUG_USERS, access: { bypass: true } })
     const hasAdmin = allUsers.some((user) => user.roles?.includes(USER_ROLES.admin))
 
     if (hasAdmin) {
@@ -51,8 +55,12 @@ export const promoteFirstAdmin = mutation({
 
     const currentRoles = currentUser.roles ?? []
     if (!currentRoles.includes(USER_ROLES.admin)) {
-      await ctx.db.patch(currentUser._id, {
-        roles: [...currentRoles, USER_ROLES.admin],
+      await update({
+        ctx,
+        collection: TABLE_SLUG_USERS,
+        id: currentUser._id,
+        data: { roles: [...currentRoles, USER_ROLES.admin] },
+        access: { bypass: true },
       })
     }
 

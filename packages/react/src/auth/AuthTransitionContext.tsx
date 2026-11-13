@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 
 /** The marker {@link useAuthTransition} returns. */
 export interface AuthTransitionState {
@@ -34,8 +34,33 @@ export interface AuthTransitionState {
    *
    * Pass the identity the NEXT settled page is expected to carry: the
    * signed-in user's `_id` for a sign-in, `null` for a sign-out.
+   *
+   * @param options.skipRefresh - Pass `true` from a call site that ALREADY
+   *   triggers its own navigation for this exact transition (a same-tab
+   *   sign-out's `signOut` wrapper, which hard-navigates to
+   *   `config.auth.signOut.redirectTo` once the session clears) —
+   *   `useNextAuthTransitionRefresh` (`@vexcms/next`) consumes this via
+   *   {@link consumeSkipRefresh} to skip the ONE `router.refresh()` that
+   *   transition would otherwise trigger, which — fired synchronously,
+   *   long before the hard navigation's own `signOut()` round trip resolves
+   *   — raced it: the admin shell briefly re-rendered signed-out and the
+   *   route guard redirected to the sign-in page, visible for a moment
+   *   before the hard navigation finally took over. Omit (or pass `false`)
+   *   for every OTHER call site — in particular the reactive
+   *   `authClient.useSession()` watcher, which has no navigation of its own
+   *   and is this hook's whole reason to exist (another tab signing out, or
+   *   a session dying while this tab sits idle).
    */
-  beginTransition: (identity: string | null) => void;
+  beginTransition: (identity: string | null, options?: { skipRefresh?: boolean }) => void;
+  /**
+   * Checks whether the MOST RECENT {@link beginTransition} call passed
+   * `{ skipRefresh: true }`, clearing the flag either way (one-shot —
+   * each `beginTransition` call gets its own independent answer). Always
+   * `false` with no {@link AuthTransitionProvider} mounted.
+   *
+   * @returns `true` exactly once per `{ skipRefresh: true }` transition.
+   */
+  consumeSkipRefresh: () => boolean;
   /**
    * Called by a list hook once it observes a page whose `viewerId` matches
    * `expectedIdentity` — clears {@link isTransitionPending} for every other
@@ -48,6 +73,7 @@ const defaultAuthTransitionState: AuthTransitionState = {
   expectedIdentity: null,
   isTransitionPending: false,
   beginTransition: () => {},
+  consumeSkipRefresh: () => false,
   confirmTransition: () => {},
 };
 
@@ -86,10 +112,22 @@ export function useAuthTransition(): AuthTransitionState {
 export function AuthTransitionProvider(props: { children: ReactNode }) {
   const [expectedIdentity, setExpectedIdentity] = useState<string | null>(null);
   const [isTransitionPending, setIsTransitionPending] = useState(false);
+  // A ref, not state: read-and-cleared synchronously by
+  // `useNextAuthTransitionRefresh`'s own layout effect in the SAME tick
+  // `beginTransition` runs in — no re-render needed to carry this one-shot
+  // signal across that single hand-off.
+  const skipRefreshRef = useRef(false);
 
-  const beginTransition = useCallback((identity: string | null) => {
+  const beginTransition = useCallback((identity: string | null, options?: { skipRefresh?: boolean }) => {
+    skipRefreshRef.current = options?.skipRefresh ?? false;
     setExpectedIdentity(identity);
     setIsTransitionPending(true);
+  }, []);
+
+  const consumeSkipRefresh = useCallback(() => {
+    const value = skipRefreshRef.current;
+    skipRefreshRef.current = false;
+    return value;
   }, []);
 
   const confirmTransition = useCallback(() => {
@@ -97,8 +135,8 @@ export function AuthTransitionProvider(props: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthTransitionState>(
-    () => ({ expectedIdentity, isTransitionPending, beginTransition, confirmTransition }),
-    [expectedIdentity, isTransitionPending, beginTransition, confirmTransition],
+    () => ({ expectedIdentity, isTransitionPending, beginTransition, consumeSkipRefresh, confirmTransition }),
+    [expectedIdentity, isTransitionPending, beginTransition, consumeSkipRefresh, confirmTransition],
   );
 
   return <AuthTransitionContext.Provider value={value}>{props.children}</AuthTransitionContext.Provider>;

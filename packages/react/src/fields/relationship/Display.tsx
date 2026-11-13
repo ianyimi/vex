@@ -3,7 +3,7 @@
 import {
   isDisplayValueEmpty,
   type DisplayComponentProps,
-  type HiddenDocument,
+  isHiddenDocument,
   type RelationshipField,
   type TDocument,
   type VexClientConfig,
@@ -12,19 +12,6 @@ import {
 import { Badge } from "../../ui/badge";
 import { useVexConfig } from "../../config/VexConfigContext";
 import { AccessDeniedChip } from "../../access";
-
-/**
- * True when a populated field's item is a `populateDocs`-produced
- * {@link HiddenDocument} placeholder rather than a real target doc.
- *
- * @param value - The populated field's item to check.
- * @returns Whether `value` is a {@link HiddenDocument}.
- */
-function isHiddenDocument(value: unknown): value is HiddenDocument {
-  return (
-    typeof value === "object" && value !== null && (value as Record<string, unknown>).code === "ACCESS_DENIED"
-  );
-}
 
 /**
  * `isTitleField`-equivalent lookup: resolves the target collection's own

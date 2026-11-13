@@ -19,6 +19,7 @@ import { InputTag } from "../../ui/InputTag";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { useVexConfig } from "../../config";
 import { GenericId } from "convex/values";
+import { cn } from "../../utils/cn";
 
 /**
  * Props for UploadFilledState component.
@@ -195,32 +196,40 @@ function UploadItemRow({
             aria-label={`Reorder ${mediaDoc?.filename ?? "item"}`}
           />
         )}
-        {!mediaDoc ? (
-          !errorData ? (
-            <Skeleton className="h-12 w-12" />
-          ) : isAccessDenied ? (
-            <AccessDeniedItemRow
-              resource={errorData.resource}
-              action={errorData.action}
-              field={errorData.field}
-              label={mediaLabel}
-            />
-          ) : (
-            <p className="w-full text-center text-destructive">{errorData.message}</p>
-          )
-        ) : (
+        {!errorData ? (
           <FilePreview mediaDoc={mediaDoc} size={44} radius={3} isPending={isPending} />
+        ) : isAccessDenied ? (
+          <AccessDeniedItemRow
+            resource={errorData.resource}
+            action={errorData.action}
+            field={errorData.field}
+            label={mediaLabel}
+          />
+        ) : (
+          <p className="w-full text-center text-destructive">{errorData.message}</p>
         )}
         {!mediaDoc ? (
           !errorData ? (
-            <div className="flex flex-col gap-2">
-              <Skeleton className="h-4 w-xs" />
-              <Skeleton className="h-4 w-xs" />
+            // Same `min-w-0` wrapper, same two `truncate text-sm`/`text-xs`
+            // lines the settled filename/mimetype text renders — an
+            // `inline-block` `Skeleton` inside each line is still inline-level,
+            // so the browser still lays out the line's font-metric "strut" at
+            // that line's real `text-sm`/`text-xs` line-height, same as real
+            // text would, regardless of the skeleton's own (smaller) height.
+            // That keeps this block byte-for-byte the same height as the
+            // settled one without hand-matching a line-height pixel value.
+            <div className="min-w-0">
+              <div className="truncate text-sm">
+                <Skeleton className="inline-block h-3.5 w-32 align-middle" />
+              </div>
+              <div className="truncate text-xs text-muted-foreground">
+                <Skeleton className="inline-block h-3 w-24 align-middle" />
+              </div>
             </div>
           ) : null
         ) : (
           <div className="min-w-0">
-            <div className="truncate text-sm" title={mediaDoc.filename}>
+            <div className={cn("truncate text-sm", readOnly && "opacity-50")} title={mediaDoc.filename}>
               {mediaDoc.filename}
             </div>
             <div className="truncate text-xs text-muted-foreground">
@@ -232,13 +241,23 @@ function UploadItemRow({
       <div className="flex shrink-0 items-center gap-2">
         {!mediaDoc ? (
           !errorData ? (
-            <Skeleton className="h-8 w-[200px]" />
+            // Same `hidden …@lg/form:flex` wrapper, same real `InputTag`
+            // (its label is static, not data-dependent) as the settled ALT
+            // row — zero height below that breakpoint either way, and
+            // exactly InputTag-sized above it; only the alt VALUE is a
+            // skeleton, inline so its line matches `text-xs`'s real height.
+            <div className="hidden max-w-[200px] min-w-0 items-center gap-2 @lg/form:flex">
+              <InputTag>ALT</InputTag>
+              <span className="flex-1 truncate text-xs">
+                <Skeleton className="inline-block h-3 w-16 align-middle" />
+              </span>
+            </div>
           ) : null
         ) : (
           mediaDoc.alt.length > 0 && (
             <div className="hidden max-w-[200px] min-w-0 items-center gap-2 @lg/form:flex">
               <InputTag>ALT</InputTag>
-              <span className="flex-1 truncate text-xs">
+              <span className={cn("flex-1 truncate text-xs", readOnly && "opacity-50")}>
                 {mediaDoc.alt || <em className="text-destructive">Missing</em>}
               </span>
             </div>

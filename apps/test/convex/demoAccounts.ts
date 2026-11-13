@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import { TABLE_SLUG_FIELDS, TABLE_SLUG_USERS } from "~/db/constants";
+import { find, update } from "~/vexcms/api";
 
 import { internalMutation } from "./_generated/server";
 
@@ -9,7 +10,8 @@ import { internalMutation } from "./_generated/server";
  * `scripts/create-demo-accounts.mjs`, right after that account's Better Auth
  * sign-up — `roles` is `input: false`, so sign-up itself can never set it;
  * this is the only path that does. Internal only: never reachable from the
- * client, so it carries no RBAC check of its own.
+ * client, so it carries no RBAC check of its own, hence `access: { bypass: true }`
+ * on both the lookup and the patch.
  *
  * @param args.email - The account's email, exactly as signed up.
  * @param args.roles - The full `roles` array to store (replaces, not merges).
@@ -21,14 +23,23 @@ export const setRoles = internalMutation({
     roles: v.array(v.string()),
   },
   handler: async (ctx, { email, roles }) => {
-    const user = await ctx.db
-      .query(TABLE_SLUG_USERS)
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .first();
+    const [user] = await find({
+      ctx,
+      collection: TABLE_SLUG_USERS,
+      withIndex: { name: "by_email", range: (q) => q.eq("email", email) },
+      limit: 1,
+      access: { bypass: true },
+    });
     if (!user) {
       throw new Error(`demoAccounts:setRoles — no user found for ${email}`);
     }
-    await ctx.db.patch(user._id, { roles });
+    await update({
+      ctx,
+      collection: TABLE_SLUG_USERS,
+      id: user._id,
+      data: { roles },
+      access: { bypass: true },
+    });
   },
 });
 
@@ -52,22 +63,34 @@ export const linkFieldRelatedUser = internalMutation({
     userEmail: v.string(),
   },
   handler: async (ctx, { fieldContactEmail, userEmail }) => {
-    const field = await ctx.db
-      .query(TABLE_SLUG_FIELDS)
-      .filter((q) => q.eq(q.field("contactEmail"), fieldContactEmail))
-      .first();
+    const [field] = await find({
+      ctx,
+      collection: TABLE_SLUG_FIELDS,
+      where: (q) => q.eq("contactEmail", fieldContactEmail),
+      limit: 1,
+      access: { bypass: true },
+    });
     if (!field) {
       throw new Error(
         `demoAccounts:linkFieldRelatedUser — no fields document found for ${fieldContactEmail}`,
       );
     }
-    const user = await ctx.db
-      .query(TABLE_SLUG_USERS)
-      .withIndex("by_email", (q) => q.eq("email", userEmail))
-      .first();
+    const [user] = await find({
+      ctx,
+      collection: TABLE_SLUG_USERS,
+      withIndex: { name: "by_email", range: (q) => q.eq("email", userEmail) },
+      limit: 1,
+      access: { bypass: true },
+    });
     if (!user) {
       throw new Error(`demoAccounts:linkFieldRelatedUser — no user found for ${userEmail}`);
     }
-    await ctx.db.patch(field._id, { relatedUser: [user._id] });
+    await update({
+      ctx,
+      collection: TABLE_SLUG_FIELDS,
+      id: field._id,
+      data: { relatedUser: [user._id] },
+      access: { bypass: true },
+    });
   },
 });

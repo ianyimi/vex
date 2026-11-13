@@ -342,6 +342,7 @@ export function ListViewToolbar(props: ListViewToolbarProps): ReactNode {
           <ListViewFilterChips
             collection={list.collection}
             where={list.effectiveFilterWhere as VexWhereNode<string> | undefined}
+            lockedWhere={list.lockedFilterWhere as VexWhereNode<string> | undefined}
             onWhereChange={list.urlState.setFilter}
             visible={props.chipsVisible}
             filterValueTitles={list.filterValueTitles}

@@ -97,6 +97,29 @@ describe("RelationshipFilledState", () => {
     expect(await screen.findByText("Bravo")).toBeInTheDocument();
   });
 
+  it("drives the pending title line's height off the same text-[13px] font-size the settled preview text carries, so resolving the doc never resizes the line (layout stability)", async () => {
+    const { container } = await renderFilled();
+    const titleRow = Array.from(container.querySelectorAll("span")).find(
+      (el) =>
+        el.className.includes("flex") &&
+        el.className.includes("items-center") &&
+        el.className.includes("gap-1.5"),
+    );
+    expect(titleRow).not.toBeUndefined();
+    expect(titleRow!.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    const pendingCarriesFontSize = Array.from(titleRow!.querySelectorAll("*")).some((el) =>
+      el.className.toString().includes("text-[13px]"),
+    );
+    expect(pendingCarriesFontSize).toBe(true);
+
+    await screen.findByText("Alpha");
+    // `DefaultRelationshipPreview`'s own span carries this same class —
+    // the line's font-size (and therefore its line-height "strut") is
+    // driven by `text-[13px]` in both states, never a hand-matched pixel
+    // height that could drift from a theme change.
+    expect(screen.getByText("Alpha").className).toContain("text-[13px]");
+  });
+
   it("shows the n/max counter and disables Select once at max", async () => {
     const fieldDef = {
       ...relationshipFieldFixture.fieldDef,
@@ -178,5 +201,30 @@ describe("RelationshipFilledState", () => {
     } finally {
       vi.mocked(clientModule.get).mockImplementation(actualClient.get as never);
     }
+  });
+
+  it("mutes each row's item name text when readOnly (hasMany)", async () => {
+    await renderFilled({ readOnly: true, onReorder: vi.fn() });
+    const alpha = await screen.findByText("Alpha");
+    expect(alpha.parentElement?.className).toContain("opacity-50");
+    const bravo = await screen.findByText("Bravo");
+    expect(bravo.parentElement?.className).toContain("opacity-50");
+  });
+
+  it("does not mute item name text when not readOnly (hasMany)", async () => {
+    await renderFilled({ readOnly: false, onReorder: vi.fn() });
+    const alpha = await screen.findByText("Alpha");
+    expect(alpha.parentElement?.className).not.toContain("opacity-50");
+  });
+
+  it("mutes the single item's name text when readOnly (hasMany: false)", async () => {
+    const { seededIds } = await renderFilled({
+      readOnly: true,
+      fieldDef: { ...relationshipFieldFixture.fieldDef, hasMany: false },
+      docIds: undefined,
+    });
+    const alpha = await screen.findByText("Alpha");
+    expect(alpha.parentElement?.className).toContain("opacity-50");
+    expect(seededIds.length).toBeGreaterThan(0);
   });
 });

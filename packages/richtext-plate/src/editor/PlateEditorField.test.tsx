@@ -8,7 +8,7 @@ import { PlateEditorField } from "./PlateEditorField";
 
 afterEach(cleanup);
 
-function renderEditor(onChange = vi.fn()) {
+function renderEditor(onChange = vi.fn(), readOnly = false) {
   render(
     <PlateEditorField
       name="body"
@@ -17,6 +17,7 @@ function renderEditor(onChange = vi.fn()) {
       onChange={onChange}
       features={defaultFeatures}
       mediaCollectionSlug="images"
+      readOnly={readOnly}
     />,
   );
   return { onChange, editable: screen.getByRole("textbox", { name: "Body" }) };
@@ -64,5 +65,27 @@ describe("PlateEditorField — content stored under Plate 52", () => {
     const { editable } = renderEditor();
     const scrollWrapper = editable.closest('[data-slot="editor-scroll-wrapper"]');
     expect(scrollWrapper?.getAttribute("tabindex")).toBe("0");
+  });
+
+  it("mutes the rendered content when readOnly, matching the field label's opacity-50 muting", () => {
+    const { container } = render(
+      <PlateEditorField
+        name="body"
+        label="Body"
+        value={PLATE_52_DOCUMENT}
+        onChange={vi.fn()}
+        features={defaultFeatures}
+        mediaCollectionSlug="images"
+        readOnly
+      />,
+    );
+    const scrollWrapper = container.querySelector('[data-slot="editor-scroll-wrapper"]');
+    expect(scrollWrapper?.className).toContain("opacity-50");
+  });
+
+  it("does not mute the rendered content when not readOnly", () => {
+    const { editable } = renderEditor(vi.fn(), false);
+    const scrollWrapper = editable.closest('[data-slot="editor-scroll-wrapper"]');
+    expect(scrollWrapper?.className).not.toContain("opacity-50");
   });
 });

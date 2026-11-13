@@ -435,8 +435,9 @@ to know about them. Two things close that gap, and work together:
    ```ts
    import { disableLivePreview } from "@vexcms/next/livePreview/client"
 
-   // inside your signOut wrapper, before the hard navigation:
-   beginTransition(null)
+   // inside your signOut wrapper, before the hard navigation (skipRefresh: the hard
+   // navigation below replaces the page, so no soft router.refresh() should race it):
+   beginTransition(null, { skipRefresh: true })
    void disableLivePreview() // fire-and-forget — never throws, never blocks sign-out
    return signOut().then(goToDestination).catch(goToDestination)
    ```

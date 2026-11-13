@@ -92,7 +92,7 @@ describe("BetterAuthClientProvider — signOut (apps/test)", () => {
     expect(capturedSignOut).toBeDefined();
     await capturedSignOut!();
 
-    expect(beginTransitionMock).toHaveBeenCalledWith(null);
+    expect(beginTransitionMock).toHaveBeenCalledWith(null, { skipRefresh: true });
     expect(signOutMock).toHaveBeenCalledTimes(1);
     expect(window.location.href).toBe("/goodbye");
   });

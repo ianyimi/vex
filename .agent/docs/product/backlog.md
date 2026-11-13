@@ -1981,3 +1981,52 @@ per mode. Auto-mount: about 1 day, plus a cutover of every app's explicit mount.
 toggle later.
 
 **Where.** `.agent/docs/specs/2026-11-11-live-preview-cross-page/spec.md` Design Decisions 5–6.
+
+## Typed auth user across `@vexcms/react` (last consumer casts)
+
+**What.** Two consumer-side casts remain after the P-030 sweep (2026-11-12):
+`getUserOrgForVexApi` in each app's/template's `auth/server.ts` casts the project's generated
+user into `VexApiAuth.user` (`Record<string, unknown>`), and `readPublished` in
+`auth/permissions.ts` still casts its value argument (`AccessFieldValueFor<S, F>` is a deferred
+conditional on an unbound `F`, the same class `DepthPopulated` documents).
+
+**Fix.** Re-type every `@vexcms/react` consumer of the signed-in user (AdminTopNav,
+usePaginatedQuery, useVexListQuery, CollectionsIndexView, DashboardView, …) to read fields through
+typed accessors instead of `Record<string, unknown>` indexing, then make `VexApiAuth` generic over
+the generated user/org documents via the `GeneratedVexTypes` registry (P-008); resolve the
+`search/server.ts` TS2589 the first attempt hit. Separately, give the access value argument a
+non-deferred type (or a core-provided `readPublished`) so the app helper needs no cast.
+
+**Lift.** About 2–3 days; touches the whole admin auth surface. Type pins per P-008.
+
+**Blocked by.** Nothing.
+
+**Why deferred.** Developer decision (2026-11-12): spec it after launch; the two casts stay
+documented until then. First attempt and revert recorded in
+`.agent/docs/specs/2026-11-09-golden-use-cases/alpha38-replay.md`.
+
+## Image blur placeholders (opt-in per media collection)
+
+**What.** An opt-in setting on media collections (e.g. `defineMediaCollection({ blurPlaceholder: true })`)
+that stores a tiny blurred preview (`blurDataURL`, ~200 bytes) on each image document at upload time;
+populated media carries it, and the templates'/examples' `MediaImage` passes it to `next/image`
+`placeholder="blur"`, so images never paint blank while their bytes load (cold image-optimizer cache,
+slow networks).
+
+**Design notes.** The admin upload path already decodes the file client-side with `createImageBitmap`
+to measure width/height; drawing it to an ~8×8 canvas and `toDataURL` there is cheap. Collections with
+the setting off store nothing. Existing images need a backfill: a client-side admin action (Convex
+actions have no canvas) or a server action using an image library.
+
+**Lift.** About 1 day for upload-time generation + field + `MediaImage` wiring; backfill extra.
+
+**Why deferred.** Developer decision (2026-11-12): backlog unless trivial; must be a per-collection
+setting users control.
+
+## Muted read-only images
+
+**What.** Read-only fields now mute their labels and values; image previews (upload thumbnails, inline
+richtext images) stay full-colour. Decide whether read-only image previews get a muted treatment
+(opacity/grayscale) and apply it consistently.
+
+**Why deferred.** Developer decision (2026-11-12): ignore images for now, maybe build later.

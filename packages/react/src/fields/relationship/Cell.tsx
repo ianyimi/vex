@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import {
   type CellComponentProps,
   type HiddenDocument,
+  isHiddenDocument,
   type RelationshipField,
   type TDocument,
 } from "@vexcms/core";
@@ -13,19 +14,6 @@ import { useVexConfig } from "../../config/VexConfigContext";
 import { AccessDeniedItemRow } from "../../access";
 import { VexLink } from "../../ui";
 import { resolveRelationshipPreview } from "./preview";
-
-/**
- * True when a populated field's item is a `populateDocs`-produced
- * {@link HiddenDocument} placeholder rather than a real target doc.
- *
- * @param value - The populated field's item to check.
- * @returns Whether `value` is a {@link HiddenDocument}.
- */
-function isHiddenDocument(value: unknown): value is HiddenDocument {
-  return (
-    typeof value === "object" && value !== null && (value as Record<string, unknown>).code === "ACCESS_DENIED"
-  );
-}
 
 /**
  * Relationship field cell for the collection list-view data table.

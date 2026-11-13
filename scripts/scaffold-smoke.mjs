@@ -131,6 +131,22 @@ export const PROHIBITED_PATTERNS = [
   },
 ];
 
+// `src/auth/server.ts`'s `getUserOrgForVexApi()` widens the closed, generated
+// `UserDocument`/`OrganizationDocument` returned by `getUserOrg()` to the
+// `Record<string, unknown>` shape `VexApiAuth` (and everything downstream of
+// it — `NextAdminLayout`'s/`NextAdminPage`'s `authPromise`, the revalidate
+// route's `getAuth`) requires. Any of these three surfaces passing the raw
+// `getUserOrg()` result straight through is a TS2322 at the FIRST scaffold
+// typecheck (apps/test and apps/www already made this swap; a template that
+// doesn't drifts the moment it's generated) — checked file-by-file, not by a
+// repo-wide pattern, because `providers/auth.tsx` legitimately calls the raw
+// `getUserOrg()` for `AuthServerProvider`'s concrete document shapes.
+const AUTH_BRIDGE_FILES = [
+  'src/app/(vexcms)/admin/layout.tsx',
+  'src/app/(vexcms)/admin/[[...path]]/page.tsx',
+  'src/app/api/vex/revalidate/route.ts',
+];
+
 /**
  * Extracts the body of every `select({ … })` call in a source file.
  *
@@ -151,6 +167,20 @@ function selectCallBodies(source) {
     bodies.push(source.slice(match.index + match[0].length, i));
   }
   return bodies;
+}
+
+/**
+ * Removes `/* … *\/` and `// …` comments so the auth-bridge check below
+ * matches real calls only — every auth-bridge file's own doc comments
+ * mention the raw `getUserOrg()` in prose (explaining what it replaced),
+ * which a plain substring/regex test would otherwise flag as a false
+ * positive.
+ *
+ * @param {string} source - File contents.
+ * @returns {string} `source` with comments blanked out.
+ */
+function stripComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 }
 
 const PLACEHOLDER_RE = /\{\{[A-Z0-9_]+\}\}/g;
@@ -194,6 +224,18 @@ export function assertScaffold({ targetDir, mode }) {
   for (const rel of manifest.forbidden) {
     if (fs.existsSync(path.join(targetDir, rel))) {
       errors.push(`forbidden path present: ${rel}`);
+    }
+  }
+
+  for (const rel of AUTH_BRIDGE_FILES) {
+    const abs = path.join(targetDir, rel);
+    if (!fs.existsSync(abs)) continue;
+    const code = stripComments(fs.readFileSync(abs, 'utf-8'));
+    if (!/\bgetUserOrgForVexApi\b/.test(code)) {
+      errors.push(`auth bridge: ${rel} never references getUserOrgForVexApi`);
+    }
+    if (/\bgetUserOrg\b/.test(code)) {
+      errors.push(`auth bridge: ${rel} references raw getUserOrg instead of getUserOrgForVexApi`);
     }
   }
 

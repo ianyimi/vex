@@ -594,7 +594,7 @@ describe("useSavedListViews — a shared view's own saved where gains hasHiddenF
     return createElement(VexConfigProvider, { config: configWithAnonDeny, children });
   }
 
-  it("flips hasHiddenFilter on and reports the right leaf count for a shared view filtering on the unreadable field", () => {
+  it("flips hasHiddenFilter on, reports the right leaf count, and leaves visibleWhere undefined for a shared view filtering ONLY on the unreadable field", () => {
     sharedViewRows = [
       { viewId: "shared-secret", name: "Secret", collection: "posts", createdBy: "user1", state: { where: sharedFilterWhere } },
     ];
@@ -602,25 +602,40 @@ describe("useSavedListViews — a shared view's own saved where gains hasHiddenF
     const entry = result.current.views.find((v) => v.viewId === "shared-secret");
     expect(entry?.hasHiddenFilter).toBe(true);
     expect(entry?.hiddenFilterCount).toBe(1);
+    expect(entry?.visibleWhere).toBeUndefined();
   });
 
-  it("leaves hasHiddenFilter false for a DIFFERENT shared view filtering only on a READABLE field", () => {
+  it("leaves hasHiddenFilter false and visibleWhere equal to where for a DIFFERENT shared view filtering only on a READABLE field", () => {
+    const readableWhere = { field: "featured", op: "eq" as const, value: true };
     sharedViewRows = [
-      {
-        viewId: "shared-readable",
-        name: "Featured",
-        collection: "posts",
-        createdBy: "user1",
-        state: { where: { field: "featured", op: "eq", value: true } },
-      },
+      { viewId: "shared-readable", name: "Featured", collection: "posts", createdBy: "user1", state: { where: readableWhere } },
     ];
     const { result } = renderHook(() => useSavedListViews({ collection: "posts" }), { wrapper: denyWrapper });
     const entry = result.current.views.find((v) => v.viewId === "shared-readable");
     expect(entry?.hasHiddenFilter).toBe(false);
     expect(entry?.hiddenFilterCount).toBe(0);
+    expect(entry?.visibleWhere).toEqual(readableWhere);
   });
 
-  it("never flips hasHiddenFilter for a LOCAL view's own filter on the same unreadable field — local filters are the user's own, never hidden", () => {
+  it("a MIXED shared view — the readable leaf survives into visibleWhere, only the unreadable leaf is counted hidden", () => {
+    const readableLeaf = { field: "featured", op: "eq" as const, value: true };
+    sharedViewRows = [
+      {
+        viewId: "shared-mixed",
+        name: "Mixed",
+        collection: "posts",
+        createdBy: "user1",
+        state: { where: { and: [readableLeaf, sharedFilterWhere] } },
+      },
+    ];
+    const { result } = renderHook(() => useSavedListViews({ collection: "posts" }), { wrapper: denyWrapper });
+    const entry = result.current.views.find((v) => v.viewId === "shared-mixed");
+    expect(entry?.hasHiddenFilter).toBe(true);
+    expect(entry?.hiddenFilterCount).toBe(1);
+    expect(entry?.visibleWhere).toEqual(readableLeaf);
+  });
+
+  it("never flips hasHiddenFilter for a LOCAL view's own filter on the same unreadable field — local filters are the user's own, never hidden, visibleWhere always equals where", () => {
     saveLocalSavedListView({
       basePath: "/admin",
       project,
@@ -631,6 +646,7 @@ describe("useSavedListViews — a shared view's own saved where gains hasHiddenF
     const entry = result.current.views.find((v) => v.viewId === "local-secret");
     expect(entry?.hasHiddenFilter).toBe(false);
     expect(entry?.hiddenFilterCount).toBe(0);
+    expect(entry?.visibleWhere).toEqual(sharedFilterWhere);
   });
 
   it("stays false with no access configured at all (unrestricted — every pre-existing caller's behavior, unchanged)", () => {
@@ -650,6 +666,7 @@ describe("resolveEffectiveFilterWhere — what ListViewFilterBuilder/ListViewFil
       viewId: "v1",
       name: "Saved view",
       where: undefined,
+      visibleWhere: undefined,
       sort: undefined,
       source: "shared",
       hasHiddenFilter: false,
@@ -662,32 +679,44 @@ describe("resolveEffectiveFilterWhere — what ListViewFilterBuilder/ListViewFil
 
   it("the URL's own filter always wins, even over an active shared view's saved where", () => {
     const urlFilter = { field: "title", op: "eq" as const, value: "override" };
-    const activeView = makeEntry({ where: sharedWhere, hasHiddenFilter: false });
+    const activeView = makeEntry({ where: sharedWhere, visibleWhere: sharedWhere, hasHiddenFilter: false });
     expect(resolveEffectiveFilterWhere({ urlFilter, activeView })).toEqual(urlFilter);
   });
 
   it("the explicit clear sentinel (null) never re-inherits the shared view's own where", () => {
-    const activeView = makeEntry({ where: sharedWhere, hasHiddenFilter: false });
+    const activeView = makeEntry({ where: sharedWhere, visibleWhere: sharedWhere, hasHiddenFilter: false });
     expect(resolveEffectiveFilterWhere({ urlFilter: null, activeView })).toBeUndefined();
   });
 
   it("a fully readable, active SHARED view's own where IS the effective filter — the bug: it used to be invisible for every caller, not just an unreadable-field one", () => {
-    const activeView = makeEntry({ source: "shared", where: sharedWhere, hasHiddenFilter: false });
+    const activeView = makeEntry({ source: "shared", where: sharedWhere, visibleWhere: sharedWhere, hasHiddenFilter: false });
     expect(resolveEffectiveFilterWhere({ urlFilter: undefined, activeView })).toEqual(sharedWhere);
   });
 
+  it("a MIXED shared view shows only its visibleWhere (the readable leaf), never the full where (which may carry an unreadable leaf's value)", () => {
+    const readableLeaf = { field: "featured", op: "eq" as const, value: true };
+    const activeView = makeEntry({
+      source: "shared",
+      where: { and: [readableLeaf, sharedWhere] },
+      visibleWhere: readableLeaf,
+      hasHiddenFilter: true,
+      hiddenFilterCount: 1,
+    });
+    expect(resolveEffectiveFilterWhere({ urlFilter: undefined, activeView })).toEqual(readableLeaf);
+  });
+
   it("an UNREADABLE shared view's own where stays undefined — badge-only, never a chip", () => {
-    const activeView = makeEntry({ source: "shared", where: sharedWhere, hasHiddenFilter: true });
+    const activeView = makeEntry({ source: "shared", where: sharedWhere, visibleWhere: undefined, hasHiddenFilter: true });
     expect(resolveEffectiveFilterWhere({ urlFilter: undefined, activeView })).toBeUndefined();
   });
 
-  it("never falls back for a DECLARED (config/default) view's own where, even though it's never actually hidden-flagged false here — its where is already structurally stripped at the source (toClientSavedListViewConfig/toDefaultEntry), so this never even reaches an unsafe value", () => {
-    const activeView = makeEntry({ source: "config", where: undefined, hasHiddenFilter: true });
+  it("never falls back for a DECLARED (config/default) view — its own readable portion is a LOCKED chip via activeView.visibleWhere directly, never through this EDITABLE-only function", () => {
+    const activeView = makeEntry({ source: "config", where: undefined, visibleWhere: sharedWhere, hasHiddenFilter: false });
     expect(resolveEffectiveFilterWhere({ urlFilter: undefined, activeView })).toBeUndefined();
   });
 
   it("never falls back for a LOCAL view — its own filter is the user's own, always URL-embedded already, never surfaced through the active-view fallback", () => {
-    const activeView = makeEntry({ source: "local", where: sharedWhere, hasHiddenFilter: false });
+    const activeView = makeEntry({ source: "local", where: sharedWhere, visibleWhere: sharedWhere, hasHiddenFilter: false });
     expect(resolveEffectiveFilterWhere({ urlFilter: undefined, activeView })).toBeUndefined();
   });
 

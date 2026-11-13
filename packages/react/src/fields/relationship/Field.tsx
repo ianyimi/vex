@@ -109,9 +109,9 @@ function RelationshipFieldAdminInner(
     await setActiveField(null);
   }
 
-  function handleSelect(ids: string[]) {
+  async function handleSelect(ids: string[]) {
+    await closePicker();
     field.handleChange(ids);
-    void closePicker();
   }
 
   function handleRemove(docId: string) {

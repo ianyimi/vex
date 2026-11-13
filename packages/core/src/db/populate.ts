@@ -3,6 +3,7 @@ import type { GenericDataModel, GenericDocument, GenericQueryCtx } from "convex/
 import type { GenericId } from "convex/values";
 import type { CollectionSlug } from "../types/generated";
 import type { HiddenDocument, Populated, PopulateShape, VexApiAuth } from "./types";
+import { isHiddenDocument } from "./isHiddenDocument";
 import { VERSION_STATUSES, VERSION_SYSTEM_FIELDS } from "../versions/constants";
 import type { VexConfig } from "../config";
 import { convertCommitTsFieldsToMs, findCollectionConfig, resolveCollectionSlug } from "./documents";
@@ -32,21 +33,6 @@ function tryResolveTargetCollectionSlug<DataModel extends GenericDataModel>(prop
   } catch {
     return undefined;
   }
-}
-
-/**
- * True when a populated-field value is a {@link HiddenDocument} placeholder
- * rather than a real target doc.
- *
- * @param value - The populated field's resolved value to check.
- * @returns Whether `value` is a {@link HiddenDocument}.
- */
-function isHiddenDocument(value: unknown): value is HiddenDocument {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    (value as Record<string, unknown>).code === "ACCESS_DENIED"
-  );
 }
 
 /**

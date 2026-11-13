@@ -261,7 +261,12 @@ function BlocksFieldItem<TBlock extends GenericBlockItem>(props: {
               {props.index + 1}
             </span>
             <div className="hidden shrink-0 p-0.5 @lg/form:block">
-              <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+              <span
+                className={cn(
+                  "shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground",
+                  props.readOnly && "opacity-50",
+                )}
+              >
                 {props.blockType.type}
               </span>
             </div>

@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import "./globals.css"
 
 import { LivePreviewProvider } from "@vexcms/react"
-import { Geist, Geist_Mono } from "next/font/google"
+import localFont from "next/font/local"
 
 import ClientProviders from "~/components/providers/client"
 import ServerProviders from "~/components/providers/server"
@@ -19,19 +19,23 @@ import { ThemeLive } from "~/components/ThemeLive"
  * (THEME_SHARED_TOKENS). Both land at specificity (0,1,0), so the theme's
  * stack acts as the fallback and an editor can change the family without a
  * redeploy.
+ *
+ * Loaded from the `geist` package rather than `next/font/google`: Google Fonts
+ * intermittently serves extensionless `/l/font?kit=…&skey=…` URLs that break
+ * Turbopack builds (vercel/next.js#99114).
  */
-const geistSans = Geist({
+const geistSans = localFont({
   display: "swap",
-  subsets: ["latin"],
+  src: "../../node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2",
   variable: "--font-sans",
-  weight: ["400", "500", "600", "700", "800"],
+  weight: "100 900",
 })
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
   display: "swap",
-  subsets: ["latin"],
+  src: "../../node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2",
   variable: "--font-geist-mono",
-  weight: ["400", "500"],
+  weight: "100 900",
 })
 
 /**

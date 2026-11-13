@@ -1,4 +1,8 @@
+import type { HiddenDocument } from "@vexcms/core";
+
 import { v } from "convex/values";
+
+import type { Image, Page, Theme } from "~/vex.types";
 
 import { TABLE_SLUG_PAGES } from "~/db/constants";
 import { find, publishedSlugs as readPublishedSlugs } from "~/vexcms/api";
@@ -68,6 +72,72 @@ export const getBySlug = query({
         bypass: true,
       },
     });
+  },
+});
+
+/**
+ * `testImage`/`themes` resolved to their real target documents — the
+ * `populate`-resolved counterpart to `Page` this module owns, so
+ * `src/components/ThemeLive.typecheck.ts` imports the NAME instead of
+ * deriving it from the function reference. Exists ONLY so that file can pin
+ * `useLivePreviewQuery`/`useLivePreviewDocumentQuery`'s overridable `TData`
+ * generic against a REAL `populate`-resolved Convex function, not a
+ * hand-rolled stand-in — `find`'s own generics infer the populated shape
+ * directly from `populate: { testImage: true, themes: true }` below, the
+ * same inference `nested-populate-demo/page.tsx` proves for a nested field.
+ */
+export type PopulatedPage = Omit<Page, "testImage" | "themes"> & {
+  testImage?: (HiddenDocument<"images"> | Image)[];
+  themes?: (HiddenDocument<"themes"> | Theme)[];
+};
+
+export const getBySlugPopulated = query({
+  args: v.object({
+    slug: v.string(),
+  }),
+  handler: async (ctx, { slug }): Promise<PopulatedPage[]> => {
+    return await find({
+      ctx,
+      collection: TABLE_SLUG_PAGES,
+      withIndex: {
+        name: "by_slug",
+        range: (q) => q.eq("slug", slug),
+      },
+      limit: 1,
+      populate: { testImage: true, themes: true },
+      access: {
+        bypass: true,
+      },
+    });
+  },
+});
+
+/**
+ * Single-document counterpart to `getBySlugPopulated` — same populate, `[0]`
+ * narrowed server-side — so `ThemeLive.typecheck.ts` can ALSO pin
+ * `useLivePreviewDocumentQuery`'s overridable `TData` against a real
+ * `populate`-resolved function returning one document (or `null`), the
+ * `getFirst`-style shape `headers.ts`/`footers.ts` already use.
+ */
+export const getFirstPopulated = query({
+  args: v.object({
+    slug: v.string(),
+  }),
+  handler: async (ctx, { slug }): Promise<null | PopulatedPage> => {
+    const [page] = await find({
+      ctx,
+      collection: TABLE_SLUG_PAGES,
+      withIndex: {
+        name: "by_slug",
+        range: (q) => q.eq("slug", slug),
+      },
+      limit: 1,
+      populate: { testImage: true, themes: true },
+      access: {
+        bypass: true,
+      },
+    });
+    return page ?? null;
   },
 });
 

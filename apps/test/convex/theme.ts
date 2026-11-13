@@ -1,16 +1,19 @@
 import { getGlobal } from "@vexcms/core/server"
-import { v } from "convex/values"
 
-import { GLOBAL_SLUG_SITE_SETTINGS, type TABLE_SLUG_THEMES } from "~/db/constants"
+import { GLOBAL_SLUG_SITE_SETTINGS, TABLE_SLUG_THEMES } from "~/db/constants"
+import { get } from "~/vexcms/api"
 import config from "~/vex.config.server"
+import type { Theme } from "~/vex.types"
 
-import type { Doc, Id } from "./_generated/dataModel"
+import type { Id } from "./_generated/dataModel"
 import type { QueryCtx } from "./_generated/server"
+
+import { v } from "convex/values"
 
 import { query } from "./_generated/server"
 
 /** A theme document, or `null` when none is selected. */
-type ActiveTheme = Doc<typeof TABLE_SLUG_THEMES> | null
+type ActiveTheme = Theme | null
 
 /**
  * Resolves one of `siteSettings`' theme references to its document.
@@ -43,7 +46,7 @@ async function resolveTheme(props: {
   const themeId = reference?.[0]
   if (!themeId) return null
 
-  return await props.ctx.db.get(themeId as Id<typeof TABLE_SLUG_THEMES>)
+  return await get({ ctx: props.ctx, collection: TABLE_SLUG_THEMES, id: themeId as Id<typeof TABLE_SLUG_THEMES>, access: { bypass: true } })
 }
 
 /**
@@ -82,5 +85,5 @@ export const getAdmin = query({
 export const byId = query({
   args: { id: v.string() },
   handler: async (ctx, args): Promise<ActiveTheme> =>
-    await ctx.db.get(args.id as Id<typeof TABLE_SLUG_THEMES>),
+    await get({ ctx, collection: TABLE_SLUG_THEMES, id: args.id as Id<typeof TABLE_SLUG_THEMES>, access: { bypass: true } }),
 })

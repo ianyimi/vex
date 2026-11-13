@@ -532,7 +532,7 @@ export type AccessFieldValueFor<S extends string, F> = F extends keyof AccessDoc
  * @typeParam S - Resource slug.
  * @typeParam V - The value the field must be able to hold.
  */
-export type AccessIndexedFieldWithValue<S extends string, V> = {
+export type AccessIndexedFieldWithValue<S extends string, V> = ({
   [F in AccessIndexedFieldFor<S>]: NonNullable<
     AccessFieldValueFor<S, F>
   > extends readonly (infer E)[]
@@ -542,7 +542,8 @@ export type AccessIndexedFieldWithValue<S extends string, V> = {
     : [V] extends [NonNullable<AccessFieldValueFor<S, F>>]
       ? F
       : never;
-}[AccessIndexedFieldFor<S>];
+}[AccessIndexedFieldFor<S>]) &
+  AccessIndexedFieldFor<S>;
 
 /**
  * What a check builder needs from a resource config: the slug, to bind `S`, and the

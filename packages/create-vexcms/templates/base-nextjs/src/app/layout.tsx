@@ -3,20 +3,29 @@ import type { Metadata } from "next"
 import "./globals.css"
 
 import { LivePreviewProvider } from "@vexcms/react"
-import { Geist, Geist_Mono } from "next/font/google"
+import localFont from "next/font/local"
 
 import ClientProviders from "~/components/providers/client"
 import ServerProviders from "~/components/providers/server"
 import { ThemeScript } from "~/components/ThemeScript"
 
-const geistSans = Geist({
-  subsets: ["latin"],
+/**
+ * Loaded from the `geist` package rather than `next/font/google`: Google Fonts
+ * intermittently serves extensionless `/l/font?kit=…&skey=…` URLs that break
+ * Turbopack builds (vercel/next.js#99114).
+ */
+const geistSans = localFont({
+  display: "swap",
+  src: "../../node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2",
   variable: "--font-sans",
+  weight: "100 900",
 })
 
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
+const geistMono = localFont({
+  display: "swap",
+  src: "../../node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2",
   variable: "--font-geist-mono",
+  weight: "100 900",
 })
 
 export const metadata: Metadata = {

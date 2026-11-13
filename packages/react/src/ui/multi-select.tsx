@@ -267,7 +267,9 @@ export function MultiSelectValue({
   if (single && selectedValues.size > 0) {
     const val = [...selectedValues][0]!;
     return (
-      <span className="min-w-0 overflow-hidden">{items.get(val) ?? val}</span>
+      <span className="min-w-0 overflow-hidden group-data-[disabled=true]/field:opacity-50">
+        {items.get(val) ?? val}
+      </span>
     );
   }
 
@@ -287,7 +289,7 @@ export function MultiSelectValue({
           <Badge
             variant="outline"
             data-selected-item
-            className="group flex items-center gap-1"
+            className="group flex items-center gap-1 group-data-[disabled=true]/field:opacity-50"
             key={value}
             role={clickToRemove ? "button" : undefined}
             tabIndex={clickToRemove ? 0 : undefined}

@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { getDataFields, VERSION_STATUSES, type AdminDataField, type CollectionConfig, type VexWhereNode } from "@vexcms/core";
-import { Badge, Button } from "../../../ui";
+import { Badge, Button, Icon } from "../../../ui";
 import { useVexConfig } from "../../../config/VexConfigContext";
 import { useCanReadField } from "../../../access";
 import { formatDateFieldValue } from "../../../fields/date/utils";
@@ -18,6 +18,18 @@ export interface ListViewFilterChipsProps {
   collection: CollectionConfig;
   /** The list's current filter, in plain `VexWhereNode` form. Same prop as `ListViewFilterBuilder.where`. */
   where: VexWhereNode<string> | undefined;
+  /**
+   * The ACTIVE `config`/`default` view's own declared `where`, narrowed to
+   * the conditions readable by the current caller
+   * (`ListViewContext.lockedFilterWhere`). Rendered as LOCKED chips —
+   * same visual row as `where`'s own editable chips, but with no remove
+   * button and never part of `onWhereChange`'s groups: the condition
+   * isn't user-editable state, so there is nothing to clear it TO other
+   * than switching views. `undefined` when no active view declares a
+   * readable condition (including every `shared`/`local` source, which
+   * routes its own filter through `where` instead).
+   */
+  lockedWhere?: VexWhereNode<string>;
   /** Replaces `where` wholesale — same contract as `ListViewFilterBuilder.onWhereChange`. `null` means the user explicitly cleared every condition (distinct from `undefined` — see `ListViewFilterBuilder.onWhereChange`'s own doc). */
   onWhereChange: (where: VexWhereNode<string> | undefined | null) => void;
   /**
@@ -110,19 +122,28 @@ export function resolveFilterFieldLabel(field: string, dataFields: Record<string
 
 /**
  * The chip row under the toolbar showing the active filter rows —
- * clear one, clear all. Renders nothing when `where` is `undefined`, not in
- * DNF form (`toListViewFilterGroups` returns `null` — a non-DNF config `where` has no
- * per-row chips to show; it still reaches the user via `ListViewFilterBuilder`'s
- * read-only panel and, for a config VIEW's hidden filter specifically,
- * `SavedListViewHiddenFilterBadge`, which this component does not render), or
- * `!props.visible` (the grouped eye toggle beside `ListViewFilterBuilder`'s own
- * "Filter" trigger controls this).
+ * clear one, clear all — plus, when the active view is a `config`/`default`
+ * one with its own readable condition(s), a LOCKED chip per condition
+ * (`props.lockedWhere`, `ListViewContext.lockedFilterWhere`): no remove
+ * button, never part of `onWhereChange`'s groups. Renders nothing when
+ * BOTH `where` and `lockedWhere` are `undefined`/not in DNF form
+ * (`toListViewFilterGroups` returns `null` — a non-DNF `where` has no
+ * per-row chips to show; it still reaches the user via
+ * `ListViewFilterBuilder`'s read-only panel), or `!props.visible` (the
+ * grouped eye toggle beside `ListViewFilterBuilder`'s own "Filter" trigger
+ * controls this). A condition on a field the viewer can no longer read
+ * (including the synthetic `vex_status`) never reaches EITHER row —
+ * `lockedWhere` is already narrowed to readable fields at the source
+ * (`splitWhereByReadability`); `canReadField` below is this component's
+ * own belt-and-suspenders check for `where`'s editable chips, same as
+ * always.
  *
  * @param props - {@link ListViewFilterChipsProps}.
  * @returns The chip row, or `null`.
  */
 export function ListViewFilterChips(props: ListViewFilterChipsProps): ReactNode {
   const dnf = useMemo(() => toListViewFilterGroups({ where: props.where }), [props.where]);
+  const lockedDnf = useMemo(() => toListViewFilterGroups({ where: props.lockedWhere }), [props.lockedWhere]);
   const dataFields = useMemo(
     () => getDataFields({ fields: props.collection.fields }),
     [props.collection.fields],
@@ -133,13 +154,14 @@ export function ListViewFilterChips(props: ListViewFilterChipsProps): ReactNode 
   // default `ListViewFilterBuilder`'s own field picker already applies.
   // User-added filters on unreadable fields are rejected server-side,
   // so there is no result the chip could honestly
-  // describe; a declared view's hidden filter never reaches this
+  // describe; a declared view's UNREADABLE condition never reaches this
   // component at all (see this function's own doc comment above) and
   // keeps showing only as `SavedListViewHiddenFilterBadge`.
   const canReadField = useCanReadField({ resource: props.collection.slug });
 
-  if (dnf === null || dnf.groups.length === 0 || !props.visible) return null;
-  const groups = dnf.groups;
+  const groups = dnf?.groups ?? [];
+  const lockedGroups = lockedDnf?.groups ?? [];
+  if ((groups.length === 0 && lockedGroups.length === 0) || !props.visible) return null;
 
   function handleRemoveRow(groupIndex: number, rowIndex: number): void {
     const nextGroups = groups
@@ -153,6 +175,14 @@ export function ListViewFilterChips(props: ListViewFilterChipsProps): ReactNode 
     // condition," the same explicit-clear intent as "Clear all" below, not
     // a no-op echo of an already-empty filter.
     props.onWhereChange(fromListViewFilterGroups({ groups: nextGroups }) ?? null);
+  }
+
+  function chipTextFor(row: ListViewFilterLeaf<string>): string {
+    const op = listFilterOpOf({ leaf: row });
+    const fieldLabel = resolveFilterFieldLabel(row.field, dataFields);
+    return op === "isEmpty" || op === "isNotEmpty"
+      ? `${fieldLabel} ${LIST_VIEW_FILTER_OP_LABELS[op]}`
+      : `${fieldLabel} ${LIST_VIEW_FILTER_OP_LABELS[op]} ${formatFilterChipValue(row, dataFields, props.filterValueTitles)}`;
   }
 
   return (
@@ -171,15 +201,27 @@ export function ListViewFilterChips(props: ListViewFilterChipsProps): ReactNode 
     // wrap decision, which is what stacked `Clear all` under the chip
     // before).
     <div className="contents">
+      {lockedGroups.map((group, groupIndex) =>
+        group.rows.map((row, rowIndex) => {
+          if (!canReadField(row.field)) return null;
+          const chipText = chipTextFor(row);
+          return (
+            <Badge
+              key={`locked-${groupIndex}-${rowIndex}`}
+              variant="outline"
+              className="shrink-0 gap-1"
+              aria-label={`${chipText} (set by this view, not editable)`}
+            >
+              <Icon name="Lock" className="size-3" />
+              {chipText}
+            </Badge>
+          );
+        }),
+      )}
       {groups.map((group, groupIndex) =>
         group.rows.map((row, rowIndex) => {
           if (!canReadField(row.field)) return null;
-          const op = listFilterOpOf({ leaf: row });
-          const fieldLabel = resolveFilterFieldLabel(row.field, dataFields);
-          const chipText =
-            op === "isEmpty" || op === "isNotEmpty"
-              ? `${fieldLabel} ${LIST_VIEW_FILTER_OP_LABELS[op]}`
-              : `${fieldLabel} ${LIST_VIEW_FILTER_OP_LABELS[op]} ${formatFilterChipValue(row, dataFields, props.filterValueTitles)}`;
+          const chipText = chipTextFor(row);
           return (
             <Badge key={`${groupIndex}-${rowIndex}`} variant="secondary" className="shrink-0 gap-1 pr-1">
               {chipText}
@@ -194,9 +236,11 @@ export function ListViewFilterChips(props: ListViewFilterChipsProps): ReactNode 
           );
         }),
       )}
-      <Button variant="ghost" size="sm" className="shrink-0" onClick={() => props.onWhereChange(null)}>
-        Clear all
-      </Button>
+      {groups.length > 0 && (
+        <Button variant="ghost" size="sm" className="shrink-0" onClick={() => props.onWhereChange(null)}>
+          Clear all
+        </Button>
+      )}
     </div>
   );
 }

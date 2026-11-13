@@ -7,10 +7,11 @@ import {
   columnEntriesEqual,
   completeListViewColumnOrder,
   CRUD_ACTIONS,
-  isFieldAllowed,
+  isFieldReadable,
   isSearchFieldValid,
   isSortFieldValid,
   PERMISSION_SCOPES,
+  splitWhereByReadability,
   toClientSavedListViewConfig,
   VEX_VIEW_SOURCES,
   type ColumnEntry,
@@ -29,51 +30,14 @@ import { useFieldPermissions } from "../../../access";
 import { useVexConfig } from "../../../config/VexConfigContext";
 import { useLocalSavedListViews } from "./localSavedListViewsStore";
 
-/**
- * Every field name `where` references, walking `and`/`or`/`not`
- * recursively — a small, tree-shape-only duplicate of core's OWN
- * server/core-internal `referencedWhereFields` (`db/queryArgs.ts`, not
- * part of `@vexcms/core`'s public client surface, so not importable
- * here). Used ONLY to decide whether a SHARED view's own saved `where`
- * names a field the current caller can't read (below) — never to parse
- * or validate the tree's shape.
- *
- * @param node - The where tree, or a branch of it during recursion.
- * @returns Every referenced field name, deduped.
- */
-function whereReferencedFields(node: VexWhereNodeOf<unknown>): string[] {
-  const names = new Set<string>();
-  const visit = (n: VexWhereNodeOf<unknown>): void => {
-    if ("and" in n) n.and.forEach(visit);
-    else if ("or" in n) n.or.forEach(visit);
-    else if ("not" in n) visit(n.not);
-    else names.add(n.field);
-  };
-  visit(node);
-  return [...names];
-}
-
-/**
- * Leaf-condition count for a `where` tree — the SAME convention
- * `toClientSavedListViewConfig`'s own `hiddenFilterCount` uses for a config view,
- * reused here for a shared view's own hidden-filter badge count.
- *
- * @param node - The where tree, or a branch of it during recursion.
- * @returns The number of leaf conditions under `node`, inclusive.
- */
-function countWhereLeaves(node: VexWhereNodeOf<unknown>): number {
-  if ("and" in node) return node.and.reduce((sum, child) => sum + countWhereLeaves(child), 0);
-  if ("or" in node) return node.or.reduce((sum, child) => sum + countWhereLeaves(child), 0);
-  if ("not" in node) return countWhereLeaves(node.not);
-  return 1;
-}
-
 /** One merged saved view, display-ready. */
 export interface SavedListViewEntry<TFieldSlug extends string = string> {
   viewId: string;
   name: string;
   description?: string;
   where: VexViewConfig<TFieldSlug>["state"]["where"];
+  /** The portion of `where` safe to show the current caller — a read-only, non-removable chip for `config`/`default` sources (whose OWN `where` stays locked, never user-editable regardless of readability), a normal EDITABLE chip for `shared`/`local` (always the caller's own `where` for `local`, which is never hidden by construction). Computed by {@link splitWhereByReadability} for `config`/`default`/`shared`; always equal to `where` for `local`. */
+  visibleWhere?: VexWhereNodeOf<unknown>;
   sort: VexViewConfig<TFieldSlug>["state"]["sort"];
   search?: string;
   searchField?: TFieldSlug;
@@ -195,32 +159,35 @@ function toEntry<TFieldSlug extends string>(props: {
   collection: CollectionConfig | undefined;
   /**
    * The caller's resolved field-read permissions — used ONLY for a
-   * `shared` source: when the
-   * view's own saved `where` names a field this caller can't read,
-   * `hasHiddenFilter`/`hiddenFilterCount` flip on (same convention
-   * `toClientSavedListViewConfig`'s config-view branch already uses), so
-   * `SavedListViewHiddenFilterBadge` surfaces it — the SAME "declared filter,
-   * applied regardless, never shown as values" treatment a config view's
-   * hidden `where` already gets (`resolveListViewQueryState.ts`'s own
-   * `isSharedViewActive` exemption is the OTHER half of this fix — the
-   * filter stays APPLIED; this half makes it VISIBLE as a lock, not
-   * silently invisible). Never applied to `local` — a local view's own
-   * filter is the user's own, live-editable URL state, never "hidden" by
-   * construction.
+   * `shared` source: a condition in the view's own saved `where` naming a
+   * field this caller can't read is split OUT of `visibleWhere` and
+   * counted into `hiddenFilterCount` (same convention
+   * `toClientSavedListViewConfig`'s config-view branch already uses, via
+   * the SAME shared `splitWhereByReadability`), so `SavedListViewHiddenFilterBadge`
+   * surfaces it — the SAME "declared filter, applied regardless, never
+   * shown as values" treatment a config view's hidden `where` already
+   * gets (`resolveListViewQueryState.ts`'s own `isSharedViewActive`
+   * exemption is the OTHER half of this fix — the filter stays APPLIED;
+   * this half makes its READABLE portion VISIBLE as an editable chip, and
+   * only its unreadable portion a lock, instead of either showing nothing
+   * or hiding the whole tree the moment ANY one condition is unreadable).
+   * Never applied to `local` — a local view's own filter is the user's
+   * own, live-editable URL state, never "hidden" by construction, so
+   * `visibleWhere` always equals `where` for it.
    */
   fieldPermissions?: ResolvedFieldPermissions;
 }): SavedListViewEntry<TFieldSlug> {
   const where = props.view.state.where;
-  const hasUnreadableField =
-    props.source === VEX_VIEW_SOURCES.shared &&
-    props.fieldPermissions !== undefined &&
-    where !== undefined &&
-    whereReferencedFields(where).some((field) => !isFieldAllowed(props.fieldPermissions!, field));
+  const split =
+    props.source === VEX_VIEW_SOURCES.shared && props.fieldPermissions !== undefined && where !== undefined
+      ? splitWhereByReadability(where, (field) => isFieldReadable(props.fieldPermissions!, field))
+      : undefined;
   return {
     viewId: props.view.viewId,
     name: props.view.name,
     description: props.view.description,
     where: props.view.state.where,
+    visibleWhere: split === undefined ? where : split.visible,
     sort: props.view.state.sort,
     search: props.view.state.search,
     searchField: props.view.state.searchField,
@@ -249,8 +216,8 @@ function toEntry<TFieldSlug extends string>(props: {
     peekWidth: props.view.state.peekWidth,
     source: props.source,
     createdBy: props.view.createdBy,
-    hasHiddenFilter: hasUnreadableField,
-    hiddenFilterCount: hasUnreadableField && where !== undefined ? countWhereLeaves(where) : 0,
+    hasHiddenFilter: (split?.hiddenCount ?? 0) > 0,
+    hiddenFilterCount: split?.hiddenCount ?? 0,
   };
 }
 
@@ -305,6 +272,7 @@ export function toDefaultEntry<TFieldSlug extends string>(
     name: defaultView.name,
     description: defaultView.description,
     where: undefined,
+    visibleWhere: defaultView.visibleWhere,
     sort: defaultView.state.sort,
     search: defaultView.state.search,
     searchField: defaultView.state.searchField,
@@ -405,6 +373,7 @@ function mergeListViews<TFieldSlug extends string>(props: {
         name: view.name,
         description: view.description,
         where: undefined,
+        visibleWhere: view.visibleWhere,
         sort: view.state.sort,
         search: view.state.search,
         searchField: view.state.searchField,
@@ -455,20 +424,36 @@ export function useSavedListViewsCommon<
   const config = useVexConfig();
   const convex = useConvex();
   const collection = config.collections.find((c) => c.slug === props.collection);
+  // Forwarded to `toClientSavedListViewConfig` (config/default views) and
+  // `mergeListViews` → `toEntry` (shared views) so a condition naming a
+  // field THIS caller can't read is the ONLY thing that ever flips
+  // `hasHiddenFilter` on — a condition on a readable field stays a
+  // visible chip regardless of source.
+  const fieldPermissions = useFieldPermissions({
+    resource: collection?.slug ?? "",
+    action: CRUD_ACTIONS.read,
+    scope: PERMISSION_SCOPES.any,
+  });
   const rawConfigViews = useMemo(
     () => (collection?.admin.views ?? []) as VexViewConfig<TFieldSlug>[],
     [collection?.admin.views],
   );
   const configViews = useMemo(
-    () => rawConfigViews.map((view) => toClientSavedListViewConfig(view)) as VexClientViewConfig<TFieldSlug>[],
-    [rawConfigViews],
+    () =>
+      rawConfigViews.map((view) =>
+        toClientSavedListViewConfig(view, (field) => isFieldReadable(fieldPermissions, field)),
+      ) as VexClientViewConfig<TFieldSlug>[],
+    [rawConfigViews, fieldPermissions],
   );
   const defaultView = useMemo(
     () =>
       collection === undefined
         ? undefined
-        : (toClientSavedListViewConfig(collection.admin.view as VexViewConfig<TFieldSlug>) as VexClientViewConfig<TFieldSlug>),
-    [collection?.admin.view],
+        : (toClientSavedListViewConfig(
+            collection.admin.view as VexViewConfig<TFieldSlug>,
+            (field) => isFieldReadable(fieldPermissions, field),
+          ) as VexClientViewConfig<TFieldSlug>),
+    [collection?.admin.view, fieldPermissions],
   );
   const localViews = useLocalSavedListViews({
     basePath: config.basePath,
@@ -476,7 +461,7 @@ export function useSavedListViewsCommon<
     collection: props.collection,
   }) as VexViewConfig<TFieldSlug>[];
   const localHydrated = useIsHydrated();
-  return { collection, rawConfigViews, configViews, defaultView, localViews, localHydrated, project: convex.url };
+  return { collection, rawConfigViews, configViews, defaultView, localViews, localHydrated, fieldPermissions, project: convex.url };
 }
 
 /**
@@ -529,13 +514,11 @@ export function useSavedListViews<
   const sharedViews = (sharedQuery.data ?? []) as VexStoredView<TFieldSlug>[];
   // Forwarded to `mergeListViews` →
   // `toEntry` so a SHARED view's own saved `where` naming a field THIS
-  // caller can't read flips `hasHiddenFilter` on instead of silently
-  // applying with no visible indication at all.
-  const fieldPermissions = useFieldPermissions({
-    resource: common.collection?.slug ?? "",
-    action: CRUD_ACTIONS.read,
-    scope: PERMISSION_SCOPES.any,
-  });
+  // caller can't read is split OUT into `hiddenFilterCount` instead of
+  // silently applying with no visible indication at all — resolved
+  // ONCE in `useSavedListViewsCommon`, shared with its own `configViews`/
+  // `defaultView` projection so every source agrees about what's readable.
+  const fieldPermissions = common.fieldPermissions;
 
   const views = useMemo(
     () =>
@@ -868,24 +851,30 @@ export function resolveEffectiveViewState<TFieldSlug extends string>(props: {
 
 /**
  * The filter `ListViewFilterBuilder`/`ListViewFilterChips`/the eye toggle should
- * DISPLAY and let the user edit — distinct from {@link resolveEffectiveViewState}'s
+ * DISPLAY and let the user EDIT — distinct from {@link resolveEffectiveViewState}'s
  * own `where` (that one feeds `ListViewModifiedControls`'s/`SavedListViewTabs`'s
  * internal diff/save bookkeeping, which never renders the value to a user,
- * so it already safely falls back to ANY active view's own `where`
+ * so it already safely falls back to ANY active view's own full `where`
  * regardless of readability — a declared config/default view's `where` is
  * structurally `undefined` by the time it reaches here anyway,
- * `toClientSavedListViewConfig`/`toDefaultEntry` strip it at the source). THIS function is for the opposite case — deciding what's safe to
- * show the user directly — so it adds the ONE check that matters there: a
- * SHARED view's own saved filter never reaches `urlFilter` for an
- * unmodified link (its state isn't URL-embedded the way a local view's
- * is), so without this, a readable shared filter was
- * invisible — no chips, no eye toggle, no "Filter N" count — for EVERY
- * caller, not just one who can't read a field in it (confirmed live,
- * zero chips for an unrestricted admin session on a readable shared
- * view). `activeView.hasHiddenFilter` already answers "is this one safe
- * to show" — `false` for a fully readable shared filter, `true` once
- * `toEntry`'s own check (above) flips it on for an unreadable one
- * (`SavedListViewHiddenFilterBadge`-only then, correctly still invisible here).
+ * `toClientSavedListViewConfig`/`toDefaultEntry` strip it at the source,
+ * leaving only `visibleWhere`). THIS function is for the opposite case —
+ * deciding what's safe to show the user directly, EDITABLE — so it adds
+ * the ONE check that matters there: a SHARED view's own saved filter
+ * never reaches `urlFilter` for an unmodified link (its state isn't
+ * URL-embedded the way a local view's is), so without this, a readable
+ * shared filter was invisible — no chips, no eye toggle, no "Filter N"
+ * count — for EVERY caller, not just one who can't read a field in it
+ * (confirmed live, zero chips for an unrestricted admin session on a
+ * readable shared view). `activeView.visibleWhere` ({@link toEntry}'s
+ * {@link splitWhereByReadability} output) is ALREADY the exact subset
+ * safe to hand the user as editable state — every condition on a field
+ * the caller can't read is already excluded, whether or not some OTHER
+ * sibling condition in the same view is readable (a config/default
+ * view's own readable portion is a LOCKED chip instead, read via
+ * `activeView.visibleWhere` directly by the caller that renders those —
+ * never through this function, which only ever returns a shared/local
+ * view's own EDITABLE state).
  *
  * @param props - Input props.
  * @param props.urlFilter - `urlState.filter` — `undefined` (no override,
@@ -901,8 +890,8 @@ export function resolveEffectiveFilterWhere<TFieldSlug extends string>(props: {
   activeView: SavedListViewEntry<TFieldSlug> | undefined;
 }): ListViewStateSnapshot<TFieldSlug>["where"] {
   if (props.urlFilter !== undefined) return props.urlFilter ?? undefined;
-  if (props.activeView?.source === VEX_VIEW_SOURCES.shared && props.activeView.hasHiddenFilter === false) {
-    return props.activeView.where;
+  if (props.activeView?.source === VEX_VIEW_SOURCES.shared) {
+    return props.activeView.visibleWhere as ListViewStateSnapshot<TFieldSlug>["where"];
   }
   return undefined;
 }

@@ -93,10 +93,16 @@ export function readPublished<
   S extends CollectionSlug,
   F extends AccessIndexedFieldWithValue<S, ContentStatus>,
 >(resource: AccessResourceRef<S>, field: F): AccessCheck<S> {
-  // `select` fields store `v.array(...)`, so the comparison value is an array. The
-  // cast is the one this file cannot delegate: `F` is unbound here, so its value type
-  // is an unreduced indexed access and no literal can be checked against it. The bound
-  // above is what actually guarantees the field holds this value.
+  // `select` fields store `v.array(...)`, so the comparison value is an array.
+  // `AccessIndexedFieldWithValue<S, ContentStatus>` (this function's own `F`
+  // bound) now provably extends `AccessIndexedFieldFor<S>` (core fix:
+  // `AccessIndexedFieldWithValue` intersects its output with
+  // `AccessIndexedFieldFor<S>`), so `field` itself needs no cast anymore.
+  // The VALUE still does: `AccessFieldValueFor<S, F>` is a plain conditional
+  // indexed access or a generic `F` and cannot reduce without a concrete `F` —
+  // exactly the class of gap `DepthPopulated`'s own doc comment (`@vexcms/core`)
+  // describes for the same reason. `AccessIndexedFieldWithValue`'s bound is
+  // what actually guarantees the field holds this value.
   return readWhere(resource, field, [CONTENT_STATUS.published] as never);
 }
 
