@@ -420,13 +420,24 @@ function useVexListQuerySearch<TDocument extends VexDocument = VexDocument>(prop
 
   const isSettling = resetKey !== settledResetKey;
 
+  // See `usePaginatedQuery.ts`'s identical `resolvedIsPending` doc comment: raw `isPending`
+  // can only ever diverge from "has `allResults` actually been synced" on the very FIRST
+  // load of THIS search-mode branch (`settledResetKey` still `null`) — `keepPreviousData`
+  // keeps it `false` throughout every later `resetKey` change, which `isSettling`/
+  // `isPlaceholderData` already cover without this. Narrowing to `settledResetKey === null`
+  // (not the broader `isSettling`) keeps a plain search-text/filter change from also
+  // flipping this `isPending` — which `useVexListQuery`'s own `lastSettledRef` override
+  // reads directly — true again, which would re-trigger that "treat as still loading" branch
+  // for an ordinary settling period it was never meant to cover.
+  const resolvedIsPending = isPending || (settledResetKey === null && !isError);
+
   return {
     results: visibleResults,
     totalDocs: undefined,
     totalDocsCapped: false,
     isDone: clientIsDone,
     loadMore,
-    isPending,
+    isPending: resolvedIsPending,
     isFetching,
     isSettling,
     isPlaceholderData,
