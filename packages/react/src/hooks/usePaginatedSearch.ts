@@ -43,7 +43,7 @@ export interface UsePaginatedSearchReturn<
 > {
   /** Documents accumulated across the current query and every `loadMore()`/auto-fill page. */
   documents: TDocument[];
-  /** Whether the first page of the current query is still in flight. */
+  /** Whether the first page of the current query is still in flight, or hasn't been committed into `documents` yet. */
   isPending: boolean;
   /** Whether the current query rejected. */
   isError: boolean;
@@ -92,6 +92,16 @@ export function usePaginatedSearch<
   const [cursor, setCursor] = useState<string | null>(null);
   const [documents, setDocuments] = useState<TDocument[]>([]);
   const [isDone, setIsDone] = useState(false);
+  // Tracks which `resetKey` `documents` was actually synced for — see `usePaginatedQuery.ts`'s
+  // identical `settledResetKey` doc comment. Unlike that hook, THIS one has no
+  // `keepPreviousData`/"don't clear on reset" treatment at all (the reset block below wipes
+  // `documents` to `[]` synchronously on every `resetKey` change, and every caller already
+  // shows a full skeleton for that), so the gap this closes isn't limited to the very first
+  // load — it reopens on EVERY debounced search keystroke/filter change: TanStack's raw
+  // `isQueryPending` (below) flips `false` the instant `data` resolves, one render BEFORE the
+  // sync effect below has written that page into `documents` — a render with `isPending:
+  // false` and `documents: []` for a key that genuinely has rows.
+  const [settledResetKey, setSettledResetKey] = useState<string | null>(null);
 
   const resetKey = `${collection.slug}|${useSearch}|${debouncedQuery}|${drafts}|${mimeTypesKey}`;
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
@@ -161,7 +171,10 @@ export function usePaginatedSearch<
         : [...prev, ...(pageDocuments as TDocument[])],
     );
     setIsDone(result.isDone);
-  }, [result.page, result.isDone, cursor, mimeTypesKey]);
+    if (cursor === null && data !== undefined && !isError) {
+      setSettledResetKey(resetKey);
+    }
+  }, [result.page, result.isDone, cursor, mimeTypesKey, data, isError, resetKey]);
 
   useEffect(() => {
     if (mimeTypesKey.length === 0) return;
@@ -191,7 +204,11 @@ export function usePaginatedSearch<
 
   return {
     documents,
-    isPending: isQueryPending && cursor === null,
+    // `isQueryPending` alone can read `false` for one render before `documents` has actually
+    // been synced for THIS `resetKey` — see `settledResetKey`'s own doc comment above. `cursor
+    // === null` keeps this scoped to a first/reset page, same as `isQueryPending` was already
+    // scoped — a Load More page (`cursor !== null`) has its own `isLoadingMore` below.
+    isPending: (isQueryPending || (resetKey !== settledResetKey && !isError)) && cursor === null,
     isError,
     error,
     hasMore: !isDone,

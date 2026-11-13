@@ -112,8 +112,9 @@ export interface UsePaginatedQueryReturn<TDocument extends VexDocument = VexDocu
   loadMore: () => void;
 
   /**
-   * Whether a query is currently in flight.
-   * Use for loading states on Load More button.
+   * Whether the FIRST page of the current query is still in flight OR hasn't been committed
+   * into `results` yet — `true` until `results` genuinely reflects a real answer, not just
+   * until TanStack's own raw fetch status flips. Use for loading states on Load More button.
    */
   isPending: boolean;
 
@@ -517,13 +518,33 @@ export function usePaginatedQuery<
   // the Load More button's own loading state).
   const isSettling = resetKey !== settledResetKey;
 
+  // TanStack's raw `isPending` (destructured above) flips to `false` the instant `data`
+  // resolves for a query that NEVER had `placeholderData` to fall back on — which, thanks
+  // to `keepPreviousData` above, is true for exactly one window in this hook's whole
+  // lifetime: the very FIRST load (no `initialData`, `settledResetKey` still `null`). That
+  // flip lands one render BEFORE the sync effect above has actually written the resolved
+  // page into `allResults` — a real render with `isPending: false` and `results: []`
+  // (2026-11-12 CI flake, `useSavedListViews.loadMoreParity.test.tsx`: passed 5/5 locally,
+  // failed on a slower runner where that one-render gap was wide enough for `waitFor` to
+  // catch it). EVERY later identity change (sort/filter/search/size/a sign-in or -out) is
+  // already safe without this: `keepPreviousData` keeps raw `isPending` `false` throughout
+  // (`isSettling`/`isPlaceholderData` above cover "is this stale" instead), and `allResults`
+  // is deliberately never cleared on a `resetKey` change — so gating broadly on
+  // `isSettling` here (instead of narrowing to `settledResetKey === null`) would make a
+  // plain sort/filter switch report `isPending: true` again too, flipping Load More's own
+  // button spinner (`isLoadingMore`, fed straight from this field by every caller) on for a
+  // switch that was never "loading more" — a real behavior change this fix must not cause.
+  // `!isError` matches `error` (below): a first-load rejection must surface immediately as
+  // an error, not spin forever as if still pending.
+  const resolvedIsPending = isPending || (settledResetKey === null && !isError);
+
   return {
     results: visibleResults,
     totalDocs,
     totalDocsCapped,
     isDone: clientIsDone,
     loadMore,
-    isPending,
+    isPending: resolvedIsPending,
     isFetching,
     isSettling,
     isPlaceholderData,
