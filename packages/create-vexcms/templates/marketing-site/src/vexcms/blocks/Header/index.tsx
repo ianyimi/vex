@@ -49,8 +49,11 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
   // offer a destination that redirects to `/unauthorized`. Reading a role off
   // the session by hand was the previous approach and never matched: roles are
   // stored in `access.userRolesField` ("roles"), not better-auth's scalar
-  // `user.role`, so the button rendered for nobody.
-  const canAccessAdmin = useCanAccessAdminPanel()
+  // `user.role`, so the button rendered for nobody. Works here — a public
+  // route, outside `/admin` — because `~/components/providers/client.tsx`
+  // mounts `VexSessionAdapterProvider` at the app root, bridging Better
+  // Auth's own `useSession()` in for `useCanAccessAdminPanel` to read.
+  const { canAccess: canAccessAdmin, isPending: isAdminPending } = useCanAccessAdminPanel()
 
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -164,8 +167,25 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
 
           {/* Template affordance, not part of the marketing design: a signed-in
               admin gets a direct route to the panel even when the seeded nav
-              does not list one. */}
-          {canAccessAdmin ? (
+              does not list one. The `isAdminPending` branch reserves this
+              exact box, invisibly, for the one client tick before the
+              session settles — so a signed-in admin's link never pops in
+              after the rest of the header has already painted (zero layout
+              shift), matching `SessionButton`'s own "always occupy the slot"
+              contract. */}
+          {isAdminPending ? (
+            <span
+              aria-hidden
+              className={cn(
+                buttonVariants({ size: "sm", variant: "outline" }),
+                navClass,
+                "invisible gap-1.5"
+              )}
+            >
+              <Settings className="size-3.5" />
+              Admin
+            </span>
+          ) : canAccessAdmin ? (
             <Link
               className={cn(
                 buttonVariants({ size: "sm", variant: "outline" }),

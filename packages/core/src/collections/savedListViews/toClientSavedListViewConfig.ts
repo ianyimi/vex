@@ -1,21 +1,5 @@
-import type { VexWhereNodeOf } from "../../access/queryConstraintTypes";
 import type { VexClientViewConfig, VexViewConfig } from "../types";
-
-/**
- * Counts the leaf conditions in a {@link VexWhereNodeOf} tree, walking
- * `and`/`or`/`not` recursively. One leaf is one condition a user would see
- * as one row in the filter builder, so this is what `hiddenFilterCount`
- * reports.
- *
- * @param node - The where tree, or a branch of it during recursion.
- * @returns The number of leaf conditions under `node`, inclusive.
- */
-function countWhereLeaves(node: VexWhereNodeOf<unknown>): number {
-  if ("and" in node) return node.and.reduce((sum, child) => sum + countWhereLeaves(child), 0);
-  if ("or" in node) return node.or.reduce((sum, child) => sum + countWhereLeaves(child), 0);
-  if ("not" in node) return countWhereLeaves(node.not);
-  return 1;
-}
+import { splitWhereByReadability } from "./whereReadability";
 
 /**
  * Converts a full {@link VexViewConfig} (a default or config view resolved
@@ -27,28 +11,40 @@ function countWhereLeaves(node: VexWhereNodeOf<unknown>): number {
  * `VexClientConfig`. `state.where` already shipped to the browser as
  * plain JS before this ever runs (hidden from the UI, not secret, like
  * an access rule) — this function doesn't keep `where` out of the
- * bundle, it keeps UI CODE from reading it, so the filter builder,
- * chips, and every other control only ever see
- * `hasHiddenFilter`/`hiddenFilterCount`. The `listViews` query never
- * calls this — it returns `shared` views only. To actually QUERY a
- * default/config view, the list calls `composeSavedListViewWhere` on the RAW
- * `VexViewConfig`, not on this function's output.
+ * bundle, it keeps UI CODE from reading it directly; `visibleWhere`
+ * (the portion safe to show as a read-only, non-removable filter chip —
+ * every condition on a field the CALLER can read) and
+ * `hasHiddenFilter`/`hiddenFilterCount` (covering ONLY the conditions on
+ * a field the caller can NOT read, via {@link splitWhereByReadability})
+ * are the only parts of the original `where` UI code ever sees. A
+ * condition on a readable field is never hidden just because some OTHER
+ * condition in the same view names an unreadable one. The `listViews`
+ * query never calls this — it returns `shared` views only. To actually
+ * QUERY a default/config view, the list calls `composeSavedListViewWhere`
+ * on the RAW `VexViewConfig`, not on this function's output.
  *
  * @param view - The full config-source view, `where` intact.
- * @returns The client-safe view: `where` replaced by `hasHiddenFilter`
- *   (whether `where` was set) and `hiddenFilterCount` (its leaf-condition
- *   count).
+ * @param isFieldReadable - Whether the current caller may read one field
+ *   (`isFieldReadable` from `@vexcms/core`'s `access` module, resolved
+ *   against this view's own collection).
+ * @returns The client-safe view: `where` replaced by `visibleWhere` (the
+ *   readable portion, renderable as locked chips), `hasHiddenFilter`
+ *   (whether any condition is on an unreadable field), and
+ *   `hiddenFilterCount` (how many leaf conditions are).
  */
 export function toClientSavedListViewConfig<TFieldSlug extends string = string>(
   view: VexViewConfig<TFieldSlug>,
+  isFieldReadable: (field: string) => boolean,
 ): VexClientViewConfig<TFieldSlug> {
   const { where, ...state } = view.state;
+  const split = where === undefined ? undefined : splitWhereByReadability(where, isFieldReadable);
   return {
     viewId: view.viewId,
     name: view.name,
     description: view.description,
     state,
-    hasHiddenFilter: where !== undefined,
-    hiddenFilterCount: where === undefined ? 0 : countWhereLeaves(where),
+    visibleWhere: split?.visible,
+    hasHiddenFilter: (split?.hiddenCount ?? 0) > 0,
+    hiddenFilterCount: split?.hiddenCount ?? 0,
   };
 }

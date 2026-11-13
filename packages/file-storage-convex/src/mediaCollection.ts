@@ -78,7 +78,17 @@ export function defineMediaCollection<
     alt: text({ label: "Alt text", required: true }),
     mimeType: text({ label: "MIME type", required: true }),
     size: number({ label: "Size", required: true }),
-    storageId: text({ label: "Storage ID", required: true }),
+    // Per-field override of the static `ADMIN_FIELDS.text.interfaceType`
+    // ("string"), the same mechanism `upload()`/`relationship()` use for
+    // their own target-collection-specific `Id<"...">` — the Convex
+    // validator stays `v.string()` (a branded id is a plain string at
+    // runtime, so `v.string()` already accepts it), but the GENERATED
+    // document interface now types `storageId` as `Id<"_storage">`, the
+    // exact type `ctx.storage.getUrl()`/`ctx.storage.delete()` require, so a
+    // consumer reading a real generated media document (not the adapter's
+    // own `GenericDataModel`-typed internals, which stay `string` and keep
+    // their own internal cast) never needs `storageId as never`.
+    storageId: { ...text({ label: "Storage ID", required: true }), interfaceType: 'Id<"_storage">' },
     deleted: checkbox({ label: "Deleted", defaultValue: false, index: "by_deleted" }),
     // Convex-specific fields
     src: text({ label: "URL", required: true }),

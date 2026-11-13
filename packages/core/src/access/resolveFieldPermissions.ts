@@ -245,6 +245,23 @@ export function isFieldAllowed(resolved: ResolvedFieldPermissions, field: string
 }
 
 /**
+ * Whether one field is READABLE under a resolved READ decision — {@link
+ * isFieldAllowed} plus the {@link ALWAYS_READABLE_FIELD_KEYS} exemption every
+ * reader of a resolved READ map must apply (`_id`/`_slug` are never
+ * gateable, never counted against a caller). The one check `useCanReadField`
+ * (`@vexcms/react`) and the hidden-saved-view-filter split
+ * (`splitWhereByReadability`, `collections/savedListViews/whereReadability.ts`)
+ * both call, so neither can drift from the other about what "readable" means.
+ *
+ * @param resolved - A resolved READ decision (`resolveFieldPermissions` with `action: CRUD_ACTIONS.read`).
+ * @param field - The field key to check.
+ * @returns Whether `field` is readable.
+ */
+export function isFieldReadable(resolved: ResolvedFieldPermissions, field: string): boolean {
+  return ALWAYS_READABLE_FIELD_KEYS.has(field) ? true : isFieldAllowed(resolved, field);
+}
+
+/**
  * Shallow-copies `doc` and deletes every key the caller may not read. Used by
  * the read paths to shape responses; never mutates what Convex returned.
  *

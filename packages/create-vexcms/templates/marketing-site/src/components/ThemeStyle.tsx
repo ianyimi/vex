@@ -2,6 +2,7 @@ import { api } from "@convex/_generated/api"
 import { buildThemeCss } from "@vexcms/core"
 
 import { vex } from "~/lib/vex"
+import type { Theme } from "~/vex.types"
 
 /**
  * Server component that inlines a theme's CSS custom properties.
@@ -38,7 +39,7 @@ import { vex } from "~/lib/vex"
 export async function ThemeStyle(props: { scope?: "admin" | "site" }) {
   const scope = props.scope ?? "site"
 
-  let theme: null | Record<string, unknown> = null
+  let theme: null | Theme = null
   try {
     theme = await vex.query(scope === "admin" ? api.theme.getAdmin : api.theme.getActive)
   } catch {

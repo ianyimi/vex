@@ -15,6 +15,7 @@ import { AccessDeniedItemRow } from "../../access";
 import { get } from "../../client";
 import { resolveRelationshipPreview } from "./preview";
 import { formatDateFieldValue } from "../date/utils";
+import { cn } from "../../utils/cn";
 
 /**
  * Resolved `time` config matching `updatedAt`'s injected definition
@@ -184,9 +185,12 @@ function RelationshipItemRow({
   const errorData = (error as ReturnType<typeof useQuery<any, VexAccessError>>["error"])?.data;
   const isAccessDenied = errorData?.code === "ACCESS_DENIED";
   const Preview = resolveRelationshipPreview({ fieldDef, targetCollection });
+  // Known from config alone (not the document) — lets the pending state
+  // reserve the "Updated …" line's slot (or not) without waiting on the doc.
+  const hasUpdatedAtField = "updatedAt" in targetCollection.fields;
   const updatedAt =
     document &&
-    "updatedAt" in targetCollection.fields &&
+    hasUpdatedAtField &&
     typeof (document as Record<string, unknown>).updatedAt === "number"
       ? ((document as Record<string, unknown>).updatedAt as number)
       : undefined;
@@ -204,7 +208,43 @@ function RelationshipItemRow({
         )}
         {!document ? (
           !errorData ? (
-            <Skeleton className="h-10 w-10" />
+            // Same `flex min-w-0 flex-col py-1.5` box the settled title/
+            // updated-at lines render in (there is no separate square thumb
+            // to skeletonize here — the previous `h-10 w-10` block reserved
+            // space for an icon that never actually renders). The icon slot
+            // is config-known (`targetCollection.admin.icon`) before the doc
+            // loads, so it renders for real in both states; the title
+            // skeleton mirrors the settled `truncate` span wrapping a nested
+            // `text-[13px]` span one-for-one (not flattened onto a single
+            // span) — `text-[13px]`'s "normal" line-height strut measures a
+            // few px shorter at that nesting depth's OWN blockified box than
+            // once removed inside a plain `truncate` wrapper, a real
+            // (verified live) mismatch, not a hypothetical one. The
+            // "Updated …" line's presence is config-known too
+            // (`hasUpdatedAtField`), so its slot doesn't appear/disappear
+            // once the doc resolves.
+            <div className="flex min-w-0 flex-col py-1.5">
+              <span className="flex min-w-0 items-center gap-1.5">
+                {targetCollection.admin.icon && (
+                  <Icon
+                    name={targetCollection.admin.icon}
+                    size={12}
+                    aria-hidden="true"
+                    className="shrink-0 translate-y-px text-muted-foreground"
+                  />
+                )}
+                <span className="truncate">
+                  <span className="text-[13px]">
+                    <Skeleton className="inline-block h-3 w-32 align-middle" />
+                  </span>
+                </span>
+              </span>
+              {hasUpdatedAtField && (
+                <span className="text-xs text-muted-foreground">
+                  <Skeleton className="inline-block h-3 w-20 align-middle" />
+                </span>
+              )}
+            </div>
           ) : isAccessDenied ? (
             <AccessDeniedItemRow
               resource={errorData.resource}
@@ -226,7 +266,7 @@ function RelationshipItemRow({
                   className="shrink-0 translate-y-px text-muted-foreground"
                 />
               )}
-              <span className="truncate">
+              <span className={cn("truncate", readOnly && "opacity-50")}>
                 <Preview doc={document} fieldKey="_id" config={targetCollection as never} />
               </span>
             </span>
@@ -241,7 +281,6 @@ function RelationshipItemRow({
             )}
           </div>
         )}
-        {!document && !errorData && <Skeleton className="h-4 w-xs" />}
       </div>
       <Button
         variant="ghost"

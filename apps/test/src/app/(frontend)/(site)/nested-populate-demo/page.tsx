@@ -1,4 +1,4 @@
-import { api } from "@convex/_generated/api"
+import { vexFindQuery } from "@vexcms/core"
 
 import { vex } from "~/lib/vex"
 
@@ -21,7 +21,7 @@ export const revalidate = 0
  *    document's own data (article title, image filename), not a raw id.
  */
 export default async function NestedPopulateDemoPage() {
-  const docs = await vex.query(api.vex.find, {
+  const docs = await vexFindQuery(vex, {
     collection: "fields",
     limit: 1,
     populate: {
@@ -33,7 +33,7 @@ export default async function NestedPopulateDemoPage() {
     },
   })
 
-  const doc = (docs as Record<string, unknown>[] | undefined)?.[0]
+  const doc = docs[0]
 
   return (
     <main style={{ padding: 24, fontFamily: "monospace", whiteSpace: "pre-wrap" }}>

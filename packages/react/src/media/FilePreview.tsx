@@ -10,8 +10,9 @@ import { VexImage, Icon } from "../ui";
  */
 export type FilePreviewProps<TDoc extends VexMediaDocument = VexMediaDocument> =
   ComponentPropsWithRef<"div"> & {
-    /** The media document. */
-    mediaDoc: TDoc;
+    /** The media document. `undefined`/`null` while the owning query is still
+     *  resolving — renders identically to `isPending` (same box, spinner). */
+    mediaDoc?: TDoc | null;
     /** Fixed size in pixels. If omitted, fills container (default behavior). */
     size?: number;
     /** Border radius in pixels. Default: 3. */
@@ -42,11 +43,6 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
   radius = 3,
   className,
 }: FilePreviewProps<TDoc>) {
-  const isSvg = mediaDoc.mimeType === "image/svg+xml";
-  const isImage = mediaDoc.mimeType.startsWith("image/") && !isSvg;
-  const isVideo = mediaDoc.mimeType.startsWith("video/");
-  const isAudio = mediaDoc.mimeType.startsWith("audio/");
-
   // Default behavior: fill container. Pass explicit size for fixed dimensions.
   const fillContainer = size === undefined;
   const wrapperStyle = fillContainer
@@ -71,7 +67,13 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
     );
   }
 
-  if (isPending) {
+  // No doc yet (owning query still resolving) or an explicit `isPending` —
+  // same wrapper box (size/radius/background) callers get once the doc
+  // resolves, so pending → filled never shifts layout. Guarding here (before
+  // any `mediaDoc.*` read) is what lets callers pass an undefined `mediaDoc`
+  // during the pending window instead of keeping a second, hand-sized
+  // skeleton in sync with this box.
+  if (isPending || !mediaDoc) {
     return (
       <IconWrapper>
         <Icon
@@ -82,6 +84,11 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
       </IconWrapper>
     );
   }
+
+  const isSvg = mediaDoc.mimeType === "image/svg+xml";
+  const isImage = mediaDoc.mimeType.startsWith("image/") && !isSvg;
+  const isVideo = mediaDoc.mimeType.startsWith("video/");
+  const isAudio = mediaDoc.mimeType.startsWith("audio/");
 
   const alt = mediaDoc.alt || mediaDoc.filename;
   if (isImage && mediaDoc?.src) {

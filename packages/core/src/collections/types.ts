@@ -766,10 +766,12 @@ export type VexClientViewState<TFieldSlug extends string = string> = Omit<
 
 /**
  * The client-safe projection of a `config`-source {@link VexViewConfig} —
- * every field except `state.where`, plus a hidden-filter
- * summary the UI renders as a lock badge — `hasHiddenFilter` (whether the
- * view has a `where` at all) and `hiddenFilterCount` (the number of leaf
- * conditions in its DNF tree, counting through `and`/`or`/`not`).
+ * every field except `state.where`, plus the portion of `where` SAFE to
+ * show as a locked chip (`visibleWhere` — every condition on a field the
+ * caller can READ) and a hidden-filter summary covering only the REST —
+ * `hasHiddenFilter` (whether any condition names a field the caller can't
+ * read) and `hiddenFilterCount` (how many leaf conditions, in its DNF
+ * tree, counting through `and`/`or`/`not`, are on such a field).
  *
  * Built by `toClientSavedListViewConfig` (`collections/savedListViews/toClientSavedListViewConfig.ts`),
  * called CLIENT-SIDE by `useSavedListViews`, straight off
@@ -778,11 +780,12 @@ export type VexClientViewState<TFieldSlug extends string = string> = Omit<
  * imported into client JS, so `state.where` already shipped to the
  * browser as plain text before this function ever runs. `toClientSavedListViewConfig`
  * doesn't keep `where` out of the bundle; it keeps UI CODE from reading
- * it, so the filter builder, chips, and every other control only ever see
- * `hasHiddenFilter`/`hiddenFilterCount`. The `listViews` query never
- * touches a `config`-source (or default) view at all — it returns `shared`
- * views only. To actually QUERY a config/default view, the list passes
- * the RAW `VexViewConfig` (not this type) to `composeSavedListViewWhere`.
+ * it directly, so the filter builder, chips, and every other control
+ * only ever see `visibleWhere`/`hasHiddenFilter`/`hiddenFilterCount`. The
+ * `listViews` query never touches a `config`-source (or default) view at
+ * all — it returns `shared` views only. To actually QUERY a
+ * config/default view, the list passes the RAW `VexViewConfig` (not this
+ * type) to `composeSavedListViewWhere`.
  *
  * `shared` and `local` views need no client projection — their `where` is
  * the caller's own and travels as a full {@link VexStoredView} / local
@@ -795,6 +798,8 @@ export type VexClientViewConfig<TFieldSlug extends string = string> = {
   name: string;
   description?: string;
   state: VexClientViewState<TFieldSlug>;
+  /** The portion of the declared `where` safe to show as a read-only, non-removable filter chip — every condition on a field the current caller can read. `undefined` when every condition is on an unreadable field (or there is no `where` at all). */
+  visibleWhere?: VexWhereNodeOf<unknown>;
   hasHiddenFilter: boolean;
   hiddenFilterCount: number;
 };

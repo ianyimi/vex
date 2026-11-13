@@ -7,6 +7,7 @@ export * from "./interfaceGen";
 export * from "./hooks";
 export * from "./resolveCollectionIndexes";
 export * from "./savedListViews/toClientSavedListViewConfig";
+export * from "./savedListViews/whereReadability";
 export * from "./listView/listViewUrlState";
 export * from "./listView/listViewConfigCookies";
 export * from "./savedListViews/composeSavedListViewWhere";

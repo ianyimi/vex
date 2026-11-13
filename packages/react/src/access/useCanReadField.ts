@@ -1,6 +1,6 @@
 "use client";
 
-import { ALWAYS_READABLE_FIELD_KEYS, isFieldAllowed, PERMISSION_SCOPES } from "@vexcms/core";
+import { isFieldReadable, PERMISSION_SCOPES } from "@vexcms/core";
 import { useFieldPermissions } from "./useFieldPermissions";
 
 /**
@@ -18,8 +18,9 @@ import { useFieldPermissions } from "./useFieldPermissions";
  * real, gateable `FieldPermissionMap` keys, and the wildcard (`"*"`) covers
  * them the same way it covers every other field). `_id` (and `_slug`, the
  * global-only discriminator) are always readable — never real field-
- * permission keys ({@link ALWAYS_READABLE_FIELD_KEYS}) — this answers `true`
- * for them without even reaching the resolved map/wildcard.
+ * permission keys ({@link isFieldReadable}'s own `ALWAYS_READABLE_FIELD_KEYS`
+ * exemption) — this answers `true` for them without even reaching the
+ * resolved map/wildcard.
  *
  * `scope: "any"` (not {@link useFieldPermissions}'s own default of `"all"`)
  * — a column/filter-option/peek-row can't answer a per-ROW question; "is
@@ -44,5 +45,5 @@ export function useCanReadField(props: { resource: string }): (field: string) =>
     action: "read",
     scope: PERMISSION_SCOPES.any,
   });
-  return (field: string) => (ALWAYS_READABLE_FIELD_KEYS.has(field) ? true : isFieldAllowed(resolved, field));
+  return (field: string) => isFieldReadable(resolved, field);
 }

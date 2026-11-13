@@ -9,8 +9,8 @@ import { ListViewFilterBuilder } from "./ListViewFilterBuilder";
  * to the active list's `collection` and `effectiveFilterWhere`/
  * `urlState.setFilter` from `useListViewContext()`. `effectiveFilterWhere`
  * (not `urlState.filter` alone)
- * also surfaces an ACTIVE, fully
- * readable SHARED view's own saved filter for an unmodified link, whose
+ * also surfaces an ACTIVE SHARED view's own saved filter — narrowed to its
+ * readable conditions — for an unmodified link, whose
  * state never reaches `urlState.filter` directly the way a local view's
  * does — editing it still writes through `setFilter` the same as any other
  * filter. Takes no props of its own — the chip-visibility

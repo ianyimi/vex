@@ -57,6 +57,38 @@ describe("RelationshipDocumentList", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("sizes each pending skeleton row's shell identically to the settled button row (same flex/padding/text-size classes + hasMany checkbox box), so results loading in never resizes the list", () => {
+    usePaginatedSearchMock.mockReturnValue(baseResult({ isPending: true }));
+    const { container } = render(
+      <RelationshipDocumentList
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={targetCollection}
+        selectedIds={[]}
+        drafts={false}
+        onSelectionChange={vi.fn()}
+      />,
+    );
+    const pendingRow = container.querySelector("button[disabled]") as HTMLElement | null;
+    expect(pendingRow).not.toBeNull();
+    for (const cls of [
+      "flex",
+      "w-full",
+      "items-center",
+      "gap-2",
+      "rounded",
+      "px-3",
+      "py-1.5",
+      "text-left",
+      "text-[13px]",
+    ]) {
+      expect(pendingRow!.className).toContain(cls);
+    }
+    // relationshipFieldFixture is hasMany: true — the settled row's own
+    // checkbox box is the same `h-4 w-4`.
+    expect(pendingRow!.querySelector(".h-4.w-4")).not.toBeNull();
+    expect(pendingRow!.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+  });
+
   it("renders an error message when the query fails", () => {
     usePaginatedSearchMock.mockReturnValue(
       baseResult({ isError: true, error: new Error("boom") }),

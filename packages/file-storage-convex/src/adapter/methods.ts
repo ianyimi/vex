@@ -34,7 +34,7 @@ export async function createMediaDocument<TDataModel extends GenericDataModel = 
     adapterFields?: Record<string, unknown>;
   },
 ): Promise<string> {
-  const src = await ctx.storage.getUrl(args.storageId as never);
+  const src = await ctx.storage.getUrl(args.storageId);
   // @ts-expect-error mismatched type from TDataModel. works for GenericDataModel for which TDataModel extends
   const docId = await ctx.db.insert(args.collectionSlug, {
     src,

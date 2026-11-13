@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   type ComponentPropsWithRef,
   type ReactNode,
@@ -141,7 +142,31 @@ export function ThemeProvider({
   // `mounted` — both are gated on this SAME effect because both represent
   // "client-only state is now safe to read": `ThemeToggle` must not pick an
   // icon off a persisted/OS-level preference before this has run.
-  useIsomorphicLayoutEffect(() => {
+  //
+  // Plain `useEffect`, NOT `useIsomorphicLayoutEffect` — deliberately: a
+  // layout effect is scheduled as part of the SAME commit as the Suspense
+  // boundary it happens to sit above (`AdminLayout`'s sidebar, resolved via
+  // `use(authPromise)`), and React defers/re-fires layout effects around a
+  // boundary's reveal (documented: "When the content is ready to be shown
+  // again, React will fire the layout Effects again" — `react.dev/reference/
+  // react/Suspense`). Developer-reported bug: on a real streamed admin page
+  // (never reproduced with a synchronous CSR-only render), this toggle
+  // stayed disabled indefinitely even once the real, permission-filtered
+  // nav had settled — `mounted`'s OWN flip never ran. `ThemeToggle`'s
+  // enable/icon-switch is explicitly documented as NOT needing pre-paint
+  // synchronicity (see its own doc comment: "there is never a size/position
+  // change at the enable/icon switch, only the ICON and `disabled` state
+  // updating in place" — a one-frame-later flip is invisible by design), so
+  // there is no correctness reason for this specific effect to be a layout
+  // effect. A passive effect is scheduled independently of any sibling
+  // Suspense boundary's reveal timing and is guaranteed to run for every
+  // committed mount — swapping to it removes the dependency on that timing
+  // entirely instead of working around one more special case of it. The
+  // SECOND effect below (applying `.dark`/`prefers-color-scheme`) stays a
+  // layout effect: unlike this one, it IS paint-timing-sensitive (a flash of
+  // the wrong theme is visible), and it sits on `ThemeProvider` itself, never
+  // inside a descendant Suspense boundary.
+  useEffect(() => {
     const stored = readStoredTheme(storageKey);
     if (stored) {
       setThemeState(stored);

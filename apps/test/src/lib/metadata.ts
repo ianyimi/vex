@@ -4,6 +4,7 @@ import { api } from "@convex/_generated/api"
 
 import { env } from "~/env.mjs"
 import { vex } from "~/lib/vex"
+import type { Page } from "~/vex.types"
 
 const TITLE_SUFFIX = " | Vex CMS"
 
@@ -45,18 +46,17 @@ function firstNonBlank(...candidates: unknown[]): string | undefined {
  */
 export async function generatePageMetadata(props: { slug?: string }): Promise<Metadata> {
   try {
-    const settings = (await vex.query(api.siteSettings.get)) as null | Record<string, unknown>
+    const settings = await vex.query(api.siteSettings.get)
     if (!settings) {
       return { title: "Untitled" }
     }
 
-    let pageData: Record<string, unknown> | undefined
+    let pageData: Page | undefined
     if (props.slug) {
-      const pages = (await vex.query(api.pages.getBySlug, { slug: props.slug })) as unknown as
-        | Record<string, unknown>[]
-        | undefined
+      const pages = await vex.query(api.pages.getBySlug, { slug: props.slug })
       pageData = pages?.[0]
     }
+
 
     // Optional text fields seed as `""`, not `undefined` — an unset
     // `metaDescription` in the admin panel is an empty string. `??` only falls

@@ -586,7 +586,7 @@ export interface Image extends VexDocumentShape {
   alt: string
   mimeType: string
   size: number
-  storageId: string
+  storageId: Id<"_storage">
   deleted?: boolean
   src: string
   width?: number

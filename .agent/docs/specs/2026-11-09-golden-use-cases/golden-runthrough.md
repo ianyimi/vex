@@ -144,6 +144,40 @@ grid consistency, block-component `as`-cast removal) to magazine. Full detail in
 | `pnpm typecheck` / `pnpm lint` | — | 0 errors | pass — lint: same 3 pre-existing generated-file warnings as every prior pass |
 | Live verify (`magazine-vex`/`magazine-next`, attached not restarted) | forced one `npx convex dev --once` push + `pnpm seed:reinit` to backfill the new `home-subscribe` block onto the running deployment, then cold-opened `/`, an article page, an author page, a category page, and `/admin` | zero console errors/warnings on every route; `/` renders the new Subscribe section with its `mailto:` link | pass — repeated 3x on `/` to rule out a dev-server flake; `/admin`'s "VexCMS Admin" shell label is framework chrome (not a literal string anywhere in this app's own source), out of scope for the domain-content finding |
 
+### 2026-11-12 — alpha.38 pass: live preview cross-page, access-override cleanup (bare-template preview-wiring proof)
+
+Bumped every `@vexcms/*` dependency to exact `0.1.0-alpha.38`. Convex project `vex-runthrough-base`
+re-linked after real-estate's own alpha.38 pass, hard-reset (`npx convex import --replace-all` on
+an empty snapshot — real-estate's `user` rows carried fields magazine's schema doesn't define),
+re-seeded, `SITE_URL`/`BETTER_AUTH_SECRET`/`DEMO_AUTHOR_{A,B,C}_EMAIL` reset, demo accounts
+recreated. Full detail (file list, the stale-`vex.types.ts`-vs-library-bug dead end, the `.next`
+build/dev cache gotcha) in `magazine/REVIEW.md`'s Changes log; summary here.
+
+**This is the bare template's runtime preview-wiring proof** (`examples-handoff.md` Part 2, item
+4): magazine was scaffolded `--bare`, so its `<LivePreviewProvider>` mount, `proxy.ts` shape, and
+`/api/vex/live-preview` route all trace back to `base-nextjs`'s own wiring — this is the first
+time that wiring has been exercised end-to-end in a real app rather than the template's own
+scaffold smoke test. Recorded in `launch-coordination.md` § Log.
+
+| Check | Command / steps | Expected | Result |
+|---|---|---|---|
+| `<LivePreviewProvider>` mounted | `src/app/layout.tsx` | overlay runs on every page | pass |
+| `useSitePreviewMode` retired | `rg useSitePreviewMode src` | no hits | pass |
+| Anonymous `?vexLivePreview=1` redirect loop | `curl -L --max-redirs 6` on an article URL | 200, no loop (was a 6-redirect loop pre-fix, matching the handoff doc's own :3200 repro) | pass — 200 after 0 redirects |
+| Edit view live preview | signed in as `demo.admin`, opened `pages:home`'s edit view, clicked Preview, typed in the masthead heading | preview iframe updates within ~2s | pass |
+| Follow in-site link + hard reload in panel | navigated in-panel to `/articles` (404, no index route — expected) and back to `/`, reloading along the way | preview stays on; unsaved heading value reappears with no retyping | pass |
+| Sign out from inside the preview | clicked Sign out from the admin topbar with Preview still open | session + `vex-live-preview` cookies both cleared in one re-render; no sign-in/welcome screen | pass |
+| Fresh anonymous tab | new tab, `/` | shows "Sign in" (not preview), no session/preview cookies | pass |
+| `pnpm typecheck` / `pnpm lint` | — | 0 errors | pass — lint: same 2 pre-existing generated-file warnings |
+| `pnpm build` | `pnpm build` | 0 | pass — 13 routes |
+
+Dead end worth recording: a stale `vex.types.ts` (missing its `CollectionsPopulateMap` registry
+entirely, from an earlier interrupted `vex dev --once`) produced a misleading "Type 'true' is not
+assignable to type 'undefined'" error against the bound API's populate overloads that looked like
+a library bug on first read — deleting and regenerating the file fixed it; the library's
+`generateVexTypes` always emits that registry, and real-estate's identically-versioned install
+never hit this, so it was a one-off generation artifact, not a published alpha.38 defect.
+
 ## real-estate
 
 Run against `create-vexcms@0.1.0-alpha.36` / `@vexcms/*@0.1.0-alpha.36` (alpha.36, not spec's
@@ -319,6 +353,32 @@ grid consistency, block-component `as`-cast removal) to real-estate. Full detail
 | Block component typing | every `src/vexcms/blocks/*/index.tsx` destructured `block as XBlock` against a generic `BlockComponentProps` | all five (`Hero`/`FeaturedListings`/`ListingSearch`/`AgentGrid`/`RichTextSection`) now take `BlockComponentProps<XBlock>` and read `block.field` directly, zero casts; `blocks/index.ts`'s `blockComponents` map retyped `BlockComponents<PageBlock>` (real-estate has no header/footer collection, so `PageBlock` alone is the full union) | pass |
 | `pnpm typecheck` / `pnpm lint` | — | 0 errors | pass — lint: same 2 pre-existing generated-file warnings as every prior pass |
 | `pnpm build` | `rm -rf .next && pnpm build` | 0 | **could not fully verify**: compiles and typechecks clean, but static generation of `/` fails prerendering `RichTextSection` (`TypeError: c.split is not a function`) — confirmed this sandbox's shared `vex-runthrough-base` Convex Cloud deployment is still answering with a DIFFERENT example app's seeded page content (`convex run pages:getBySlug '{"slug":"home"}'` returns magazine's `masthead`/`article_list` blocks, not real-estate's), the exact same pre-existing environment misconfiguration the 2026-11-11 hydration-flash passes already documented — not caused by this change |
+
+### 2026-11-12 — alpha.38 pass: live preview cross-page, access-override cleanup
+
+Bumped every `@vexcms/*` dependency to exact `0.1.0-alpha.38`. Convex project `vex-runthrough-base`
+re-linked and hard-reset (`npx convex import --replace-all` on an empty snapshot — magazine ran on
+it last and the previous pass's env-var fix above wasn't enough to stop cross-app schema/data
+bleed, so this pass wipes the deployment outright before pushing real-estate's schema), re-seeded,
+`SITE_URL`/`BETTER_AUTH_SECRET` reset to real-estate's own values, demo accounts recreated. Full
+detail (file list, populate-type-closure fallout, the `getUserOrgForVexApi` bridge, the two
+`FieldCondition`-typed pricing predicates) in `real-estate/REVIEW.md`'s Changes log; summary here.
+
+| Check | Command / steps | Expected | Result |
+|---|---|---|---|
+| `<LivePreviewProvider>` mounted | `src/app/layout.tsx` | overlay runs on every page, not just the autosave-plus-reactive-query illusion the handoff doc described | pass |
+| `useSitePreviewMode` retired | `rg useSitePreviewMode src` | no hits | pass |
+| Anonymous `?vexLivePreview=1` redirect loop | `curl -L --max-redirs 6 'localhost:3210/?vexLivePreview=1'` | 200, no loop (was a 307 loop pre-fix — proxy handed off with no session check) | pass — 200 after 0 redirects |
+| Edit view live preview | signed in as `demo.admin`, opened `pages:home`'s edit view, clicked Preview, typed in the hero heading | preview iframe updates within ~1–2s | pass |
+| Follow in-site link + hard reload in panel | clicked a link to `/listings` inside the panel (no `?vexLivePreview=1`), reloaded that frame, navigated back to `/` | preview stays on; unsaved heading value reappears with no retyping | pass |
+| Sign out from inside the preview | clicked Sign out from the admin topbar with Preview still open | `real-estate.session_token` + `vex-live-preview` cookies both cleared in one re-render; no sign-in/welcome screen; published content, no draft | pass |
+| Fresh anonymous tab | new tab, `/` | shows "Sign in" (not preview), no session/preview cookies | pass |
+| `pnpm typecheck` / `pnpm lint` | — | 0 errors | pass — lint: same 2 pre-existing generated-file warnings |
+| `pnpm build` | `pnpm build` | 0 — the prior pass's "could not fully verify" cross-app-data prerender failure is gone now that the deployment is real-estate's own | pass — 12 routes, `/`/`/listings`/`/agents`/`/about`/`/sell` static |
+
+Known, not fixed: one hydration-mismatch console error on the admin topbar's theme-toggle dropdown,
+signed-out state only — same class as the QP spec's F-089/F-090/F-100 (`next dev` recompile-window
+non-determinism), not reproduced by any source change in this pass.
 
 ## conference
 
@@ -518,6 +578,170 @@ in use elsewhere, so nothing below was re-seeded or clicked through live.
 | `pnpm typecheck` / `pnpm lint` | — | 0 errors | pass — lint: 1 pre-existing generated-file warning (`vex.types.ts`), same baseline as every prior pass; fixed one new `perfectionist/sort-imports` spacing warning this pass introduced, via `eslint --fix` |
 | `pnpm build` | — | 0 | pass — reached the shared dev Convex deployment for `generateStaticParams`, which currently holds a different app's stale seeded pages (`/locations`, `/about`), not this app's own; irrelevant to a code-level build check, which compiled and prerendered with 0 errors |
 
+### 2026-11-12 — alpha.38 replay (live preview cross-page, closed generated interfaces, cast removal)
+
+Full alpha.38 pass: relinked/wiped `vex-runthrough-marketing` (restaurant used it last; stopped
+`restaurant-vex`/`restaurant-next` first), bumped every `@vexcms/*`/`@vexcms/cli` to exact
+`0.1.0-alpha.38` (no `~`), regenerated (`pnpm vex:generate`), applied `examples-handoff.md`
+Parts 1–3 and `alpha38-replay.md` §1/§2, removed every avoidable `as never`/`as unknown as` cast,
+re-seeded, re-verified live against `:3220`.
+
+| | conference (alpha.38 replay) |
+|---|---|
+| Folder | `~/Documents/Projects/vex-examples/conference` |
+| Convex project | `vex-runthrough-marketing`, re-linked and wiped (every table, including restaurant's `locations`/`menus` leftovers) |
+| Env | `.env.local` unchanged; dev deployment `SITE_URL`/`BETTER_AUTH_SECRET` reset to conference's own values (were still restaurant's) |
+| Services | `conference-vex` (`pnpm vex:dev`), `conference-next` (`pnpm dev`) — both left running; `restaurant-vex`/`restaurant-next` stopped first |
+
+| Check | Command / steps | Expected | Result |
+|---|---|---|---|
+| Wipe + relink `vex-runthrough-marketing` | empty `convex import --table <t> --format jsonArray --replace-all` × 23 tables, reset `SITE_URL`/`BETTER_AUTH_SECRET` | all tables empty | pass |
+| Package bump | `@vexcms/*`/`@vexcms/cli` → exact `0.1.0-alpha.38`, `pnpm install` | clean install, 7 packages bumped | pass |
+| `pnpm vex:generate` (regenerate) | — | `vex.types.ts`/`convex/vex.schema.ts` regenerated against alpha.38 | pass — surfaced real typecheck errors fixed below, not a silent no-op |
+| `examples-handoff.md` Part 1 (provider mounted, client-query pages) | audit `layout.tsx`, `PageContent.tsx`, `[slug]/page.tsx` | already done in a prior pass | confirmed already correct — no change needed |
+| `examples-handoff.md` Part 2/3 (drop `access` override, `disableLivePreview()`, `expiredSessions: "deny"`, `useIsLivePreviewActive`) | `convex/pages.ts`, `src/auth/client.tsx`, `src/vex.config.ts`, `src/proxy.ts`, delete `useSitePreviewMode.ts` | matches `apps/www/src/proxy.ts`'s marketing-site shape exactly | pass — all 5 applied; `disableLivePreview` confirmed imported from `@vexcms/next/livePreview/client` (the documented deviation), not `@vexcms/next/livePreview` |
+| alpha.38 closed generated document interfaces | `pnpm typecheck` after regen | surfaced 3 new, real error clusters | **fail → fixed → pass** — see bugs 1–3 below |
+| P-030 cast sweep | `rg "as never|as unknown as" src/` | remove every avoidable cast | 6 of 8 `as never`/`as unknown as` sites removed (now that `find`/`globals.get` narrow populate correctly); 2 genuinely still needed — see "Casts that remain" below |
+| `ROOM_CLASH` validator: `dependsOn` vs. triple-attach | read `@vexcms/core`'s real `dependsOn` option + `validateFields`'s source | pick one | **kept the triple-attach** — see "dependsOn investigated, not adopted" below |
+| `pnpm seed`, `pnpm demo:accounts`, `pnpm seed:images` | fresh empty deployment | 6 themes + siteSettings + header + footer + 6 pages + 3 speakers + 4 sessions + eventSettings + 4 Unsplash images (3 portraits + 1 hero), idempotent on re-run | pass |
+| Public routes | `curl` on `/`, `/venue`, `/schedule`, `/speakers`, `/speakers/ada-okafor` | 200, real content (`VexConf 2026`, amenities copy) | pass |
+| Signed-out live-preview redirect loop | `curl -L --max-redirs 6 'http://localhost:3220/sessions/opening-keynote?vexLivePreview=1'` | 200, not a loop | pass |
+| `/admin` reachable | `curl -o /dev/null -w "%{http_code}"` | 200 | pass |
+| `pnpm typecheck` / `pnpm lint` | — | 0 / 0 | pass — lint 0 errors (1 pre-existing generated-file warning, same baseline; fixed every new `perfectionist/sort-imports` warning via `eslint --fix`) |
+| `pnpm test` | — | kit suite green | pass — 50/50 (grew from 46/46 since the last recorded run) |
+| `pnpm build` (isolated, `conference-next` stopped first, restarted clean after) | — | 0; same route shape as before | pass |
+
+Interactive browser checks (deferred from this pass for time, completed 2026-11-12 as a same-day
+follow-up against the same running `:3220`): live preview split pane update-without-save,
+in-pane link navigation, frame reload on a non-`?vexLivePreview=1` page, pop-out tab parity, sign
+out from the pop-out, Room/Track `select()` usability, and cross-page block copy/paste. All
+pass — full detail (including one false-alarm investigation and a noted autosave sharp edge) in
+`conference/REVIEW.md`'s Changes log, "alpha.38 replay, interactive browser follow-up".
+
+### Bugs found this pass (alpha.38's closed-generated-document-interfaces fix, fixed in app code)
+
+1. **`convex/speakers.ts`/`convex/eventSettings.ts`'s `populate: { photo: true }`/`{ heroImage: true }`
+   genuinely failed to typecheck immediately after the version bump** (`TS2769`, "Type 'true' is not
+   assignable to type 'undefined'") — turned out to be stale generated types (`vex.types.ts`'s
+   `CollectionsPopulateMap` hadn't regenerated yet), not a real regression: re-running
+   `pnpm vex:generate` fixed it. Confirms `vex dev`/`vex:generate` MUST run before `pnpm typecheck`
+   after any version bump that changes the generator's own output shape — `pnpm install` alone is
+   not enough.
+2. **Closed generated document interfaces broke `VexApiAuth`'s `user` field everywhere it's
+   consumed** (`src/app/(vexcms)/admin/[[...path]]/page.tsx`, `admin/layout.tsx`,
+   `api/vex/revalidate/route.ts`) — `UserDocument` (and every other generated document type) no
+   longer carries a `[key: string]: unknown` index signature, so it stopped satisfying
+   `VexApiAuth.user: Record<string, unknown> | null`. Fixed by porting `apps/www`/`apps/test`'s own
+   fix verbatim: a new `getUserOrgForVexApi()` wrapper in `src/auth/server.ts` that widens via one
+   documented cast (`user: result.user as Record<string, unknown> | null`), used at every site that
+   needs `VexApiAuth` specifically; `components/providers/auth.tsx`'s own `getUserOrg()` call stays
+   untouched (it needs the concrete `UserDocument` shape, not the widened one) — confirms conference
+   was NOT ahead of this fix despite scaffolding from `marketing-site` (whose own template, per a
+   repo-wide grep, still has the UN-fixed `getUserOrg` pattern as of this pass; `apps/www`/`apps/test`
+   got the fix first). **Flagging for the developer: `packages/create-vexcms/templates/marketing-site`
+   (and likely `base-nextjs`) needs the same `getUserOrgForVexApi` port, or every future marketing-site
+   scaffold hits this exact error on its first `pnpm typecheck` post-generation.**
+3. **`src/lib/metadata.ts`'s `pages?.[0] as Record<string, unknown>` cast became a real TS2352**
+   ("neither type sufficiently overlaps") once `PagesDocument` closed its index signature — the old
+   cast silently relied on the signature's structural overlap. Fixed with the standard `as unknown as`
+   bridge for a confirmed closed-interface-to-generic-record case (same idiom `getUserOrgForVexApi`
+   above uses, just needed the extra `unknown` hop here specifically — `UserDocument`'s own shape
+   happened to satisfy `Record<string, unknown>` directly without one; `PagesDocument`'s didn't,
+   apparently because of how many fields are optional/structurally narrow there — not worth
+   over-investigating a cosmetic difference in which bridge TS accepts).
+
+### `HiddenDocument` (populate-rbac-target-read-rules) — new type, handled
+
+`populate`'s real return type now includes `HiddenDocument<"images">` as a union member alongside
+the real target doc for every populated `photo`/`heroImage` — the library now applies the TARGET
+collection's own read rule to each populated doc, independent of the top-level query's own
+`access: { bypass: true }` (confirmed via `apps/test/src/vexcms/globals/siteSettings.typecheck.ts`,
+the only place in the monorepo that exercises this). This app's `images` access grants `read: true`
+to every role including anonymous, so `HiddenDocument` can never actually appear at runtime here —
+but the TYPE still has to account for it. Added `isRealImage` (`src/lib/populatedTypes.ts`), a
+structural type guard (`!("code" in doc && doc.code === "ACCESS_DENIED")`, matching how
+`@vexcms/core`'s own test suite narrows the identical union with no need to import `HiddenDocument`
+by name), filtered through in both `speakers.ts` and `eventSettings.ts` before returning — every
+downstream consumer still only ever sees plain `Image[]`, unchanged from before this pass.
+
+### Casts that remain (genuinely needed, not P-030 violations)
+
+1. **`src/app/(frontend)/(site)/speakers/[slug]/SpeakerContent.tsx:48,51`** — `useLivePreviewQuery`'s
+   `queryOptions` parameter type is fixed to `UseQueryOptions<DocumentByResourceSlug<TCollectionSlug>[],
+   ...>`, driven ENTIRELY by the second positional arg (the collection slug string), with NO generic
+   slot to override it with the real query's own populated return type — unlike its sibling
+   `useLivePreviewDocumentQuery`, which DOES declare an overridable `TData extends ... = ...` default.
+   `api.speakers.getBySlug`'s real `populate: { photo: true }`-resolved return (`PopulatedSpeaker[]`)
+   can never satisfy the un-populated `SpeakersDocument[]` this hook's signature hard-codes. This is a
+   different, still-open gap in `useLivePreviewQuery`'s OWN generics, unrelated to the
+   closed-generated-interfaces fix that resolved every other cast in this pass — confirmed by testing:
+   removing it reproduces the exact error shape. **Library fix suggested for the developer:** give
+   `useLivePreviewQuery` the same overridable `TData` default parameter `useLivePreviewDocumentQuery`
+   already has.
+2. **`src/lib/metadata.ts:32`** — see bug 3 above; the standard `as unknown as Record<string,
+   unknown>` bridge for a GENERIC-field-access consumer reading a now-intentionally-closed generated
+   document, same documented class of cast every other VexCMS example's REVIEW.md already allows.
+
+Every other `as never`/`as unknown as` found by the pre-pass `rg` sweep (6 sites: `FeaturedSpeakers`,
+`SpeakerGrid`, `EventHero`, `ScheduleGrid` ×2, `SessionContent.tsx`) is now GONE — `find`'s and
+`globals.get`'s own populate narrowing is correct and sufficient on its own in alpha.38, including
+for `upload()` fields (contrary to `alpha38-replay.md` §3's "known open item" framing, which turned
+out to describe a DIFFERENT, restaurant-specific symptom — this app's own `photo`/`heroImage` fields
+populate and narrow cleanly with no cast once the explicit `Promise<PopulatedSpeaker[]>`/`Promise<null
+| PopulatedEventSettings>` handler return annotations reconcile one small, legitimate shape
+difference: `{ ...doc, photo: doc.photo?.filter(isRealImage) }` always writes the `photo` KEY
+(optional VALUE), while the hand-written `PopulatedSpeaker` declares an optional KEY — not a cast,
+a real return-type declaration).
+
+### `dependsOn` investigated, not adopted — kept the triple-attach `assertNoRoomClash`
+
+`@vexcms/core` alpha.38 does ship a real `dependsOn` option (`fields/validate.js`, confirmed by
+reading the compiled source): attaching `dependsOn: ["startsAt", "durationMinutes"]` to a single
+`room` validator WOULD re-run `assertNoRoomClash` on any of the three fields changing, matching the
+triple-attach's own trigger behavior. But `validateFields`'s `toFieldValidationError` tags the
+thrown `ConvexError` with `fieldKey` — the key of the field whose `validate()` function is
+EXECUTING, always `"room"` under `dependsOn`, never the field whose change actually triggered it.
+Confirmed directly in the compiled source (`fields/validate.js`): the loop iterates fields, checks
+`keys.has(fieldKey) || field.dependsOn?.some(...)`, then calls `toFieldValidationError({ thrown,
+fieldKey })` with THAT field's own key regardless of which branch triggered it. This means
+converting to `dependsOn` would regress inline-error placement: editing only `durationMinutes` into
+a clash would show the error on the Room field instead of the Duration field the admin actually
+edited — a real UX regression from the triple-attach's current, already-correct-per-field
+behavior (documented in this file's own 2026-11-11 "Developer feedback follow-up" entry, bug 8).
+Kept the triple-attach; not a missed migration, a deliberate choice given this field-attribution
+difference. `dependsOn` is a strictly better fit for a validator that doesn't need per-field error
+placement (e.g. a cross-field consistency check with one natural "owning" field, like the
+`endDate`/`startDate` example in `@vexcms/core`'s own doc comment) — not this one.
+
+### `assignArrayItemIds` confirmed exported, not adopted for seed.ts
+
+Confirmed via a real ESM import test (`import('@vexcms/core').then(m => 'assignArrayItemIds' in
+m)` → `true`) that `assignArrayItemIds` IS now exported from `@vexcms/core`'s public entry
+(transitively, via `fields/array/index.ts`'s `export * from "./utils"` → `fields/index.ts` →
+the package root — not a named re-export line, which is why a naive `grep` of `index.d.ts` for the
+literal string missed it in the prior alpha.37 pass's own investigation). Its real signature —
+`assignArrayItemIds(props: { fields; data: Record<string, unknown> }): Record<string, unknown>` —
+widens its return to a plain record with no generic to narrow back, so wiring it into `seed.ts`'s
+~8 `ctx.db.insert`/`ctx.db.patch` call sites would require a NEW cast back to each table's own
+`WithoutSystemFields<Doc<...>>` shape at every site to keep them type-safe — trading the "replace a
+hand-rolled workaround with the real implementation" goal for a net INCREASE in casts, for zero
+functional benefit: every array item in `seed.ts` already carries a stable, content-derived literal
+`id` (`"venue-feature-wifi"`, `"coc-q-expected"`, etc. — see the 2026-11-11 code-review entry above),
+and `assignArrayItemIds`'s own `withArrayItemId` helper only generates a FRESH id for an item that
+DOESN'T already have a string one — it is a no-op pass-through for every item this seed already
+assigns. Left `seed.ts` as-is; the existing literal ids remain more valuable here (git-diffable,
+human-readable, deterministic across re-seeds) than the library helper would be at this call site.
+
+### Library/scaffold mismatch flagged (not patched — out of scope for an example app)
+
+`packages/create-vexcms/templates/marketing-site` (the template this app was scaffolded from) still
+ships the pre-alpha.38 `getUserOrg`-direct pattern in its own `src/auth/server.ts`/
+`app/(vexcms)/admin/layout.tsx`/`[[...path]]/page.tsx`/`api/vex/revalidate/route.ts` — the SAME
+files `apps/www`/`apps/test` already carry the `getUserOrgForVexApi()` fix in. A fresh
+`pnpm create vexcms@alpha` marketing-site scaffold created today would hit the exact `TS2322`
+"Index signature for type 'string' is missing" error this pass found and fixed, on its very first
+`pnpm typecheck`. See bug 2 above for the exact fix shape to port.
+
 
 ## restaurant
 
@@ -675,3 +899,65 @@ Four developer reports against the live `:3230` deployment, same services left r
 ### VexCMS library bug reported, not patched
 
 **`NumberFieldAdmin`'s `defaultControl` is a fresh closure every render, defeating `useFieldControlOverride`'s own memoization for every `Input`-slot override on a `number` field** — `packages/react/src/fields/number/Field.tsx:29,50,79`: `renderMaskedControl`/`renderBareControl` are plain function statements inside the component body (never `useCallback`'d), then one is passed as `defaultControl`. `useFieldControlOverride`'s `useMemo` depends on `[rootOverrides, props.fieldOverrides, props.defaultControl]` (`packages/react/src/fields/useFieldControlOverride.tsx`), so the memo recomputes on every render regardless of whether an override actually changed. Any override that renders the received `renderDefault` prop as JSX (rather than calling it as the plain function its own `RenderControl<TValue>` type says it is) gets a full remount of its control on every keystroke. Candidate upstream fix: wrap `renderMaskedControl`/`renderBareControl` in `useCallback` with the same deps `resolveFieldMask`/`maskRef` already close over.
+
+### 2026-11-12 — alpha.38 replay (library fixes re-applied, cast removal, live preview cross-page)
+
+Re-run against exact `@vexcms/*@0.1.0-alpha.38` / `@vexcms/cli@0.1.0-alpha.38`, same project
+`vex-runthrough-marketing` (relinked and wiped — conference used it last), services
+`restaurant-vex`/`restaurant-next` left running throughout.
+
+| Check | Command / steps | Expected | Result |
+|---|---|---|---|
+| Upload-field populate (`alpha38-replay.md` §3) | `populate: { photo: true }` on `locations.getBySlug` | typechecks, resolves the real `images` document | **pass** — fixed in alpha.38: the generated `CollectionsPopulateMap` now carries a top-level `kind: "upload"` entry for `locations.photo`/`menus.coverImage`, and nested `blocks()` populate works too. Removed `src/lib/resolveBlockImages.ts` entirely; `locations.ts`/`menus.ts`/`headers.ts`/`footers.ts`/`pages.ts` all populate through `find` directly now |
+| `locations/[slug]/page.tsx` client-query conversion | code review (`examples-handoff.md` Part 1 step 3) | server-initialData + client-query-child split | **fail → fixed → pass** — still a pure Server Component with no reactive child; split into a thin `page.tsx` + new `"use client"` `LocationContent.tsx` using `useLivePreviewQuery` |
+| `getBySlugPreview` access override (Part 3) | `convex/pages.ts` | `access` override dropped, `find`'s fallback decides | **pass** — dropped, `DRAFT_ACTIONS` import removed |
+| `disableLivePreview()` on sign-out (Part 3) | `src/auth/client.tsx` | imported from `@vexcms/next/livePreview/client`, called after `beginTransition(null)` | **pass** |
+| `admin.livePreview.expiredSessions: "deny"` + `proxy.ts` marketing-site shape (Part 3) | `vex.config.ts` / `src/proxy.ts` | matches `apps/www`/conference's shape exactly | **pass** — diffed against `conference/src/proxy.ts` at commit `96f38ab`, byte-for-byte shape |
+| PriceInput caret/focus (alpha38-replay.md §1) | type a multi-digit price continuously | focus never drops, no layout shift | **pass — library bug now fixed**. `stable-render-default-and-left-aligned-masks` wraps `NumberFieldAdmin`'s `defaultControl` in `useStableRenderControl` (confirmed in the installed `@vexcms/react` dist). Reverted `PriceInput.tsx` to render `renderDefault` as JSX again; confirmed live, no remount |
+| `getUserOrgForVexApi` for closed `UserDocument` | `admin/layout.tsx`, `admin/[[...path]]/page.tsx`, `api/vex/revalidate/route.ts` | ported from conference/`apps/www` | **pass** |
+| P-030 cast audit | `rg "as never\|as unknown as" src/` | remove every cast alpha.38 makes unnecessary | 5 of 11 real casts removed (`LocationGrid`/`OpeningHours`/`MenuPreview` blocks' plain-`useQuery` casts, `lib/metadata.ts`'s `settings` cast); 6 remain, each tested and confirmed still necessary (listed in `REVIEW.md`'s matching entry) |
+| `pnpm typecheck` / `pnpm lint` / `pnpm build` | — | 0 / 0 / 0 | pass — same pre-existing generated-file lint warning as every other app |
+| Site chrome / signed-out preview | `curl` home + `?vexLivePreview=1` | zero "VexCMS" mentions; 200 not a redirect loop | pass |
+
+Full interactive browser verification (live-preview split-pane typing, pop-out sign-out, staff
+sidebar, Duplicate menu, `seed:reset` cycle, CLS) was re-confirmed by code review and the
+`curl`/build checks above this pass, not re-run live in a browser — carried over unchanged from
+the 2026-11-12 developer-feedback round directly above, which did run them live. A gap to close
+in a follow-up session if the library surface changes again.
+
+### VexCMS library bug — CONFIRMED FIXED in alpha.38 (was: reported, not patched)
+
+The `NumberFieldAdmin`/`useFieldControlOverride` memoization bug described in the section above
+is fixed: `packages/react/src/fields/useStableRenderControl.ts` (new) wraps
+`props.defaultControl` in a ref-backed function whose identity never changes across renders, so
+`useFieldControlOverride`'s `useMemo` (now depending on `stableDefaultControl`, not the raw
+`props.defaultControl`) no longer recomputes every render. Confirmed by reading the installed
+`@vexcms/react@0.1.0-alpha.38`'s compiled `dist/fields/number/Field.js`/
+`useFieldControlOverride.js`/`useStableRenderControl.js` directly, and live: typing a
+multi-digit price continuously now keeps focus and `document.activeElement` on the same
+`<input>` with `PriceInput.tsx` rendering `renderDefault` as JSX again (the pre-bug-workaround
+style).
+
+### 2026-11-12 — alpha.38 interactive browser verification (closing the carried-over gap)
+
+The alpha.38 replay above left "Full interactive browser verification ... re-confirmed by code
+review/`curl`, not re-run live in a browser this pass" as an explicit follow-up gap. Closed it
+this session against the same live `:3230` deployment (`restaurant-vex`/`restaurant-next` already
+running, Convex project already seeded) with a real browser tool — no code changes needed; every
+check passed on first try.
+
+| Check | Command / steps | Expected | Result |
+|---|---|---|---|
+| Live preview split pane, typing | Dinner Menu edit view, Preview, typed a multi-digit price into Charred Octopus's price field without saving | preview pane updates live | pass — `$12,199.00` in the iframe within ~1s, no save |
+| Follow in-site link + reload, no `?vexLivePreview=1` | clicked the logo link inside the preview iframe (→ `/`), navigated the iframe to `/locations/downtown/menu` (no query param), hard-reloaded | overlay stays on, unsaved value reappears with no retyping | pass — "Sign out" still shown in the iframe, `$12,199.00` survived every navigation/reload |
+| Same, pop-out tab | resolved the pop-out link's real href, opened in a second tab, repeated the follow-link-then-reload sequence | same behavior as the split pane | pass |
+| Sign out from inside the pop-out preview | clicked Sign out in the pop-out tab | published content renders, no stale draft; stays published after a reload | pass — flipped to "Sign in", `$16.00` (published), still published after reload; also ended the shared session in the admin tab |
+| Staff sidebar/permissions | signed in as `restaurant-demo-staff@example.com` | sidebar: Themes/Locations/Menus/Images only; `+ New Location` disabled, `+ New Menu` enabled; `/admin/globals/hours` rejected | pass — no Globals section at all, `+ New Location` has `disabled` state, `+ New Menu` does not, `/admin/globals/hours` → "Document not found... or you don't have access to view it" |
+| Duplicate menu + `seed:reset` cycle | admin, Dinner Menu → More actions → Duplicate, then `pnpm seed:reset` | new draft menu created, original untouched; reset removes the duplicate and restores every seeded doc | pass — new draft doc id, original's `$16.00` untouched via `curl`; `"removed":["menu:Dinner Menu"]`, `menus` table back to 2 rows, all 19 other seeded docs patched back (including the price changed during the typing test above) |
+| `PriceInput` continuous typing | 5-keystroke run on the same price field, polling `document.activeElement` after each keystroke | focus never drops, no layout shift | pass — focus stayed on `sections[0].items[0].price` throughout; `boundingBox()` identical before/after (`886.1875×32`) |
+| CLS + console errors | `/`, `/locations`, `/locations/downtown/menu`, fresh loads, `tab.vitals().cls` / `tab.errors()` | `cls: 0`, zero console errors | pass on all three routes |
+
+No fixes needed this pass — every behavior the alpha.38 library/config fixes were meant to produce
+held up under real interactive browser driving, not just code review. Restored all test-touched
+state (`pnpm seed:reset`) before finishing; `/locations/downtown/menu` confirmed back to `$16.00`
+via `curl`.

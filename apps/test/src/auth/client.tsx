@@ -84,10 +84,14 @@ export default function BetterAuthClientProvider({ children }: { children: React
           // one case the identity is known with zero ambiguity ahead of
           // time (always `null`), so list hooks start ignoring stale pages
           // as early as possible (`@vexcms/react`'s `useAuthTransition`).
+          // `skipRefresh: true` — this `signOut` already hard-navigates
+          // below, so `useNextAuthTransitionRefresh`'s OWN `router.refresh()`
+          // for this same transition would only race that hard navigation
+          // (see that hook's own doc comment, `@vexcms/next`).
           // `useBeginAuthTransitionOnSessionChange` (`~/components/providers/convex.tsx`)
           // also reactively catches this once `authClient.useSession()`
           // updates, so this call is a latency optimization, not the only path.
-          beginTransition(null)
+          beginTransition(null, { skipRefresh: true })
           // Clears any stale live-preview cookies left over from this tab or
           // the pop-out preview tab — see `disableLivePreview`'s own doc
           // comment. Fire-and-forget: it never throws, so it cannot block

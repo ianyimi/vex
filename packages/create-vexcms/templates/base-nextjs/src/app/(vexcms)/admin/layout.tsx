@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 
 import { NextAdminLayout } from "@vexcms/next/client"
 
-import { getToken, getUserOrg } from "~/auth/server"
+import { getToken, getUserOrgForVexApi } from "~/auth/server"
 
 /**
  * `AuthServerProvider` (`~/components/providers/auth`) used to wrap `{children}` here —
@@ -16,7 +16,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // Not awaited — `NextAdminLayout` resolves it inside the sidebar's OWN `<Suspense>`
   // boundary (`@vexcms/react`'s `AdminLayout`), so `{children}` and this layout's own
   // static chrome stream immediately instead of waiting on a Convex round trip.
-  const authPromise = getUserOrg()
+  const authPromise = getUserOrgForVexApi()
   // Awaited, unlike `authPromise` above: `getToken()` is `cache()`-memoized AND, when a
   // valid JWT cookie is present, resolves from a local decode (no network round trip —
   // see `auth/server.ts`'s `jwtCache` comment), so this costs far less than `getUserOrg()`

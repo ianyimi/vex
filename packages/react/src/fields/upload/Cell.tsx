@@ -6,6 +6,7 @@ import {
   CollectionConfig,
   CollectionSlug,
   type HiddenDocument,
+  isHiddenDocument,
   TDocument,
   UploadField,
   VexMediaDocument,
@@ -18,19 +19,6 @@ import { Skeleton, VexLink } from "../../ui";
 import { AccessDeniedItemRow } from "../../access";
 import { adminHref } from "../../admin/adminHref";
 import { useVexConfig } from "../../config/VexConfigContext";
-
-/**
- * True when a populated field's item is a `populateDocs`-produced
- * {@link HiddenDocument} placeholder rather than a real target doc.
- *
- * @param value - The populated field's item to check.
- * @returns Whether `value` is a {@link HiddenDocument}.
- */
-function isHiddenDocument(value: unknown): value is HiddenDocument {
-  return (
-    typeof value === "object" && value !== null && (value as Record<string, unknown>).code === "ACCESS_DENIED"
-  );
-}
 
 /**
  * Table cell rendering for upload field.

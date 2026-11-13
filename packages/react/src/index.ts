@@ -110,10 +110,19 @@ export {
 } from "./config";
 export type { NavigationBlockerAdapter, FrameworkAuthAdapter } from "./config";
 export { useVexNavigate, COVERING_ROUTE_LINK_ATTRIBUTE } from "./config";
-export { useVexAuth, VexAuthProvider, useAuthTransition, AuthTransitionProvider, type AuthTransitionState } from "./auth";
+export {
+  useVexAuth,
+  VexAuthProvider,
+  VexSessionAdapterProvider,
+  type VexSessionAdapter,
+  type VexSessionState,
+  useAuthTransition,
+  AuthTransitionProvider,
+  type AuthTransitionState,
+} from "./auth";
 
 // Hooks
-export { useCanAccessAdminPanel } from "./access";
+export { useCanAccessAdminPanel, type UseCanAccessAdminPanelResult } from "./access";
 export {
   usePaginatedQuery,
   type UsePaginatedQueryProps,

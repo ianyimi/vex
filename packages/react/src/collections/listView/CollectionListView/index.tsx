@@ -9,6 +9,7 @@ import {
   resolveListViewQueryState,
   resolveListViewSearchField,
   VERSION_SYSTEM_FIELDS,
+  VEX_VIEW_SOURCES,
   type ColumnEntry,
   type CollectionConfig,
   type CollectionListViewProps,
@@ -212,18 +213,27 @@ export function CollectionListView<
     ? { count: activeView.hiddenFilterCount, description: activeView.description }
     : undefined;
   // A SHARED view's own saved filter must show as normal, EDITABLE chips —
-  // same as any URL filter — when every field it references is readable
-  // (never for a declared `config`/`default` view, whose filter stays
-  // hidden-badge-only regardless of readability, by design). `ListViewToolbar`'s
-  // `where` prop used to feed `ListViewFilterBuilder`/`ListViewFilterChips`/the eye
-  // toggle from `urlState.filter` alone, which is `undefined` for an
-  // unmodified shared-view link (its state isn't URL-embedded the way a
-  // local view's is) — so a readable shared filter was
-  // invisible UI-wise for every caller, not just one who can't read a
-  // field in it (confirmed live, zero chips for an unrestricted admin
-  // session on a readable shared view). See `resolveEffectiveFilterWhere`'s
-  // own doc for the exact rule.
+  // same as any URL filter — using only its OWN readable portion
+  // (`SavedListViewEntry.visibleWhere`, {@link resolveEffectiveFilterWhere}).
+  // `ListViewToolbar`'s `where` prop used to feed
+  // `ListViewFilterBuilder`/`ListViewFilterChips`/the eye toggle from
+  // `urlState.filter` alone, which is `undefined` for an unmodified
+  // shared-view link (its state isn't URL-embedded the way a local
+  // view's is) — so a readable shared filter was invisible UI-wise for
+  // every caller, not just one who can't read a field in it (confirmed
+  // live, zero chips for an unrestricted admin session on a readable
+  // shared view). See `resolveEffectiveFilterWhere`'s own doc for the
+  // exact rule.
   const effectiveFilterWhere = resolveEffectiveFilterWhere({ urlFilter: urlState.filter, activeView });
+  // A `config`/`default` view's own readable condition(s) — never
+  // user-editable, so never routed through `effectiveFilterWhere` —
+  // render as a separate, LOCKED (non-removable) chip instead
+  // (`ListViewFilterChips`'s `lockedWhere` prop). Only its UNREADABLE
+  // conditions stay badge-only (`activeViewHiddenFilter` above).
+  const lockedFilterWhere =
+    activeView?.source === VEX_VIEW_SOURCES.config || activeView?.source === VEX_VIEW_SOURCES.default
+      ? activeView.visibleWhere
+      : undefined;
 
   // The single place `where`/`sort`/`search`/`searchField`/`pageSize`/
   // `columnOrder`/`visibleColumns` resolve from the URL + active view's
@@ -555,6 +565,7 @@ export function CollectionListView<
         staleSearchField: resolved.staleSearchField,
         staleFilterField: resolved.staleFilterField,
         effectiveFilterWhere,
+        lockedFilterWhere,
       }}
     >
       {/*

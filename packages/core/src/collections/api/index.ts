@@ -20,5 +20,25 @@ export { remove } from "./remove/server";
 export type { RemoveServerArgs } from "./remove/server";
 
 export * from "./types";
+export {
+  buildFindArgs,
+  buildGetQuery,
+  buildSearchArgs,
+  findFuncRef,
+  getFuncRef,
+  searchFuncRef,
+  vexFindQuery,
+  vexGetQuery,
+  vexSearchQuery,
+} from "./networkQuery";
+export type {
+  FindClientArgs,
+  FindClientPaginatedArgs,
+  GetClientArgs,
+  SearchClientArgs,
+  SearchClientPaginatedArgs,
+  VexNetworkQueryClient,
+} from "./networkQuery";
+
 
 export { collectionsApi } from "./collectionsApi";

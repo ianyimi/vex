@@ -42,15 +42,25 @@ export const VexAdminAuthAdapterContext = createContext<FrameworkAuthAdapter | u
  * // ~/components/providers/client.tsx ("use client")
  * import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth";
  * import { signOut } from "~/auth/client";
+ * import { useAuthTransition } from "@vexcms/react";
  *
  * import config from "~/vex.config";
  *
  * function AuthAdapterProvider({ children }: { children: React.ReactNode }) {
+ *   // Needs an `AuthTransitionProvider` ancestor (the app's own
+ *   // `ConvexClientProvider` mounts one) for `skipRefresh` below to reach
+ *   // `useNextAuthTransitionRefresh`.
+ *   const { beginTransition } = useAuthTransition();
  *   return (
  *     <VexAdminAuthAdapterProvider
  *       value={{
  *         signInHref: (redirectTo) => `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}`,
  *         signOut: () => {
+ *           // `skipRefresh: true` — this sign-out already hard-navigates
+ *           // below; without it, `useNextAuthTransitionRefresh` fires its
+ *           // OWN `router.refresh()` for this same transition, racing the
+ *           // hard navigation (see that hook's own doc comment).
+ *           beginTransition(null, { skipRefresh: true });
  *           const goToDestination = () => {
  *             window.location.href = config.auth.signOut.redirectTo;
  *           };

@@ -1,6 +1,6 @@
 import { createVexRevalidateRoute } from "@vexcms/next/cache"
 
-import { getToken, getUserOrg } from "~/auth/server"
+import { getToken, getUserOrgForVexApi } from "~/auth/server"
 import config from "~/vex.config.server"
 
 /**
@@ -14,5 +14,5 @@ import config from "~/vex.config.server"
 export const { POST } = createVexRevalidateRoute({
   config,
   getToken,
-  getAuth: getUserOrg,
+  getAuth: getUserOrgForVexApi,
 })

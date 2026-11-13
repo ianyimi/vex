@@ -4,6 +4,7 @@ import { api } from "@convex/_generated/api"
 
 import { env } from "~/env.mjs"
 import { vex } from "~/lib/vex"
+import type { PagesDocument, Post, SiteSettingsGlobal } from "~/vex.types"
 
 const TITLE_SUFFIX = " | Vex CMS"
 
@@ -47,7 +48,7 @@ async function buildDocumentMetadata(props: {
   canonicalPath: string
   description?: unknown
   ogImageId?: string
-  settings: Record<string, unknown>
+  settings: SiteSettingsGlobal
   title?: unknown
 }): Promise<Metadata> {
   const siteName = firstNonBlank(props.settings.name)
@@ -105,16 +106,14 @@ async function buildDocumentMetadata(props: {
  */
 export async function generatePageMetadata(props: { slug?: string }): Promise<Metadata> {
   try {
-    const settings = (await vex.query(api.siteSettings.get)) as null | Record<string, unknown>
+    const settings = await vex.query(api.siteSettings.get)
     if (!settings) {
       return { title: "Untitled" }
     }
 
-    let pageData: Record<string, unknown> | undefined
+    let pageData: PagesDocument | undefined
     if (props.slug) {
-      const pages = (await vex.query(api.pages.getBySlug, { slug: props.slug })) as unknown as
-        | Record<string, unknown>[]
-        | undefined
+      const pages = await vex.query(api.pages.getBySlug, { slug: props.slug })
       pageData = pages?.[0]
     }
 
@@ -148,15 +147,13 @@ export async function generatePageMetadata(props: { slug?: string }): Promise<Me
  */
 export async function generatePostMetadata(props: { slug: string }): Promise<Metadata> {
   try {
-    const settings = (await vex.query(api.siteSettings.get)) as null | Record<string, unknown>
+    const settings = await vex.query(api.siteSettings.get)
     if (!settings) {
       return { title: "Untitled" }
     }
 
-    const posts = (await vex.query(api.posts.getBySlug, { slug: props.slug })) as unknown as
-      | Record<string, unknown>[]
-      | undefined
-    const postData = posts?.[0]
+    const posts = await vex.query(api.posts.getBySlug, { slug: props.slug })
+    const postData: Post | undefined = posts?.[0]
 
     if (!postData) {
       const siteName = firstNonBlank(settings.name)

@@ -88,7 +88,15 @@ export const getUserOrg = cache(() => fetchAuthQuery(api.auth.api.getUserOrg, {}
  * The cast is the documented bridge for a GENERIC-field-access consumer
  * (`VexApiAuth.user`'s own doc comment: "shape is caller-defined") reading
  * a generated document that is now deliberately closed (no index
- * signature) — see `VexDocumentShape` in `@vexcms/core`.
+ * signature) — see `VexDocumentShape` in `@vexcms/core`. Attempted making
+ * `VexApiAuth` generic over the concrete doc types instead (so this could
+ * return the real `UserDocument`/`OrganizationDocument` with no cast):
+ * reverted — it breaks the dozens of dynamic `auth.user.<field>` reads
+ * throughout `@vexcms/react`'s admin UI (only typecheck against
+ * `Record<string, unknown>`'s index signature, never a closed generated
+ * document) AND triggers a `TS2589` excessive-instantiation-depth error in
+ * `search/server.ts` once combined with this project's full generated type
+ * graph. See the alpha38-replay note.
  */
 export async function getUserOrgForVexApi(): Promise<VexApiAuth> {
   const result = await getUserOrg()

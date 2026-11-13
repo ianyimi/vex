@@ -272,10 +272,12 @@ export function useLivePreview<TCollectionSlug extends VexResourceSlug = VexReso
  * `useLivePreviewQuery`'s result — a `useQuery` result whose `data` is the single
  * overlaid document rather than the query's own array.
  */
-export type LivePreviewQueryResult<TCollectionSlug extends VexResourceSlug = VexResourceSlug> =
-  Omit<UseQueryResult<DocumentByResourceSlug<TCollectionSlug>[]>, "data"> & {
-    data: DocumentByResourceSlug<TCollectionSlug> | undefined;
-  };
+export type LivePreviewQueryResult<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TData extends unknown[] = DocumentByResourceSlug<TCollectionSlug>[],
+> = Omit<UseQueryResult<TData>, "data"> & {
+  data: TData[number] | undefined;
+};
 
 /**
  * Sugar composing `useQuery` with `useLivePreview` — shaped around a
@@ -290,9 +292,24 @@ export type LivePreviewQueryResult<TCollectionSlug extends VexResourceSlug = Vex
  * default and rejecting `convexQuery`'s specific tuple. The query key's exact
  * shape plays no role here — the object is forwarded to `useQuery` unchanged.
  *
+ * `TData` is overridable and NOT constrained to extend the raw
+ * `DocumentByResourceSlug<TCollectionSlug>[]` (only defaults to it, the same
+ * fix applied to `useLivePreviewDocumentQuery` below): a `populate`-resolved
+ * query's real array element (e.g. `PopulatedSpeaker`) is never assignable to
+ * its raw declared counterpart — an upload/relationship field resolves to the
+ * real referenced document, not the `Id<...>[]` the raw type still declares —
+ * so a CONSTRAINED override generic rejected exactly the callers it exists
+ * for, the same cast this hook was meant to remove just moved to the type
+ * parameter. Every consumer backing this hook with a populated query needed
+ * `convexQuery(...) as never` on the call and a second cast on the
+ * destructured result before this. One cast stays inside the hook itself
+ * (`useLivePreview`'s own parameter is still the RAW document type, same
+ * limitation `useLivePreviewDocumentQuery` documents on its own overlay —
+ * unsaved editor values are always raw fields) instead of at every call site.
+ *
  * @example
  * ```tsx
- * const { data: page } = useLivePreviewQuery(
+ * const { data: page } = useLivePreviewQuery<"pages", PopulatedPagesDocument[]>(
  *   { ...convexQuery(api.pages.getBySlug, { slug }), initialData },
  *   "pages",
  * );
@@ -302,19 +319,23 @@ export type LivePreviewQueryResult<TCollectionSlug extends VexResourceSlug = Vex
  * @param collectionSlug - The collection those documents belong to.
  * @returns The query result with `data` narrowed to the single overlaid document.
  */
-export function useLivePreviewQuery<TCollectionSlug extends VexResourceSlug = VexResourceSlug>(
-  queryOptions: UseQueryOptions<
-    DocumentByResourceSlug<TCollectionSlug>[],
-    Error,
-    DocumentByResourceSlug<TCollectionSlug>[],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any
-  >,
+export function useLivePreviewQuery<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TData extends unknown[] = DocumentByResourceSlug<TCollectionSlug>[],
+>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  queryOptions: UseQueryOptions<TData, Error, TData, any>,
   collectionSlug: TCollectionSlug,
-): LivePreviewQueryResult<TCollectionSlug> {
+): LivePreviewQueryResult<TCollectionSlug, TData> {
   const queryResult = useQuery(queryOptions);
-  const previewedDoc = useLivePreview(queryResult.data?.[0], collectionSlug);
-  return { ...queryResult, data: previewedDoc ?? undefined };
+  const previewedDoc = useLivePreview(
+    queryResult.data?.[0] as DocumentByResourceSlug<TCollectionSlug> | undefined,
+    collectionSlug,
+  );
+  return {
+    ...queryResult,
+    data: (previewedDoc ?? undefined) as TData[number] | undefined,
+  } as LivePreviewQueryResult<TCollectionSlug, TData>;
 }
 
 /**
@@ -324,8 +345,9 @@ export function useLivePreviewQuery<TCollectionSlug extends VexResourceSlug = Ve
  */
 export type LivePreviewDocumentQueryResult<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
-> = Omit<UseQueryResult<DocumentByResourceSlug<TCollectionSlug> | null>, "data"> & {
-  data: DocumentByResourceSlug<TCollectionSlug> | undefined;
+  TData = DocumentByResourceSlug<TCollectionSlug> | null,
+> = Omit<UseQueryResult<TData>, "data"> & {
+  data: Exclude<TData, null> | undefined;
 };
 
 /**
@@ -345,6 +367,15 @@ export type LivePreviewDocumentQueryResult<
  * given explicitly, and the object is forwarded to `useQuery` unchanged
  * regardless of its exact shape.
  *
+ * `TData` is NOT constrained to extend the raw
+ * `DocumentByResourceSlug<TCollectionSlug> | null` (only defaults to it) — a
+ * constrained version still rejects a `populate`-resolved document (e.g.
+ * `logoImage: Image[]` is never assignable to its raw `Id<"images">[]`
+ * declared shape), the same gap `useLivePreviewQuery` above had.
+ * `useLivePreview`'s own parameter needs one internal cast for the same
+ * reason `useLivePreviewQuery` does: TS distributes `DocumentByResourceSlug`
+ * over the slug union and loses the subtype relation.
+ *
  * @param queryOptions - The `useQuery` options for a query resolving to one document.
  * @param collectionSlug - The collection that document belongs to.
  * @returns The query result with `data` overlaid by any unsaved editor values.
@@ -359,25 +390,19 @@ export type LivePreviewDocumentQueryResult<
  */
 export function useLivePreviewDocumentQuery<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
-  // Inferred from the query itself: a `getFirst`-style read is typed
-  // `Doc | null`, a lookup by id often just `Doc`, and pinning the parameter to
-  // one of those makes the other fail to assign.
-  TData extends DocumentByResourceSlug<TCollectionSlug> | null =
-    DocumentByResourceSlug<TCollectionSlug> | null,
+  TData = DocumentByResourceSlug<TCollectionSlug> | null,
 >(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   queryOptions: UseQueryOptions<TData, Error, TData, any>,
   collectionSlug: TCollectionSlug,
-): LivePreviewDocumentQueryResult<TCollectionSlug> {
+): LivePreviewDocumentQueryResult<TCollectionSlug, TData> {
   const queryResult = useQuery(queryOptions);
-  // One cast: `TData` is a subtype of the resolved document, but TS distributes
-  // `DocumentByResourceSlug` over the slug union and loses that relation.
   const previewedDoc = useLivePreview(
     queryResult.data as DocumentByResourceSlug<TCollectionSlug> | null,
     collectionSlug,
   );
   return {
     ...queryResult,
-    data: previewedDoc ?? undefined,
-  } as LivePreviewDocumentQueryResult<TCollectionSlug>;
+    data: (previewedDoc ?? undefined) as Exclude<TData, null> | undefined,
+  } as LivePreviewDocumentQueryResult<TCollectionSlug, TData>;
 }

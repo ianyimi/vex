@@ -235,7 +235,7 @@ siteSettings: {
 Neither map carries a `"*"` — see "The wildcard is optional" below — so every field the map
 doesn't name is denied for that action. `read`'s map permits `adminTheme`, `name`, and
 `description`; every other field on the global (`activeTheme`, `favicon`, the SEO fields) is
-unreadable by this role and, per Admin panel gating below, hidden from the edit form
+unreadable by this role and, per Field-level gating in the edit form below, hidden from the edit form
 entirely. `update`'s map permits only `adminTheme`, so `name` and `description` stay
 visible (they're readable) but not editable. Nothing else changed — no `fields` sibling on
 the resource entry, no second wiring point, no new `defineAccess` option.
@@ -381,7 +381,67 @@ asked for `throwOnDenied`.
 
 ### Admin panel gating
 
-Two hooks from `@vexcms/react`, both advisory client-side reads of the same map
+**`useCanAccessAdminPanel()`** (`@vexcms/react`) gates an "Admin" link/button in site
+chrome with the *same* `adminPanel.access` predicate the server route runs
+(`canAccessAdminPanel`, above) — so the link can never offer a destination that redirects
+to `/unauthorized`. It works in both trees:
+
+- **Inside `/admin`** — reads the server-resolved `{ user, organization }` `VexAuthProvider`
+  seeds (synchronous, no pending state).
+- **Outside `/admin`** — every public page, where `VexAuthProvider` is never mounted — reads
+  the caller from a `VexSessionAdapterProvider` instead, a thin bridge around the host app's
+  own reactive client session (Better Auth's `authClient.useSession()`, typically). Mount it
+  once at the app root, beside the root `VexConfigProvider` that already carries `access` to
+  every route (P-004):
+
+  ```tsx
+  // ~/components/providers/client.tsx ("use client")
+  import { VexConfigProvider, VexSessionAdapterProvider } from "@vexcms/react";
+  import { useSession } from "~/auth/client";
+  import config from "~/vex.config";
+
+  export default function ClientProviders({ children }: { children: React.ReactNode }) {
+    return (
+      <VexSessionAdapterProvider
+        value={{
+          useSession: () => {
+            const { data, isPending } = useSession();
+            return { user: data?.user ?? null, isPending };
+          },
+        }}
+      >
+        <VexConfigProvider config={config}>{children}</VexConfigProvider>
+      </VexSessionAdapterProvider>
+    );
+  }
+  ```
+
+It returns `{ canAccess, isPending }`, not a plain boolean: a public page's caller resolves
+asynchronously (the client session hook settles a tick after mount), so a header has to
+decide what to show *before* that tick. `isPending` is `true` only in that window (never
+inside `/admin`, where the caller is already resolved server-side) — `canAccess` is always
+`false` while it is. Render the link's own fixed-size slot invisibly (`aria-hidden`, same
+classes, no text change) while `isPending`, instead of omitting it, so a signed-in caller's
+link never pops in after the rest of the header has already painted — zero layout shift,
+the same "always occupy the slot" contract `SessionButton`-style sign-in/out controls use:
+
+```tsx
+const { canAccess, isPending } = useCanAccessAdminPanel();
+
+if (isPending) return <span aria-hidden className={linkClassName}>Admin</span>; // invisible same-size placeholder
+if (!canAccess) return null;
+return <Link className={linkClassName} href="/admin">Admin</Link>;
+```
+
+Both branches fail closed: no access config, no `VexSessionAdapterProvider` mounted, a
+session resolved signed-out, or a resolved role lacking `adminPanel.access` all answer
+`{ canAccess: false, isPending: false }` — never `true` from the mere absence of
+information, the same posture `canAccessAdminPanel` itself takes server-side for a missing
+caller (not for a missing config, which legitimately means "RBAC is off").
+
+### Field-level gating in the edit form
+
+Two more hooks from `@vexcms/react`, both advisory client-side reads of the same map
 `hasPermission` would resolve server-side:
 
 - **`useFieldPermissions({ resource, action, data })`** resolves a merged
@@ -506,6 +566,21 @@ const post = await get({
 
 // A caller without "read" on "authors":
 post?.author; // [{ _id: "...", code: "ACCESS_DENIED", resource: "authors", action: "read" }]
+```
+
+Narrow a populated field's resolved value with `isHiddenDocument` (exported from
+`@vexcms/core`) rather than hand-rolling an `ACCESS_DENIED` check — it narrows a
+`Doc | HiddenDocument` union both ways, to `HiddenDocument` in the `true` branch and back
+to the real document type in the `false` branch:
+
+```ts
+import { isHiddenDocument } from "@vexcms/core";
+
+if (isHiddenDocument(post?.author[0])) {
+  // narrowed to HiddenDocument — .code, .resource, .action
+} else {
+  // narrowed to the real author document
+}
 ```
 
 `@vexcms/react` renders the placeholder as a locked row in place of the target's own

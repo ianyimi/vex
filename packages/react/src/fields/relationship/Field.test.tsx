@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -263,4 +263,123 @@ runFieldInputContractSuite({
       });
     });
   },
+});
+
+/**
+ * Regression coverage for the picker-reopen race: on a real `siteSettings`
+ * global, `activeTheme` and `adminTheme` are two SEPARATE `relationship()`
+ * fields both pointed at `themes` — and every relationship field's picker
+ * shares the exact same `MODALS.relationshipPicker.urlParam` nuqs key
+ * (only the VALUE, the open field's own name, distinguishes which one is
+ * open). Live-reproduced on a freshly loaded `siteSettings` global in both
+ * the conference example (:3220) and `apps/test` (:3020): confirming a
+ * pick in one field's picker committed the value, closed the dialog, then
+ * IMMEDIATELY reopened it — only on a fresh page load, never again
+ * afterward. Root cause: `handleSelect` (`Field.tsx`) called
+ * `field.handleChange(ids)` (which flips the form pristine → dirty and
+ * re-renders every sibling field sharing the picker's url key) BEFORE
+ * `closePicker()`'s url-clearing write had settled — a sibling's own
+ * `useQueryState` subscription could resync from the still-stale "open"
+ * url during that window. `handleSelect` now `await`s `closePicker()`
+ * fully before calling `field.handleChange`, closing that window.
+ */
+describe("RelationshipFieldAdmin — sibling picker close race", () => {
+  /**
+   * Renders TWO relationship fields under the SAME `<AppForm>`, both
+   * targeting {@link relationshipTargetCollection} but with distinct
+   * `name`/`label`s — the real-world precondition for the race (two
+   * `relationship()` fields on one document, sharing the picker's url key).
+   */
+  function renderSiblingRelationshipFields() {
+    const t = convexTest(schema, testModules);
+    const convexClient = createFakeConvexClient(t) as ConvexReactClient;
+    const convexQueryClient = new ConvexQueryClient(convexClient);
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { queryFn: convexQueryClient.queryFn(), retry: false },
+      },
+    });
+    convexQueryClient.connect(queryClient);
+
+    const config = defineConfig({ collections: [relationshipTargetCollection] });
+    const fieldDefA: RelationshipField<VexResourceSlug, CollectionFieldMeta> = {
+      ...relationshipFieldFixture.fieldDef,
+      hasMany: false,
+      required: false,
+      label: "Field A",
+    };
+    const fieldDefB: RelationshipField<VexResourceSlug, CollectionFieldMeta> = {
+      ...relationshipFieldFixture.fieldDef,
+      hasMany: false,
+      required: false,
+      label: "Field B",
+    };
+
+    function Harness() {
+      const form = useForm({
+        defaultValues: { fieldA: [] as string[], fieldB: [] as string[] },
+      });
+      return (
+        <ConvexProvider client={convexClient}>
+          <QueryClientProvider client={queryClient}>
+            <NuqsTestingAdapter>
+              <VexConfigContext.Provider value={config}>
+                <AppForm form={form}>
+                  <RelationshipFieldAdmin
+                    name="fieldA"
+                    fieldDef={fieldDefA}
+                    collection={testCollection}
+                    readOnly={false}
+                  />
+                  <RelationshipFieldAdmin
+                    name="fieldB"
+                    fieldDef={fieldDefB}
+                    collection={testCollection}
+                    readOnly={false}
+                  />
+                </AppForm>
+              </VexConfigContext.Provider>
+            </NuqsTestingAdapter>
+          </QueryClientProvider>
+        </ConvexProvider>
+      );
+    }
+
+    return render(<Harness />);
+  }
+
+  test("confirming a pick in one field, with a sibling relationship field sharing the picker's url key, closes the dialog without it reopening", async () => {
+    const user = userEvent.setup();
+    renderSiblingRelationshipFields();
+
+    const fieldAGroup = await screen.findByRole("group", { name: "Field A" });
+    await user.click(
+      within(fieldAGroup).getByRole("button", { name: /select document/i }),
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "relationship picker stub",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "confirm pick" }));
+
+    // The dialog must close…
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "relationship picker stub" }),
+      ).not.toBeInTheDocument(),
+    );
+    // …and STAY closed across a window spanning the real nuqs throttle
+    // delay the live race depended on. ES2022 lib target (no
+    // `Promise.withResolvers`) — executor form, matching
+    // `useSavedListViewPrefetch.test.ts`'s own precedent.
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+    expect(
+      screen.queryByRole("dialog", { name: "relationship picker stub" }),
+    ).not.toBeInTheDocument();
+
+    // The selection was actually committed, not dropped by the fix.
+    expect(
+      within(fieldAGroup).getByRole("button", { name: /select document/i }),
+    ).toBeInTheDocument();
+  });
 });

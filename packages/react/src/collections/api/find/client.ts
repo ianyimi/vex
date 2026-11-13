@@ -1,76 +1,24 @@
 import { convexQuery } from "@convex-dev/react-query";
-import type { FunctionReference } from "convex/server";
+import type { PaginationResult } from "@vexcms/core";
 import type { VexQueryOptions } from "../../../client/types";
 import { whereArg } from "../whereArg";
 
-import { vexConvexApi, type VexFindArgs, type VexFindPaginatedArgs, type VexWhere } from "@vexcms/core";
-import type { CollectionSlug } from "@vexcms/core";
-import type {
-  CollectionTableSort,
-  DocReturnItem,
-  FindReturn,
-  FindReturnPaginated,
-  GenericQueryClientParams,
-  PaginationOptions,
-  PaginationResult,
-  PopulateShape,
+import {
+  buildFindArgs,
+  findFuncRef,
+  vexConvexApi,
+  type CollectionSlug,
+  type DocReturnItem,
+  type FindClientArgs,
+  type FindClientPaginatedArgs,
+  type FindReturn,
+  type FindReturnPaginated,
+  type PopulateShape,
+  type VexFindArgs,
+  type VexFindPaginatedArgs,
 } from "@vexcms/core";
 
-/**
- * Client-side args for `find`. Extends {@link GenericQueryClientParams}
- * to inherit `ctx?: never`, `populate?: TPopulate`, `depth?: D`, and `skip?`.
- *
- * @typeParam TCollectionSlug - Collection slug.
- * @typeParam TPopulate - Populate object, narrowed against `RelationshipKeysOf<TCollectionSlug>`.
- * @typeParam D - Depth literal (0 = none). Inferred from `depth`.
- */
-export interface FindClientArgs<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TPopulate extends PopulateShape<TCollectionSlug> = PopulateShape<TCollectionSlug>,
-  D extends number = number,
-> extends GenericQueryClientParams<TCollectionSlug, TPopulate, D> {
-  collection: TCollectionSlug;
-  limit?: number;
-  /**
-   * Predicate over the collection's fields: a builder callback or a plain node.
-   * The callback is converted to a node before it is sent.
-   */
-  where?: VexWhere<TCollectionSlug>;
-  /**
-   * Portable sort — never an index name. Rejected
-   * server-side together with a `search` call.
-   */
-  sort?: CollectionTableSort<string>;
-  paginationOpts?: PaginationOptions;
-}
-
-/**
- * Internal Client-side args for `find` with pagination options required. Extends {@link GenericQueryClientParams}
- * to inherit `ctx?: never`, `populate?: TPopulate`, `depth?: D`, and `skip?`.
- *
- * @typeParam TCollectionSlug - Collection slug.
- * @typeParam TPopulate - Populate object, narrowed against `RelationshipKeysOf<TCollectionSlug>`.
- * @typeParam D - Depth literal (0 = none). Inferred from `depth`.
- */
-export interface FindClientPaginatedArgs<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TPopulate extends PopulateShape<TCollectionSlug> = PopulateShape<TCollectionSlug>,
-  D extends number = number,
-> extends GenericQueryClientParams<TCollectionSlug, TPopulate, D> {
-  collection: TCollectionSlug;
-  limit?: number;
-  /**
-   * Predicate over the collection's fields: a builder callback or a plain node.
-   * The callback is converted to a node before it is sent.
-   */
-  where?: VexWhere<TCollectionSlug>;
-  /**
-   * Portable sort — never an index name. Rejected
-   * server-side together with a `search` call.
-   */
-  sort?: CollectionTableSort<string>;
-  paginationOpts: PaginationOptions;
-}
+export type { FindClientArgs, FindClientPaginatedArgs } from "@vexcms/core";
 
 /**
  * Returns tanstack-query options for listing documents in a VexCMS collection,
@@ -79,16 +27,17 @@ export interface FindClientPaginatedArgs<
  * Client-side only — pass to `useQuery` / `useSuspenseQuery` / `prefetchQuery`.
  *
  * Import from `@vexcms/react/client`. For the server-side version, import
- * `find` from `@vexcms/core/server`.
+ * `find` from `@vexcms/core/server`; for a direct network call outside React
+ * (server components, scripts), import `vexFindQuery` from `@vexcms/core`.
  *
  * Two overloads mirror the server function: without `paginationOpts` the data is
  * an array; with it, a `PaginationResult`. This keeps callers from having to
  * narrow a union at every callsite.
  *
- * The funcRef is cast per instantiation for the reason documented on `get` —
- * `api.vex.find` is one registered function serving every collection, so its
- * return type is fixed at codegen and a runtime `collection` value cannot
- * narrow it.
+ * The funcRef is cast per instantiation (inside {@link buildFindQuery}) for the
+ * reason documented on `get` — `api.vex.find` is one registered function
+ * serving every collection, so its return type is fixed at codegen and a
+ * runtime `collection` value cannot narrow it.
  *
  * @typeParam TCollectionSlug - Collection slug; compile-error if not registered.
  * @typeParam TPopulate - Populate object, narrowed against `RelationshipKeysOf<TCollectionSlug>`.
@@ -151,26 +100,8 @@ export function find<
 ):
   | VexQueryOptions<VexFindArgs, FindReturn<TCollectionSlug, TPopulate, D>>
   | VexQueryOptions<VexFindPaginatedArgs, FindReturnPaginated<TCollectionSlug, TPopulate, D>> {
-  const funcRef = vexConvexApi.find as FunctionReference<
-    "query",
-    "public",
-    VexFindArgs,
-    FindReturn<TCollectionSlug, TPopulate, D>
-  >;
-  return convexQuery(
-    funcRef,
-    args.skip === true
-      ? "skip"
-      : {
-          collection: args.collection,
-          populate: args.populate,
-          limit: args.limit,
-          depth: args.depth,
-          drafts: args.drafts,
-          where: whereArg(args.where),
-          paginationOpts: args.paginationOpts,
-        },
-  );
+  const funcRef = findFuncRef<TCollectionSlug, TPopulate, D>();
+  return convexQuery(funcRef, args.skip === true ? "skip" : buildFindArgs(args));
 }
 
 /**

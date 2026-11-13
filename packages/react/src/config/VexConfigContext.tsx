@@ -61,9 +61,11 @@ export function VexConfigProvider(props: { config: VexClientConfig; children: Re
  * against.
  *
  * Deliberately reads the raw context instead of going through `useVexConfig()`:
- * `hooks/useCanAccessAdminPanel.ts` renders this on public pages where no
- * `VexConfigProvider` is mounted (the normal state of every public page), so
- * this must degrade to `undefined` there instead of throwing.
+ * `access/useCanAccessAdminPanel.ts` renders this on a public page too, via
+ * `useCanAccessAdminPanel()` — most apps mount `VexConfigProvider` at the
+ * root so `access` reaches both trees (P-004), but a caller that hasn't yet
+ * (or a page truly outside any provider, e.g. a test harness) must degrade
+ * to `undefined` there instead of throwing.
  *
  * @returns The access config for the session, or `undefined` when RBAC is
  *   not configured OR no provider is mounted — `hasPermission` treats

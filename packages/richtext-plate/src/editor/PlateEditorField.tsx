@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback, useRef, useImperativeHandle,
 import type { Value } from "platejs";
 import { Plate, PlateContent, createPlateEditor, useEditorRef } from "platejs/react";
 import { valuesEqual, type VexEditorComponentProps, type RichTextDocument } from "@vexcms/core";
+import { cn } from "@vexcms/react";
 import type { VexEditorFeature } from "./features/types";
 import { createPluginsFromFeatures } from "./plugins/createPlugins";
 import { wrapFlatBlockquotes } from "./wrapFlatBlockquotes";
@@ -366,8 +367,13 @@ export function PlateEditorField({
         {!readOnly && <TableToolbar />}
 
         {/* Scrollable content area */}
-        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-        <div data-slot="editor-scroll-wrapper" tabIndex={0} style={{ maxHeight: 500, overflowY: "auto" }}>
+        <div
+          data-slot="editor-scroll-wrapper"
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+          tabIndex={0}
+          className={cn(readOnly && "opacity-50")}
+          style={{ maxHeight: 500, overflowY: "auto" }}
+        >
           <PlateContent
             aria-label={label || name}
             placeholder={placeholder || "Start writing..."}

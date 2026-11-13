@@ -205,9 +205,21 @@ function buildDeclarations(props: {
  * ```
  */
 export function buildThemeCss(props: {
-  theme: Record<string, unknown>;
+  /**
+   * The theme document. Typed `object` (not `Record<string, unknown>`) so a
+   * closed, generated per-collection document (`vex generate`'s
+   * `ThemeDocument extends VexDocumentShape`, no index signature) is
+   * assignable here without a consumer-side cast — `Record<string, unknown>`
+   * requires an index signature TypeScript won't infer onto a closed
+   * interface even though every property IS `unknown`-compatible. The cast
+   * below is internal: every VexCMS document is a plain object at runtime,
+   * so indexing it by the field names `THEME_COLOR_TOKENS`/`THEME_SHARED_TOKENS`
+   * name is always sound.
+   */
+  theme: object;
   scope: ThemeScope;
 }): string {
+  const theme = props.theme as Record<string, unknown>;
   const selector =
     typeof props.scope === "object"
       ? props.scope.selector
@@ -223,15 +235,15 @@ export function buildThemeCss(props: {
 
   const light = [
     buildDeclarations({
-      values: props.theme.light as Record<string, unknown> | undefined,
+      values: theme.light as Record<string, unknown> | undefined,
       tokens: THEME_COLOR_TOKENS,
     }),
-    buildDeclarations({ values: props.theme, tokens: THEME_SHARED_TOKENS }),
+    buildDeclarations({ values: theme, tokens: THEME_SHARED_TOKENS }),
   ]
     .filter(Boolean)
     .join("\n");
   const dark = buildDeclarations({
-    values: props.theme.dark as Record<string, unknown> | undefined,
+    values: theme.dark as Record<string, unknown> | undefined,
     tokens: THEME_COLOR_TOKENS,
   });
 
