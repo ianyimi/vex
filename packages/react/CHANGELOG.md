@@ -1,5 +1,133 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.40
+
+### Patch Changes
+
+- 595318e: Fixed a production-only 500 on `/admin`: `useVexConfig() must be used within a
+VexConfigProvider`, thrown even with a real `VexConfigProvider` mounted as an
+  ancestor. Root cause confirmed by disassembling the live Next.js/Turbopack
+  production build: `VexConfigContext`'s `createContext(null)` call was compiled
+  into TWO independently-instantiated modules (different module IDs, each its
+  own `createContext` call) — one reached through `@vexcms/react`'s root export
+  (the app's own provider mount), one through `@vexcms/react/admin` (`AdminLayout`'s
+  own import chain). This is a known class of Turbopack production bug (scope
+  hoisting evaluating a shared module's factory more than once across a
+  module-graph shape like multiple `package.json` `exports` subpaths reaching
+  one file — see vercel/next.js#96648, #96691, #96697) — not a `tsup`/package
+  build defect (`packages/react`'s own build already produces exactly one
+  `dist/` file per source module) and not introduced by any recent change to
+  `@vexcms/react`'s or `@vexcms/next`'s build config.
+
+  Dev was never affected: `apps/test`'s/`apps/www`'s `next.config.ts` resolves
+  every workspace package to its TypeScript source in dev (for Fast Refresh),
+  which happens to also unify module identity; production intentionally
+  resolves the published `dist`, which is where Turbopack's duplication
+  surfaced.
+
+  Fix: every `createContext()` (and `createFormHookContexts()`) call in
+  `@vexcms/react` is now pinned to `globalThis` via a new `globalSingleton`
+  helper (`src/utils/globalSingleton.ts`, keyed by `Symbol.for()`), so no
+  matter how many times Turbopack's production build evaluates the defining
+  module's factory, every caller converges on the same Context identity. This
+  doesn't stop the module from being duplicated — it makes the duplication
+  harmless. Applied to all ~26 contexts the package defines (`VexConfigContext`,
+  `VexAuthContext`, `ListViewContext`, the DnD/form/document/live-preview/modal/
+  theme/icon contexts, and the `AppForm` field/form context pair), not just the
+  one that happened to throw first.
+
+  `globalSingleton` is now exported from `@vexcms/react`, and `@vexcms/next`'s
+  `VexAdminAuthAdapterContext` uses it too, so a duplicated copy of that module
+  can no longer hide the admin's Sign in/out control.
+
+  Validated against both consumption shapes a real app uses: an isolated
+  production build of `apps/test` against the rebuilt package (workspace link,
+  `/admin` 500 → 200), and `scripts/verify-scaffold.mjs` (packed-tarball
+  install, the same path `pnpm create vexcms` users get) — which now asserts
+  every scaffolded template's production server serves `/admin` without a 500
+  and without a "must be used within a ...Provider" context-identity error, so
+  this class of regression fails the gate going forward instead of shipping
+  silently.
+
+- 595318e: Admin sign-out now full-reloads the current page (`window.location.reload()`) instead of
+  hard-navigating to `config.auth.signOut.redirectTo`. The reload re-requests the exact URL
+  the caller was on, so the app's own server-side access guards decide what it shows signed
+  out — the same page if it's readable by `anonRole` (a public, read-only admin page), a
+  redirect to sign-in, or `/unauthorized`, same as any other fresh request to that URL. This
+  replaces the previous fixed-destination hard navigation, which always sent a signed-out
+  admin visitor to `redirectTo` even when the page they signed out from was itself readable
+  by `anonRole` — losing their place in the panel for no reason.
+
+  `FrameworkAuthAdapter.signOut`'s contract changes accordingly: it must sign out, then
+  full-reload the current document, never `router.push`/`router.refresh`/a navigation to a
+  different destination. `apps/test`, `apps/www`, and the `base-nextjs` template's
+  `BetterAuthClientProvider.signOut` all switch from
+  `window.location.href = config.auth.signOut.redirectTo` to `window.location.reload()`, and
+  no longer import `~/vex.config` for this.
+
+  `config.auth.signOut.redirectTo` itself is unchanged in `@vexcms/core` — it is no longer
+  read by any of the reference `signOut` wrappers this change ships, but the option remains
+  available on `defineConfig()` for a project that wants to resolve its own custom
+  destination inside a hand-written `signOut`.
+
+- 595318e: Admin support for `@vexcms/core`'s new nullable/storage-override/field-type coverage:
+
+  - A **Null** switch appears in the header row of any `nullable` field with no natural empty
+    input state (`group`, `array`, `blocks`, `json`, `richtext`, `keyValue`, `variant`,
+    `checkbox`); other nullable fields clear to `null` on an empty save the same way they always
+    cleared to their type's empty value.
+  - `number`, `select`, `relationship`, and `upload` inputs, cells, and filters bind a scalar
+    value (`bigint`, a literal/string, or a bare `Id`/string) instead of an array wherever
+    `schema.validator` is set, with `hasMany: false`.
+  - Two new field types: `bytes()` (a file/hex two-tab input, size + download + clear, byte-size
+    cell) and `keyValue()` (a key + value row list with unique-key enforcement) and `variant()` (a
+    variant/type picker — with a **None** option for an optional variant with no member
+    preselected — plus the active member's input), each with a list-view cell, a read-only
+    display, and nested support inside `group`/`array`/`blocks`/`keyValue`/`variant`.
+  - `forms/changedValues.ts`, the group/array/blocks cells and peek JSON tab, and the block
+    clipboard are `bigint`/`ArrayBuffer`-safe end to end (display stringify, lossless copy/paste,
+    deep-equal change detection) — no more throwing or false-positive diffs on an int64 or bytes
+    value.
+  - A keyValue field's row value no longer leaks as a top-level key, and the relationship/upload
+    picker's open state is local to the picker — a sibling picker no longer resets another on
+    open, and a picker no longer reopens on browser back/forward after mount.
+  - `keyValue` and `variant` render in a collapsible accordion like `group`, with the Null toggle
+    in the header; both accept `admin.defaultCollapsed`. A new keyValue row or variant member starts
+    with an empty number input, and masked number inputs select their text on focus. A primitive
+    variant keeps the chosen member when its input is cleared.
+  - **Duplicate** now always opens the create dialog prefilled with every value from the source
+    document and the title renamed (`Name` → `Name (2)`, `Name (x)` → `Name (x+1)`); fields the
+    dialog doesn't show are still copied, and the dialog says so.
+  - Publish is enabled for a saved draft that differs from the published version and disabled
+    when the form matches it (also while viewing a history version, and for a never-published
+    draft with no edits). The version-history dialog follows the live document's active version,
+    and a fresh load of a nullable field no longer marks the form dirty.
+  - The list view peek's JSON tab is no longer dimmed, and the edit view keeps its scroll position
+    across a refresh (per document, for the browser session).
+  - The admin top bar keeps every section on one line with ellipsis truncation; below 1024px the
+    Sign out button and the user block collapse to icons.
+
+  - Polish: keyValue rows, variant selection and the int64 input stay in sync with external value
+    changes (version switch, reset, live merge, null restore); clearing a scalar select saves it as
+    unset; bytes file reads and hex edits can't race each other, and an emptied hex textarea clears
+    the value; the edit view's scroll restore moved to a head-level `ScrollRestoreScript` exported
+    from `@vexcms/react/server` (render it in the root layout next to `ThemeScript`), so it no
+    longer causes a hydration mismatch; `clearEditScrollStorage()` (call it on sign-out) clears the
+    saved offsets.
+
+  - Test kit: `extraFieldFixtures` also runs int64 `number()`, a scalar `select()` and a scalar
+    `relationship()` through the contract suites, and a `FieldFixture` can opt out of the cell
+    truncation check with `cellTruncates: false`. An int64 input's whole-number error clears when
+    the value changes from outside the input.
+
+  No migration: every change is additive to existing field types, or new field types with no
+  prior behavior to preserve.
+
+- Updated dependencies [595318e]
+- Updated dependencies [595318e]
+  - @vexcms/better-auth@0.1.0-alpha.40
+  - @vexcms/core@0.1.0-alpha.40
+
 ## 0.1.0-alpha.39
 
 ### Patch Changes

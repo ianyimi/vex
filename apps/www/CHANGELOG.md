@@ -1,5 +1,21 @@
 # www
 
+## 0.1.0-alpha.40
+
+### Patch Changes
+
+- Updated dependencies [595318e]
+- Updated dependencies [595318e]
+- Updated dependencies [595318e]
+- Updated dependencies [595318e]
+- Updated dependencies [595318e]
+  - @vexcms/react@0.1.0-alpha.40
+  - @vexcms/next@0.1.0-alpha.40
+  - @vexcms/better-auth@0.1.0-alpha.40
+  - @vexcms/core@0.1.0-alpha.40
+  - @vexcms/richtext-plate@0.1.0-alpha.40
+  - @vexcms/file-storage-convex@0.1.0-alpha.40
+
 ## 0.1.0-alpha.39
 
 ### Patch Changes
