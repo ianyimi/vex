@@ -38,4 +38,4 @@ function pinScalarRelationshipPopulateIsNotAnArray(
   void ownerAsArray;
 }
 
-export { pinScalarRelationshipTargetIsNarrow, pinScalarRelationshipPopulateIsNotAnArray };
+export { pinScalarRelationshipPopulateIsNotAnArray, pinScalarRelationshipTargetIsNarrow };
