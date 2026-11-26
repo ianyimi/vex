@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/telemetry",
-  "version": "0.1.0-alpha.27",
+  "version": "0.1.0-alpha.28",
   "description": "VexCMS anonymous build-time telemetry: settings, anonymization and the event sender shared by vex and create-vexcms",
   "license": "Apache-2.0",
   "author": "Isaiah Anyimi",
