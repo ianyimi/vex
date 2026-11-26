@@ -5,6 +5,7 @@ import { parseAsString, useQueryStates } from "nuqs";
 import {
   parseListViewUrlState,
   serializeListViewUrlState,
+  valuesEqual,
   VEX_VIEW_SOURCES,
   type ColumnEntry,
   type CollectionConfig,
@@ -174,7 +175,7 @@ export function isQueryAffectingPatch(patch: Record<string, unknown>): boolean {
  * @returns `true` when the two values differ after `undefined`/`null` normalization.
  */
 function queryValueChanged(value: unknown, other: unknown): boolean {
-  return JSON.stringify(value ?? null) !== JSON.stringify(other ?? null);
+  return !valuesEqual(value ?? null, other ?? null);
 }
 
 /**

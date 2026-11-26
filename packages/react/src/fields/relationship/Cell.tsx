@@ -56,7 +56,8 @@ export function RelationshipFieldCell<TData extends TDocument = TDocument>(
   const wrap = (content: ReactNode) =>
     props.isTitleField ? <VexLink href={href}>{content}</VexLink> : content;
 
-  const rawValue = row.original[fieldKey] as unknown[] | undefined;
+  const raw = row.original[fieldKey];
+  const rawValue = Array.isArray(raw) ? raw : raw == null ? undefined : [raw];
 
   if (!rawValue || rawValue.length === 0) {
     return wrap(<span className="text-[13px] text-muted-foreground">—</span>);

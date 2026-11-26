@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
 import {
+  checkbox,
   checkboxFieldToInputSchema,
   type CheckboxField,
   type CollectionConfig,
@@ -227,4 +228,41 @@ runFieldInputContractSuite({
       });
     });
   },
+});
+
+describe("checkbox: null-toggle restore rule", () => {
+  function NullableCheckboxHarness(props: { initialValue: boolean | null }) {
+    const fieldDef = checkbox({ label: "Featured", nullable: true });
+    const form = useForm({ defaultValues: { testField: props.initialValue } });
+    return (
+      <AppForm form={form}>
+        <CheckboxFieldAdmin name="testField" fieldDef={fieldDef} collection={testCollection} readOnly={false} />
+        <form.Subscribe selector={(state) => state.values.testField}>
+          {(value) => <output data-testid="value-probe">{JSON.stringify(value)}</output>}
+        </form.Subscribe>
+      </AppForm>
+    );
+  }
+
+  it("renders the null toggle for a nullable checkbox field", () => {
+    render(<NullableCheckboxHarness initialValue={false} />);
+    expect(screen.getByRole("checkbox", { name: /Set Featured to null/i })).toBeInTheDocument();
+  });
+
+  it("unchecking after checking restores the value held before Null was checked", async () => {
+    const user = userEvent.setup();
+    render(<NullableCheckboxHarness initialValue={true} />);
+    await user.click(screen.getByRole("checkbox", { name: /Set Featured to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("null");
+    await user.click(screen.getByRole("checkbox", { name: /Set Featured to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("true");
+  });
+
+  it("a page loaded with the field already null falls back to the field's empty default when unchecked", async () => {
+    const user = userEvent.setup();
+    render(<NullableCheckboxHarness initialValue={null} />);
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("null");
+    await user.click(screen.getByRole("checkbox", { name: /Set Featured to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("false");
+  });
 });

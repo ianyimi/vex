@@ -8,12 +8,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 // `components/providers/convex.test.tsx` mocks it.
 vi.mock("~/env.mjs", () => ({ env: { NEXT_PUBLIC_SITE_URL: "https://example.com" } }));
 
-// `~/vex.config` pulls in the project's real collections/globals — mocked
-// down to the one field this test reads, `auth.signOut.redirectTo`.
-vi.mock("~/vex.config", () => ({
-  default: { auth: { signOut: { redirectTo: "/goodbye" } } },
-}));
-
 // `vi.hoisted` — NOT plain `const` — because `vi.mock` factories below run
 // during THIS file's import phase (ES import evaluation always runs before
 // any of a module's own top-level statements), and `./client` calls
@@ -43,6 +37,7 @@ vi.mock("better-auth/client/plugins", () => ({
 
 vi.mock("@vexcms/react", () => ({
   useAuthTransition: () => ({ beginTransition: beginTransitionMock }),
+  clearEditScrollStorage: () => undefined,
 }));
 
 let capturedSignOut: (() => Promise<void>) | undefined;
@@ -72,12 +67,12 @@ describe("BetterAuthClientProvider — signOut (apps/test)", () => {
     beginTransitionMock.mockReset();
     capturedSignOut = undefined;
     originalLocation = window.location;
-    // jsdom's real `Location` throws "Not implemented: navigation" on an
-    // `href` assignment — swapped for a plain object so the hard-navigation
-    // assignment in `signOut` is just an observable write.
+    // jsdom's real `Location` throws "Not implemented: navigation" on a
+    // `reload()` call — replaced with a spy so the full-reload in `signOut`
+    // is just an observable call.
     Object.defineProperty(window, "location", {
       configurable: true,
-      value: { ...originalLocation, href: originalLocation.href },
+      value: { ...originalLocation, reload: vi.fn() },
     });
   });
 
@@ -85,7 +80,7 @@ describe("BetterAuthClientProvider — signOut (apps/test)", () => {
     Object.defineProperty(window, "location", { configurable: true, value: originalLocation });
   });
 
-  it("hard-navigates to the resolved auth.signOut.redirectTo once signOut() resolves", async () => {
+  it("full-reloads the current page once signOut() resolves", async () => {
     signOutMock.mockResolvedValue(undefined);
     render(<BetterAuthClientProvider>{null}</BetterAuthClientProvider>);
 
@@ -94,15 +89,15 @@ describe("BetterAuthClientProvider — signOut (apps/test)", () => {
 
     expect(beginTransitionMock).toHaveBeenCalledWith(null, { skipRefresh: true });
     expect(signOutMock).toHaveBeenCalledTimes(1);
-    expect(window.location.href).toBe("/goodbye");
+    expect(window.location.reload).toHaveBeenCalledTimes(1);
   });
 
-  it("still hard-navigates to the resolved destination when signOut() rejects", async () => {
+  it("still full-reloads the current page when signOut() rejects", async () => {
     signOutMock.mockRejectedValue(new Error("network error"));
     render(<BetterAuthClientProvider>{null}</BetterAuthClientProvider>);
 
     await capturedSignOut!();
 
-    expect(window.location.href).toBe("/goodbye");
+    expect(window.location.reload).toHaveBeenCalledTimes(1);
   });
 });

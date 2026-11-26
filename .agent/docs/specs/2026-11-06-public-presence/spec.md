@@ -88,7 +88,7 @@ The interview also surfaced a launch blocker outside the plan. The public repo t
 22. **The brand kit is `apps/www/public/brand/` plus a seeded `/brand` page built from existing blocks (Hero + CTA).** It includes a 240×240 `vexcms-mark-240.png` for the Product Hunt listing (launch-kit handoff). Why: developer decision. Next serves no index for a public folder. P-018 keeps site design as block data.
 23. **The README is slimmed to a landing page.** The demo is a looping GIF (≤ 10 MB) that links to the full MP4 on `/brand`. Why: developer decision. GitHub GIFs loop; uploaded MP4s render a player that doesn't autoplay (`sources.md` §4). The feature reference already lives in the docs.
 24. **The 0.1.0 release notes publish as a standalone `v0.1.0` GitHub Release marked Latest.** The per-package releases stay; stopping them goes to the backlog. Why: `releases/latest` resolves to `@vexcms/cli@0.0.20` today (alphas are prereleases), and changesets creates 8 releases per version. One `v0.1.0` page gives U's posts a link and the repo sidebar the right "Latest".
-25. **Private planning documents leave the public repo before L, by moving the whole `.agent/` to the central `../agents` link with `harness install` (step 15, option A).** It runs as soon as no session has unstaged `.agent/` edits. Why: Q requires tiers, pricing and customer specifics to stay private. `.agent/docs/research/pitch-deck/04-business-model.md` (prices), `post-v0.1.0-plan.md` and `product/roadmap.md` (tiers) are tracked on `master` and `dev` of a public repo. The symlink keeps every `.agent/docs/specs/…` path valid, so no spec path changes (cross-spec decision 10). History rewriting stays a separate, explicit decision at that step.
+25. **Private planning documents leave the public repo before L.** Why: Q requires tiers, pricing and customer specifics to stay private. `post-v0.1.0-plan.md`, `product/roadmap.md` and the pitch-deck research were tracked on `master` and `dev` of a public repo. They moved to the git-ignored `.agent/docs/business/` on 2026-11-17; the rest of `.agent/` stays tracked.
 26. **Copy edits in `apps/www/convex/seed.ts` are mirrored in `apps/test/convex/seed.ts`.** Why: `apps/test` stays a superset of www (decision 2026-11-06, quality pass). Its FAQ still names paid add-ons (it even lists localization as paid). Those edits run after the telemetry work in `apps/test` is committed.
 27. **`public-copy.md` § Footer is the one canonical ordered list of www footer `links` and `socialLinks`.** Every seed edit, in this spec, launch-infra (`/privacy`) and the quality pass (`/accessibility`), inserts its entry at its listed position. Entries whose owning step hasn't landed are simply absent, and the rest keep their relative order. Why: three specs edit the same array (cross-spec decision 4).
 28. **`public-copy.md` § Privacy contact (`hello@vexcms.dev`) and § Release emails privacy entry are quoted verbatim by `/privacy` and `/accessibility`.** Why: one contact line on every legal page (cross-spec decision 5). Those pages need steps 1–2 done first.
@@ -3423,100 +3423,22 @@ Verify: `pnpm --filter www exec vex generate && pnpm --filter www typecheck && p
 
 ### Step 15 — Private planning docs out of the public repo [dev]
 
-The public GitHub repo tracks `.agent/` on both `master` and `dev` today, so the pitch deck,
-tier pricing and the plan's private-tier notes are readable by any stranger who opens the
-tree — a launch blocker for L. The whole `.agent/` moves to the central `../agents` link with
-`harness install` (option A, cross-spec decision 10), as soon as no session holds unstaged
-`.agent/` edits. The symlink keeps every `.agent/docs/specs/…` path valid, so no spec, skill or
-`AGENTS.md` pointer changes. The inventory below is the evidence for the one decision left open:
-whether to rewrite history.
+The public GitHub repo tracked `.agent/` on both `master` and `dev`, so private planning
+docs (pitch deck, business-model research, private-tier notes) were readable by any
+stranger who opened the tree — a launch blocker for L. Private planning files were moved
+to the git-ignored `.agent/docs/business/` on 2026-11-17. The remaining `.agent/` tree
+(product specs, research, backlog) stays tracked (developer, 2026-11-22: this replaces the
+original move of all of `.agent/` to `../agents`, cross-spec decision 10). Until the cleanup is
+committed and pushed, `origin/dev` still serves the pitch deck.
 
-- [ ] `[agent]` `.agent/docs/specs/2026-11-06-public-presence/private-inventory.md` created with the content below, the search re-run at implementation time (this spec folder included: `spec.md` steps 15 and 19 and the inventory itself quote the exposed lines)
-- [ ] `[dev]` Confirm no session has unstaged `.agent/` edits: `git status --short .agent` prints nothing in every worktree of the bare repo
-- [ ] `[dev]` Move `.agent/` to `../agents`, stop tracking it, and link it back with `harness install`
-- [ ] `[dev]` Decide on history rewriting and record the decision in the file's "History rewrite" section
+- [x] `[agent]` `private-inventory.md`: every tracked file holding private business content, with line counts (written 2026-11-07; moved to the git-ignored business archive in the 2026-11-17 cleanup)
+- [ ] `[dev]` Commit and push the 2026-11-17 cleanup (the deleted pitch deck and monetization docs, the cleaned plan docs, the `.gitignore` lines for `.agent/docs/business/`) with the next normal commit
+- [x] `[dev]` History rewrite: **no rewrite** (developer, 2026-11-22). The removed files stay readable in pre-cleanup commits; every commit SHA cited in docs, the launch plan and changesets stays valid
 
-**The move.** Run from the repo root of the `dev` worktree, then once in each other worktree after it pulls the commit:
+Customer names are not private (developer, 2026-11-22): the check below covers prices,
+paid-tier names, seat counts and personal finances only.
 
-```bash
-git rm -r --cached --quiet .agent
-mv .agent ../agents
-harness install
-git check-ignore -q .agent || printf '\n.agent\n' >> .gitignore
-git add .gitignore
-git commit -m "chore: move .agent planning docs out of the repo"
-```
-
-`harness install` creates the `.agent` link to `../agents` (`harness doctor`'s own suggestion: "move it to ../agents and re-run `harness install` to link it centrally"). If it already ignores the link, the `.gitignore` line is skipped. Every worktree of the bare repo then shares one `.agent/`, which also clears doctor's per-worktree drift warning.
-
-#### .agent/docs/specs/2026-11-06-public-presence/private-inventory.md
-
-The table below is from a read-only `git ls-files` + content search run on 2026-11-06 (search
-terms: `\$[0-9]`, `Pro`/`Agency`/`Enterprise`, `licen[cs]e key`, `ENT-0`, `ENT-P`, `maprios`,
-`business model`, `pitch`, against all 2,540 tracked files). Every hit is under `.agent/`, so
-option A removes all of them from the tree. **Re-run the same search at implementation time**
-and confirm nothing outside `.agent/` matches.
-
-```markdown
-# Private planning inventory — 2026-11-06-public-presence
-
-Read-only search over `git ls-files` (2,540 tracked files, 2026-11-06). Scope: `.agent/` planning
-documents naming tiers, prices, licence enforcement or customer specifics. All of `.agent/` leaves
-the repo (option A), so this list is the record of what was exposed, for the history-rewrite
-decision below. Public-surface paid copy (`README.md`, `apps/docs/.../roadmap.md`,
-`apps/www`/`apps/test` seed FAQs) is a separate sweep, owned by steps 9–11.
-
-## Exposed files
-
-| Path | What's private | Hits | Lines |
-|---|---|---:|---:|
-| `.agent/docs/research/pitch-deck/04-business-model.md` | Tier prices, unit economics | 73 | 182 |
-| `.agent/docs/research/pitch-deck/sources/business-model-comps.md` | Competitor pricing comps backing the tier design | 91 | 244 |
-| `.agent/docs/research/pitch-deck/sources/convex-ecosystem.md` | Convex-cost assumptions behind the pricing model | 41 | 199 |
-| `.agent/docs/research/pitch-deck/sources/market-size.md` | Market-sizing math feeding the business model | 46 | 230 |
-| `.agent/docs/research/pitch-deck/sources/competitors.md` | Competitor-pricing research | 37 | 255 |
-| `.agent/docs/research/pitch-deck/DESIGN-AGENT-PROMPT.md` | Pitch-deck brief naming tiers and asks | 37 | 155 |
-| `.agent/docs/research/pitch-deck/03-competition.md` | Competitive pricing positioning | 17 | 124 |
-| `.agent/docs/research/pitch-deck/README.md` | Pitch-deck index naming every file above | 16 | 88 |
-| `.agent/docs/research/pitch-deck/07-gaps-and-asks.md` | Funding ask, ENT-P paperwork gaps | 12 | 78 |
-| `.agent/docs/research/pitch-deck/06-traction-roadmap-team.md` | ENT-0/ENT-P roadmap, team/traction numbers | 8 | 89 |
-| `.agent/docs/research/pitch-deck/02-market-why-now.md` | Market timing tied to the pricing model | 9 | 64 |
-| `.agent/docs/research/pitch-deck/05-platform-convex.md` | Convex cost structure behind pricing | 7 | 90 |
-| `.agent/docs/research/pitch-deck/01-problem-solution-product.md` | Weak hits (2) — keep with the set for one coherent deck | 2 | 136 |
-| `.agent/docs/product/post-v0.1.0-plan.md` | Tier design, licence enforcement, customer specifics (named in Design Decision 25) | 35 | 448 |
-| `.agent/docs/product/maprios-roadmap-gaps.md` | Named customer (maprios) gap analysis | 12 | 197 |
-| `.agent/docs/research/legacy-planning/multi-component-implementation.md` | Multi-component workspace tier design | 36 | 586 |
-| `.agent/docs/research/legacy-planning/maprios-migration-todo.md` | Named customer (maprios) migration checklist | 22 | 330 |
-| `.agent/docs/research/legacy-planning/roadmap-monetization-strategy-v2.md` | Monetization strategy, tiers | 13 | 686 |
-| `.agent/docs/research/legacy-planning/maprios-migration-analysis.md` | Named customer (maprios) site analysis | 5 | 517 |
-| `.agent/docs/design/claude-design/www/pages.jsx` | Pricing-page UI mock with tier names/prices | 11 | 795 |
-| `.agent/docs/research/legacy-planning/README.md` | Index pointing at the maprios/monetization files above | 1 | 23 |
-| `.agent/docs/research/legacy-planning/v0.1.0-launch-roadmap.md` | One "enterprise moat" row in a feature table | 1 | 450 |
-| `.agent/docs/research/legacy-planning/multi-component-architecture.md` | One "Post-Enterprise" phase label | 1 | 605 |
-| `.agent/docs/product/v0.1.0-launch-plan.md` | Tier names in the Q section and item 16's intro; the customer name in a non-goals list | 6 | 1947 |
-| `.agent/docs/product/roadmap.md` | Tier names in an otherwise-public milestone roadmap | 16 | — |
-| `.agent/docs/specs/2026-11-06-public-presence/` | Steps 15 and 19 and this file quote the lines above | — | — |
-
-Outside `.agent/`: nothing (re-check: `rg -n '\$995|\$2,500|Agency tier|maprios' $(git ls-files | rg -v '^\.agent/')` prints nothing).
-
-## History rewrite — record the decision
-
-`git filter-repo` + force-push removes the files from every commit in this repo's history,
-not just HEAD. **Record which was chosen, and why:**
-
-- [ ] Rewrite history: forks and existing clones keep the old history until they re-fetch
-      (GitHub's cached blob/commit views may serve old content for a time even after the
-      force-push); every other worktree of this bare repo must `git fetch` + reset rather
-      than merge. Destructive — the developer's explicit call, not a default.
-- [ ] Do not rewrite history: the files stop appearing in new clones and on `ref=dev`/`ref=master`
-      going forward, but anyone who already cloned, or who checks out an old commit SHA, still
-      has them. Decide this is acceptable (pricing details stale by launch, no live credentials
-      in the inventoried files) or escalate to a rewrite.
-
-Decision: _______________________________________________ (filled in by the developer at this step)
-```
-
-Verify: on GitHub, `gh api "repos/ianyimi/vex/contents/.agent?ref=dev"` returns `404` once the commit is pushed. `git ls-files .agent | wc -l` prints `0`, `test -L .agent && ls .agent/docs/specs/2026-11-06-public-presence` lists this spec through the link, and `rg -n '\$995|\$2,500|Agency tier|maprios' $(git ls-files)` returns nothing. `harness doctor` is clean (no per-worktree warning). The History rewrite section is filled in either way.
+Verify: after the push, `gh api "repos/ianyimi/vex/contents/.agent/docs/research/pitch-deck?ref=dev"` returns `404` and `git check-ignore -q .agent/docs/business && echo ignored` prints `ignored`. The private-inventory search (its terms live with the inventory in the git-ignored business archive, never in a tracked file) returns nothing over `$(git ls-files)`. `harness doctor` is clean.
 
 ### Step 16 — Demo media: hero GIF, screenshots, demo video [dev] [blocked: quality-pass steps 6–7 (admin and www visual fixes)]
 
@@ -3806,11 +3728,10 @@ becomes:
     `<commit sha>` <one-line summary>)
 ```
 
-**2 — line 174-175, drop the tier names.** The file leaves the public repo with the rest of `.agent/` in step 15, but the plan is shared across specs and agents, so the tier names come out of the working copy too:
+**2 — line 174-175, drop the tier names.** The launch plan stays tracked in the public repo (step 15 keeps `.agent/` tracked), so the tier names come out of the working copy:
 
 ```markdown
-Business-tier design (Pro / Agency / Enterprise, ENT-0) is post-launch and specced separately
-— see `post-v0.1.0-plan.md`.
+Paid add-on design stays private — see `post-v0.1.0-plan.md`.
 ```
 
 becomes:
@@ -3832,12 +3753,12 @@ list.** Current:
   2. Free features that follow from it — FR items, first-party adapters, the TanStack Start adapter, S3 / R2, localization
   3. Brownfield adoption (Track AD) — add Vex to an existing Convex app table by table
 - [ ] Paid work gets one line, no tiers and no feature list: "Paid add-ons may come later, as separate packages, after the free roadmap above. The core stays Apache-2.0 and nothing free becomes paid." Remove what is public today beyond that — the docs roadmap "Enterprise" section and the add-on list in the `apps/www` FAQ (`apps/www/convex/seed.ts:995`)
-- [ ] Keep private: Pro / Agency / Enterprise tiers and their features, pricing, licence enforcement, ENT-P paperwork, maprios specifics (MW — publish as "a real Payload → Vex migration case study" or omit)
+- [ ] Keep private: paid add-on design stays private (tiers and their features, pricing, licence enforcement, paperwork); maprios specifics (MW — publish as "a real Payload → Vex migration case study" or omit)
 - [ ] One source of truth: `apps/docs/src/content/docs/roadmap.md`. Replace its "In progress" list (the launch track, stale the day 0.1.0 tags) with the order above; the `apps/www` roadmap block and the root `README.md` summarise it and link to it
 
 ~1 day including the spec. The internal plan stays the working document; the public page is
 the commitment, kept short enough to stick to. Wording decided here is reused verbatim by R,
-O, T and U. **Business-tier design (Pro / Agency / Enterprise features, ENT-0 licensing) is
+O, T and U. **Business-tier design (paid add-on design stays private) is
 not part of this** — it needs its own specs, post-launch, and is not announced until one
 of them is close to shipping.
 ```
@@ -3854,7 +3775,7 @@ becomes:
   2. Free features, as demand appears (no fixed order — 👍 the linked issue to move one up): localization, scheduled publishing, the TanStack Start adapter, a form builder, outbound webhooks, API keys and team management
   3. Brownfield adoption — add VexCMS to an existing Convex app table by table, without migrating the data it already holds
 - [x] Paid work gets one line, no tiers and no feature list: "Paid add-ons may come later, as separate packages, after the free roadmap. The core stays Apache-2.0, and nothing free becomes paid." Removed from every public surface: the docs roadmap "Enterprise" section and the add-on list in the `apps/www` FAQ (step 9, step 10)
-- [x] Keep private: business-tier design and pricing — see `post-v0.1.0-plan.md` (moved out of the public repo — `2026-11-06-public-presence` step 15)
+- [x] Keep private: business-tier design and pricing, in the git-ignored `.agent/docs/business/` (`2026-11-06-public-presence` step 15)
 - [x] One source of truth: `apps/docs/src/content/docs/roadmap.md` (step 9)
 
 ~1 day including the spec. The internal plan stays the working document; the public page is

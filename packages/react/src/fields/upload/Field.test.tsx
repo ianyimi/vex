@@ -55,7 +55,7 @@ function makeMockMediaCollection(): MediaCollectionConfig {
       filename: text({ required: false }),
     },
     labels: { singular: "Image", plural: "Images" },
-    admin: { useAsTitle: "_id", components: {} },
+    admin: { useAsTitle: "_id", components: {}, view: { state: { searchFields: [] } } },
     meta: { storageAdapter: "convex" },
   } as unknown as MediaCollectionConfig;
 }
@@ -125,7 +125,7 @@ function Harness({
 }: {
   fieldDef: UploadField;
   readOnly: boolean;
-  initialValue: string[] | undefined;
+  initialValue: string[] | string | undefined;
 }) {
   const form = useForm({ defaultValues: { testField: initialValue } });
   return (
@@ -509,6 +509,22 @@ runFieldInputContractSuite({
         // The catch block shows a sonner error toast whose description is the
         // readable error message for the failed upload.
         expect(await screen.findByText("Upload failed for cover.png")).toBeInTheDocument();
+      });
+    });
+
+    describe("upload field: scalar storage (schema.validator set)", () => {
+      const scalarFieldDef: UploadField = { ...fixture.fieldDef, hasMany: false, schema: { validator: "id" } };
+
+      it("renders exactly one item row for a bare-string initial value — no array wrapper needed", () => {
+        const { container } = render(
+          <Harness fieldDef={scalarFieldDef} readOnly={false} initialValue="images_1" />,
+        );
+        expect(container.querySelectorAll('button[title="Remove"]')).toHaveLength(1);
+      });
+
+      it("renders the empty dropzone for an undefined scalar value", () => {
+        render(<Harness fieldDef={scalarFieldDef} readOnly={false} initialValue={undefined} />);
+        expect(screen.getByText("Drop files here or click to browse")).toBeInTheDocument();
       });
     });
   },

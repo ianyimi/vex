@@ -23,6 +23,8 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+
+import { globalSingleton } from "../utils/globalSingleton";
 import { Badge } from "./badge";
 
 type MultiSelectContextType = {
@@ -43,7 +45,9 @@ type MultiSelectContextType = {
    */
   anchorRef: RefObject<HTMLDivElement | null>;
 };
-const MultiSelectContext = createContext<MultiSelectContextType | null>(null);
+const MultiSelectContext = globalSingleton("ui/multi-select/MultiSelectContext", () =>
+  createContext<MultiSelectContextType | null>(null),
+);
 
 export function MultiSelect({
   children,

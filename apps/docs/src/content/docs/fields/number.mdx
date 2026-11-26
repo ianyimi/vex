@@ -12,7 +12,7 @@ ratings, ages, counts, percentages, and any data that is naturally a number.
 |--------|------|---------|-------------|
 | `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
 | `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
-| `defaultValue` | `number` | `0` | Pre-filled value shown in the admin form when creating a new document. |
+| `defaultValue` | `number` | — | Pre-filled value shown in the admin form when creating a new document. Left `undefined` when omitted — no silent `0` pre-fill. |
 | `min` | `number \| [number, string]` | — | Minimum allowed numeric value. Bare number, or a `[value, customError]` tuple for a custom error message. |
 | `max` | `number \| [number, string]` | — | Maximum allowed numeric value. Bare number, or a `[value, customError]` tuple. |
 | `index` | `string \| { name, additionalFields?, draftStatus? }` | — | Convex index name, or the object form for a [compound index](/fields/text/#compound-indexes). |
@@ -40,6 +40,30 @@ quantity: v.number()
 quantity: v.number(),
 .index("by_quantity", ["quantity"])
 ```
+
+## Storage override
+
+`schema: { validator: "int64" }` switches the field's storage from Convex's default
+`v.float64()` to `v.int64()` (native `bigint`). This is for adopting an existing `v.int64()`
+column — counters, large ids kept as a 64-bit integer — without a conversion field. The input
+stays a numeric entry, but the value is `bigint` end to end: the generated type, `min`/`max`/
+`defaultValue`, Vex reads, and the admin form all hold a `bigint`, not a `number` scaled through
+milliseconds the way `commitTs` is.
+
+```ts
+// Default storage (no schema override)
+score: v.optional(v.float64())
+
+// schema: { validator: "int64" } — native bigint
+viewCount: number({ schema: { validator: "int64" }, min: 0n, defaultValue: 0n })
+// viewCount: v.optional(v.int64())
+```
+
+Changing `schema.validator` on a field over a table that already has data does not migrate
+existing rows — the new validator must already match what's stored (an existing `v.int64()`
+column adopts `"int64"`; an existing `v.float64()` column uses no override at all). Migrate
+stored values manually before changing the field config if the shapes don't already match;
+VexCMS performs no automatic migration of a field's storage shape.
 
 ## Usage
 

@@ -69,4 +69,34 @@ describe("RelationshipFieldDisplay", () => {
     expect(screen.getByText(`Hidden ${relationshipTargetCollection.labels.singular}`)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Requires documents/read" })).toBeInTheDocument();
   });
+
+  it("renders a single chip for a scalar (non-array) populated value — schema.validator storage", () => {
+    render(
+      <VexConfigProvider config={config}>
+        <RelationshipFieldDisplay
+          field={relationshipFieldFixture.fieldDef}
+          value={{ _id: "doc_related_4", _creationTime: 0, title: "Scalar Related" }}
+          document={document}
+          collection={testCollection}
+        />
+      </VexConfigProvider>,
+    );
+    const chip = screen.getByText("Scalar Related");
+    expect(chip).toBeInTheDocument();
+    expect(chip).toHaveAttribute("title", "doc_related_4");
+  });
+
+  it("shows an em-dash for an undefined scalar relationship value", () => {
+    render(
+      <VexConfigProvider config={config}>
+        <RelationshipFieldDisplay
+          field={relationshipFieldFixture.fieldDef}
+          value={undefined}
+          document={document}
+          collection={testCollection}
+        />
+      </VexConfigProvider>,
+    );
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
 });

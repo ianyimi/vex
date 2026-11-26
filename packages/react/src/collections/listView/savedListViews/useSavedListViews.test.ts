@@ -246,6 +246,27 @@ describe("diffViewState", () => {
     expect(diff.categories).toEqual([]);
   });
 
+  it("never throws diffing where filters containing a bigint, and detects a real change", () => {
+    const bigintWhere = { field: "views", op: "eq" as const, value: 9007199254740993n } as never;
+    const current = {
+      search: "ma",
+      searchField: "authorName",
+      sort: { field: "rating", order: "desc" as const },
+      where: bigintWhere,
+      columns: ["title", "rating"],
+      pageSize: 25,
+      peekWidth: 384,
+    };
+    const savedWithBigint: SavedListViewEntry = { ...saved, where: bigintWhere };
+    expect(() => diffViewState({ current, saved: savedWithBigint })).not.toThrow();
+    expect(diffViewState({ current, saved: savedWithBigint }).categories).not.toContain("filters");
+    const changed: SavedListViewEntry = {
+      ...saved,
+      where: { field: "views", op: "eq", value: 1n } as never,
+    };
+    expect(diffViewState({ current, saved: changed }).categories).toContain("filters");
+  });
+
   it("never flags peekWidth as modified when the saved view has no explicit width of its own, however far the live width diverges (peek width counts toward Modified only for a view with its own saved width, same skip-when-undefined shape as pageSize)", () => {
     const diff = diffViewState({
       current: {

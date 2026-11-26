@@ -2196,15 +2196,31 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
       expect(document.title).toBe("Posts · Admin");
     });
 
-    it("gives the breadcrumb trail its own min-w-0 horizontal scroll region, never the page", () => {
+    it("gives the breadcrumb trail its own min-w-0 shrink region that truncates instead of scrolling", () => {
       const utils = renderView(
         withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
         { convex: t, access: options.access },
       );
-      const crumbsEl = utils.getByText("Home").closest("a")?.parentElement;
+      const homeLink = utils.getByText("Home").closest("a");
+      const crumbsEl = homeLink?.parentElement;
       expect(crumbsEl).not.toBeNull();
       expect(crumbsEl).toHaveClass("min-w-0");
-      expect(crumbsEl).toHaveClass("overflow-x-auto");
+      expect(crumbsEl).toHaveClass("overflow-hidden");
+      expect(crumbsEl).not.toHaveClass("overflow-x-auto");
+      // Every crumb link stays on ONE line and truncates its own label — same
+      // `min-w-0`/`truncate` mechanism `CollectionEditView`'s header uses, not wrapping.
+      expect(homeLink).toHaveClass("min-w-0");
+      expect(homeLink).toHaveClass("overflow-hidden");
+      expect(utils.getByText("Home")).toHaveClass("truncate");
+      const postsLink = utils.getByText("Posts").closest("a");
+      expect(postsLink).toHaveClass("min-w-0");
+      // The last crumb (no document slot here, so "Posts") gets `flex-auto` — the most room —
+      // the same priority `CollectionEditView`'s document-title span gets in its own header.
+      // `flex-auto` (not `flex-1`/basis-0%), so it starts from its own content width instead
+      // of collapsing to zero when the row overflows.
+      expect(postsLink).toHaveClass("flex-auto");
+      expect(utils.getByText("Posts")).toHaveClass("truncate");
+      expect(postsLink).toHaveAttribute("title", "Posts");
     });
 
     it('resolves a globals route through the "skip" sentinel with no document fetch', () => {
@@ -2430,6 +2446,66 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
       await waitFor(() => expect(utils.getByText("Sign out").closest("button")).not.toBeDisabled());
     });
 
+    it("collapses the Sign out label to icon-only below lg (1024px), keeping a fixed accessible name and a visible icon at every width", () => {
+      const utils = renderView(
+        createElement(
+          FrameworkComponentsContext.Provider,
+          { value: { auth: stubAuthAdapter } as FrameworkComponents },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        ),
+        { convex: t, access: options.access, auth: { user: { _id: "user1" } } },
+      );
+      const button = utils.getByText("Sign out").closest("button");
+      expect(button).not.toBeNull();
+      // Fixed accessible name via `aria-label` — the button's name never depends on the
+      // CSS-toggled label span's own visibility, same pattern `ListViewModifiedControls`'
+      // Reset/Save buttons use for their own icon-only collapse.
+      expect(button).toHaveAttribute("aria-label", "Sign out");
+      // The label is `hidden lg:inline` — measured live, the title crumb stayed
+      // hard-truncated past the old `md` (768px) breakpoint all the way to ~900px, so
+      // `lg` (1024px) is the next breakpoint on the existing Tailwind scale that clears
+      // the whole crowded range with margin.
+      const label = utils.getByText("Sign out");
+      expect(label.tagName).toBe("SPAN");
+      expect(label).toHaveClass("hidden");
+      expect(label).toHaveClass("lg:inline");
+      // The icon itself carries no `hidden`/breakpoint class — visible at every width, so
+      // the control is never completely blank once the label collapses.
+      const icon = button?.querySelector("svg");
+      expect(icon).not.toBeNull();
+      expect(icon?.getAttribute("class") ?? "").not.toMatch(/\bhidden\b/);
+    });
+
+    it("sizes the collapsed Sign out button to match ViewSiteButton's icon-lg box exactly below lg, restoring the labeled lg padding at lg and up", () => {
+      const utils = renderView(
+        createElement(
+          FrameworkComponentsContext.Provider,
+          { value: { auth: stubAuthAdapter } as FrameworkComponents },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        ),
+        { convex: t, access: options.access, auth: { user: { _id: "user1" } } },
+      );
+      const button = utils.getByText("Sign out").closest("button");
+      expect(button).not.toBeNull();
+      // Below `lg`: the exact `size="icon-lg"` box `ViewSiteButton` uses — a `w-9` square
+      // (height is already `h-9` from `size="lg"`, unconditional) with zero horizontal
+      // padding, not `size="lg"`'s own `px-3.5` left over around just the icon.
+      expect(button).toHaveClass("w-9");
+      expect(button).toHaveClass("px-0");
+      expect(button).toHaveClass("h-9");
+      // The icon's own static `ml-1` (always applied once `icon` + a label are both
+      // present, regardless of the label's own visibility) is zeroed via a
+      // higher-specificity descendant selector, so the icon centers exactly like
+      // `ViewSiteButton`'s own icon-only button instead of sitting 4px off-center.
+      expect(button).toHaveClass("[&_svg]:ml-0");
+      // At `lg` and up, the labeled `size="lg"` shape returns: auto width and the
+      // original `px-3.5`/icon-gap, restored via `lg:`-prefixed overrides (Tailwind
+      // emits `lg:` rules after the bare ones above, so these win at 1024px+).
+      expect(button).toHaveClass("lg:w-auto");
+      expect(button).toHaveClass("lg:px-3.5");
+      expect(button).toHaveClass("lg:[&_svg]:ml-1");
+    });
+
     it("shows the signed-in user's name to the right of the sign-in/out control", () => {
       const utils = renderView(
         createElement(
@@ -2444,6 +2520,27 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
         },
       );
       expect(utils.getByText("Ada Lovelace")).toBeInTheDocument();
+    });
+
+    it("collapses the signed-in user's name/email to an avatar-only chip below lg (1024px), never shrinking under flex pressure", () => {
+      const utils = renderView(
+        createElement(
+          FrameworkComponentsContext.Provider,
+          { value: { auth: stubAuthAdapter } as FrameworkComponents },
+          withSidebarProvider(createElement(AdminTopNav, { activeSlug: "posts" })),
+        ),
+        {
+          convex: t,
+          access: options.access,
+          auth: { user: { _id: "user1", name: "Ada Lovelace", email: "ada@example.com" } },
+        },
+      );
+      const name = utils.getByText("Ada Lovelace");
+      const textBlock = name.parentElement;
+      expect(textBlock).toHaveClass("hidden");
+      expect(textBlock).toHaveClass("lg:flex");
+      const chip = textBlock?.parentElement;
+      expect(chip).toHaveClass("shrink-0");
     });
 
     it("falls back to the user's email when no name is set", () => {

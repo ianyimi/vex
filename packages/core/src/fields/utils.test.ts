@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { checkbox, defineCollection, text } from "../index";
+import { checkbox, defineCollection, number, relationship, select, text, upload } from "../index";
 import {
   andFieldConditions,
+  fieldsToPopulateMap,
   getDataFields,
   getFieldsInputSchema,
   getUIFieldKeys,
@@ -11,6 +12,9 @@ import {
   isFieldConditionMet,
   resolveFieldComponents,
   resolveFieldLimit,
+  resolveNullableLoadValue,
+  resolveNullableSaveValue,
+  resolveNullableSaveValues,
   resolveRowWidths,
 } from "./utils";
 import { tabs } from "./tabs/config";
@@ -20,6 +24,7 @@ import { ui } from "./ui/config";
 import { group } from "./group/config";
 import { array } from "./array/config";
 import { blocks, defineBlock } from "./blocks/config";
+import { keyValue } from "./keyValue/config";
 
 describe("resolveFieldLimit", () => {
   it("returns undefined when limit is undefined", () => {
@@ -63,6 +68,21 @@ describe("resolveFieldLimit", () => {
       },
     });
     expect(called).toBe(false);
+  });
+
+  it("resolves a bare bigint the same way as a bare number (int64 limits)", () => {
+    expect(
+      resolveFieldLimit<bigint>({
+        limit: 5n,
+        defaultError: (value) => `At least ${value} required.`,
+      }),
+    ).toEqual([5n, "At least 5 required."]);
+    expect(
+      resolveFieldLimit<bigint>({
+        limit: [3n, "Need 3+."],
+        defaultError: () => "Too short.",
+      }),
+    ).toEqual([3n, "Need 3+."]);
   });
 });
 
@@ -272,6 +292,11 @@ describe("hasFieldConditions", () => {
       fields: { headline: text({ admin: { condition: () => true } }) },
     });
     const fields = { body: blocks({ blocks: [heroBlock] }) };
+    expect(hasFieldConditions({ fields })).toBe(true);
+  });
+
+  it("recurses into keyValue's value field", () => {
+    const fields = { scores: keyValue({ value: text({ admin: { condition: () => true } }) }) };
     expect(hasFieldConditions({ fields })).toBe(true);
   });
 });
@@ -621,5 +646,150 @@ describe("isDisplayValueEmpty", () => {
     expect(isDisplayValueEmpty("hello")).toBe(false);
     expect(isDisplayValueEmpty([1])).toBe(false);
     expect(isDisplayValueEmpty({})).toBe(false);
+  });
+});
+
+describe("resolveNullableLoadValue", () => {
+  it("keeps null for a toggle field (checkbox/group/array/blocks/json/richtext)", () => {
+    expect(resolveNullableLoadValue({ field: checkbox({ nullable: true }), value: null })).toBeNull();
+    expect(resolveNullableLoadValue({ field: group({ nullable: true, fields: {} }), value: null })).toBeNull();
+  });
+
+  it("maps null to the field's own defaultValue for a scalar field", () => {
+    expect(resolveNullableLoadValue({ field: text({ nullable: true }), value: null })).toBe("");
+    expect(resolveNullableLoadValue({ field: number({ nullable: true }), value: null })).toBeUndefined();
+  });
+
+  it("maps null to an explicit non-zero defaultValue for a scalar field that set one", () => {
+    expect(
+      resolveNullableLoadValue({ field: number({ nullable: true, defaultValue: 7 }), value: null }),
+    ).toBe(7);
+  });
+});
+
+describe("resolveNullableSaveValue", () => {
+  it("leaves a non-nullable field's value untouched regardless of emptiness", () => {
+    expect(resolveNullableSaveValue({ field: text(), value: "" })).toBe("");
+  });
+
+  it("writes null for a nullable scalar field cleared to its own empty representation", () => {
+    expect(resolveNullableSaveValue({ field: text({ nullable: true }), value: "" })).toBeNull();
+    expect(resolveNullableSaveValue({ field: number({ nullable: true }), value: undefined })).toBeNull();
+  });
+
+  it("leaves a nullable scalar field's real value untouched", () => {
+    expect(resolveNullableSaveValue({ field: text({ nullable: true }), value: "hi" })).toBe("hi");
+  });
+
+  it("leaves a nullable toggle field's empty-but-untouched default value untouched (no auto-null)", () => {
+    const field = array({ nullable: true, items: text() });
+    expect(resolveNullableSaveValue({ field, value: [] })).toEqual([]);
+  });
+
+  it("leaves a nullable toggle field's already-null value as null", () => {
+    const field = array({ nullable: true, items: text() });
+    expect(resolveNullableSaveValue({ field, value: null })).toBeNull();
+  });
+
+  it("maps undefined to null for a non-nullable field, so a cleared scalar relationship/upload survives Convex's wire serializer", () => {
+    expect(
+      resolveNullableSaveValue({
+        field: relationship({ collection: { slug: "authors" } }),
+        value: undefined,
+      }),
+    ).toBeNull();
+    expect(resolveNullableSaveValue({ field: upload({ to: "images" }), value: undefined })).toBeNull();
+  });
+
+  it("maps undefined to null even for a required field, so it still fails its normal required validation server-side", () => {
+    expect(resolveNullableSaveValue({ field: text({ required: true }), value: undefined })).toBeNull();
+  });
+});
+
+describe("resolveNullableSaveValues", () => {
+  it("maps only nullable scalar fields' empty values to null, across a values record", () => {
+    const fields = {
+      title: text({ nullable: true }),
+      count: number({ nullable: true }),
+      tags: select({ nullable: true, hasMany: true, options: [{ label: "A", value: "a" }] }),
+    };
+    const result = resolveNullableSaveValues({
+      values: { title: "", count: undefined, tags: [] },
+      fields,
+    });
+    expect(result).toEqual({ title: null, count: null, tags: null });
+  });
+
+  it("maps a cleared non-nullable field's undefined value to null across a values record", () => {
+    const fields = {
+      author: relationship({ collection: { slug: "authors" } }),
+    };
+    const result = resolveNullableSaveValues({ values: { author: undefined }, fields });
+    expect(result).toEqual({ author: null });
+  });
+
+  it("passes through a key with no matching field unchanged", () => {
+    const result = resolveNullableSaveValues({ values: { other: "x" }, fields: {} });
+    expect(result).toEqual({ other: "x" });
+  });
+});
+
+describe("fieldsToPopulateMap — scalar storage", () => {
+  it("omits `scalar` for default (array) relationship/upload storage", () => {
+    const body = fieldsToPopulateMap({
+      key: "posts",
+      fields: { author: relationship({ collection: { slug: "authors" } }) },
+    });
+    expect(body).toBe('\tposts: { author: { kind: "relationship"; target: "authors" } }');
+  });
+
+  it("adds `scalar: true` for a relationship with schema.validator set", () => {
+    const body = fieldsToPopulateMap({
+      key: "posts",
+      fields: { ownerId: relationship({ collection: { slug: "authors" }, schema: { validator: "id" } }) },
+    });
+    expect(body).toBe(
+      '\tposts: { ownerId: { kind: "relationship"; target: "authors"; scalar: true } }',
+    );
+  });
+
+  it("adds `scalar: true` for an upload with schema.validator set", () => {
+    const body = fieldsToPopulateMap({
+      key: "pages",
+      fields: { cover: upload({ to: "images", schema: { validator: "id" } }) },
+    });
+    expect(body).toBe('\tpages: { cover: { kind: "upload"; target: "images"; scalar: true } }');
+  });
+});
+
+describe("fieldsToPopulateMap — keyValue (W2 regression)", () => {
+  it("wraps a relationship nested in a keyValue's value in a record entry", () => {
+    const body = fieldsToPopulateMap({
+      key: "pages",
+      fields: { scores: keyValue({ value: relationship({ collection: { slug: "authors" } }) }) },
+    });
+    expect(body).toBe(
+      '\tpages: { scores: { kind: "record"; value: { kind: "relationship"; target: "authors" } } }',
+    );
+  });
+
+  it("omits a keyValue field whose value has nothing populatable", () => {
+    const body = fieldsToPopulateMap({
+      key: "pages",
+      fields: { scores: keyValue({ value: number({ required: true }) }) },
+    });
+    expect(body).toBe("\tpages: {}");
+  });
+
+  it("wraps a keyValue nested inside another keyValue's value in a nested record entry", () => {
+    const body = fieldsToPopulateMap({
+      key: "pages",
+      fields: {
+        outer: keyValue({ value: keyValue({ value: relationship({ collection: { slug: "authors" } }) }) }),
+      },
+    });
+    expect(body).toBe(
+      '\tpages: { outer: { kind: "record"; value: { kind: "record"; value: { kind: "relationship"; target: "authors" } } } }',
+    );
   });
 });

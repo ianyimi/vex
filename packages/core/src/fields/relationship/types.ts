@@ -1,4 +1,4 @@
-import { ADMIN_FIELDS } from "../constants";
+import { ADMIN_FIELDS, type FieldSchemaValidator } from "../constants";
 import {
   BaseField,
   BaseFieldInput,
@@ -8,6 +8,7 @@ import {
   FieldLimitInput,
   FieldSlotComponentsInput,
   FieldValidateProps,
+  SchemaOverrideInput,
 } from "../baseTypes";
 import { ApplyComponent, ComponentHKT } from "../../components/types";
 import { CollectionSlug , VexResourceSlug } from "../../types/generated";
@@ -104,6 +105,7 @@ export interface RelationshipFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldKey extends string = never,
   TFieldMeta extends {} = {},
+  THasMany extends boolean = boolean,
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 > extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
@@ -117,14 +119,24 @@ export interface RelationshipFieldInput<
    * `false` stores a single `Id`, `true` stores `Id[]`.
    * @defaultValue false
    */
-  hasMany?: boolean;
+  hasMany?: THasMany;
+  /**
+   * Overrides the Convex storage shape for a single-value (`hasMany: false`)
+   * reference: `"id"` stores `v.id("slug")` (`Id<"slug">`); `"string"` stores
+   * `v.string()` (plain `string`) — for a reference column a library owns
+   * (e.g. Better Auth's `session.userId`) that must stay a string. `never`
+   * when `hasMany: true` — overrides only apply to single-value fields.
+   * Omitted: storage is unchanged, `v.array(v.id("slug"))` even when
+   * `hasMany` is `false`.
+   */
+  schema?: SchemaOverrideInput<THasMany, Extract<FieldSchemaValidator, "id" | "string">>;
   /** Minimum number of related documents required, once a value is supplied. @see {@link FieldLimitInput} */
   min?: FieldLimitInput;
   /** Maximum number of related documents allowed. @see {@link FieldLimitInput} */
   max?: FieldLimitInput;
   admin?: RelationshipFieldAdminInput<TCollectionSlug, TTargetSlug, TComponent>;
-  /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
+  /** Server-only async validation. `value` is the serialized id(s): a bare `string` for scalar storage, `string[]` otherwise. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string | string[]>): Promise<void> | void;
 }
 
 /**
@@ -151,11 +163,13 @@ export interface RelationshipField<
   };
   /** Whether this field stores multiple document references. */
   hasMany: boolean;
+  /** Resolved storage override. Present only when the input set one. @see {@link RelationshipFieldInput.schema} */
+  schema?: { validator: Extract<FieldSchemaValidator, "id" | "string"> };
   /** Minimum number of related documents required, once a value is supplied, with its resolved error message. @see {@link FieldLimit} */
   min?: FieldLimit;
   /** Maximum number of related documents allowed, with its resolved error message. @see {@link FieldLimit} */
   max?: FieldLimit;
   admin: RelationshipFieldAdminConfig<TCollectionSlug, TTargetSlug, TComponent>;
-  /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
+  /** Server-only async validation. `value` is the serialized id(s): a bare `string` for scalar storage, `string[]` otherwise. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string | string[]>): Promise<void> | void;
 }

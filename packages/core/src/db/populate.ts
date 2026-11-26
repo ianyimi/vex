@@ -124,6 +124,16 @@ export async function populateDocs<
  * `populateDocs` clones once at the top; nested callers below clone each
  * container object/array they pull out before mutating it).
  *
+ * Detects a `variant()` field's own entry structurally —
+ * `"discriminator" in opts && "variants" in opts` — rather than via a
+ * `kind`-tagged check like the `record` branch above it: `opts` here is
+ * `buildPopulateMapEntry`'s `{ kind: "variant", discriminator, variants }`
+ * shape (`db/depth.ts`'s runtime equivalent), merged onto the caller's own
+ * populate request before reaching this loop, and only a variant entry
+ * carries both of these keys at once. {@link populateVariantContainer}'s
+ * own doc comment covers where `discriminator`/`variants` come from and how
+ * they route the recursion.
+ *
  * @param props.containers - Container objects to populate, batched across
  *   every parent doc/block/array-item — the field-per-call batching
  *   `populateDocs`'s own doc comment describes applies at EVERY nesting
@@ -145,9 +155,34 @@ async function populateContainers<DataModel extends GenericDataModel>(props: {
   const organization = auth?.organization;
 
   for (const [fieldKey, opts] of Object.entries(populate)) {
+    if (typeof opts === "object" && opts !== null && (opts as { kind?: unknown }).kind === "record") {
+      await populateRecordContainers({
+        ctx,
+        containers,
+        fieldKey,
+        opts: (opts as { populate: unknown }).populate,
+        drafts,
+        config,
+        access,
+        auth,
+      });
+      continue;
+    }
     const isLeaf = opts === true || (typeof opts === "object" && opts !== null && "populate" in opts);
     if (!isLeaf) {
-      if (typeof opts === "object" && opts !== null) {
+      if (typeof opts === "object" && opts !== null && "discriminator" in opts && "variants" in opts) {
+        await populateVariantContainer({
+          ctx,
+          containers,
+          fieldKey,
+          discriminator: opts.discriminator as string,
+          variants: opts.variants as Record<string, Record<string, unknown>>,
+          drafts,
+          config,
+          access,
+          auth,
+        });
+      } else if (typeof opts === "object" && opts !== null) {
         await populateNestedContainer({
           ctx,
           containers,
@@ -162,30 +197,29 @@ async function populateContainers<DataModel extends GenericDataModel>(props: {
       continue;
     }
 
-    // Column pass: every id this field references, across every container
-    // at THIS level — a relationship/upload field always targets ONE
-    // resolved collection per id, so all of them share the same read
-    // decision, computed once below rather than once per container.
     const idsByContainerIndex: unknown[][] = [];
+    const scalarValueByContainerIndex = new Map<number, string>();
     const allIds: GenericId<CollectionSlug>[] = [];
-    let fieldIsArrayOnSomeContainer = false;
+    let hasArrayValue = false;
     for (let i = 0; i < containers.length; i++) {
-      const ids = containers[i][fieldKey];
-      if (!Array.isArray(ids)) continue;
-      fieldIsArrayOnSomeContainer = true;
-      idsByContainerIndex[i] = ids;
-      for (const id of ids) allIds.push(id as GenericId<CollectionSlug>);
+      const value = containers[i][fieldKey];
+      if (Array.isArray(value)) {
+        hasArrayValue = true;
+        idsByContainerIndex[i] = value;
+        for (const id of value) allIds.push(id as GenericId<CollectionSlug>);
+      } else if (typeof value === "string") {
+        scalarValueByContainerIndex.set(i, value);
+      }
     }
-    if (!fieldIsArrayOnSomeContainer) continue;
+    if (!hasArrayValue && scalarValueByContainerIndex.size === 0) continue;
 
-    const uniqueIds = [...new Set(allIds)];
-
-    // Resolved once per field per call: the target collection (for
-    // commitTs keys AND as the RBAC `resource`), never per row.
+    const firstScalarValue =
+      scalarValueByContainerIndex.size > 0 ? [...scalarValueByContainerIndex.values()][0] : undefined;
     let targetSlug: CollectionSlug | undefined;
     let commitTsKeys: string[] = [];
-    if (config && uniqueIds.length > 0) {
-      targetSlug = tryResolveTargetCollectionSlug({ ctx, config, id: uniqueIds[0] });
+    const sampleId = allIds[0] ?? firstScalarValue;
+    if (config && sampleId !== undefined) {
+      targetSlug = tryResolveTargetCollectionSlug({ ctx, config, id: sampleId as GenericId<CollectionSlug> });
       const targetCollection = targetSlug
         ? findCollectionConfig({ config, slug: targetSlug })
         : undefined;
@@ -197,11 +231,42 @@ async function populateContainers<DataModel extends GenericDataModel>(props: {
     }
     const resource = targetSlug;
 
+    const scalarIdByContainerIndex = new Map<number, GenericId<CollectionSlug>>();
+    const unvalidatedScalarIds: GenericId<CollectionSlug>[] = [];
+    for (const [i, value] of scalarValueByContainerIndex) {
+      if (targetSlug) {
+        const normalized = ctx.db.normalizeId(targetSlug, value);
+        if (normalized !== null) {
+          scalarIdByContainerIndex.set(i, normalized as GenericId<CollectionSlug>);
+          allIds.push(normalized as GenericId<CollectionSlug>);
+        }
+        continue;
+      }
+      const candidateId = value as GenericId<CollectionSlug>;
+      scalarIdByContainerIndex.set(i, candidateId);
+      unvalidatedScalarIds.push(candidateId);
+    }
+
+    const uniqueIds = [...new Set(allIds)];
+    const uniqueUnvalidatedIds = [...new Set(unvalidatedScalarIds)];
+
     const fetched = uniqueIds.length > 0 ? await getAll(ctx.db, uniqueIds) : [];
+    const fetchedUnvalidated = await Promise.all(
+      uniqueUnvalidatedIds.map(async (id) => {
+        try {
+          return await ctx.db.get(id);
+        } catch {
+          return null;
+        }
+      }),
+    );
+    const idRawPairs: [GenericId<CollectionSlug>, unknown][] = [
+      ...uniqueIds.map((id, i): [GenericId<CollectionSlug>, unknown] => [id, fetched[i]]),
+      ...uniqueUnvalidatedIds.map((id, i): [GenericId<CollectionSlug>, unknown] => [id, fetchedUnvalidated[i]]),
+    ];
     const processedById = new Map<string, Record<string, unknown> | HiddenDocument>();
-    for (let i = 0; i < uniqueIds.length; i++) {
-      const raw = fetched[i];
-      if (raw === null) continue; // Deleted/missing target — dropped, same as before.
+    for (const [id, raw] of idRawPairs) {
+      if (raw === null || raw === undefined) continue;
 
       if (!drafts) {
         const status = (raw as Record<string, unknown>)[VERSION_SYSTEM_FIELDS.status.slug];
@@ -219,7 +284,7 @@ async function populateContainers<DataModel extends GenericDataModel>(props: {
           data: resolved,
         });
         if (!allowed) {
-          processedById.set(uniqueIds[i], {
+          processedById.set(id, {
             _id: resolved._id as GenericId<CollectionSlug>,
             code: "ACCESS_DENIED",
             resource,
@@ -242,14 +307,9 @@ async function populateContainers<DataModel extends GenericDataModel>(props: {
       if (commitTsKeys.length > 0) {
         resolved = convertCommitTsFieldsToMs({ doc: resolved as GenericDocument, keys: commitTsKeys });
       }
-      processedById.set(uniqueIds[i], resolved);
+      processedById.set(id, resolved);
     }
 
-    // Nested populate recurses ONCE across every allowed (non-placeholder)
-    // target this field resolved, batched the same way the column pass above
-    // batches the read-rule resolution — never once per parent row. Mutates
-    // each allowed target object in place, so `processedById`'s own
-    // references stay valid — no reassignment needed afterward.
     if (typeof opts === "object" && opts !== null && "populate" in opts && opts.populate) {
       const allowedDocs: Record<string, unknown>[] = [];
       for (const value of processedById.values()) {
@@ -270,10 +330,17 @@ async function populateContainers<DataModel extends GenericDataModel>(props: {
 
     for (let i = 0; i < containers.length; i++) {
       const ids = idsByContainerIndex[i];
-      if (!ids) continue;
-      containers[i][fieldKey] = ids
-        .map((id) => processedById.get(id as string))
-        .filter((value): value is Record<string, unknown> | HiddenDocument => value !== undefined);
+      if (ids) {
+        containers[i][fieldKey] = ids
+          .map((id) => processedById.get(id as string))
+          .filter((value): value is Record<string, unknown> | HiddenDocument => value !== undefined);
+        continue;
+      }
+      const scalarId = scalarIdByContainerIndex.get(i);
+      if (scalarId !== undefined) {
+        const resolved = processedById.get(scalarId as string);
+        if (resolved !== undefined) containers[i][fieldKey] = resolved;
+      }
     }
   }
 }
@@ -357,5 +424,110 @@ async function populateNestedContainer<DataModel extends GenericDataModel>(props
     }
   } else if (groupItems.length > 0) {
     await populateContainers({ ctx, containers: groupItems, populate: opts, drafts, config, access, auth });
+  }
+}
+
+/**
+ * Routes a DISCRIMINATED `variant()` field's populate entry — distinguished
+ * from the generic `populateNestedContainer` dispatch (which recovers a
+ * `blocks()` item's own type from its data-level `blockType` key) because a
+ * variant's active branch is named by a CONFIGURABLE property (`discriminator`),
+ * not a fixed framework key, so the discriminator name itself travels on the
+ * populate-map entry (`buildPopulateMapEntry`'s `{ kind: "variant",
+ * discriminator, variants }` shape, `db/depth.ts`'s runtime equivalent) and is
+ * read back here.
+ *
+ * Buckets every container's OWN variant-field value (a single object, never
+ * an array) by its discriminator value, then recurses `populateContainers`
+ * once per bucket against that variant's own sub-populate shape — the same
+ * batching-per-field, never-per-row discipline every other pass in this file
+ * keeps.
+ */
+async function populateVariantContainer<DataModel extends GenericDataModel>(props: {
+  ctx: GenericQueryCtx<DataModel>;
+  containers: Record<string, unknown>[];
+  fieldKey: string;
+  discriminator: string;
+  variants: Record<string, Record<string, unknown>>;
+  drafts?: boolean;
+  config?: VexConfig;
+  access?: VexAccessConfig;
+  auth?: VexApiAuth;
+}): Promise<void> {
+  const { ctx, containers, fieldKey, discriminator, variants, drafts, config, access, auth } = props;
+  const byVariantKey = new Map<string, Record<string, unknown>[]>();
+
+  for (const container of containers) {
+    const value = container[fieldKey];
+    if (typeof value !== "object" || value === null) continue;
+    const key = (value as Record<string, unknown>)[discriminator];
+    if (typeof key !== "string" || !(key in variants)) continue;
+    const cloned = { ...(value as Record<string, unknown>) };
+    container[fieldKey] = cloned;
+    const bucket = byVariantKey.get(key) ?? [];
+    bucket.push(cloned);
+    byVariantKey.set(key, bucket);
+  }
+
+  for (const [key, variantPopulate] of Object.entries(variants)) {
+    const items = byVariantKey.get(key);
+    if (!items || items.length === 0) continue;
+    await populateContainers({ ctx, containers: items, populate: variantPopulate, drafts, config, access, auth });
+  }
+}
+
+/**
+ * Populates one keyValue field's record entries — `container[fieldKey]` is a
+ * `Record<string, unknown>`, one entry per record key, each independently
+ * populatable per `opts` (the record's shared value field's own depth-populate
+ * result: `true`, `{ populate }`, a plain container object, or a nested
+ * `{ kind: "record", populate }`).
+ *
+ * Clones every container's record object before mutating it, same
+ * convention as `populateNestedContainer`. Flattens every (container, key)
+ * pair into one synthetic one-column container (`{ __value: entryValue }`)
+ * so the existing `populateContainers` dispatch — leaf id batching, nested
+ * container recursion, or a further `kind: "record"` level — runs UNCHANGED
+ * against `{ __value: opts }`, then writes each resolved `__value` back onto
+ * its own record entry.
+ */
+async function populateRecordContainers<DataModel extends GenericDataModel>(props: {
+  ctx: GenericQueryCtx<DataModel>;
+  containers: Record<string, unknown>[];
+  fieldKey: string;
+  opts: unknown;
+  drafts?: boolean;
+  config?: VexConfig;
+  access?: VexAccessConfig;
+  auth?: VexApiAuth;
+}): Promise<void> {
+  const { ctx, containers, fieldKey, opts, drafts, config, access, auth } = props;
+  const entries: { container: Record<string, unknown>; key: string }[] = [];
+  const synthetic: Record<string, unknown>[] = [];
+
+  for (const container of containers) {
+    const record = container[fieldKey];
+    if (typeof record !== "object" || record === null) continue;
+    const cloned: Record<string, unknown> = { ...(record as Record<string, unknown>) };
+    container[fieldKey] = cloned;
+    for (const key of Object.keys(cloned)) {
+      entries.push({ container: cloned, key });
+      synthetic.push({ __value: cloned[key] });
+    }
+  }
+  if (synthetic.length === 0) return;
+
+  await populateContainers({
+    ctx,
+    containers: synthetic,
+    populate: { __value: opts },
+    drafts,
+    config,
+    access,
+    auth,
+  });
+
+  for (let i = 0; i < entries.length; i++) {
+    entries[i]!.container[entries[i]!.key] = synthetic[i]!.__value;
   }
 }

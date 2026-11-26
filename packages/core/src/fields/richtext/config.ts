@@ -61,6 +61,7 @@ export function richtext<
     // Core properties with defaults
     label: "",
     required: false,
+    nullable: false,
     defaultValue: [...ADMIN_FIELDS.richtext.defaultValue],
     ...options,
 

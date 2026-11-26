@@ -18,6 +18,8 @@ export interface UserDisplayProps {
   fallbackIcon?: IconName;
   /** Positioning/spacing class applied to the root element. */
   className?: string;
+  /** Class applied to the name/email text block — a caller can collapse it (e.g. `"hidden lg:flex"`) to an avatar-only chip under width pressure without touching the avatar itself. */
+  textClassName?: string;
 }
 
 /**
@@ -35,6 +37,10 @@ export interface UserDisplayProps {
  * `image`/`fallbackIcon` rather than reading `useVexAuth()`/`useVexConfig()` itself, so it
  * has no dependency on the admin's domain contexts and can be reused anywhere a caller has
  * already resolved a user's display fields (e.g. `AdminTopNav`'s sign-in/out control).
+ *
+ * `textClassName` lets a width-constrained caller collapse the name/email block on its own
+ * breakpoint while the avatar stays put, the same `hidden <bp>:flex` pattern `AdminTopNav`'s
+ * own "Sign out" label uses.
  *
  * @param props - See {@link UserDisplayProps}.
  * @returns The avatar + name/email chip, or `null` when there is nothing to label.
@@ -65,7 +71,7 @@ export function UserDisplay(props: UserDisplayProps): ReactNode {
           <Icon name={props.fallbackIcon ?? "User"} size={16} />
         )}
       </span>
-      <div className="flex min-w-0 flex-col leading-tight">
+      <div className={cn("flex min-w-0 flex-col leading-tight", props.textClassName)}>
         <span className="min-w-0 truncate text-foreground">{headline}</span>
         {subline && <span className="min-w-0 truncate text-xs text-muted-foreground">{subline}</span>}
       </div>

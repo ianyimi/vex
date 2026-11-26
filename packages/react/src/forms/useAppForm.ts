@@ -12,9 +12,12 @@ import { SelectField } from "./SelectField";
 import { DateField } from "./DateField";
 import { ColorField } from "./ColorField";
 import { JsonField } from "./JsonField";
+import { BytesField } from "./BytesField";
 import { ArrayField } from "./ArrayField";
 import { BlocksField } from "./BlocksField";
 import { GroupField } from "./GroupField";
+import { VariantField } from "./VariantField";
+import { KeyValueField } from "./KeyValueField";
 
 /**
  * The app form's `useAppForm` / `withForm` pair — registers every
@@ -40,9 +43,12 @@ export const { useAppForm, withForm } = createFormHook({
     DateField,
     ColorField,
     JsonField,
+    BytesField,
     ArrayField,
     BlocksField,
     GroupField,
+    VariantField,
+    KeyValueField,
   },
   formComponents: {},
 });

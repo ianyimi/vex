@@ -12,12 +12,23 @@ const { useAppForm } = createFormHook({
   formComponents: {},
 });
 
-function Harness(props: { initialValue: boolean }) {
+function Harness(props: {
+  initialValue: boolean | null;
+  isNull?: boolean;
+  onIsNullChange?: (isNull: boolean) => void;
+}) {
   const form = useAppForm({ defaultValues: { published: props.initialValue } });
   return (
     <form.AppForm>
       <form.AppField name="published">
-        {(field) => <field.CheckboxField label="Published" required />}
+        {(field) => (
+          <field.CheckboxField
+            label="Published"
+            required
+            isNull={props.isNull}
+            onIsNullChange={props.onIsNullChange}
+          />
+        )}
       </form.AppField>
       <form.Subscribe selector={(state) => state.values.published}>
         {(value) => <output data-testid="value-probe">{String(value)}</output>}
@@ -42,5 +53,17 @@ describe("CheckboxField", () => {
     const hiddenInput = container.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
     await user.click(hiddenInput);
     expect(screen.getByTestId("value-probe")).toHaveTextContent("true");
+  });
+
+  it("renders no Null switch when onIsNullChange is omitted", () => {
+    render(<Harness initialValue={false} />);
+    expect(screen.queryByText("Null")).not.toBeInTheDocument();
+  });
+
+  it("hides the checkbox control but keeps the label visible while isNull", () => {
+    render(<Harness initialValue={null} isNull onIsNullChange={() => {}} />);
+    expect(screen.queryByRole("checkbox", { name: "Published" })).not.toBeInTheDocument();
+    expect(screen.getByText("Published")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Set Published to null" })).toBeInTheDocument();
   });
 });

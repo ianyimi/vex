@@ -19,16 +19,21 @@ import type { FieldMask } from "@vexcms/core";
  * re-created when the mask's actual value changes — never on every
  * keystroke merely because the caller re-rendered.
  *
- * Passes `{ rightAlign: false, ...mask.options, autoUnmask: !mask.storeMasked }`
- * to `withMask` — `rightAlign: false` first so every numeric-family alias
- * (`numeric`/`decimal`/`integer`/`currency`/`percentage`, which all set
- * `rightAlign: true` themselves) renders left-aligned like every other
- * input instead, unless `mask.options` explicitly opts back into
- * right-alignment. `autoUnmask` makes the DOM element's own `value` (and
- * every `input`/`change` event's `target.value`) report the raw unmasked
- * string while the screen keeps showing the formatted one, unless
- * `storeMasked` is set, in which case the formatted value is both shown and
- * stored.
+ * Passes `{ rightAlign: false, clearMaskOnLostFocus: false, ...mask.options,
+ * autoUnmask: !mask.storeMasked }` to `withMask` — `rightAlign: false` first
+ * so every numeric-family alias (`numeric`/`decimal`/`integer`/`currency`/
+ * `percentage`, which all set `rightAlign: true` themselves) renders
+ * left-aligned like every other input instead, unless `mask.options`
+ * explicitly opts back into right-alignment. `clearMaskOnLostFocus: false`
+ * keeps the mask's placeholder pattern (e.g. `___-___-____`) visible on an
+ * empty, unfocused input — Inputmask's own default (`true`) blanks it the
+ * moment focus leaves, which otherwise makes an untouched masked field look
+ * like a bare, unmasked one until the user focuses it again. `autoUnmask`
+ * makes the DOM element's own `value` (and every `input`/`change` event's
+ * `target.value`) report the raw unmasked string while the screen keeps
+ * showing the formatted one (still `""` for an untouched field — the
+ * placeholder pattern is never a real value), unless `storeMasked` is set,
+ * in which case the formatted value is both shown and stored.
  *
  * @param props - Input props.
  * @param props.mask - The field's resolved mask, or `undefined` for no mask.
@@ -69,6 +74,7 @@ export function useFieldMask(props: {
         if (cancelled) return;
         const applyMask = withMask(stableMask.mask, {
           rightAlign: false,
+          clearMaskOnLostFocus: false,
           ...stableMask.options,
           autoUnmask: !stableMask.storeMasked,
         });

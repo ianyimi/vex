@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { TDocument } from "@vexcms/core";
+import { number, type TDocument } from "@vexcms/core";
 import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../testing/fieldCellContract";
 import { testCollection } from "../../testing/harness/accessFixtures";
 import { NumberFieldCell } from "./Cell";
@@ -55,4 +55,24 @@ runFieldCellContractSuite({
       });
     });
   },
+});
+
+describe("number: int64 rendering", () => {
+  it("renders a bigint value as plain digits", () => {
+    const fieldDef = number({ schema: { validator: "int64" }, label: "Views" });
+    const row = makeCellRow<TDocument>({ fieldKey: "field", value: 9007199254740993n });
+    render(
+      withCellConfig(
+        <NumberFieldCell
+          value={9007199254740993n}
+          row={row}
+          fieldDef={fieldDef}
+          fieldKey="field"
+          isTitleField={false}
+          collection={testCollection}
+        />,
+      ),
+    );
+    expect(screen.getByText("9007199254740993")).toBeInTheDocument();
+  });
 });

@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { ADMIN_FIELDS } from "../constants";
 import { getDataFields } from "../utils";
+import { walkVariantValue } from "../variant";
 import { RESERVED_BLOCK_FIELD_NAMES } from "./types";
 import type { BlockConfig, GenericBlock } from "./types";
 import type { AdminField } from "../types";
@@ -61,6 +62,17 @@ function cloneNestedBlockIds(props: { value: unknown; field: AdminField }): unkn
   }
   if (field.type === ADMIN_FIELDS.array.type) {
     return (value as unknown[]).map((item) => cloneNestedBlockIds({ value: item, field: field.items }));
+  }
+  if (field.type === ADMIN_FIELDS.keyValue.type) {
+    const recordValue = (value ?? {}) as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
+    for (const [entryKey, entryValue] of Object.entries(recordValue)) {
+      result[entryKey] = cloneNestedBlockIds({ value: entryValue, field: field.value });
+    }
+    return result;
+  }
+  if (field.type === ADMIN_FIELDS.variant.type) {
+    return walkVariantValue({ value, field, recurse: cloneNestedBlockIds });
   }
   return value;
 }

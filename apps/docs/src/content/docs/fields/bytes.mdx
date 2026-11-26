@@ -1,0 +1,80 @@
+---
+title: bytes field
+description: Stores raw binary data as an ArrayBuffer — checksums, small binary blobs, and any field mapping an existing v.bytes() column.
+---
+
+A `bytes()` field stores a raw binary value as Convex's native `v.bytes()`
+(`ArrayBuffer`). It is used for checksums, small binary blobs, and any column
+whose existing Convex schema already stores `v.bytes()`. There is no
+shape/format option on the field itself — `maxSize` is the only constraint,
+enforced before the value reaches the server.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema and the form allows leaving it empty. |
+| `nullable` | `boolean` | `false` | Stores `v.nullable(v.bytes())` (wrapped in `v.optional(…)` too when `required` is `false`); the generated type is `ArrayBuffer \| null`. Clearing the input writes `null` instead of emptying the value. See [Nullable values](/fields/text/#nullable-values). |
+| `maxSize` | `number` | `524_288` (512 KiB) | Maximum accepted byte size. Enforced by the Zod input schema and the admin UI before the value is submitted. |
+| `accept` | `string` | `""` | MIME type restriction passed through to the file-tab input's `accept` attribute, e.g. `"image/*"`. |
+| `defaultValue` | `ArrayBuffer` | `undefined` | Pre-filled value shown in the admin form when creating a new document. |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders both tabs as non-interactive — the current value and size are visible but cannot be changed. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `string` | `"100%"` | CSS width of the field in the edit form (e.g. `"50%"`, `"240px"`). Meaningful as a child of `row()`; below a narrow form column every field renders full width regardless. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
+| `admin.description` | `string` | — | Helper text displayed below the field input. |
+| `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. A throwing condition counts as met. Hidden fields skip `required`/`validate` on the server too. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
+
+## Schema output
+
+```ts
+// Optional (required: false — default)
+checksum: v.optional(v.bytes())
+
+// Required
+payload: v.bytes()
+
+// Nullable, required
+signature: v.nullable(v.bytes())
+```
+
+**Usage**
+
+```ts
+import { defineCollection, bytes, text } from "@vexcms/core";
+
+const attachments = defineCollection({
+  slug: "attachments",
+  fields: {
+    name: text({ required: true }),
+
+    // Capped at the default 512 KiB
+    payload: bytes({ required: true }),
+
+    // Smaller cap, restricted to image bytes
+    thumbnail: bytes({ maxSize: 65_536, accept: "image/*" }),
+
+    // Optional checksum, nullable so a cleared value can be distinguished
+    // from one that was never set
+    checksum: bytes({ nullable: true }),
+  },
+});
+```
+
+**Admin UI**
+
+The field renders two tabs, mirroring `upload()`'s file/library split: a **File** tab (a
+drag-and-drop/picker input that replaces the whole value on selection) and a **Hex** tab (a
+monospace textarea showing the current value as a hex dump, editable in place and re-parsed on
+blur). Both tabs show the current size, a download button, and a clear button. `maxSize` is
+enforced on both tabs — a file over the cap, or a hex edit that decodes to more bytes than the
+cap, is rejected with an inline error. In the list-view table, the cell shows the byte size
+(e.g. `"2.4 KB"`), not the raw bytes.
+
+**Filtering**
+
+Only `isEmpty`/`isNotEmpty` operators are available in the list-view filter builder — a binary
+value has no meaningful equality or range comparison in the UI.

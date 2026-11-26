@@ -64,6 +64,7 @@ export function url<
     // Core properties with defaults
     label: "",
     required: false,
+    nullable: false,
     defaultValue: ADMIN_FIELDS.url.defaultValue,
     ...options,
 

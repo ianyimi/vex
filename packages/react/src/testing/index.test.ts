@@ -10,7 +10,7 @@ vi.mock("./modalSuite", () => ({ runModalSuite: vi.fn() }));
 vi.mock("./mediaSuite", () => ({ runMediaSuite: vi.fn() }));
 vi.mock("./hooksSuite", () => ({ runHooksSuite: vi.fn() }));
 
-import { fieldFixtures } from "./fixtures";
+import { fieldFixtures, extraFieldFixtures } from "./fixtures";
 import { runFieldInputContractSuite } from "./fieldInputContract";
 import { runFieldCellContractSuite } from "./fieldCellContract";
 import { runColumnDefSuite } from "./columnDefSuite";
@@ -22,8 +22,20 @@ import { runHooksSuite } from "./hooksSuite";
 import { runVexReactSuite, NO_CONTROL_FIELD_TYPES } from "./index";
 
 const FIELD_TYPE_COUNT = Object.keys(fieldFixtures).length;
-/** `fields` dispatches once per registered field type EXCEPT those with no editable control (`commitTs`) — see `NO_CONTROL_FIELD_TYPES`'s own doc comment. */
-const FIELD_SECTION_DISPATCH_COUNT = FIELD_TYPE_COUNT - NO_CONTROL_FIELD_TYPES.size;
+/** Every extra fixture beyond each type's one `fieldFixtures` representative, flattened. */
+const EXTRA_FIXTURE_COUNT = Object.values(extraFieldFixtures).reduce(
+  (sum, fixtures) => sum + (fixtures?.length ?? 0),
+  0,
+);
+/** Extra fixtures whose own field type has an editable control — the `fields` section's own count excludes `NO_CONTROL_FIELD_TYPES`. */
+const EXTRA_FIXTURE_COUNT_WITH_CONTROL = Object.entries(extraFieldFixtures).reduce(
+  (sum, [fieldType, fixtures]) =>
+    sum + (NO_CONTROL_FIELD_TYPES.has(fieldType as never) ? 0 : (fixtures?.length ?? 0)),
+  0,
+);
+/** `fields` dispatches once per registered field type EXCEPT those with no editable control (`commitTs`) — see `NO_CONTROL_FIELD_TYPES`'s own doc comment — plus once per extra fixture on a controllable type. */
+const FIELD_SECTION_DISPATCH_COUNT =
+  FIELD_TYPE_COUNT - NO_CONTROL_FIELD_TYPES.size + EXTRA_FIXTURE_COUNT_WITH_CONTROL;
 
 /** Every mocked dispatch target, keyed by the `VexSuiteSection` name that triggers it. */
 const DISPATCH_MOCKS = {
@@ -53,7 +65,7 @@ const PER_TYPE_SECTIONS = new Set<DispatchSection>(["fields", "cells", "columnDe
  */
 function expectedCallCount(section: DispatchSection): number {
   if (section === "fields") return FIELD_SECTION_DISPATCH_COUNT;
-  return PER_TYPE_SECTIONS.has(section) ? FIELD_TYPE_COUNT : 1;
+  return PER_TYPE_SECTIONS.has(section) ? FIELD_TYPE_COUNT + EXTRA_FIXTURE_COUNT : 1;
 }
 
 /**

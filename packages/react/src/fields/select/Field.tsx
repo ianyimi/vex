@@ -78,6 +78,7 @@ export function SelectFieldAdmin(props: FieldComponentProps<{}, SelectFieldDef> 
       index={props.index}
         options={props.fieldDef.options}
         hasMany={props.fieldDef.hasMany}
+        scalar={props.fieldDef.schema !== undefined}
         display={props.fieldDef.admin.display}
         searchable={props.fieldDef.admin.searchable}
         placeholder={props.fieldDef.admin.placeholder}

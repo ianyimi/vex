@@ -126,6 +126,7 @@ export function blocks<
     }),
     label: options.label ?? "",
     required: options.required ?? false,
+    nullable: options.nullable ?? false,
     defaultValue: options.defaultValue ?? [],
     labels: options.labels ?? { singular: "Block", plural: "Blocks" },
     blocks: options.blocks,

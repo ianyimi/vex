@@ -1,7 +1,25 @@
-import { ADMIN_FIELDS } from "../constants";
+import { ADMIN_FIELDS, FIELD_SCHEMA_VALIDATORS } from "../constants";
 import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
-import type { NumberFieldInput, NumberField } from "./types";
+import type { Int64NumberFieldInput, NumberFieldInput, NumberField } from "./types";
+
+/**
+ * Narrows `number()`'s input to {@link Int64NumberFieldInput} — true when
+ * `schema.validator` is `"int64"`. Mirrors {@link isInt64NumberField}
+ * (`./utils.ts`) one level earlier, before defaults are applied.
+ *
+ * @param options - The `number()` input to narrow, or `undefined`.
+ * @returns `true` if `options.schema.validator` is `"int64"`.
+ */
+function isInt64NumberFieldInput<
+  TCollectionSlug extends VexResourceSlug,
+  TFieldKey extends string,
+  TFieldMeta extends {},
+>(
+  options: NumberFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> | undefined,
+): options is Int64NumberFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
+  return options?.schema?.validator === FIELD_SCHEMA_VALIDATORS.int64;
+}
 
 /**
  * Creates a number field with all defaults applied.
@@ -56,6 +74,52 @@ export function number<
 >(
   options?: NumberFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
 ): NumberField<TCollectionSlug, TFieldMeta> {
+  if (isInt64NumberFieldInput(options)) {
+    const min = resolveFieldLimit<bigint>({
+      limit: options.min,
+      defaultError: (value) => `Must be at least ${value}.`,
+    });
+    const max = resolveFieldLimit<bigint>({
+      limit: options.max,
+      defaultError: (value) => `Must be no more than ${value}.`,
+    });
+    if (min && max && min[0] >= max[0]) {
+      throw new Error(`Min value must be lower than the Max value`);
+    }
+
+    return {
+      type: ADMIN_FIELDS.number.type,
+      interfaceType: "bigint",
+
+      // Core properties with defaults
+      label: "",
+      required: false,
+      nullable: false,
+      defaultValue: undefined,
+      ...options,
+      schema: { validator: FIELD_SCHEMA_VALIDATORS.int64 },
+      min,
+      max,
+
+      // Admin config with all defaults applied
+      admin: {
+        hidden: false,
+        readOnly: false,
+        position: "main",
+        width: "100%",
+        cellAlignment: "left",
+        enableSorting: false,
+        enableHiding: true,
+        placeholder: "",
+        ...options.admin,
+        components: resolveFieldComponents({ components: options.admin?.components }),
+      },
+      meta: {
+        ...options.meta,
+      } as TFieldMeta,
+    };
+  }
+
   const min = resolveFieldLimit({
     limit: options?.min,
     defaultError: (value) => `Must be at least ${value}.`,
@@ -75,6 +139,7 @@ export function number<
     // Core properties with defaults
     label: "",
     required: false,
+    nullable: false,
     defaultValue: ADMIN_FIELDS.number.defaultValue,
     ...options,
     min,

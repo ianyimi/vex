@@ -4,14 +4,19 @@ import type { ReactNode } from "react";
 import { Activity } from "react";
 import { useStore } from "@tanstack/react-form";
 import { useFieldContext, useFormContext } from "./formContext";
-import { FormFieldLayout, fieldDescribedBy, isFieldShowingError } from "./FormFieldLayout";
+import { FormFieldLayout, NullFieldToggle, fieldDescribedBy, isFieldShowingError } from "./FormFieldLayout";
 import { cn } from "../utils/cn";
 import { FieldDescription, FieldLabel } from "../ui/field";
 import { Checkbox } from "../ui/checkbox";
 import type { BaseFormFieldProps } from "./types";
 
 /** Props for {@link CheckboxField}. */
-export type CheckboxFieldProps = BaseFormFieldProps<boolean>;
+export interface CheckboxFieldProps extends BaseFormFieldProps<boolean> {
+  /** Whether this field's value is currently `null`. Ignored unless `onIsNullChange` is also given. */
+  isNull?: boolean;
+  /** Toggles `isNull`. Omit to render no "Null" switch at all. */
+  onIsNullChange?: (isNull: boolean) => void;
+}
 
 /**
  * A checkbox field bound to the nearest `<form.AppField name="...">`. Unlike
@@ -19,7 +24,11 @@ export type CheckboxFieldProps = BaseFormFieldProps<boolean>;
  * rather than above it — `FormFieldLayout` is used for the error only; the
  * description renders directly under the inline label text, indented
  * (`pl-6`) to align with it rather than the checkbox box, the standard
- * checkbox-with-hint pattern.
+ * checkbox-with-hint pattern. When `onIsNullChange` is given, the control
+ * and description hide while `isNull` and a `NullFieldToggle` renders
+ * beside the (still-visible) inline label — `FormFieldLayout`'s own
+ * `isNull`/`onIsNullChange` props are unused here since this field never
+ * passes anything through `children`.
  *
  * @param props - See {@link CheckboxFieldProps} and {@link BaseFormFieldProps}.
  * @returns The checkbox + inline label row, description and error.
@@ -70,15 +79,26 @@ export function CheckboxField(props: CheckboxFieldProps): ReactNode {
       readOnly={props.readOnly}
       before={
         <div className="flex flex-col gap-1">
-          <div className="flex gap-2">
-            {control}
-            {inlineLabel}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex gap-2">
+              {!props.isNull && control}
+              {inlineLabel}
+            </div>
+            {props.onIsNullChange && (
+              <NullFieldToggle
+                isNull={Boolean(props.isNull)}
+                onIsNullChange={props.onIsNullChange}
+                label={props.label}
+              />
+            )}
           </div>
-          <Activity mode={props.description ? "visible" : "hidden"}>
-            <FieldDescription id={`${field.name}-description`} data-slot="form-description" className="pl-6">
-              {props.description}
-            </FieldDescription>
-          </Activity>
+          {!props.isNull && (
+            <Activity mode={props.description ? "visible" : "hidden"}>
+              <FieldDescription id={`${field.name}-description`} data-slot="form-description" className="pl-6">
+                {props.description}
+              </FieldDescription>
+            </Activity>
+          )}
         </div>
       }
     >

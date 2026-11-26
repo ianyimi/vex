@@ -19,7 +19,7 @@ export const DEFAULT_LIVE_PREVIEW_ROUTE_PATH = "/api/vex/live-preview";
  * `getBySlugPreview` query — now running for an anonymous caller — can return
  * `[]` where the published query would have found a row.
  *
- * Call this from every sign-out entry point, before the hard navigation/
+ * Call this from every sign-out entry point, before the full reload/
  * refresh that follows (alongside `beginTransition(null)`) — see
  * `VexAdminAuthAdapterProvider`'s `signOut` and each app's `SessionButton`.
  *

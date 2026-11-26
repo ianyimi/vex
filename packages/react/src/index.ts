@@ -11,7 +11,7 @@ import {
 // always import config functions from `@vexcms/react` (or `@vexcms/next`),
 // never from `@vexcms/core` directly. When any of these gains a component
 // slot, replace the pass-through with a typed wrapper like `relationship`.
-export { text, email, textarea, number, select, date, url, checkbox, json, tabs, collapsible, row, ui, defineConfig } from "@vexcms/core";
+export { text, email, textarea, number, select, date, url, checkbox, json, bytes, tabs, collapsible, row, ui, defineConfig } from "@vexcms/core";
 
 // Re-export the *resolved* field types users reference in their code.
 //
@@ -30,6 +30,7 @@ export type {
   UrlField,
   CheckboxField,
   JsonField,
+  BytesField,
   AdminField,
   CollectionSlug,
   VexDocument,
@@ -132,9 +133,11 @@ export { usePermission } from "./access";
 
 // Utilities
 export { cn } from "./utils/cn";
+export { globalSingleton } from "./utils/globalSingleton";
 export { Icon, isIconName, IconNodeProvider } from "./ui/Icon";
 export { adminHref } from "./admin/adminHref";
 export type { AdminHrefTarget } from "./admin/adminHref";
+export { clearEditScrollStorage } from "./admin/usePreservedScrollTop";
 export type { IconProps, IconName, IconNodeMap } from "./ui/Icon";
 export { RenderBlocks } from "./fields/blocks/RenderBlocks";
 export type {
@@ -202,8 +205,9 @@ export type RelationshipFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldKey extends string = never,
   TFieldMeta extends {} = {},
+  THasMany extends boolean = boolean,
   TTargetSlug extends CollectionSlug = CollectionSlug,
-> = CoreRelationshipFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, TTargetSlug, ReactHKT>;
+> = CoreRelationshipFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, THasMany, TTargetSlug, ReactHKT>;
 
 /**
  * Resolved relationship field type with the React component slot bound.
@@ -278,11 +282,12 @@ export function relationship<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldKey extends string = never,
   TFieldMeta extends {} = {},
+  THasMany extends boolean = boolean,
   TTargetSlug extends CollectionSlug = CollectionSlug,
 >(
-  options: RelationshipFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, TTargetSlug>,
+  options: RelationshipFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, THasMany, TTargetSlug>,
 ): RelationshipField<TCollectionSlug, TFieldMeta, TTargetSlug> {
-  return coreRelationship<TCollectionSlug, TFieldKey, TFieldMeta, TTargetSlug, ReactHKT>(options);
+  return coreRelationship<TCollectionSlug, TFieldKey, TFieldMeta, THasMany, TTargetSlug, ReactHKT>(options);
 }
 
 /**

@@ -13,10 +13,13 @@ import { colorFieldToValidator } from "../color";
 import { relationshipFieldToValidator } from "../relationship";
 import { arrayFieldToValidator } from "../array";
 import { groupFieldToValidator } from "../group";
+import { keyValueFieldToValidator } from "../keyValue";
 import { blocksFieldToValidator } from "../blocks";
 import { uploadFieldToValidator } from "../upload";
 import { richTextFieldToValidator } from "../richtext";
 import { jsonFieldToValidator } from "../json";
+import { bytesFieldToValidator } from "../bytes";
+import { variantFieldToValidator } from "../variant";
 
 /**
  * Converts any field definition to its Convex schema validator string.
@@ -70,6 +73,8 @@ export function adminFieldToValidator<TFieldMeta extends {} = {}>(props: {
       return arrayFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.group.type:
       return groupFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.keyValue.type:
+      return keyValueFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.blocks.type:
       return blocksFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.upload.type:
@@ -78,6 +83,10 @@ export function adminFieldToValidator<TFieldMeta extends {} = {}>(props: {
       return richTextFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.json.type:
       return jsonFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.variant.type:
+      return variantFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.bytes.type:
+      return bytesFieldToValidator({ field: props.field });
     default: {
       const unhandled: never = props.field;
       throw new Error(

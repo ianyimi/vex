@@ -1,0 +1,104 @@
+---
+title: keyValue field
+description: Stores a Convex v.record() — a dynamic set of key/value pairs sharing one value shape, keyed by string or by Id.
+---
+
+A `keyValue()` field stores a Convex `v.record(keys, values)` — a dynamic-length
+map whose keys are *not* a fixed set (use `group()` for that) and whose values
+all share one shape, described by a single nested data field. It is used for
+per-locale overrides, scoreboards, or any existing `v.record(...)` column.
+
+Keys are `v.string()` by default, or `v.id("slug")` for a collection's documents
+when `keys: { collection: { slug } }` is set — Convex only allows a record's keys
+to be a string, an id, or a union of those, so a fixed/literal key set is not
+supported here; use `group()` for that shape instead.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `value` | `AdminDataField` | — | **Required.** The nested data field describing every value's shape — any VexCMS data field, including containers (`group()`, `array()`, `blocks()`, another `keyValue()`, …). It is always resolved as required internally (a record's values can't be optional in Convex), independent of `value`'s own `required`; its own `nullable` still applies. |
+| `keys.collection.slug` | `CollectionSlug` | — | When set, keys are `v.id("slug")` instead of `v.string()`, and the admin key input becomes a relationship-style picker scoped to that collection. |
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `nullable` | `boolean` | `false` | Stores `v.nullable(v.record(...))` (wrapped in `v.optional(…)` too when `required` is `false`); the generated type is `Record<K, V> \| null`. Renders a null toggle instead of an empty-input state, like every other container field. See [Nullable values](/fields/text/#nullable-values). |
+| `defaultValue` | `Record<string, unknown>` | `{}` | Pre-filled rows shown in the admin form when creating a new document. |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders every row as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `string` | `"100%"` | CSS width of the field in the edit form (e.g. `"50%"`, `"240px"`). Meaningful as a child of `row()`; below a narrow form column every field renders full width regardless. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment used for this field's column in the list-view table. |
+| `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. A throwing condition counts as met. Container conditions AND into children. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
+
+## Schema output
+
+```ts
+// String-keyed record of numbers (default — required: false)
+scores: v.optional(v.record(v.string(), v.number()))
+
+// Id-keyed record — values keyed by a user document's Id
+userScores: v.record(v.id("users"), v.number())
+
+// Nullable, required
+tallies: v.nullable(v.record(v.string(), v.number()))
+```
+
+**Usage**
+
+```ts
+import { defineCollection, keyValue, number, text } from "@vexcms/core";
+
+const games = defineCollection({
+  slug: "games",
+  fields: {
+    name: text({ required: true }),
+
+    // String-keyed number values
+    scores: keyValue({ value: number() }),
+
+    // Id-keyed values — keys are users' Ids, not arbitrary strings
+    userScores: keyValue({
+      keys: { collection: { slug: "users" } },
+      value: number({ defaultValue: 0 }),
+    }),
+
+    // Nested container value — each key maps to a small group
+    rounds: keyValue({
+      value: text({ label: "Winner" }),
+      nullable: true,
+    }),
+  },
+});
+```
+
+**Nesting**
+
+`keyValue()` nests anywhere a data field nests — inside a `group()`, an `array()`'s `items`, a
+`blocks()` block's own fields, or another `keyValue()`'s/`variant()`'s value — and its own
+`value` field accepts any data field, including another container. Every field walker
+(interface generation, populate/depth, telemetry) recurses into a `keyValue()`'s `value` the
+same way it recurses into a `group()`'s `fields`.
+
+**Admin UI**
+
+The field renders as a list of key/value rows, each with a key input (plain text, or a
+relationship-style picker when `keys.collection` is set) and the `value` field's own input
+rendered per row. Every row shows its own key and value labels. Adding a row appends an empty
+key; removing one deletes the row. Every key is required — a row with an empty key shows
+"This field is required." under that row's key input and blocks submission. Keys must also be unique within the
+field — a duplicate key shows an inline error and blocks submission. In the
+list-view table, the cell shows a compact `{ n keys }` badge, matching `group()`'s cell;
+sorting is disabled for the same reason.
+
+**TypeScript output**
+
+```ts
+// Generated document interface
+export interface GamesDocument extends VexDocument {
+  _id: Id<"games">;
+  scores?: Record<string, number>;
+  userScores: Record<Id<"users">, number>;
+  // ...other fields
+}
+```

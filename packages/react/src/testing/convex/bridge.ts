@@ -102,6 +102,7 @@ const FAKE_COLLECTION_FIELDS: Record<"documents" | "media", Record<string, { typ
     status: { type: "text" },
     title: { type: "text" },
     related: { type: "relationship" },
+    viewCount: { type: "number" },
   },
   media: {
     adapter: { type: "text" },

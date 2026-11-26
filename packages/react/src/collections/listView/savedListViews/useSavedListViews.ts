@@ -13,6 +13,7 @@ import {
   PERMISSION_SCOPES,
   splitWhereByReadability,
   toClientSavedListViewConfig,
+  valuesEqual,
   VEX_VIEW_SOURCES,
   type ColumnEntry,
   type CollectionConfig,
@@ -615,7 +616,7 @@ export function diffViewState<TFieldSlug extends string>(props: {
   ) {
     categories.push("sort");
   }
-  if (JSON.stringify(props.current.where ?? null) !== JSON.stringify(props.saved.where ?? null)) {
+  if (!valuesEqual(props.current.where ?? null, props.saved.where ?? null)) {
     categories.push("filters");
   }
   // `columns` is ALWAYS fully resolved (`completeListViewColumnOrder`,

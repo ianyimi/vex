@@ -13,6 +13,7 @@ import {
   date,
   defineCollection,
   number,
+  relationship,
   select,
   text,
 } from "@vexcms/core";
@@ -202,7 +203,9 @@ function buildAdapterTableIndexes(props: {
  * - `required` → field `required`
  * - `defaultValue` → field `defaultValue`
  * - `unique`/`index` → field `index` (index name: `by_<field>_unique` or `by_<field>`)
- * - `references` → `relationship` field
+ * - `references` → `relationship({ collection: { slug }, schema: { validator: "string" } })`
+ *   field, target slug resolved from the referenced table's `modelName` (falls back to its
+ *   table key when unset)
  * - System fields get `admin.readOnly: true` and `meta.locked: true`
  * - Sensitive fields get `admin.hidden: true`
  *
@@ -258,6 +261,7 @@ export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdap
       fields,
       config: props?.config,
       extractId: true,
+      tables,
     });
 
     const authCollectionType = authCollections.find((ac) => ac.slug === slug)?.type;
@@ -270,6 +274,7 @@ export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdap
             slug,
             fields,
             config: props?.config,
+            tables,
           });
           break;
         }
@@ -280,6 +285,7 @@ export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdap
             slug,
             fields,
             config: props?.config,
+            tables,
           });
           break;
         }
@@ -290,6 +296,7 @@ export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdap
             slug,
             fields,
             config: props?.config,
+            tables,
           });
           break;
         }
@@ -300,6 +307,7 @@ export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdap
             slug,
             fields,
             config: props?.config,
+            tables,
           });
           break;
         }
@@ -371,6 +379,8 @@ export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdap
  * @param props.fields — Mutable Vex collection fields object to populate.
  * @param props.config — Better Auth options (for model name / additional fields lookups).
  * @param props.extractId — When `true`, skips the `id` field.
+ * @param props.tables — The full `getAuthTables()` result, used to resolve a
+ *   `references.model` table key to that table's registered (possibly renamed) slug.
  *
  * @internal
  */
@@ -380,11 +390,12 @@ export function addAuthCollectionFields(props: {
   fields: AuthCollectionConfig["fields"];
   config?: BetterAuthOptions;
   extractId?: boolean;
+  tables: ReturnType<typeof getAuthTables>;
 }) {
   if (!props.attributes) return;
   for (const [fieldName, attr] of Object.entries(props.attributes)) {
     if (props.extractId === true && fieldName === "id") continue;
-    const field = betterAuthAttrToVexField(fieldName, attr, props.slug, props?.config);
+    const field = betterAuthAttrToVexField(fieldName, attr, props.slug, props.tables, props?.config);
     if (field) props.fields[fieldName] = field;
   }
 }
@@ -394,13 +405,16 @@ export function addAuthCollectionFields(props: {
  *
  * Handles all Better Auth scalar types: `string`, `boolean`, `number`, `date`,
  * `timestamp`, `json`, and enum arrays. Maps overlapping properties
- * (`required`, `defaultValue`, `unique`/`index`, `references`) to their
- * Vex equivalents. Sets `admin.readOnly` and `meta.locked` on system
- * fields, and `admin.hidden` on sensitive fields.
+ * (`required`, `defaultValue`, `unique`/`index`) to their Vex equivalents, and
+ * `references` to a `relationship({ schema: { validator: "string" } })` field
+ * targeting the referenced table's resolved slug. Sets `admin.readOnly` and
+ * `meta.locked` on system fields, and `admin.hidden` on sensitive fields.
  *
  * @param fieldName — The field name from Better Auth.
  * @param attr — The Better Auth field attribute.
  * @param tableSlug — The collection slug (for relationship targets).
+ * @param tables — The full `getAuthTables()` result, used to resolve a `references.model`
+ *   table key to that table's registered (possibly renamed) slug.
  * @param authOptions -- The betterAuth options
  * @returns A Vex field instance, or `null` if the type is unsupported.
  *
@@ -410,6 +424,7 @@ function betterAuthAttrToVexField(
   fieldName: string,
   attr: DBFieldAttribute,
   tableSlug: string,
+  tables: ReturnType<typeof getAuthTables>,
   authOptions?: BetterAuthOptions,
 ) {
   // Skip id — Convex auto-generates _id
@@ -439,7 +454,12 @@ function betterAuthAttrToVexField(
   }
 
   if (attr.references) {
-    return text<VexResourceSlug, never, AuthFieldMeta>(baseOptions);
+    const targetSlug = tables[attr.references.model]?.modelName ?? attr.references.model;
+    return relationship<VexResourceSlug, never, AuthFieldMeta>({
+      ...baseOptions,
+      collection: { slug: targetSlug as CollectionSlug },
+      schema: { validator: "string" },
+    });
   }
 
   if (Array.isArray(attr.type)) {

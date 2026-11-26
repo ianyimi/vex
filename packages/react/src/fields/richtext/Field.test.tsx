@@ -7,7 +7,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import {
   defineConfig,
+  richtext,
   type CollectionConfig,
+  type RichTextDocument,
   type RichTextField,
   type VexClientConfig,
 } from "@vexcms/core";
@@ -119,4 +121,56 @@ runFieldInputContractSuite({
       });
     });
   },
+});
+
+describe("richtext: null-toggle restore rule", () => {
+  const RESTORED_DOCUMENT: RichTextDocument = [{ type: "p", children: [{ text: "Restored text" }] }];
+
+  function NullableRichTextHarness(props: { initialValue: RichTextDocument | null }) {
+    const fieldDef = richtext({ label: "Body", nullable: true });
+    const form = useForm({ defaultValues: { testField: props.initialValue } });
+    const [queryClient] = useState(
+      () =>
+        new QueryClient({
+          defaultOptions: { queries: { retry: false, queryFn: () => new Promise<never>(() => {}) } },
+        }),
+    );
+    const [convexClient] = useState(() => new ConvexReactClient("https://example.convex.cloud"));
+    return (
+      <ConvexProvider client={convexClient}>
+        <QueryClientProvider client={queryClient}>
+          <VexConfigContext.Provider value={configWithEditor}>
+            <AppForm form={form}>
+              <RichTextFieldAdmin
+                name="testField"
+                fieldDef={fieldDef}
+                collection={testCollection}
+                readOnly={false}
+              />
+              <form.Subscribe selector={(state) => state.values.testField}>
+                {(value) => <output data-testid="value-probe">{JSON.stringify(value)}</output>}
+              </form.Subscribe>
+            </AppForm>
+          </VexConfigContext.Provider>
+        </QueryClientProvider>
+      </ConvexProvider>
+    );
+  }
+
+  it("unchecking after checking restores the document held before Null was checked", async () => {
+    const user = userEvent.setup();
+    render(<NullableRichTextHarness initialValue={RESTORED_DOCUMENT} />);
+    await user.click(screen.getByRole("checkbox", { name: /Set Body to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("null");
+    await user.click(screen.getByRole("checkbox", { name: /Set Body to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent(JSON.stringify(RESTORED_DOCUMENT));
+  });
+
+  it("a page loaded with the field already null falls back to the field's empty default when unchecked", async () => {
+    const user = userEvent.setup();
+    render(<NullableRichTextHarness initialValue={null} />);
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("null");
+    await user.click(screen.getByRole("checkbox", { name: /Set Body to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent(JSON.stringify([]));
+  });
 });

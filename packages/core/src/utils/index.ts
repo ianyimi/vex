@@ -2,6 +2,7 @@ import type { GeneratedVexTypes } from "../types/generated";
 
 export * from "./valuesEqual";
 export * from "./isPlainObject";
+export * from "./convexValueJson";
 
 /**
  * Icon name accepted by `admin.icon` on collections, globals, blocks, and live

@@ -1,5 +1,6 @@
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
+import { FIELD_SCHEMA_VALIDATORS } from "../constants";
 import type { CollectionSlug } from "../../types/generated";
 import type { RelationshipField } from "./types";
 
@@ -29,8 +30,13 @@ export function relationshipFieldToValidator(props: {
   field: RelationshipField;
 }): string {
   const { field } = props;
-  const validator = `v.array(v.id("${field.collection.slug}"))`;
-  return applyBaseValidators({ field, validator });
+  if (field.schema?.validator === FIELD_SCHEMA_VALIDATORS.id) {
+    return applyBaseValidators({ field, validator: `v.id("${field.collection.slug}")` });
+  }
+  if (field.schema?.validator === FIELD_SCHEMA_VALIDATORS.string) {
+    return applyBaseValidators({ field, validator: "v.string()" });
+  }
+  return applyBaseValidators({ field, validator: `v.array(v.id("${field.collection.slug}"))` });
 }
 
 /**

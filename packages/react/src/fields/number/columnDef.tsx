@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { ADMIN_FIELDS, CollectionConfig, type NumberField, type TDocument } from "@vexcms/core";
+import { CollectionConfig, type NumberField, type TDocument } from "@vexcms/core";
 import { NumberFieldCell } from "./Cell";
 
 /**
@@ -9,6 +9,9 @@ import { NumberFieldCell } from "./Cell";
  *
  * Generates column config with proper typing, cell renderer, alignment,
  * and metadata. Uses the registered NumberFieldCell component for rendering.
+ * Sorting falls through to TanStack's `"auto"` → `"basic"` comparator
+ * (`a === b ? 0 : a > b ? 1 : -1`), which compares `bigint`s by value exactly
+ * like `number`s — no custom `sortingFn` needed for an int64 column.
  *
  * @param props - Column generation props
  * @param props.fieldDef - Resolved number field definition
@@ -31,17 +34,17 @@ export function numberFieldToColumnDef<TData extends TDocument = TDocument>(prop
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TData, number> {
+}): ColumnDef<TData, number | bigint> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
     header: props.fieldDef.label || props.fieldKey,
 
     cell: ({ row }) => {
-      const value = row.getValue(props.fieldKey) as number | undefined;
+      const value = row.getValue(props.fieldKey) as number | bigint | undefined;
       return (
         <NumberFieldCell<TData>
-          value={value ?? ADMIN_FIELDS.number.defaultValue}
+          value={value ?? props.fieldDef.defaultValue}
           row={row}
           collection={props.collection}
           fieldDef={props.fieldDef}

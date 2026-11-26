@@ -15,6 +15,7 @@ import {
   defineBlock,
   defineConfig,
   group,
+  keyValue,
   type AdminDataField,
   type DataFieldType,
   type CollectionConfig,
@@ -31,7 +32,7 @@ import type { FieldFixture } from "./fixtures/types";
 
 /** Options for {@link runNestedFieldContainerSuite}. */
 export interface NestedFieldContainerOptions {
-  container: "array" | "group" | "blocks";
+  container: "array" | "group" | "blocks" | "keyValue";
   Component: ComponentType<any>;
   childFieldTypes: DataFieldType[];
   fixtures?: Partial<Record<DataFieldType, FieldFixture>>;
@@ -113,6 +114,16 @@ function buildGroupFieldDef(childFixture: FieldFixture): AdminDataField {
 }
 
 /**
+ * Builds the `keyValue` field definition wrapping a single child fixture as its value field.
+ *
+ * @param childFixture - The fixture whose field definition becomes the keyValue's value field.
+ * @returns The wrapping keyValue field definition.
+ */
+function buildKeyValueFieldDef(childFixture: FieldFixture): AdminDataField {
+  return keyValue({ label: "Key Value", value: childFixture.fieldDef });
+}
+
+/**
  * One item/sub-field carrying the child fixture's `valid` value.
  *
  * @returns The seeded value for the given container type.
@@ -125,6 +136,7 @@ function buildSeededValue(props: {
     case "array":
       return [props.childFixture.valid];
     case "group":
+    case "keyValue":
       return { [CHILD_KEY]: props.childFixture.valid };
     case "blocks":
       return [
@@ -281,10 +293,11 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
           });
         }
 
-        if (container === "group") {
-          const fieldDef = buildGroupFieldDef(childFixture);
+        if (container === "group" || container === "keyValue") {
+          const fieldDef =
+            container === "group" ? buildGroupFieldDef(childFixture) : buildKeyValueFieldDef(childFixture);
 
-          it("round-trips a seeded value through the group's sub-field", () => {
+          it("round-trips a seeded value through the container's sub-field", () => {
             const seeded = buildSeededValue({ container, childFixture });
             const { formRef } = renderContainer({ Component, fieldDef, readOnly: false, initialValue: seeded });
             expect(formRef.current?.state.values).toEqual({ [FIELD_NAME]: seeded });
@@ -317,41 +330,44 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
             });
           });
 
-          it("keeps the group's disclosure operable under readOnly", async () => {
-            // Collapsing a group is NAVIGATION, not editing. A caller with
-            // read access but no write access must still be able to open it to
-            // SEE the values; `FormGroup` therefore never passes `readOnly` to
-            // `AccordionItem`'s own `disabled` prop.
-            const seeded = buildSeededValue({ container, childFixture });
-            const { container: dom } = renderContainer({
-              Component,
-              fieldDef,
-              readOnly: true,
-              initialValue: seeded,
-            });
-            await act(async () => {});
+          if (container === "group") {
+            it("keeps the group's disclosure operable under readOnly", async () => {
+              // Collapsing a group is NAVIGATION, not editing. A caller with
+              // read access but no write access must still be able to open it to
+              // SEE the values; `FormGroup` therefore never passes `readOnly` to
+              // `AccordionItem`'s own `disabled` prop.
+              const seeded = buildSeededValue({ container, childFixture });
+              const { container: dom } = renderContainer({
+                Component,
+                fieldDef,
+                readOnly: true,
+                initialValue: seeded,
+              });
+              await act(async () => {});
 
-            const triggers = Array.from(dom.querySelectorAll("button")).filter(isDisclosureTrigger);
-            expect(triggers.length).toBeGreaterThan(0);
-            triggers.forEach((trigger) => {
-              expect(trigger.hasAttribute("disabled")).toBe(false);
-              expect(trigger.getAttribute("aria-disabled")).not.toBe("true");
-            });
+              const triggers = Array.from(dom.querySelectorAll("button")).filter(isDisclosureTrigger);
+              expect(triggers.length).toBeGreaterThan(0);
+              triggers.forEach((trigger) => {
+                expect(trigger.hasAttribute("disabled")).toBe(false);
+                expect(trigger.getAttribute("aria-disabled")).not.toBe("true");
+              });
 
-            const trigger = triggers[0]!;
-            const before = trigger.getAttribute("aria-expanded");
-            await act(async () => {
-              trigger.click();
+              const trigger = triggers[0]!;
+              const before = trigger.getAttribute("aria-expanded");
+              await act(async () => {
+                trigger.click();
+              });
+              expect(trigger.getAttribute("aria-expanded")).not.toBe(before);
             });
-            expect(trigger.getAttribute("aria-expanded")).not.toBe(before);
-          });
+          }
 
           // Regression (muted read-only label, developer report): a
           // container field's OWN label must visibly read as read-only too,
           // not just its nested controls — `GroupField`'s accordion variant
           // never forwarded `readOnly` to its own header at all (only to the
           // nested `RenderFields` call), so this label never muted under
-          // ANY readOnly source (prop OR `fieldDef.admin.readOnly`).
+          // ANY readOnly source (prop OR `fieldDef.admin.readOnly`). Applies
+          // equally to `keyValue`, which shares `FormFieldLayout`'s label wiring.
           it("marks its own label muted (data-disabled) when readOnly", async () => {
             const seeded = buildSeededValue({ container, childFixture });
             const { container: dom } = renderContainer({

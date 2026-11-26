@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { convexQuery } from "@convex-dev/react-query";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useAuthTransition, useVexAuth } from "../auth";
-import { buildListViewFindQueryArgs, buildListViewSearchQueryArgs, vexConvexApi } from "@vexcms/core";
+import {
+  buildListViewFindQueryArgs,
+  buildListViewSearchQueryArgs,
+  stringifyConvexValue,
+  vexConvexApi,
+} from "@vexcms/core";
 import type {
   CollectionConfig,
   CollectionSlug,
@@ -264,14 +269,16 @@ function useVexListQuerySearch<TDocument extends VexDocument = VexDocument>(prop
   // (`InvalidCursor: ...cursor is from a different query`, reproduces once "Load More"
   // has been clicked at least once before the identity change). `useVexAuth()`, not
   // `useConvexAuth()` (`convex/react`) — see `usePaginatedQuery.ts`'s doc comment for why.
-  const resetKey = JSON.stringify({
-    collection: props.collection.slug,
-    where: resolvedWhere,
-    search: props.search,
-    searchField: props.searchField,
-    drafts: props.drafts,
-    numItems: props.numItems,
-    identity,
+  const resetKey = stringifyConvexValue({
+    value: {
+      collection: props.collection.slug,
+      where: resolvedWhere,
+      search: props.search,
+      searchField: props.searchField,
+      drafts: props.drafts,
+      numItems: props.numItems,
+      identity,
+    },
   });
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
   // See `usePaginatedQuery.ts`'s identical `settledResetKey` doc comment — same Convex

@@ -19,8 +19,10 @@ export interface JsonEditorProps {
   onChange: (value: string) => void;
   /** Called when the editor loses focus. */
   onBlur?: () => void;
-  /** Disables editing and dims the editor. */
+  /** Disables editing and dims the editor, for a control that is normally editable but temporarily isn't. */
   readOnly?: boolean;
+  /** Disables editing without dimming, for a surface that is permanently read-only by design rather than a disabled editable one. Implies `readOnly`. */
+  displayOnly?: boolean;
   /** Applies destructive border/ring styling for an invalid value. */
   invalid?: boolean;
   /** `id` of the element that labels this editor. */

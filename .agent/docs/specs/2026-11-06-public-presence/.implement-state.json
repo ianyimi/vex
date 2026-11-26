@@ -1,7 +1,7 @@
 {
   "version": 1,
   "slug": "2026-11-06-public-presence",
-  "updated": "2026-11-08T09:49:46.909Z",
+  "updated": "2026-11-22T23:02:21.024Z",
   "groups": {
     "Step 1": {
       "attempts": 1,
@@ -207,6 +207,24 @@
         "[Deprecation] The \"oidc-provider\" plugin is deprecated and will be removed in the next major version. Migrate to @better-auth/oauth-provider. See: https://www.better-auth.com/docs/plugins/oauth-provider"
       ]
     },
+    "Step 17": {
+      "attempts": 1,
+      "last_result": "fail",
+      "last_exit_code": 127,
+      "last_output_tail": [
+        "sh: the: command not found"
+      ],
+      "forced": {
+        "reason": "verify is prose, not a shell command (harness ran 'the three commands…' as sh). Real check: README Quick Start = LI-19's run-through flow proven on fresh Convex deployments (n-runthrough.md, board PP-17); developer approved recording it 2026-11-22",
+        "at": "2026-11-22T23:02:21.024Z"
+      }
+    },
+    "Step 2": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    },
     "Step 3": {
       "attempts": 1,
       "last_result": "pass",
@@ -237,6 +255,12 @@
         "Checking formatting...",
         "All matched files use Prettier code style!"
       ]
+    },
+    "Step 6": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
     },
     "Step 7": {
       "attempts": 1,

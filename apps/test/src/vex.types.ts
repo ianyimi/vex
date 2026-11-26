@@ -904,6 +904,32 @@ export interface FieldsExample extends VexDocumentShape {
   wordCount?: never
 }
 
+type StorageShapesDocumentNullableStatusOption = "draft" | "published"
+type StorageShapesDocumentLiteralStatusOption = "active" | "inactive"
+export interface StorageShapesDocument extends VexDocumentShape {
+  _id: Id<"storage_shapes">
+  vex_status?: "draft" | "published"
+  name: string
+  nullableNote?: string | null
+  nullableCount?: number | null
+  nullableStatus?: StorageShapesDocumentNullableStatusOption[] | null
+  nullableMeta?: {
+    note?: string
+  } | null
+  viewCount?: bigint
+  literalStatus?: StorageShapesDocumentLiteralStatusOption
+  stringStatus?: string
+  ownerId?: Id<"user">
+  ownerRef?: string
+  cover?: Id<"images">
+  payload?: ArrayBuffer
+  scores?: Record<string, number>
+  userScores?: Record<Id<"user">, number>
+  channel?: { kind: "email"; address: string } | { kind: "sms"; phoneNumber: string }
+  amount?: string | number
+  updatedAt?: number
+}
+
 type TestimonialSourceOption = "website" | "import" | "survey" | "referral"
 export interface Testimonial extends VexDocumentShape {
   _id: Id<"testimonials">
@@ -1004,10 +1030,13 @@ type TelemetryProjectFieldTypesOption =
   | "relationship"
   | "array"
   | "group"
+  | "keyValue"
   | "blocks"
   | "upload"
   | "richtext"
   | "json"
+  | "variant"
+  | "bytes"
   | "tabs"
   | "collapsible"
   | "row"
@@ -1267,6 +1296,7 @@ export type CollectionSlug =
   | "comments"
   | "posts"
   | "fields"
+  | "storage_shapes"
   | "testimonials"
   | "telemetryEvents"
   | "telemetryProjects"
@@ -1300,6 +1330,7 @@ export type DocumentBySlug = {
   comments: Comment
   posts: Post
   fields: FieldsExample
+  storage_shapes: StorageShapesDocument
   testimonials: Testimonial
   telemetryEvents: TelemetryEvent
   telemetryProjects: TelemetryProject
@@ -1336,6 +1367,7 @@ declare module "@vexcms/core" {
       | "comments"
       | "posts"
       | "fields"
+      | "storage_shapes"
       | "testimonials"
       | "telemetryEvents"
       | "telemetryProjects"
@@ -1365,6 +1397,7 @@ declare module "@vexcms/core" {
       comments: Comment
       posts: Post
       fields: FieldsExample
+      storage_shapes: StorageShapesDocument
       testimonials: Testimonial
       telemetryEvents: TelemetryEvent
       telemetryProjects: TelemetryProject
@@ -1491,6 +1524,18 @@ declare module "@vexcms/core" {
         blocks: "content"
         commitTs: "updatedAt"
       }
+      storage_shapes: {
+        text: "name" | "nullableNote"
+        number: "nullableCount" | "viewCount"
+        select: "nullableStatus" | "literalStatus" | "stringStatus"
+        group: "nullableMeta"
+        relationship: "ownerId" | "ownerRef"
+        upload: "cover"
+        bytes: "payload"
+        keyValue: "scores" | "userScores"
+        variant: "channel" | "amount"
+        commitTs: "updatedAt"
+      }
       testimonials: {
         text: "customerName" | "company"
         textarea: "quote"
@@ -1562,21 +1607,21 @@ declare module "@vexcms/core" {
           | "token"
           | "ipAddress"
           | "userAgent"
-          | "userId"
           | "impersonatedBy"
           | "activeOrganizationId"
           | "activeTeamId"
+        relationship: "userId"
       }
       account: {
         text:
           | "accountId"
           | "providerId"
-          | "userId"
           | "accessToken"
           | "refreshToken"
           | "idToken"
           | "scope"
           | "password"
+        relationship: "userId"
         date: "accessTokenExpiresAt" | "refreshTokenExpiresAt" | "createdAt" | "updatedAt"
       }
       verification: {
@@ -1612,20 +1657,24 @@ declare module "@vexcms/core" {
         date: "createdAt"
       }
       team: {
-        text: "name" | "organizationId"
+        text: "name"
         number: "memberCount"
+        relationship: "organizationId"
         date: "createdAt" | "updatedAt"
       }
       teamMember: {
-        text: "teamId" | "userId" | "membershipKey"
+        relationship: "teamId" | "userId"
+        text: "membershipKey"
         date: "createdAt"
       }
       member: {
-        text: "organizationId" | "userId" | "role"
+        relationship: "organizationId" | "userId"
+        text: "role"
         date: "createdAt"
       }
       invitation: {
-        text: "organizationId" | "email" | "role" | "teamId" | "status" | "inviterId"
+        relationship: "organizationId" | "inviterId"
+        text: "email" | "role" | "teamId" | "status"
         date: "expiresAt" | "createdAt"
         array: "roles"
       }
@@ -1699,22 +1748,36 @@ declare module "@vexcms/core" {
           }
         }
       }
+      storage_shapes: {
+        ownerId: { kind: "relationship"; target: "user"; scalar: true }
+        ownerRef: { kind: "relationship"; target: "user"; scalar: true }
+        cover: { kind: "upload"; target: "images"; scalar: true }
+      }
       testimonials: {
         contributorId: { kind: "relationship"; target: "user" }
         avatar: { kind: "relationship"; target: "images" }
       }
       telemetryEvents: {}
       telemetryProjects: {}
-      session: {}
-      account: {}
+      session: { userId: { kind: "relationship"; target: "user"; scalar: true } }
+      account: { userId: { kind: "relationship"; target: "user"; scalar: true } }
       verification: {}
       apikey: {}
       jwks: {}
       organization: {}
-      team: {}
-      teamMember: {}
-      member: {}
-      invitation: {}
+      team: { organizationId: { kind: "relationship"; target: "organization"; scalar: true } }
+      teamMember: {
+        teamId: { kind: "relationship"; target: "team"; scalar: true }
+        userId: { kind: "relationship"; target: "user"; scalar: true }
+      }
+      member: {
+        organizationId: { kind: "relationship"; target: "organization"; scalar: true }
+        userId: { kind: "relationship"; target: "user"; scalar: true }
+      }
+      invitation: {
+        organizationId: { kind: "relationship"; target: "organization"; scalar: true }
+        inviterId: { kind: "relationship"; target: "user"; scalar: true }
+      }
       images: {}
     }
     GlobalsFieldTypeMap: {
@@ -1784,6 +1847,12 @@ declare module "@vexcms/core" {
         by_relatedUsers: readonly ["relatedUsers"]
         by_updatedAt: readonly ["updatedAt"]
       }
+      storage_shapes: {
+        by_viewCount: readonly ["viewCount"]
+        by_ownerId: readonly ["ownerId"]
+        by_ownerRef: readonly ["ownerRef"]
+        by_updatedAt: readonly ["updatedAt"]
+      }
       testimonials: {
         by_rating: readonly ["rating"]
         by_source: readonly ["source"]
@@ -1831,7 +1900,11 @@ declare module "@vexcms/core" {
         by_membershipKey: readonly ["membershipKey"]
       }
       member: { by_organizationId: readonly ["organizationId"]; by_userId: readonly ["userId"] }
-      invitation: { by_organizationId: readonly ["organizationId"]; by_email: readonly ["email"] }
+      invitation: {
+        by_organizationId: readonly ["organizationId"]
+        by_email: readonly ["email"]
+        by_inviterId: readonly ["inviterId"]
+      }
       images: { by_deleted: readonly ["deleted"]; by_updatedAt: readonly ["updatedAt"] }
     }
     CustomActionsBySlug: {

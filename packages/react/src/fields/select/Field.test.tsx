@@ -8,7 +8,7 @@ import { AppForm } from "../../forms";
 import { ModalSurfaceProvider } from "../../modals/useModalSurface";
 import { installDomPolyfills } from "../../testing/setup";
 import { runFieldInputContractSuite } from "../../testing/fieldInputContract";
-import { selectFieldFixture } from "./testFixture";
+import { selectFieldFixture, scalarSelectFieldFixture } from "./testFixture";
 import { testCollection } from "../../testing/harness/accessFixtures";
 import { SelectFieldAdmin } from "./Field";
 
@@ -26,7 +26,7 @@ beforeAll(() => {
  * array — values not labels, one item vs. two — is assertable without
  * hand-mocking TanStack's `FieldApi`.
  */
-function SelectHarness(props: { fieldDef: SelectField; initialValue: string[] }) {
+function SelectHarness(props: { fieldDef: SelectField; initialValue: string[] | string }) {
   const form = useForm({ defaultValues: { choice: props.initialValue } });
   return (
     <AppForm form={form}>
@@ -320,6 +320,41 @@ runFieldInputContractSuite({
       });
     });
 
+    describe("select: scalar schema.validator storage", () => {
+      const scalarFieldDef = select({
+        hasMany: false,
+        schema: { validator: "literal" },
+        options: fixture.fieldDef.options,
+      });
+
+      it("commits a scalar string, not an array, when a selection is made", async () => {
+        const user = userEvent.setup();
+        render(<SelectHarness fieldDef={scalarFieldDef} initialValue="" />);
+
+        await user.click(screen.getByRole("combobox"));
+        await user.click(await screen.findByRole("option", { name: "Draft" }));
+
+        expect(screen.getByTestId("value-probe").textContent).toBe(JSON.stringify("draft"));
+      });
+
+      it("renders the configured label for an already-selected scalar value", () => {
+        render(<SelectHarness fieldDef={scalarFieldDef} initialValue="published" />);
+
+        const combobox = screen.getByRole("combobox");
+        expect(within(combobox.parentElement!).getByText("Published")).toBeInTheDocument();
+      });
+
+      it("clears to undefined, not an empty string, when the selected value is toggled off", async () => {
+        const user = userEvent.setup();
+        render(<SelectHarness fieldDef={scalarFieldDef} initialValue="draft" />);
+
+        await user.click(screen.getByRole("combobox"));
+        await user.click(await screen.findByRole("option", { name: "Draft" }));
+
+        expect(screen.getByTestId("value-probe").textContent).toBe("");
+      });
+    });
+
     describe("select: admin.searchable", () => {
       it("renders no search box by default (admin.searchable: false)", async () => {
         const user = userEvent.setup();
@@ -442,4 +477,9 @@ runFieldInputContractSuite({
       });
     });
   },
+});
+
+runFieldInputContractSuite({
+  fixture: scalarSelectFieldFixture,
+  Component: SelectFieldAdmin,
 });

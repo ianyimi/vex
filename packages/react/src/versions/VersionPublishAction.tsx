@@ -8,9 +8,12 @@ import {
   DRAFT_ACTIONS,
   getDataFields,
   getFieldsDefaultValues,
+  resolveNullableSaveValues,
   valuesEqual,
+  VERSION_SYSTEM_FIELDS,
   vexConvexApi,
   type EditSlotProps,
+  type VexVersionDocument,
 } from "@vexcms/core";
 import { useVexDocument } from "../documents/VexDocumentContext";
 import { useVexForm } from "../forms/useVexForm";
@@ -52,15 +55,32 @@ export function VersionPublishAction(props: EditSlotProps) {
     data: document.saved,
   });
 
-  // While the live document is a draft, the published row is a different Convex row — fetched
-  // only then, to compute `matchesPublished` below (mirrors today's edit views).
-  const { data: publishedCollectionRow } = useQuery({
-    ...convexQuery(vexConvexApi.get, { id: document.id ?? "", collection: props.slug }),
-    enabled: props.kind === "collection" && isVersioned && isDraftDoc,
+  // While the live document is a draft, the published counterpart is a DIFFERENT Convex row,
+  // reachable only through the draft row's own `vex_publishedId` pointer (`document.id` is the
+  // draft row's own id — looking a draft up by its own id under a published-only read always
+  // comes back `null`, never the real published row). No pointer means never published: the
+  // query is skipped and the published document is confirmed absent immediately, instead of
+  // staying `undefined` (loading) forever.
+  const publishedId = (document.saved as VexVersionDocument | undefined)?.[
+    VERSION_SYSTEM_FIELDS.publishedId.slug
+  ];
+  const shouldQueryCollectionRow =
+    props.kind === "collection" && isVersioned && isDraftDoc && publishedId !== undefined;
+  const shouldQueryGlobalRow = props.kind === "global" && isVersioned && isDraftDoc;
+  const { data: publishedCollectionRowData } = useQuery({
+    ...convexQuery(
+      vexConvexApi.get,
+      shouldQueryCollectionRow ? { id: publishedId, collection: props.slug } : "skip",
+    ),
+    enabled: shouldQueryCollectionRow,
   });
+  const publishedCollectionRow =
+    props.kind === "collection" && isDraftDoc && publishedId === undefined
+      ? null
+      : publishedCollectionRowData;
   const { data: publishedGlobalRow } = useQuery({
-    ...convexQuery(vexConvexApi.globals.get, { slug: props.slug }),
-    enabled: props.kind === "global" && isVersioned && isDraftDoc,
+    ...convexQuery(vexConvexApi.globals.get, shouldQueryGlobalRow ? { slug: props.slug } : "skip"),
+    enabled: shouldQueryGlobalRow,
   });
   const publishedDocument = isDraftDoc
     ? props.kind === "collection"
@@ -80,7 +100,15 @@ export function VersionPublishAction(props: EditSlotProps) {
       formValues,
       pickReadableValues(getFieldsDefaultValues({ fields, document: publishedDocument }), readableFieldKeys),
     );
-  const neverSaved = props.kind === "global" && document.saved === undefined;
+  // A global's `document.saved` is `undefined` until its first save/publish. A
+  // collection has no such "never saved" row state of its own — this reads
+  // the SAME signal as `matchesPublished`: a draft whose published
+  // counterpart query resolved to `null` (loaded, confirmed absent) has
+  // never been published.
+  const publishedRowAbsent =
+    props.kind === "global"
+      ? document.saved === undefined
+      : isDraftDoc && publishedDocument === null;
 
   const { mutateAsync: publishMutation, isPending: isPublishing } = useVexMutation({
     collection: props.slug,
@@ -99,7 +127,7 @@ export function VersionPublishAction(props: EditSlotProps) {
    */
   async function handlePublish(): Promise<void> {
     try {
-      const changes = changedValues(form);
+      const changes = resolveNullableSaveValues({ values: changedValues(form), fields });
       const published = await publishMutation(
         props.kind === "collection"
           ? {
@@ -129,7 +157,8 @@ export function VersionPublishAction(props: EditSlotProps) {
 
   const disabled =
     !canPublish ||
-    (runtime.viewedVersion === null && ((neverSaved && isDefaultValue) || matchesPublished));
+    matchesPublished ||
+    (runtime.viewedVersion === null && publishedRowAbsent && isDefaultValue);
 
   return (
     // `min-w-[100px]` matches `VersionUnpublishAction`'s button — the wider "Unpublish" label's

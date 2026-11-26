@@ -52,12 +52,28 @@ function getFieldErrorMessage(field: AnyFieldApi): string | undefined {
  * @returns The upload field's empty/filled/read-only render body.
  */
 function UploadFieldAdminInner(props: FieldComponentProps<{}, UploadField>) {
-  const field = useFieldContext<string[]>();
+  const field = useFieldContext<string | string[] | undefined>();
   const [activeField, setActiveField] = useQueryState(MODALS.editMedia.urlParam, parseAsString);
+  // `isOpen` is LOCAL state, not derived from `activeField` on every render
+  // (only read once, lazily, to honor a deep link on first mount) — two
+  // sibling upload fields on one document share this exact `useQueryState`
+  // key, and nuqs's async URL round trip (its own internal batching of
+  // `history.replaceState` across MULTIPLE subscribed hook instances for
+  // that one key) can race: closing field A's picker and, immediately
+  // after, opening field B's can observably flap — the URL transiently
+  // reverts to A's own name and A's dialog remounts — right as
+  // `field.handleChange` fires, dropping the value. Deriving `isOpen` from
+  // local state makes open/close instantaneous and immune to that
+  // cross-subscriber timing; `setActiveField` is still called
+  // (fire-and-forget) purely so the URL stays shareable/inspectable.
+  const [isOpen, setIsOpen] = useState(() => activeField === props.name);
   const [defaultTab, setDefaultTab] = useState<"library" | "upload">("library");
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
-  const isOpen = activeField === props.name;
-  const value = field.state.value || [];
+  const isScalar = props.fieldDef.schema !== undefined;
+  const rawValue = field.state.value;
+  const value: string[] = isScalar
+    ? (typeof rawValue === "string" ? [rawValue] : [])
+    : ((rawValue as string[] | undefined) ?? []);
   const config = useVexConfig();
   // Both readOnly sources (design-change item 4): the `readOnly` prop and
   // `fieldDef.admin.readOnly` are independent — either one alone disables
@@ -69,21 +85,27 @@ function UploadFieldAdminInner(props: FieldComponentProps<{}, UploadField>) {
     throw new Error(`Media collection "${props.fieldDef.to}" not found in config.`);
   }
 
-  async function openPicker() {
-    await setActiveField(props.name);
+  function openPicker() {
+    setIsOpen(true);
+    void setActiveField(props.name);
   }
-  async function closePicker() {
-    await setActiveField(null);
+  function closePicker() {
+    setIsOpen(false);
+    void setActiveField(null);
     setDefaultTab("library"); // Reset to library on close
     setStagedFiles([]); // Clear pending files
   }
 
-  async function handleSelect(mediaIds: string[]) {
-    field.handleChange(mediaIds);
-    await closePicker();
+  function handleSelect(mediaIds: string[]) {
+    closePicker();
+    field.handleChange(isScalar ? mediaIds[0] : mediaIds);
   }
 
   function handleRemove(mediaId?: string) {
+    if (isScalar) {
+      field.handleChange(undefined);
+      return;
+    }
     if (mediaId) {
       field.handleChange(value.filter((id) => id !== mediaId));
     } else {

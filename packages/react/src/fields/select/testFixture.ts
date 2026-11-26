@@ -48,3 +48,53 @@ export const selectFieldFixture: FieldFixture<SelectField, string[]> = {
   invalid: ["retired"],
   empty: [],
 };
+
+const scalarFieldDef: SelectField = select({
+  label: "Status",
+  required: true,
+  hasMany: false,
+  schema: { validator: "literal" },
+  options: [
+    { label: "Draft", value: "draft" },
+    { label: "Published", value: "published" },
+    { label: "Archived", value: "archived" },
+  ],
+  admin: {
+    placeholder: "Choose a status",
+  },
+});
+
+/**
+ * Fixture for a scalar `select()` — `hasMany: false` with a
+ * `schema: { validator: "literal" }` override, storing one option value
+ * directly instead of a one-element array. Registered as an
+ * `extraFieldFixtures.select` entry (`testing/fixtures/index.ts`), run
+ * through the same shared contract suite as {@link selectFieldFixture}.
+ *
+ * `invalid` is `"retired"` — not one of `fieldDef.options` — for the same
+ * reason `selectFieldFixture` picks an out-of-enum value: the scalar input
+ * schema's `required` branch is a bare `z.enum(optionValues)`, which DOES
+ * reject an empty/missing value (unlike the array-storage schema's
+ * `.default([])` fallback), so an out-of-enum value is the one input every
+ * shared "rejects an invalid value" assertion can rely on here too.
+ *
+ * `empty` is `""` — `select()`'s own `config.ts` resolves
+ * `defaultValue: ""` whenever `schema` is set, mirroring `[]` for array
+ * storage.
+ *
+ * `cellTruncates: false` — `SelectFieldCell` renders matched OPTION LABELS,
+ * never the raw stored value, and has no truncation logic of its own
+ * (`title={joinedLabels}`, no `.slice()`). The generic over-length probe
+ * repeats `valid` into one long, unmatched string that resolves to no
+ * configured option, so there is nothing to truncate — unlike `select`'s
+ * main (array) fixture, whose over-length value is built by repeating
+ * real, matchable option values and happens to produce a long title.
+ */
+export const scalarSelectFieldFixture: FieldFixture<SelectField, string> = {
+  fieldType: "select",
+  fieldDef: scalarFieldDef,
+  valid: "draft",
+  invalid: "retired",
+  empty: "",
+  cellTruncates: false,
+};

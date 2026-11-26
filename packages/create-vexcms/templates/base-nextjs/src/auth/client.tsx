@@ -4,12 +4,11 @@ import { apiKeyClient } from "@better-auth/api-key/client"
 import { convexClient } from "@convex-dev/better-auth/client/plugins"
 import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth"
 import { disableLivePreview } from "@vexcms/next/livePreview/client"
-import { useAuthTransition } from "@vexcms/react"
+import { clearEditScrollStorage, useAuthTransition } from "@vexcms/react"
 import { adminClient, anonymousClient } from "better-auth/client/plugins"
 import { createAuthClient } from "better-auth/react"
 
 import { env } from "~/env.mjs"
-import config from "~/vex.config"
 
 /**
  * Global Better Auth client for this project.
@@ -41,12 +40,15 @@ authClient.$store.listen("$sessionSignal", () => {})
 /**
  * Mounts `VexAdminAuthAdapterProvider` (`@vexcms/next/auth`) so the admin
  * panel's top-bar sign-in/out control (`AdminTopNav`) has a `signInHref`/`signOut`
- * to call. `signOut` signs out, then hard-navigates (a full document load, NOT
- * `router.refresh()`/`router.push()`) to `config.auth.signOut.redirectTo` — the
- * admin shell must never render in a signed-out state, and a client-side refresh
- * keeps it mounted while queries re-run anonymously and the route guard redirects
- * underneath it (the multi-second "sidebar lingers, then a sign-in flash" sequence
- * this hard navigation avoids).
+ * to call. `signOut` signs out, then full-reloads the current page
+ * (`window.location.reload()`, NOT `router.refresh()`/`router.push()`/a
+ * navigation to a different destination) — the admin shell must never
+ * re-render in a signed-out state, and a client-side refresh instead keeps
+ * it mounted while queries re-run anonymously and the route guard redirects
+ * underneath it (the multi-second "sidebar lingers, then a sign-in flash"
+ * sequence this full reload avoids). The reload re-requests the current
+ * URL, so the app's own server-side access guards decide what it shows
+ * signed out.
  */
 export default function BetterAuthClientProvider({ children }: { children: ReactNode }) {
   // Needs an `AuthTransitionProvider` ancestor — `ConvexClientProvider`
@@ -69,10 +71,10 @@ export default function BetterAuthClientProvider({ children }: { children: React
           // one case the identity is known with zero ambiguity ahead of
           // time (always `null`), so list hooks start ignoring stale pages
           // as early as possible (`@vexcms/react`'s `useAuthTransition`).
-          // `skipRefresh: true` — this `signOut` already hard-navigates
-          // below, so `useNextAuthTransitionRefresh`'s OWN `router.refresh()`
-          // for this same transition would only race that hard navigation
-          // (see that hook's own doc comment, `@vexcms/next`).
+          // `skipRefresh: true` — this `signOut` already full-reloads below,
+          // so `useNextAuthTransitionRefresh`'s OWN `router.refresh()` for
+          // this same transition would only race that reload (see that
+          // hook's own doc comment, `@vexcms/next`).
           // `useBeginAuthTransitionOnSessionChange` (`~/components/providers/convex.tsx`)
           // also reactively catches this once `authClient.useSession()`
           // updates, so this call is a latency optimization, not the only path.
@@ -82,13 +84,18 @@ export default function BetterAuthClientProvider({ children }: { children: React
           // comment. Fire-and-forget: it never throws, so it cannot block
           // sign-out either way.
           void disableLivePreview()
-          const goToDestination = () => {
-            window.location.href = config.auth.signOut.redirectTo
+          // Clears every persisted edit-view scroll offset, so a different
+          // identity signing in on this same tab never inherits this one's
+          // remembered scroll positions.
+          clearEditScrollStorage()
+          const reloadPage = () => {
+            window.location.reload()
           }
-          // Hard-navigate either way (success or failure) — a stale client
-          // cache after a failed sign-out is worse than a redundant navigation,
-          // and a full document load re-resolves auth state fresh regardless.
-          return signOut().then(goToDestination).catch(goToDestination)
+          // Reload either way (success or failure) — a stale client cache
+          // after a failed sign-out is worse than a redundant reload, and a
+          // full document load re-resolves auth state fresh regardless,
+          // through the app's own server-side access guards for this page.
+          return signOut().then(reloadPage).catch(reloadPage)
         },
       }}
     >

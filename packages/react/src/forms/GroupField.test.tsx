@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createFormHook, createFormHookContexts } from "@tanstack/react-form";
@@ -12,13 +12,24 @@ const { useAppForm } = createFormHook({
   formComponents: {},
 });
 
-function Harness(props: { collapsible?: boolean; defaultOpen?: boolean }) {
+function Harness(props: {
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  isNull?: boolean;
+  onIsNullChange?: (isNull: boolean) => void;
+}) {
   const form = useAppForm({ defaultValues: { seo: { title: "x" } } });
   return (
     <form.AppForm>
       <form.AppField name="seo">
         {(field) => (
-          <field.GroupField label="SEO" collapsible={props.collapsible} defaultOpen={props.defaultOpen}>
+          <field.GroupField
+            label="SEO"
+            collapsible={props.collapsible}
+            defaultOpen={props.defaultOpen}
+            isNull={props.isNull}
+            onIsNullChange={props.onIsNullChange}
+          >
             <span data-testid="group-children">children</span>
           </field.GroupField>
         )}
@@ -82,7 +93,27 @@ describe("GroupField", () => {
     expect(screen.queryByTestId("group-children")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /submit/i }));
-
     expect(await screen.findByTestId("group-children")).toBeVisible();
+
+  });
+
+  it("hides children and shows a Null switch when isNull", () => {
+    render(<Harness collapsible defaultOpen isNull onIsNullChange={() => {}} />);
+    expect(screen.queryByTestId("group-children")).not.toBeInTheDocument();
+    expect(screen.getByText("Null")).toBeInTheDocument();
+  });
+
+  it("collapses the accordion and disables the trigger while isNull, re-enabling it on uncheck", async () => {
+    const user = userEvent.setup();
+    const onIsNullChange = vi.fn();
+    const { rerender } = render(<Harness collapsible defaultOpen isNull onIsNullChange={onIsNullChange} />);
+    const trigger = screen.getByRole("button", { name: /SEO/ });
+    expect(trigger).toBeDisabled();
+    await user.click(trigger);
+    expect(screen.queryByTestId("group-children")).not.toBeInTheDocument();
+
+    rerender(<Harness collapsible defaultOpen isNull={false} onIsNullChange={onIsNullChange} />);
+    expect(screen.getByRole("button", { name: /SEO/ })).not.toBeDisabled();
+    expect(screen.getByTestId("group-children")).toBeVisible();
   });
 });

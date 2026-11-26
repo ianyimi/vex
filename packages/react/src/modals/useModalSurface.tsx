@@ -2,7 +2,9 @@
 
 import { createContext, use, type ReactNode } from "react";
 
-const ModalSurfaceContext = createContext(false);
+import { globalSingleton } from "../utils/globalSingleton";
+
+const ModalSurfaceContext = globalSingleton("modals/useModalSurface/ModalSurfaceContext", () => createContext(false));
 
 /**
  * Marks everything inside as living on a modal surface.

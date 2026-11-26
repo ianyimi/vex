@@ -282,8 +282,8 @@ describe("number: admin.mask", () => {
     vi.clearAllMocks();
   });
 
-  function NumberMaskHarness(props: { fieldDef: NumberField }) {
-    const form = useForm({ defaultValues: { testField: undefined as number | undefined } });
+  function NumberMaskHarness(props: { fieldDef: NumberField; initial?: number | null }) {
+    const form = useForm({ defaultValues: { testField: props.initial } });
     return (
       <AppForm form={form}>
         <NumberFieldAdmin
@@ -296,10 +296,10 @@ describe("number: admin.mask", () => {
     );
   }
 
-  function renderMasked(fieldDef: NumberField) {
+  function renderMasked(fieldDef: NumberField, initial?: number | null) {
     return render(
       <VexConfigContext.Provider value={defineConfig()}>
-        <NumberMaskHarness fieldDef={fieldDef} />
+        <NumberMaskHarness fieldDef={fieldDef} initial={initial} />
       </VexConfigContext.Provider>,
     );
   }
@@ -308,7 +308,7 @@ describe("number: admin.mask", () => {
     const fieldDef = number({ label: "Amount", admin: { mask: "decimal" } });
     const { container } = renderMasked(fieldDef);
     await waitFor(() =>
-      expect(withMaskMock).toHaveBeenCalledWith("decimal", { rightAlign: false, autoUnmask: true }),
+      expect(withMaskMock).toHaveBeenCalledWith("decimal", { rightAlign: false, clearMaskOnLostFocus: false, autoUnmask: true }),
     );
     expect(container.querySelector("input")?.getAttribute("type")).toBe("text");
   });
@@ -341,6 +341,32 @@ describe("number: admin.mask", () => {
     const { container } = renderMasked(fieldDef);
     expect(withMaskMock).not.toHaveBeenCalled();
     expect(container.querySelector("input")?.getAttribute("type")).toBe("number");
+  });
+
+  it("renders a null value (nullable field) as an empty masked input, not the literal text \"null\"", async () => {
+    const fieldDef = number({ label: "Amount", nullable: true, admin: { mask: "decimal" } });
+    const { container } = renderMasked(fieldDef, null);
+    await waitFor(() => expect(withMaskMock).toHaveBeenCalled());
+    const input = container.querySelector("input") as HTMLInputElement;
+    expect(input.defaultValue).toBe("");
+    expect(input.defaultValue).not.toContain("null");
+  });
+
+  it("renders a brand-new document's undefined value (no explicit defaultValue) as an empty masked input, not 0", async () => {
+    const fieldDef = number({ label: "Amount", admin: { mask: "decimal" } });
+    expect(fieldDef.defaultValue).toBeUndefined();
+    const { container } = renderMasked(fieldDef, undefined);
+    await waitFor(() => expect(withMaskMock).toHaveBeenCalled());
+    const input = container.querySelector("input") as HTMLInputElement;
+    expect(input.defaultValue).toBe("");
+  });
+
+  it("still prefills an explicit defaultValue: 0 in a masked control", async () => {
+    const fieldDef = number({ label: "Amount", defaultValue: 0, admin: { mask: "decimal" } });
+    const { container } = renderMasked(fieldDef, 0);
+    await waitFor(() => expect(withMaskMock).toHaveBeenCalled());
+    const input = container.querySelector("input") as HTMLInputElement;
+    expect(input.defaultValue).toBe("0");
   });
 });
 
@@ -389,5 +415,134 @@ describe("number: admin.components.Input override renders renderDefault as JSX",
 
     // `type="number"` normalizes leading zeros away (DOM-sanitized to "1", then "12").
     expect(screen.getByTestId("value-probe").textContent).toBe("12");
+  });
+});
+
+describe("number: int64 admin field", () => {
+  function Int64Harness(props: { initial?: bigint | null }) {
+    const form = useForm({ defaultValues: { amount: props.initial } });
+    const fieldDef = number({ schema: { validator: "int64" }, label: "Amount", nullable: true });
+    const collection = { ...testCollection, fields: { amount: fieldDef } };
+    return (
+      <VexConfigContext.Provider value={null}>
+        <AppForm form={form}>
+          <form.Field name="amount">
+            {(field) => (
+              <NumberFieldAdmin
+                name="amount"
+                fieldDef={fieldDef}
+                readOnly={false}
+                collection={collection}
+                field={field}
+              />
+            )}
+          </form.Field>
+        </AppForm>
+      </VexConfigContext.Provider>
+    );
+  }
+
+  it("renders the bigint value as plain digits, with no mask applied", () => {
+    render(<Int64Harness initial={9007199254740993n} />);
+    expect(screen.getByRole("textbox")).toHaveValue("9007199254740993");
+  });
+
+  it("commits a typed integer as a bigint", async () => {
+    const user = userEvent.setup();
+    render(<Int64Harness />);
+    await user.type(screen.getByRole("textbox"), "7");
+    expect(screen.getByRole("textbox")).toHaveValue("7");
+  });
+
+  function Int64OverrideWrapHarness(props: { initial?: bigint }) {
+    function JsxWrapOverride(
+      props: FieldControlProps<bigint> & { renderDefault: ComponentType<FieldControlProps<bigint>> },
+    ) {
+      const RenderDefault = props.renderDefault;
+      return <RenderDefault {...props} />;
+    }
+    const form = useForm({ defaultValues: { amount: props.initial ?? 0n } });
+    const fieldDef = number({
+      schema: { validator: "int64" },
+      label: "Amount",
+      admin: { components: { Input: [{ id: "test.jsx-wrap", component: JsxWrapOverride }] } },
+    });
+    const collection = { ...testCollection, fields: { amount: fieldDef } };
+    return (
+      <VexConfigContext.Provider value={null}>
+        <AppForm form={form}>
+          <form.Field name="amount">
+            {(field) => (
+              <NumberFieldAdmin
+                name="amount"
+                fieldDef={fieldDef}
+                readOnly={false}
+                collection={collection}
+                field={field}
+              />
+            )}
+          </form.Field>
+          <form.Subscribe selector={(state) => state.values.amount}>
+            {(value) => <output data-testid="value-probe">{String(value)}</output>}
+          </form.Subscribe>
+        </AppForm>
+      </VexConfigContext.Provider>
+    );
+  }
+
+  it("selects the whole value on focus (renderInt64Control, reached via an admin.components.Input override) so a prefilled 0 is replaced by typing a digit, not appended to", async () => {
+    render(<Int64OverrideWrapHarness />);
+    const user = userEvent.setup();
+    const input = screen.getByRole("textbox");
+    await user.click(input);
+    await user.keyboard("7");
+    expect(input).toHaveValue("7");
+  });
+
+  it("shows the whole-number field error for non-integer text through an admin.components.Input override that renders renderDefault, same as the plain field", async () => {
+    const user = userEvent.setup();
+    render(<Int64OverrideWrapHarness initial={5n} />);
+    const input = screen.getByRole("textbox");
+    await user.clear(input);
+    await user.type(input, "1.5");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Must be a whole number.");
+  });
+
+  it("commits a value past Number.MAX_SAFE_INTEGER exactly through an admin.components.Input override that renders renderDefault", async () => {
+    const user = userEvent.setup();
+    render(<Int64OverrideWrapHarness />);
+    const input = screen.getByRole("textbox");
+    await user.clear(input);
+    await user.type(input, "9007199254740993");
+    expect(input).toHaveValue("9007199254740993");
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("9007199254740993");
+  });
+
+  it("selects the whole value on focus (renderInt64Control, reached via an admin.components.Input override) so a prefilled 0 is replaced by typing a digit, not appended to", async () => {
+    render(<Int64OverrideWrapHarness />);
+    const user = userEvent.setup();
+    const input = screen.getByRole("textbox");
+    await user.click(input);
+    await user.keyboard("7");
+    expect(input).toHaveValue("7");
+  });
+
+  it("renders a null value as an empty input, not the literal text \"null\"", () => {
+    render(<Int64Harness initial={null} />);
+    expect(screen.getByRole("textbox")).toHaveValue("");
+    expect(screen.getByRole("textbox")).not.toHaveValue("null");
+  });
+
+  it("shows a field error for non-integer text and does not commit it; a valid entry clears the error", async () => {
+    const user = userEvent.setup();
+    render(<Int64Harness initial={5n} />);
+    const input = screen.getByRole("textbox");
+    await user.clear(input);
+    await user.type(input, "1.5");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Must be a whole number.");
+    await user.clear(input);
+    await user.type(input, "15");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(input).toHaveValue("15");
   });
 });

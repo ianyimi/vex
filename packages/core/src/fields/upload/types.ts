@@ -1,6 +1,7 @@
 import type { BaseField, BaseFieldInput, FieldLimit, FieldLimitInput, FieldValidateProps } from "../baseTypes";
 import type { MediaCollectionSlug, VexResourceSlug } from "../../types/generated";
-import { ADMIN_FIELDS } from "../constants";
+import { ADMIN_FIELDS, type FieldSchemaValidator } from "../constants";
+import { SchemaOverrideInput } from "../baseTypes";
 import { BaseFieldMeta } from "../types";
 
 /**
@@ -11,6 +12,7 @@ export interface UploadFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  THasMany extends boolean = boolean,
 > extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /**
    * The slug of the media collection that stores uploaded files for this field.
@@ -41,11 +43,18 @@ export interface UploadFieldInput<
   /**
    * Whether this input accepts multiple files or only one.
    */
-  hasMany?: boolean;
+  hasMany?: THasMany;
+  /**
+   * Overrides the Convex storage shape for a single-file (`hasMany: false`)
+   * upload: `"id"` stores `v.id("slug")` (`Id<"slug">`); `"string"` stores
+   * `v.string()` (plain `string`). `never` when `hasMany: true`. Omitted:
+   * storage is unchanged, `v.array(v.id("slug"))` even when `hasMany` is `false`.
+   */
+  schema?: SchemaOverrideInput<THasMany, Extract<FieldSchemaValidator, "id" | "string">>;
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    */
-  defaultValue?: string[];
+  defaultValue?: string | string[];
   /**
    * Restrict files that can be uploaded by mimeType.
    * @see https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept
@@ -54,8 +63,8 @@ export interface UploadFieldInput<
    * @example 'image/webp, audio/mp3'
    */
   accept?: string;
-  /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
+  /** Server-only async validation. `value` is the serialized id(s): a bare `string` for scalar storage, `string[]` otherwise. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string | string[]>): Promise<void> | void;
 }
 
 /**
@@ -71,6 +80,8 @@ export interface UploadField<
    * Whether this input accepts multiple files or only one.
    */
   hasMany: boolean;
+  /** Resolved storage override. Present only when the input set one. @see {@link UploadFieldInput.schema} */
+  schema?: { validator: Extract<FieldSchemaValidator, "id" | "string"> };
   /**
    * Minimum number of files allowed, with its resolved error message.
    * Absent means no minimum — upload's resolved `min` no longer defaults to `0`.
@@ -85,11 +96,11 @@ export interface UploadField<
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    */
-  defaultValue?: string[];
+  defaultValue?: string | string[];
   /**
    * Restrict files that can be uploaded by mimeType.
    */
   accept: string;
-  /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
+  /** Server-only async validation. `value` is the serialized id(s): a bare `string` for scalar storage, `string[]` otherwise. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string | string[]>): Promise<void> | void;
 }

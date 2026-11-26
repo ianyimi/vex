@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { valuesEqual } from "@vexcms/core";
+import { resolveNullableSaveValues, valuesEqual, type AdminField } from "@vexcms/core";
 import type { AnyFormApi } from "../forms";
 import { changedValues } from "../forms/changedValues";
 
@@ -38,14 +38,20 @@ interface PendingReset {
  * @param props.form - The edit view's form instance.
  * @param props.document - The live stored row (never a history snapshot being
  *   viewed) — the form's defaults come from it once a save clears the view.
+ * @param props.fields - The resource's resolved field map — `changedValues`
+ *   reads the form's raw values, while `pending.changes` (the save payload)
+ *   already went through {@link resolveNullableSaveValues}; resolving the
+ *   comparison side the same way keeps a cleared nullable scalar (raw `""`,
+ *   saved as `null`) from comparing unequal forever.
  * @returns `resetWhenSaved(changes)` — call after a successful save with the
  *   changed values it wrote.
  */
 export function useResetWhenSaved(props: {
   form: AnyFormApi;
   document: Record<string, unknown> | null | undefined;
+  fields: Record<string, AdminField>;
 }): (changes: Record<string, unknown>) => void {
-  const { form, document } = props;
+  const { form, document, fields } = props;
   const pendingRef = useRef<PendingReset | null>(null);
   const documentRef = useRef(document);
   documentRef.current = document;
@@ -62,7 +68,7 @@ export function useResetWhenSaved(props: {
     );
     if (!caughtUp) return;
     pendingRef.current = null;
-    if (valuesEqual(changedValues(form), pending.changes)) {
+    if (valuesEqual(resolveNullableSaveValues({ values: changedValues(form), fields }), pending.changes)) {
       form.reset();
     }
   }

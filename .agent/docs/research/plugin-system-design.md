@@ -198,7 +198,7 @@ export const workflowPlugin = definePlugin({
 - Backstage extensions: https://backstage.io/docs/frontend-system/architecture/extensions
 - fastify-plugin: https://github.com/fastify/fastify-plugin#dependencies
 - Convex component isolation: https://docs.convex.dev/components/understanding
-- Repo: `packages/core/src/config/types.ts` (client config), ADR-013, `custom-field-components-hkt-design.md`, `db-adapter-feasibility.md`, `legacy-planning/roadmap-monetization-strategy-v2.md` § "Convex Component Packaging".
+- Repo: `packages/core/src/config/types.ts` (client config), ADR-013, `custom-field-components-hkt-design.md`, `db-adapter-feasibility.md`.
 
 ## Open questions
 

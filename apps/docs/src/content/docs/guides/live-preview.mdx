@@ -430,16 +430,16 @@ to know about them. Two things close that gap, and work together:
    mid-preview still sees the live site, not a blank or "not found" page.
 2. **Every sign-out calls `disableLivePreview()`.** Import it from
    `@vexcms/next/livePreview` and call it beside your identity-transition hook,
-   before the hard navigation or refresh that follows sign-out:
+   before the full reload that follows sign-out:
 
    ```ts
    import { disableLivePreview } from "@vexcms/next/livePreview/client"
 
-   // inside your signOut wrapper, before the hard navigation (skipRefresh: the hard
-   // navigation below replaces the page, so no soft router.refresh() should race it):
+   // inside your signOut wrapper, before the full reload (skipRefresh: the reload
+   // below replaces the page, so no soft router.refresh() should race it):
    beginTransition(null, { skipRefresh: true })
    void disableLivePreview() // fire-and-forget — never throws, never blocks sign-out
-   return signOut().then(goToDestination).catch(goToDestination)
+   return signOut().then(reloadPage).catch(reloadPage)
    ```
 
    It issues a same-origin, credentialed `GET /api/vex/live-preview?disable=1` and

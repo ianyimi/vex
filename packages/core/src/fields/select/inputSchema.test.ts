@@ -123,3 +123,50 @@ describe("selectFieldToInputSchema", () => {
     }
   });
 });
+
+describe("selectFieldToInputSchema — schema.validator override", () => {
+  it("accepts a bare option value and rejects an array for schema.validator: 'literal'", () => {
+    const field = select({ required: true, hasMany: false, schema: { validator: "literal" }, options: OPTIONS });
+    const schema = selectFieldToInputSchema({ field });
+
+    expect(schema.safeParse("draft").success).toBe(true);
+    expect(schema.safeParse(["draft"]).success).toBe(false);
+  });
+
+  it("rejects a value outside the configured options for schema.validator: 'string'", () => {
+    const field = select({ required: true, hasMany: false, schema: { validator: "string" }, options: OPTIONS });
+    const schema = selectFieldToInputSchema({ field });
+
+    expect(schema.safeParse("draft").success).toBe(true);
+    expect(schema.safeParse("retired").success).toBe(false);
+  });
+
+  it("accepts an empty string as 'no selection' on a non-required scalar field", () => {
+    const field = select({ required: false, hasMany: false, schema: { validator: "literal" }, options: OPTIONS });
+    const schema = selectFieldToInputSchema({ field });
+
+    expect(schema.safeParse("").success).toBe(true);
+  });
+
+  it("returns the default value when parsed as undefined (optional scalar)", () => {
+    const field = select({
+      required: false,
+      hasMany: false,
+      schema: { validator: "literal" },
+      options: OPTIONS,
+      defaultValue: "draft",
+    });
+    const schema = selectFieldToInputSchema({ field });
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(true);
+    expect(result.success && result.data).toBe("draft");
+  });
+
+  it("rejects an empty string on a required scalar field", () => {
+    const field = select({ required: true, hasMany: false, schema: { validator: "literal" }, options: OPTIONS });
+    const schema = selectFieldToInputSchema({ field });
+
+    expect(schema.safeParse("").success).toBe(false);
+  });
+});

@@ -1,5 +1,12 @@
-import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput, FieldValidateProps } from "../baseTypes";
+import { ADMIN_FIELDS, type FieldSchemaValidator } from "../constants";
+import {
+  BaseField,
+  BaseFieldInput,
+  FieldAdminConfig,
+  FieldAdminConfigInput,
+  FieldValidateProps,
+  SchemaOverrideInput,
+} from "../baseTypes";
 import type { VexResourceSlug } from "../../types/generated";
 
 /** Display modes a `select()` field's admin input can render as. */
@@ -99,24 +106,37 @@ export interface SelectFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldKey extends string = never,
   TFieldMeta extends {} = {},
+  THasMany extends boolean = boolean,
 > extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
   /** Admin UI configuration for this field. */
   admin?: SelectFieldAdminInput<TCollectionSlug>;
   /**
    * Pre-filled value shown in the admin form when creating a new field.
-   * Does not apply to database values
-   *
+   * Does not apply to database values. An array unless `schema.validator`
+   * is set, in which case it is the single selected value (empty string
+   * for "no selection").
    */
-  defaultValue?: string[];
+  defaultValue?: string | string[];
   options?: {
     label: string;
     value: string;
     badgeColor?: string;
   }[];
-  hasMany?: boolean;
+  hasMany?: THasMany;
+  /**
+   * Overrides the Convex storage shape for a single-value select
+   * (`hasMany: false`). `"literal"` stores `v.union(v.literal(...))` — a
+   * bare `v.literal(...)` when there is exactly one option — and types the
+   * field's value as its option union. `"string"` stores `v.string()` and
+   * types the value `string`; the admin form and this field's own
+   * `inputSchema` still enforce `options`, even though the Convex column
+   * itself accepts any string. `never` when `hasMany: true` — overrides
+   * only apply to single-value storage.
+   */
+  schema?: SchemaOverrideInput<THasMany, Extract<FieldSchemaValidator, "literal" | "string">>;
   optionInterfaceName?: string;
-  /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
+  /** Server-only async validation. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string | string[]>): Promise<void> | void;
 }
 
 /**
@@ -137,14 +157,16 @@ export interface SelectField<
   admin: SelectFieldAdminConfig<TCollectionSlug>;
   readonly type: typeof ADMIN_FIELDS.select.type;
   /** Pre-filled value shown in the admin form when creating a new field. */
-  defaultValue: string[];
+  defaultValue: string | string[];
   options: {
     label: string;
     value: string;
     badgeColor?: string;
   }[];
   hasMany: boolean;
+  /** Set only when the field's storage is overridden (see {@link SelectFieldInput.schema}). */
+  schema?: { validator: Extract<FieldSchemaValidator, "literal" | "string"> };
   optionInterfaceName?: string;
-  /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
+  /** Server-only async validation. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string | string[]>): Promise<void> | void;
 }

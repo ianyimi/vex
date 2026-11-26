@@ -62,8 +62,14 @@ function hasRichTextField(fields: Record<string, AdminField>): boolean {
     if (field.type === ADMIN_FIELDS.richtext.type) return true;
     if (field.type === ADMIN_FIELDS.group.type) return hasRichTextField(field.fields);
     if (field.type === ADMIN_FIELDS.array.type) return hasRichTextField({ items: field.items });
+    if (field.type === ADMIN_FIELDS.keyValue.type) return hasRichTextField({ value: field.value });
     if (field.type === ADMIN_FIELDS.blocks.type) {
       return field.blocks.some((block) => hasRichTextField(block.fields));
+    }
+    if (field.type === ADMIN_FIELDS.variant.type) {
+      return field.discriminator !== undefined
+        ? Object.values(field.variants).some((member) => hasRichTextField(member.fields))
+        : Object.values(field.variants).some((member) => hasRichTextField({ member }));
     }
     return false;
   });

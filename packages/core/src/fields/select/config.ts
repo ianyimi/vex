@@ -1,6 +1,7 @@
-import { ADMIN_FIELDS } from "../constants";
+import { ADMIN_FIELDS, FIELD_SCHEMA_VALIDATORS } from "../constants";
 import { BaseFieldMeta } from "../types";
 import { resolveFieldComponents } from "../utils";
+import { VexConfigError } from "../../errors";
 import type { VexResourceSlug } from "../../types/generated";
 import type { SelectFieldInput, SelectField } from "./types";
 import { SELECT_DISPLAYS } from "./types";
@@ -64,18 +65,30 @@ export function select<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  THasMany extends boolean = boolean,
 >(
-  options?: SelectFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
+  options?: SelectFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, THasMany>,
 ): SelectField<TCollectionSlug, TFieldMeta> {
+  const schema =
+    options?.schema?.validator !== undefined
+      ? { validator: options.schema.validator }
+      : undefined;
+  if (schema?.validator === FIELD_SCHEMA_VALIDATORS.literal && (options?.options ?? []).length === 0) {
+    throw new VexConfigError(
+      'select(): schema.validator: "literal" requires at least one option — an empty option set has no literal to store.',
+    );
+  }
   return {
     type: ADMIN_FIELDS.select.type,
-    interfaceType: ADMIN_FIELDS.select.interfaceType,
+    interfaceType: schema !== undefined ? "string" : ADMIN_FIELDS.select.interfaceType,
     label: "",
     required: false,
-    defaultValue: ADMIN_FIELDS.select.defaultValue,
+    nullable: false,
+    defaultValue: schema !== undefined ? "" : ADMIN_FIELDS.select.defaultValue,
     options: [],
     hasMany: false,
     ...options,
+    schema,
     admin: {
       hidden: false,
       readOnly: false,

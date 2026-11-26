@@ -8,8 +8,8 @@ import { DisplayFieldList } from "../DisplayFieldList";
  *
  * Shows every sub-field recursively via `DisplayFieldList` (labels, nested
  * indentation, each sub-field resolved through `fieldToDisplayComponent`
- * in turn) — NOT `GroupFieldCell`'s flat `JSON.stringify` preview, which
- * is a list-column concern (no room for a nested layout there).
+ * in turn) — NOT `GroupFieldCell`'s flat `stringifyConvexValue` preview,
+ * which is a list-column concern (no room for a nested layout there).
  *
  * @param props - Component props.
  * @returns The group's sub-fields, each labeled and rendered, or an em-dash when the value is absent.

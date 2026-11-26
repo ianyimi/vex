@@ -68,3 +68,24 @@ describe("uploadFieldToInputSchema", () => {
     expect(optionalSchema.safeParse(["doc_1", "doc_2"]).success).toBe(true);
   });
 });
+
+describe("uploadFieldToInputSchema — schema override", () => {
+  it("required scalar: rejects undefined, accepts a bare string", () => {
+    const field = upload({ to: "images", schema: { validator: "id" }, required: true });
+    const schema = uploadFieldToInputSchema({ field });
+    expect(schema.safeParse(undefined).success).toBe(false);
+    expect(schema.safeParse("doc_1").success).toBe(true);
+  });
+
+  it("optional scalar: accepts undefined, with no default value", () => {
+    const field = upload({ to: "images", schema: { validator: "id" }, required: false });
+    const schema = uploadFieldToInputSchema({ field });
+    expect(schema.parse(undefined)).toBeUndefined();
+  });
+
+  it("rejects an array for scalar storage — must be a bare string", () => {
+    const field = upload({ to: "images", schema: { validator: "string" }, required: true });
+    const schema = uploadFieldToInputSchema({ field });
+    expect(schema.safeParse(["doc_1"]).success).toBe(false);
+  });
+});

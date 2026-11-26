@@ -1,4 +1,4 @@
-import { ADMIN_FIELDS } from "../constants";
+import { ADMIN_FIELDS, FIELD_SCHEMA_VALIDATORS } from "../constants";
 import {
   BaseField,
   BaseFieldInput,
@@ -32,9 +32,86 @@ export interface NumberFieldAdminConfig<
 }
 
 /**
+ * A `number()` field's `min`/`max` input when it stores `int64` — a bare
+ * `bigint` pairs with the field's own default error message, or a `[value,
+ * error]` tuple overrides it. @see {@link FieldLimitInput} for the `float64` equivalent
+ */
+export type Int64FieldLimitInput = bigint | readonly [value: bigint, error: string];
+
+/**
+ * Resolved `int64` `min`/`max` constraint after defaults are applied —
+ * always a `[value, error]` tuple. @see {@link FieldLimit} for the `float64` equivalent
+ */
+export type Int64FieldLimit = readonly [value: bigint, error: string];
+
+interface NumberFieldInputBase<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
+  TFieldMeta extends {} = {},
+> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
+  /** Admin UI configuration for this field. */
+  admin?: NumberFieldAdminInput<TCollectionSlug>;
+  /**
+   * Step increment for the number input's native spinner/validation
+   * (the HTML `step` attribute) — ignored for an `int64` field, whose input
+   * is a plain integer text entry with no spinner. Submitted values are
+   * never rounded or rejected against it.
+   */
+  step?: number;
+}
+
+/** `number()` input storing the default `v.float64()` shape — a plain JS `number`. */
+export interface Float64NumberFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
+  TFieldMeta extends {} = {},
+> extends NumberFieldInputBase<TCollectionSlug, TFieldKey, TFieldMeta> {
+  schema?: never;
+  /**
+   * Pre-filled value shown in the admin form when creating a new document.
+   * Does not affect database values — only the form's initial state.
+   */
+  defaultValue?: number;
+  /** Minimum allowed numeric value. @see {@link FieldLimitInput} */
+  min?: FieldLimitInput;
+  /** Maximum allowed numeric value. @see {@link FieldLimitInput} */
+  max?: FieldLimitInput;
+  /** Server-only async validation with `value` typed as `number`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<void> | void;
+}
+
+/**
+ * `number()` input storing `v.int64()` — a native `bigint`, selected with
+ * `schema: { validator: "int64" }`. Reads return `bigint`; the admin form
+ * holds `bigint`; `min`/`max`/`defaultValue` are `bigint`-typed.
+ */
+export interface Int64NumberFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldKey extends string = never,
+  TFieldMeta extends {} = {},
+> extends NumberFieldInputBase<TCollectionSlug, TFieldKey, TFieldMeta> {
+  /** Storage override — `"int64"` stores `v.int64()` instead of the default `v.float64()`. */
+  schema: { validator: typeof FIELD_SCHEMA_VALIDATORS.int64 };
+  /**
+   * Pre-filled value shown in the admin form when creating a new document.
+   * Left `undefined` when omitted — no silent `0n` pre-fill. Does not affect
+   * database values.
+   */
+  defaultValue?: bigint;
+  /** Minimum allowed value. @see {@link Int64FieldLimitInput} */
+  min?: Int64FieldLimitInput;
+  /** Maximum allowed value. @see {@link Int64FieldLimitInput} */
+  max?: Int64FieldLimitInput;
+  /** Server-only async validation with `value` typed as `bigint`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, bigint>): Promise<void> | void;
+}
+
+/**
  * Configuration input for a `number()` field.
  *
- * Number fields store numeric values — prices, quantities, ratings, ages, counts, etc.
+ * Number fields store numeric values — prices, quantities, ratings, ages, counts, etc. By
+ * default they store a `v.float64()`; `schema: { validator: "int64" }` stores a native
+ * `bigint` instead (`v.int64()`), typing `min`/`max`/`defaultValue`/`validate` as `bigint`.
  * All properties are optional; unset properties fall back to the defaults listed below.
  *
  * **Defaults applied by `number()`:**
@@ -61,45 +138,62 @@ export interface NumberFieldAdminConfig<
  * // Required quantity with a minimum of 1 and a database index
  * quantity: number({ required: true, min: 1, index: "by_quantity" })
  *
- * // Rating capped between 0 and 5 with custom error messages
- * rating: number({
- *   min: [0, "Rating cannot be negative"],
- *   max: [5, "Rating cannot exceed 5"],
- *   admin: { width: "50%" },
- * })
- *
- * // Pre-filled default for a score field
- * score: number({ defaultValue: 100 })
+ * // An int64 counter — bigint everywhere
+ * viewCount: number({ schema: { validator: "int64" }, min: 0n })
  * ```
  *
  * @see {@link NumberField} for the resolved type after defaults are applied
  * @see {@link number} for the config function that applies defaults
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
  */
-export interface NumberFieldInput<
+export type NumberFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldKey extends string = never,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TCollectionSlug, TFieldKey, TFieldMeta> {
-  /** Admin UI configuration for this field. */
-  admin?: NumberFieldAdminInput<TCollectionSlug>;
-  /**
-   * Pre-filled value shown in the admin form when creating a new document.
-   * Does not affect database values — only the form's initial state.
-   */
-  defaultValue?: number;
-  /** Minimum allowed numeric value. @see {@link FieldLimitInput} */
-  min?: FieldLimitInput;
-  /** Maximum allowed numeric value. @see {@link FieldLimitInput} */
-  max?: FieldLimitInput;
-  /**
-   * Step increment for the number input's native spinner/validation
-   * (the HTML `step` attribute). Purely a UI affordance — submitted values
-   * are never rounded or rejected against it.
-   */
+> =
+  | Float64NumberFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>
+  | Int64NumberFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>;
+
+interface NumberFieldBase<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+> extends BaseField<TCollectionSlug, TFieldMeta> {
+  readonly type: typeof ADMIN_FIELDS.number.type;
+  label: string;
+  required: boolean;
+  admin: NumberFieldAdminConfig<TCollectionSlug>;
+  /** Resolved step increment for the number input's native spinner. @see {@link NumberFieldInputBase.step} */
   step?: number;
-  /** Server-only async validation with `value` typed as `number`. @see {@link FieldValidate} */
+}
+
+/** Resolved `number()` field storing the default `v.float64()` shape. */
+export interface Float64NumberField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+> extends NumberFieldBase<TCollectionSlug, TFieldMeta> {
+  schema?: never;
+  interfaceType: "number";
+  defaultValue: number | undefined;
+  /** Resolved minimum allowed numeric value. @see {@link FieldLimit} */
+  min?: FieldLimit;
+  /** Resolved maximum allowed numeric value. @see {@link FieldLimit} */
+  max?: FieldLimit;
   validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<void> | void;
+}
+
+/** Resolved `number()` field storing `v.int64()` — a native `bigint`. */
+export interface Int64NumberField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+> extends NumberFieldBase<TCollectionSlug, TFieldMeta> {
+  schema: { validator: typeof FIELD_SCHEMA_VALIDATORS.int64 };
+  interfaceType: "bigint";
+  defaultValue: bigint | undefined;
+  /** Resolved minimum allowed value. @see {@link Int64FieldLimit} */
+  min?: Int64FieldLimit;
+  /** Resolved maximum allowed value. @see {@link Int64FieldLimit} */
+  max?: Int64FieldLimit;
+  validate?(props: FieldValidateProps<TCollectionSlug, bigint>): Promise<void> | void;
 }
 
 /**
@@ -108,28 +202,7 @@ export interface NumberFieldInput<
  * @see {@link NumberFieldInput} for the user-facing input type
  * @see {@link number} for the config function that produces this type
  */
-export interface NumberField<
+export type NumberField<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-> extends BaseField<TCollectionSlug, TFieldMeta> {
-  readonly type: typeof ADMIN_FIELDS.number.type;
-  /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
-  label: string;
-  /** Whether this field is required in the database schema. */
-  required: boolean;
-  /** Resolved admin UI configuration with all defaults applied. */
-  admin: NumberFieldAdminConfig<TCollectionSlug>;
-  defaultValue: number;
-  /** Minimum allowed numeric value, with its resolved error message. @see {@link FieldLimit} */
-  min?: FieldLimit;
-  /** Maximum allowed numeric value, with its resolved error message. @see {@link FieldLimit} */
-  max?: FieldLimit;
-  /**
-   * Step increment for the number input's native spinner/validation
-   * (the HTML `step` attribute). Purely a UI affordance — submitted values
-   * are never rounded or rejected against it.
-   */
-  step?: number;
-  /** Server-only async validation with `value` typed as `number`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<void> | void;
-}
+> = Float64NumberField<TCollectionSlug, TFieldMeta> | Int64NumberField<TCollectionSlug, TFieldMeta>;

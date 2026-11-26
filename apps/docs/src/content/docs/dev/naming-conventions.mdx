@@ -265,6 +265,16 @@ TypeDoc-generated (symbol-named) and exempt.
 - **OK:** `guides/custom-storage-adapter.mdx`
 - **Not OK:** `docs/CustomStorageAdapter.mdx`
 
+#### agent-skill-folders
+
+The public `skills/` folder holds one folder per installable agent skill, named
+`vexcms-<task>`. A skill's frontmatter `name` must equal its folder name, and
+it is also the slash command, so the skill's number lives only in
+`skills/README.md`'s table.
+
+- **OK:** `skills/vexcms-project-init`, `skills/README.md`
+- **Not OK:** `skills/01-project-init`, `skills/project-init`
+
 ### `@vexcms/next`
 
 #### next-adapter-layout

@@ -87,6 +87,19 @@ describe("interfaceType carries the target collection slug", () => {
     expect(source).toContain('themes?: Id<"themes">[]');
     expect(source).not.toContain("Id<CollectionSlug>[]");
   });
+  it("relationship with schema.validator 'id' emits a bare Id<target> (no array)", () => {
+    const field = relationship({ collection: { slug: "themes" }, schema: { validator: "id" } });
+    expect(field.interfaceType).toBe('Id<"themes">');
+  });
+
+  it("relationship with schema.validator 'string' emits string", () => {
+    const field = relationship({ collection: { slug: "themes" }, schema: { validator: "string" } });
+    expect(field.interfaceType).toBe("string");
+  });
+
+  it("upload with schema.validator 'id' emits a bare Id<target> (no array)", () => {
+    expect(upload({ to: "images", schema: { validator: "id" } }).interfaceType).toBe('Id<"images">');
+  });
 });
 
 // ─── Header ──────────────────────────────────────────────────────────────────
@@ -285,5 +298,85 @@ describe("collectionConfigToInterface - select emits an array type", () => {
     const output = collectionConfigToInterface({ collection });
     expect(output).toContain(`type ArticleStatusOption = "draft" | "published"`);
     expect(output).toContain("status: ArticleStatusOption[]");
+  });
+});
+
+describe("collectionConfigToInterface - select with schema.validator emits a scalar type", () => {
+  it("emits a bare option union for schema.validator: 'literal'", () => {
+    const collection = defineCollection({
+      slug: "articles",
+      interfaceName: "Article",
+      fields: {
+        status: select({
+          required: true,
+          hasMany: false,
+          schema: { validator: "literal" },
+          options: [
+            { label: "Draft", value: "draft" },
+            { label: "Published", value: "published" },
+          ],
+        }),
+      },
+    });
+    const output = collectionConfigToInterface({ collection });
+    expect(output).toContain(`type ArticleStatusOption = "draft" | "published"`);
+    expect(output).toContain("status: ArticleStatusOption");
+    expect(output).not.toContain("status: ArticleStatusOption[]");
+  });
+
+  it("emits a bare string for schema.validator: 'string'", () => {
+    const collection = defineCollection({
+      slug: "articles",
+      interfaceName: "Article",
+      fields: {
+        status: select({
+          required: true,
+          hasMany: false,
+          schema: { validator: "string" },
+          options: [{ label: "Draft", value: "draft" }],
+        }),
+      },
+    });
+    const output = collectionConfigToInterface({ collection });
+    expect(output).toContain("status: string");
+    expect(output).not.toContain("ArticleStatusOption");
+  });
+});
+
+describe("collectionConfigToInterface — nullable", () => {
+  it("appends | null for a required nullable field", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { subtitle: text({ required: true, nullable: true }) },
+    });
+    const output = collectionConfigToInterface({ collection });
+    expect(output).toContain("subtitle: string | null");
+  });
+
+  it("appends | null after an optional nullable field's own ? marker", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { subtitle: text({ required: false, nullable: true }) },
+    });
+    const output = collectionConfigToInterface({ collection });
+    expect(output).toContain("subtitle?: string | null");
+  });
+
+  it("appends | null after a select's option-union array type", () => {
+    const collection = defineCollection({
+      slug: "articles",
+      interfaceName: "Article",
+      fields: {
+        status: select({
+          nullable: true,
+          options: [
+            { label: "Draft", value: "draft" },
+            { label: "Published", value: "published" },
+          ],
+        }),
+      },
+    });
+    const output = collectionConfigToInterface({ collection });
+    expect(output).toContain("status?: ArticleStatusOption[] | null");
   });
 });

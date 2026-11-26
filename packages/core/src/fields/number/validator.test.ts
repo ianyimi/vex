@@ -36,4 +36,14 @@ describe("numberFieldToValidator", () => {
 
     expect(validator).toBe("v.optional(v.number())");
   });
+
+  it("generates v.int64() for a required int64 field", () => {
+    const field = number({ schema: { validator: "int64" }, required: true });
+    expect(numberFieldToValidator({ field })).toBe("v.int64()");
+  });
+
+  it("generates v.optional(v.int64()) for an optional int64 field", () => {
+    const field = number({ schema: { validator: "int64" } });
+    expect(numberFieldToValidator({ field })).toBe("v.optional(v.int64())");
+  });
 });

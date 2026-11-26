@@ -141,6 +141,46 @@ function buildCurrentAdminHref(props: {
  * far edge next to an empty flex-1 spacer (see {@link AdminTopNav}'s own return) — only
  * the spacer's own width changes as a result, never any other rendered element's position.
  *
+ * The signed-in "Sign out" label collapses to icon-only below `lg` (1024px) — `hidden
+ * lg:inline` on the label `<span>`, same CSS-toggled-label pattern `ListViewModifiedControls`'
+ * Reset/Save buttons and `DataTableBulkActions` already use (a fixed `aria-label` carries
+ * the accessible name once the visible text is gone, rather than a second icon-only
+ * instance with the same name). `lg:` (not that pattern's own `@md/list` container query):
+ * this bar sits outside any `@container/list` root, and plain viewport width is what
+ * the crumb trail's own flexbox truncation also shrinks against (`CrumbLink`'s doc
+ * comment). `md` (768px) undershoots: measured live on a real edit page, the title
+ * crumb was still hard-truncated from 768px through 860px even with this label already
+ * collapsed and `CurrentUserDisplay`'s name/email also collapsed at the same point —
+ * `lg` is the next breakpoint on the existing Tailwind scale past where truncation
+ * actually stops (~900px measured), so it clears the whole range with margin instead of
+ * reusing `md` for device-class consistency alone. No tooltip: neither `SidebarTrigger`
+ * nor `ViewSiteButton` (this bar's other icon-only controls) wrap themselves in one, so
+ * this doesn't invent a second convention for an icon-only control. The icon stays
+ * visible at every width (`Icon`, not wrapped in the same `hidden lg:inline` span) so
+ * the control is never completely blank. Height never shifts: `h-9` (`size="lg"`'s own
+ * height class) is unconditional in every width's override below, so the row's cross-axis
+ * size is identical collapsed or labeled.
+ *
+ * Below `lg`, the collapsed box itself now matches `ViewSiteButton`'s `size="icon-lg"`
+ * EXACTLY (`size-9` — a 36×36 square with no horizontal padding) instead of keeping
+ * `size="lg"`'s `px-3.5` around just the icon (developer-reported regression: the label
+ * disappearing via `display: none` left the SURROUNDING button still sized to `lg`'s
+ * padded content box, so the icon sat in extra blank space on both sides, not snug like
+ * `ViewSiteButton`/`SidebarTrigger`). Fixed with override classes, not a second `size`
+ * value switched by a `matchMedia` hook (`hooks/use-mobile.ts`'s `useIsMobile`'s own doc
+ * comment on hydration-mismatch hazards is exactly the complexity a THIRD breakpoint-gated
+ * hook here would repeat for no benefit over pure CSS, which never flashes): bare `w-9
+ * px-0 [&_svg]:ml-0` forces the exact `icon-lg` box at every width, then `lg:w-auto
+ * lg:px-3.5 lg:[&_svg]:ml-1` restores `size="lg"`'s own auto-width, padding, and
+ * icon-to-label gap once the label itself is visible again — the same mobile-first
+ * override order `hidden lg:inline` above already relies on (Tailwind emits `lg:`-prefixed
+ * rules after bare ones, so the `lg:` overrides win at 1024px+ without fighting
+ * specificity). `[&_svg]:ml-0` — not a `size="lg"` edit — targets the icon's own static
+ * `ml-1` (always applied once `icon` + a label are both present, regardless of whether the
+ * label is actually visible; `ui/button.tsx` is out of scope this round) via a higher-
+ * specificity descendant selector, so the icon centers exactly like `ViewSiteButton`'s own
+ * icon-only button instead of sitting 4px off-center.
+ *
  * @param props.className - Positioning class (`"mr-2"`/none), mirroring `ViewSiteButton`.
  * @param props.currentHref - Current admin URL, passed to `signInHref` as the return-to
  *   target (see {@link buildCurrentAdminHref}).
@@ -181,13 +221,14 @@ function AuthControl(props: { className?: string; currentHref: string }): ReactN
       icon="LogOut"
       iconPosition="right"
       isPending={isSigningOut}
-      className={props.className}
+      aria-label="Sign out"
+      className={cn(props.className, "w-9 px-0 [&_svg]:ml-0 lg:w-auto lg:px-3.5 lg:[&_svg]:ml-1")}
       onClick={() => {
         setIsSigningOut(true);
         void auth.signOut().finally(() => setIsSigningOut(false));
       }}
     >
-      Sign out
+      <span className="hidden lg:inline">Sign out</span>
     </Button>
   );
 }
@@ -200,6 +241,12 @@ function AuthControl(props: { className?: string; currentHref: string }): ReactN
  * `admin.icon` — when the user has no avatar image, the chip falls back to the SAME icon
  * the user collection's dashboard card/sidebar entry already shows, before `UserDisplay`'s
  * own generic single-user icon.
+ *
+ * The name/email block collapses to an avatar-only chip below `lg` (1024px), via
+ * `UserDisplay`'s `textClassName` — the same breakpoint and `hidden <bp>:flex`
+ * mechanism {@link AuthControl}'s own "Sign out" label uses, and for the same reason:
+ * measured live, this block's own name/email text was the other major contributor to
+ * the title crumb staying hard-truncated between 768px and 900px.
  *
  * Renders nothing for every signed-out shape `AuthControl` treats as signed out
  * (`user === null` or `user.isAnonymous === true`), and nothing again if neither a `name`
@@ -221,6 +268,7 @@ function CurrentUserDisplay(props: { className?: string }): ReactNode {
       image={typeof user.image === "string" ? user.image : undefined}
       fallbackIcon={userCollection?.admin.icon}
       className={cn("text-muted-foreground", props.className)}
+      textClassName="hidden lg:flex"
     />
   );
 }
@@ -282,6 +330,23 @@ function buildBaseCrumbs(props: {
 /**
  * Renders one crumb link (no divider — the caller interleaves `Divider`s between calls).
  *
+ * Truncation mirrors `CollectionEditView`'s own document-title header (the SAME
+ * `min-w-0`/`truncate`/`shrink-0` mechanism, not a separate set of breakpoints): the link
+ * itself is `min-w-0 overflow-hidden` so it can shrink below its content's natural width,
+ * its icon (if any) is `shrink-0` so it never compresses, and the label is `min-w-0 truncate`
+ * so long labels ellipsize on ONE line instead of wrapping. The last crumb additionally gets
+ * `flex-auto` (`flex: 1 1 auto`, NOT `flex-1`/`flex: 1 1 0%`) — a `flex-basis: 0%` starts the
+ * item's hypothesized size at ZERO under negative free space (overflow), so it shrinks to
+ * nothing before the shrink algorithm even runs (confirmed via live `getBoundingClientRect()`
+ * measurement: a `flex-1` title crumb measured ~2px wide at 640px viewport width while
+ * shorter sibling crumbs kept 147px — the OPPOSITE of "most room"). `flex-auto`'s `auto`
+ * basis starts from the crumb's own content width instead, so the proportional
+ * flex-shrink distribution (same `flex-shrink: 1` every crumb already has by the CSS
+ * initial value) keeps whichever crumb had the most content — normally the title — the
+ * largest remaining share, while its `flex-grow: 1` still lets it absorb any leftover space
+ * when the row isn't fully packed. `title` carries the full, untruncated label as the
+ * accessible/hover text, the same pattern `CollectionEditView`'s own truncated title uses.
+ *
  * @param props.crumb - The crumb to render (href, label, optional icon).
  * @param props.isLast - Whether this is the final crumb, styled as the active/current page.
  * @returns The crumb's link element, with its icon (if any) and label.
@@ -290,14 +355,18 @@ function CrumbLink(props: { crumb: Crumb; isLast: boolean }): ReactNode {
   return (
     <VexLink
       href={props.crumb.href}
-      className={cn("flex items-center gap-1", props.isLast ? "text-primary" : "hover:text-primary/90")}
+      title={props.crumb.label}
+      className={cn(
+        "flex min-w-0 items-center gap-1 overflow-hidden",
+        props.isLast ? "flex-auto text-primary" : "hover:text-primary/90",
+      )}
     >
       {props.crumb.icon && (
-        <span>
+        <span className="shrink-0">
           <Icon name={props.crumb.icon} size={16} />
         </span>
       )}
-      <span>{props.crumb.label}</span>
+      <span className="min-w-0 truncate">{props.crumb.label}</span>
     </VexLink>
   );
 }
@@ -469,11 +538,13 @@ export default function AdminTopNav(props: { activeSlug?: string; activeDocID?: 
     const link = (
       <CrumbLink key={crumb.key} crumb={crumb} isLast={!hasDocSlot && i === baseCrumbs.length - 1} />
     );
-    return i === 0 ? [link] : [<Divider key={`div-${crumb.key}`} left={isLeft} size={18} />, link];
+    return i === 0
+      ? [link]
+      : [<Divider key={`div-${crumb.key}`} left={isLeft} size={18} className="shrink-0" />, link];
   });
   if (hasDocSlot) {
     items.push(
-      <Divider key="div-doc" left={isLeft} size={18} />,
+      <Divider key="div-doc" left={isLeft} size={18} className="shrink-0" />,
       <Suspense key="doc" fallback={<Skeleton className="h-4 w-20 rounded" />}>
         <AdminTopNavDocCrumb
           collection={activeCollection!}
@@ -485,37 +556,44 @@ export default function AdminTopNav(props: { activeSlug?: string; activeDocID?: 
   }
   const nav = isLeft ? items : items.slice().reverse();
 
+  // Mirrors `CollectionEditView`'s own header-row mechanism: `min-w-0 overflow-hidden` on the
+  // crumb trail itself lets it shrink below its children's natural width instead of scrolling
+  // (no `overflow-x-auto`), while each crumb's own `min-w-0 truncate` (see `CrumbLink`) does
+  // the actual ellipsizing — same classes, same breakpoints (none; pure flexbox, not
+  // container queries), not a second truncation scheme. No `flex-1` here: the bar already has
+  // its own `flex-1` spacer (below) pinning the sign-out/user cluster to the opposite edge —
+  // a second `flex-1` on this element would split the free space between the two instead.
   const crumbsEl = (
-    <div className="flex min-w-0 items-center gap-2 overflow-x-auto text-lg" suppressHydrationWarning>
+    <div className="flex min-w-0 items-center gap-2 overflow-hidden text-lg" suppressHydrationWarning>
       {nav}
     </div>
   );
 
   return (
     <header ref={topbarRef} className="bg-background sticky top-0 z-100 flex min-h-[67px] shrink-0 items-center gap-2 border-b px-6">
-      {side === "right" && <AuthControl currentHref={currentHref} />}
-      {side === "right" && <CurrentUserDisplay className="ml-2" />}
+      {side === "right" && <AuthControl className="shrink-0" currentHref={currentHref} />}
+      {side === "right" && <CurrentUserDisplay className="ml-2 shrink-0" />}
       {side === "right" && <div className="flex-1" />}
       {side === "right" ? (
         <>
-          <ViewSiteButton className="mr-2" />
+          <ViewSiteButton className="mr-2 shrink-0" />
           {crumbsEl}
           {/* `-mr-2`: the 32px icon button's 16px icon sits 8px inside its box — pulling the
               box out by that inset puts the visible ICON on the content column's edge, the way
               `AuthControl`'s bordered button already lines up on the opposite side. */}
-          <SidebarTrigger side={side} size="icon" className="-mr-2 hover:text-primary/90 transition-colors duration-300" />
+          <SidebarTrigger side={side} size="icon" className="-mr-2 shrink-0 hover:text-primary/90 transition-colors duration-300" />
         </>
       ) : (
         <>
           {/* `-ml-2`: see the right-side branch above. */}
-          <SidebarTrigger side={side} size="icon" className="-ml-2 hover:text-primary/90 transition-colors duration-300" />
+          <SidebarTrigger side={side} size="icon" className="-ml-2 shrink-0 hover:text-primary/90 transition-colors duration-300" />
           {crumbsEl}
-          <ViewSiteButton className="ml-2" />
+          <ViewSiteButton className="ml-2 shrink-0" />
         </>
       )}
       {side !== "right" && <div className="flex-1" />}
-      {side !== "right" && <CurrentUserDisplay className="mr-2" />}
-      {side !== "right" && <AuthControl className="ml-2" currentHref={currentHref} />}
+      {side !== "right" && <CurrentUserDisplay className="mr-2 shrink-0" />}
+      {side !== "right" && <AuthControl className="ml-2 shrink-0" currentHref={currentHref} />}
     </header>
   );
 }

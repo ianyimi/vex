@@ -4,6 +4,7 @@ import {
   type CellComponentProps,
   type BlocksField,
   type GenericBlock,
+  stringifyConvexValue,
   TDocument,
 } from "@vexcms/core";
 import { VexLink } from "../../ui";
@@ -30,7 +31,7 @@ export function BlocksFieldCell<TData extends TDocument = TDocument>(
 
   const { singular, plural } = props.fieldDef.labels;
 
-  const preview = JSON.stringify(value);
+  const preview = stringifyConvexValue({ value });
   const content = (
     <span className="text-xs text-muted-foreground" title={preview}>
       {value.length} {value.length === 1 ? singular : plural}

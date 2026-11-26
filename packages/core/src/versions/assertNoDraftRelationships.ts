@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
 
-import { ADMIN_FIELDS, getDataFields } from "../fields";
+import { ADMIN_FIELDS, getDataFields, type RelationshipField } from "../fields";
 import type { CollectionOrGlobal } from "../types";
 
 /**
@@ -57,14 +57,23 @@ export interface AssertNoDraftRelationshipsArgs<DataModel extends GenericDataMod
 export async function assertNoDraftRelationships<
   DataModel extends GenericDataModel = GenericDataModel,
 >(args: AssertNoDraftRelationshipsArgs<DataModel>): Promise<void> {
-  const relationshipKeys = Object.entries(getDataFields({ fields: args.target.config.fields }))
-    .filter(([, field]) => field.type === ADMIN_FIELDS.relationship.type)
-    .map(([key]) => key);
-  if (relationshipKeys.length === 0) return;
+  const relationshipFields = Object.entries(getDataFields({ fields: args.target.config.fields })).filter(
+    (entry): entry is [string, RelationshipField] => entry[1].type === ADMIN_FIELDS.relationship.type,
+  );
+  if (relationshipFields.length === 0) return;
 
-  for (const key of relationshipKeys) {
-    const ids = args.document[key];
-    if (!Array.isArray(ids) || ids.length === 0) continue;
+  for (const [key, field] of relationshipFields) {
+    const value = args.document[key];
+    let ids: unknown[];
+    if (Array.isArray(value)) {
+      ids = value;
+    } else if (typeof value === "string") {
+      const normalized = args.ctx.db.normalizeId(field.collection.slug, value);
+      ids = normalized !== null ? [normalized] : [];
+    } else {
+      ids = [];
+    }
+    if (ids.length === 0) continue;
     for (const id of ids) {
       const target = await args.ctx.db.get(id as never);
       if (target === null) continue;

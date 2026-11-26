@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { act, render } from "@testing-library/react";
 import { useForm } from "@tanstack/react-form";
+import { text, type AdminField } from "@vexcms/core";
 import { changedValues } from "../forms/changedValues";
+import { useFieldsForm } from "../fields/useFieldsForm";
 import { useResetWhenSaved } from "./useResetWhenSaved";
 import type { AnyFormApi } from "../forms";
 
 type Doc = { body: string; title: string };
+const FIELDS: Record<string, AdminField> = {};
 
 /**
  * Mounts a form the way an edit view does — defaults rebuilt from the
@@ -21,7 +24,7 @@ function renderHarness(initialDocument: Doc) {
   function Harness({ document }: { document: Doc }) {
     const form = useForm({ defaultValues: document });
     formRef.current = form as AnyFormApi;
-    resetRef.current = useResetWhenSaved({ form: form as AnyFormApi, document });
+    resetRef.current = useResetWhenSaved({ form: form as AnyFormApi, document, fields: FIELDS });
     return (
       <>
         <form.Field name="body">{() => null}</form.Field>
@@ -102,5 +105,39 @@ describe("useResetWhenSaved", () => {
     harness.saved({ body: "new" });
 
     expect(changedValues(harness.form())).toEqual({});
+  });
+
+  it("resets a cleared nullable field once the live document stores null (resolved save vs resolved form)", () => {
+    const nullableFields: Record<string, AdminField> = { note: text({ nullable: true }) };
+    const formRef: { current: AnyFormApi | undefined } = { current: undefined };
+    const resetRef: { current: ((changes: Record<string, unknown>) => void) | undefined } = {
+      current: undefined,
+    };
+
+    function NullableHarness({ document }: { document: { note: string | null } }) {
+      const form = useFieldsForm({ fields: nullableFields, document });
+      formRef.current = form;
+      resetRef.current = useResetWhenSaved({ form, document, fields: nullableFields });
+      return <form.Field name="note">{() => null}</form.Field>;
+    }
+
+    const view = render(<NullableHarness document={{ note: "hello" }} />);
+    act(() => {
+      formRef.current!.setFieldValue("note", ""); // cleared on screen
+    });
+    act(() => {
+      // The save payload resolved `""` (the nullable scalar's own empty
+      // representation) to `null`, per `resolveNullableSaveValue`.
+      resetRef.current!({ note: null });
+    });
+
+    act(() => {
+      view.rerender(<NullableHarness document={{ note: null }} />);
+    });
+
+    // The raw form value is still `""`; comparing it to the resolved
+    // `{ note: null }` save payload directly would never match, leaving the
+    // field dirty forever.
+    expect(formRef.current!.getFieldMeta("note")?.isDirty).toBe(false);
   });
 });

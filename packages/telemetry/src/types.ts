@@ -4,6 +4,7 @@ import type {
   ColorFormat,
   CommitTsFieldAdminFormat,
   CommitTsFieldOn,
+  FieldSchemaValidator,
   SelectDisplay,
   StorageAdapterProtocol,
 } from "@vexcms/core";
@@ -90,6 +91,7 @@ export interface AnonymizedField {
   path: string;
   type: AdminFieldType;
   required?: boolean;
+  nullable?: boolean;
   hidden?: boolean;
   readOnly?: boolean;
   position?: "main" | "sidebar";
@@ -101,6 +103,8 @@ export interface AnonymizedField {
   min?: number;
   max?: number;
   step?: number;
+  /** The field's `schema.validator` override, when configured — `number`'s `"int64"` today; `select`/`relationship`/`upload` add their own values in later steps. */
+  schemaValidator?: FieldSchemaValidator;
   rows?: number;
   defaultValue?: boolean;
   format?: ColorFormat | CommitTsFieldAdminFormat;
@@ -118,11 +122,14 @@ export interface AnonymizedField {
   hasAccept?: boolean;
   hasMediaTarget?: boolean;
   defaultCollapsed?: boolean;
+  keyKind?: "string" | "id";
   tabCount?: number;
   hasCustomCell?: boolean;
   enableSorting?: boolean;
   enableHiding?: boolean;
   on?: CommitTsFieldOn;
+  hasDiscriminator?: boolean;
+  variantCount?: number;
 }
 
 /**

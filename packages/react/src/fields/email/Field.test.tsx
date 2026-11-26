@@ -204,7 +204,7 @@ describe("email: admin.mask", () => {
       </VexConfigContext.Provider>,
     );
     await waitFor(() =>
-      expect(withMaskMock).toHaveBeenCalledWith("email", { rightAlign: false, autoUnmask: true }),
+      expect(withMaskMock).toHaveBeenCalledWith("email", { rightAlign: false, clearMaskOnLostFocus: false, autoUnmask: true }),
     );
     expect(container.querySelector("input")?.getAttribute("type")).toBe("text");
   });

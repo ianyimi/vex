@@ -1,0 +1,122 @@
+---
+title: variant field
+description: Stores a single (non-array) object union or primitive union — a Convex v.union() held in one value, not a list like blocks().
+---
+
+A `variant()` field stores a single Convex `v.union(...)` value — one of several
+possible shapes, held directly (not as a list, unlike `blocks()`). It has two
+modes, selected by whether `discriminator` is set.
+
+**Discriminated** (`discriminator` set): each entry in `variants` is `{ label,
+fields }`, and the stored value is `v.union(v.object({ [discriminator]:
+v.literal(key), ...fields }), …)` — an object union keyed by that property, with
+no injected `id`/`blockName` keys (unlike `blocks()`), so it matches an existing
+discriminated-object-union column exactly.
+
+**Undiscriminated** (`discriminator` omitted): each entry in `variants` is a
+data field directly, and the stored value is `v.union(<member validators>)` — a
+primitive union. Members must have **distinct runtime kinds**, checked when the
+config is built — two members that would both resolve to, say, `v.string()`,
+throw a `VexConfigError` at config time, since the stored value alone couldn't
+tell them apart.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `variants` | `Record<string, { label: string, fields: Record<string, AdminField> }>` (discriminated) or `Record<string, AdminDataField>` (undiscriminated) | — | **Required.** The union's members, keyed by a stable name used only in config (never stored). |
+| `discriminator` | `string` | — | When set, switches to discriminated mode — the property name injected onto every member object and used as its `v.literal(key)`. |
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `nullable` | `boolean` | `false` | Stores `v.nullable(v.union(...))` (wrapped in `v.optional(…)` too when `required` is `false`); the generated type adds `\| null`. Renders a null toggle instead of an empty-input state, like every other container field. See [Nullable values](/fields/text/#nullable-values). |
+| `defaultValue` | matches the union's TS type | `undefined` | Pre-filled value shown in the admin form when creating a new document. With `required: false` and no explicit `defaultValue`, the field resolves to `undefined` with no member preselected — see Admin UI below. A `required: true` field with no explicit `defaultValue` materializes the first configured member's own empty/default shape instead. |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the picker and the active member's input as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `string` | `"100%"` | CSS width of the field in the edit form (e.g. `"50%"`, `"240px"`). Meaningful as a child of `row()`; below a narrow form column every field renders full width regardless. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment used for this field's column in the list-view table. |
+| `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. A throwing condition counts as met. Container conditions AND into children. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
+
+Members are never wrapped in `v.optional(...)` — the variant's own `required`/`nullable`
+govern the whole union, not its members. In undiscriminated mode, every member is resolved as
+required internally regardless of the member field's own `required`.
+
+## Schema output
+
+```ts
+// Discriminated — an object union keyed by "kind", no id/blockName keys
+channel: v.optional(v.union(
+  v.object({ kind: v.literal("email"), address: v.string() }),
+  v.object({ kind: v.literal("sms"), number: v.string() })
+))
+
+// Undiscriminated — a primitive union; members have distinct runtime kinds
+amount: v.optional(v.union(v.string(), v.number()))
+```
+
+**Usage**
+
+```ts
+import { defineCollection, number, text, variant } from "@vexcms/core";
+
+const notifications = defineCollection({
+  slug: "notifications",
+  fields: {
+    // Discriminated — an object union, switched on "kind"
+    channel: variant({
+      discriminator: "kind",
+      variants: {
+        email: { label: "Email", fields: { address: text({ required: true }) } },
+        sms: { label: "SMS", fields: { number: text({ required: true }) } },
+      },
+    }),
+
+    // Undiscriminated — a primitive union; distinct runtime kinds required
+    amount: variant({
+      variants: { label: text(), amount: number() },
+    }),
+  },
+});
+```
+
+A config with two undiscriminated members that resolve to the same runtime kind throws at
+config time:
+
+```ts
+// Throws VexConfigError — both members are v.string(), indistinguishable at runtime
+variant({ variants: { a: text(), b: text() } });
+```
+
+**Nesting**
+
+`variant()` nests anywhere a data field nests — inside a `group()`, an `array()`'s `items`, a
+`blocks()` block's own fields, or a `keyValue()`'s `value` — and a discriminated member's own
+`fields` (or an undiscriminated member field) accepts any data field, including another
+container. Every field walker recurses into a `variant()`'s members the same way it recurses
+into a `group()`'s `fields`.
+
+**Admin UI**
+
+The field renders a variant/type picker (a dropdown of each member's `label`, or its key when
+undiscriminated) above the active member's own input. An optional (`required: false`) variant
+with no `defaultValue` starts **empty** — the picker shows a **None** option, selected by
+default, and no member input is rendered until the admin picks a real member; saving while
+**None** is selected omits the key (or writes `null` when `nullable` is also set). A `required:
+true` variant has no **None** option and always has a member selected, starting from the first
+configured member when no `defaultValue` is given. Switching the picker away from **None**, or
+between members, replaces the current value with the newly selected member's empty shape. In
+discriminated mode, the picker's current selection is read from the stored `discriminator`
+property; in undiscriminated mode, it's inferred from the stored value's runtime kind. In the
+list-view table, the cell shows the active member's label (discriminated) or a short type tag
+(undiscriminated) — not the member's own value.
+
+**TypeScript output**
+
+```ts
+export type NotificationsChannel =
+  | { kind: "email"; address: string }
+  | { kind: "sms"; number: string };
+
+export type NotificationsAmount = string | number;
+```

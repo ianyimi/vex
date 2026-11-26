@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { ADMIN_FIELDS, type AdminDataField } from "@vexcms/core";
+import { ADMIN_FIELDS, stringifyConvexValue, type AdminDataField } from "@vexcms/core";
 import { Skeleton } from "../../../../ui/skeleton";
 import { ScrollSection } from "../../../../ui/ScrollSection";
 import { JsonEditor } from "../../../../ui/JsonEditor";
@@ -77,7 +77,7 @@ export function ListViewPeekJsonTab(props: {
     for (const key of GATEABLE_SYSTEM_FIELD_KEYS) {
       if (!props.canReadField(key)) delete jsonDoc[key];
     }
-    jsonText = JSON.stringify(jsonDoc, null, 2);
+    jsonText = stringifyConvexValue({ value: jsonDoc, space: 2 });
   }
   const hasCommitTsField = props.visibleFieldEntries.some(
     ([, fieldDef]) => fieldDef.type === ADMIN_FIELDS.commitTs.type,
@@ -104,7 +104,7 @@ export function ListViewPeekJsonTab(props: {
             <Skeleton className="h-4 w-full" />
           </div>
         ) : (
-          <JsonEditor id="list-peek-json" value={jsonText} onChange={() => {}} readOnly aria-labelledby="list-peek-json-label" />
+          <JsonEditor id="list-peek-json" value={jsonText} onChange={() => {}} displayOnly aria-labelledby="list-peek-json-label" />
         )}
       </ScrollSection>
     </>

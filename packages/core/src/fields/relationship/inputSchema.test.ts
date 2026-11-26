@@ -166,3 +166,24 @@ describe("relationshipFieldToInputSchema", () => {
     });
   });
 });
+
+describe("relationshipFieldToInputSchema — schema override", () => {
+  it("required scalar: rejects undefined, accepts a bare string", () => {
+    const field = relationship({ collection: { slug: "authors" }, schema: { validator: "id" }, required: true });
+    const schema = relationshipFieldToInputSchema({ field });
+    expect(schema.safeParse(undefined).success).toBe(false);
+    expect(schema.safeParse("author_1").success).toBe(true);
+  });
+
+  it("optional scalar: accepts undefined, with no default value", () => {
+    const field = relationship({ collection: { slug: "authors" }, schema: { validator: "id" }, required: false });
+    const schema = relationshipFieldToInputSchema({ field });
+    expect(schema.parse(undefined)).toBeUndefined();
+  });
+
+  it("rejects an array for scalar storage — must be a bare string", () => {
+    const field = relationship({ collection: { slug: "authors" }, schema: { validator: "string" }, required: true });
+    const schema = relationshipFieldToInputSchema({ field });
+    expect(schema.safeParse(["author_1"]).success).toBe(false);
+  });
+});

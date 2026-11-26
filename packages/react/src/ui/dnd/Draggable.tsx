@@ -20,12 +20,16 @@ import {
 import { cn } from "../../utils/cn";
 import { useDndContext } from "./DndProvider";
 
+import { globalSingleton } from "../../utils/globalSingleton";
+
 export interface DragHandleContextValue {
   dragHandleProps: DraggableProvidedDragHandleProps | null;
   isDragging: boolean;
 }
 
-export const DraggableInstanceContext = createContext<DragHandleContextValue | null>(null);
+export const DraggableInstanceContext = globalSingleton("ui/dnd/Draggable/DraggableInstanceContext", () =>
+  createContext<DragHandleContextValue | null>(null),
+);
 
 export function useDraggableInstanceContext(): DragHandleContextValue {
   const dragContext = useContext(DraggableInstanceContext);

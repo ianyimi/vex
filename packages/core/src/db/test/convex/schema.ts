@@ -33,6 +33,15 @@ const schema = defineSchema({
     // `normalizeArrayStoredWhere`'s array-stored-field tests (`queryArgs.test.ts`,
     // `find/server.test.ts`) without needing the full literal-union validator.
     category: v.optional(v.array(v.string())),
+    // Scalar relationship storage fixtures (`schema.validator` override):
+    // `ownerId` mirrors `v.id("authors")` ("id" storage), `ownerRef` mirrors
+    // `v.string()` ("string" storage, e.g. a library-owned reference column).
+    ownerId: v.optional(v.id("authors")),
+    ownerRef: v.optional(v.string()),
+    // Optional, non-nullable `bytes` field fixture — the null-as-unset
+    // integration test (`collections/api/update/server.test.ts`) patches
+    // this with `null` and expects Convex's `ctx.db.patch` to remove it.
+    payload: v.optional(v.bytes()),
     // Versioning columns, matching what `versionFieldsToVexSchema` emits for a
     // collection declaring `versions.drafts: true`. Optional, so every
     // pre-existing suite that inserts plain posts stays valid.
@@ -186,6 +195,12 @@ const schema = defineSchema({
         ogImage: v.optional(v.array(v.id("images"))),
       }),
     ),
+    preference: v.optional(
+      v.union(
+        v.object({ kind: v.literal("email"), address: v.optional(v.string()) }),
+        v.object({ kind: v.literal("sms"), contact: v.optional(v.id("authors")) }),
+      ),
+    ),
   }),
 });
 
@@ -259,6 +274,11 @@ declare module "@vexcms/core" {
         };
         gallery: { kind: "group"; fields: { asset: { kind: "upload"; target: "images" } } };
         seo: { kind: "group"; fields: { ogImage: { kind: "upload"; target: "images" } } };
+        preference: {
+          kind: "variant";
+          discriminator: "kind";
+          variants: { sms: { contact: { kind: "relationship"; target: "authors" } } };
+        };
       };
     };
   }

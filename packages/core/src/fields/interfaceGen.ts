@@ -48,6 +48,24 @@ export function getFieldInterfaces(fields: CollectionConfig["fields"]): string[]
         const union = field.blocks.map((b) => b.interfaceName).join(" | ");
         declarations.push(`export type ${field.interfaceName} = ${union}`);
       }
+    } else if (field.type === ADMIN_FIELDS.keyValue.type) {
+      // A keyValue's value is one shared data field — recursing through the
+      // same entry point handles a nested group/array/blocks/keyValue value
+      // identically to a top-level field.
+      declarations.push(...getFieldInterfaces({ value: field.value }));
+    } else if (field.type === ADMIN_FIELDS.variant.type) {
+      if (field.discriminator !== undefined) {
+        for (const member of Object.values(field.variants)) {
+          declarations.push(...getFieldInterfaces(member.fields));
+        }
+      } else {
+        for (const member of Object.values(field.variants)) {
+          declarations.push(...getFieldInterfaces({ member }));
+        }
+      }
+      if (field.interfaceName) {
+        declarations.push(`export type ${field.interfaceName} = ${field.interfaceType}`);
+      }
     }
   }
 

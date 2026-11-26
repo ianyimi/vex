@@ -19,7 +19,7 @@ import { useAuthTransition } from "@vexcms/react";
  * SOME navigation happened to occur (a sidebar link click), because Next
  * re-fetches the dynamic `/admin` layout — including a brand-new
  * `authPromise` — on every navigation already. A sign-OUT from THIS tab
- * never needed this: it hard-navigates (`VexAdminAuthAdapterContext`'s own
+ * never needed this: it full-reloads (`VexAdminAuthAdapterContext`'s own
  * `signOut`), which already gets a fully fresh server render.
  *
  * Reads `useAuthTransition()`'s `expectedIdentity` (`@vexcms/react`) — the
@@ -62,16 +62,16 @@ import { useAuthTransition } from "@vexcms/react";
  *    reason to exist: a real sign-out, in another tab or this one).
  * 2. **A same-tab sign-out already navigating.** `VexAdminAuthAdapterContext`'s
  *    `signOut` contract calls `beginTransition(null, { skipRefresh: true })`
- *    (`@vexcms/react`) BEFORE its own hard navigation — a `router.refresh()`
+ *    (`@vexcms/react`) BEFORE its own full reload — a `router.refresh()`
  *    fired for that SAME transition starts a soft, client-side re-render of
- *    the (now signed-out) admin route WHILE the hard navigation's own
- *    `signOut()` round trip is still in flight, which can complete, redirect
- *    to the sign-in route via the admin's own guard, and paint, all before
- *    the hard navigation finally takes over — the developer-reported
- *    "sidebar lingers, sign-in page flashes, then the real destination
- *    lands" sequence. `consumeSkipRefresh()` (`@vexcms/react`) is this
- *    hook's side of that contract: a same-tab sign-out already has its own
- *    navigation, so this hook's refresh would only ever race it, never help.
+ *    the (now signed-out) admin route WHILE the reload's own `signOut()`
+ *    round trip is still in flight, which can complete, redirect to the
+ *    sign-in route via the admin's own guard, and paint, all before the
+ *    full reload finally takes over — the developer-reported "sidebar
+ *    lingers, sign-in page flashes, then the real destination lands"
+ *    sequence. `consumeSkipRefresh()` (`@vexcms/react`) is this hook's side
+ *    of that contract: a same-tab sign-out already has its own navigation,
+ *    so this hook's refresh would only ever race it, never help.
  *
  * Mount once, high in the admin tree (`NextAdminLayoutClient`) — needs an
  * `AuthTransitionProvider` ancestor (the app's own `ConvexClientProvider`

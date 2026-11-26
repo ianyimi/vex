@@ -1,5 +1,6 @@
 "use client";
 
+import { stringifyConvexValue } from "@vexcms/core";
 import { type ReactNode } from "react";
 import { useCopyToClipboard } from "@ts-hooks-kit/core";
 import { toast } from "sonner";
@@ -20,7 +21,7 @@ import { Button } from "../../../../ui/button";
  */
 export function peekFieldCopyText(value: unknown): string {
   if (value === null || value === undefined) return "";
-  if (typeof value === "object") return JSON.stringify(value);
+  if (typeof value === "object") return stringifyConvexValue({ value });
   return String(value);
 }
 

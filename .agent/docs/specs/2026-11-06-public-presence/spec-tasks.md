@@ -71,11 +71,11 @@ Verify: `public-copy.md` holds every string named in spec.md step 1. `rg -o "Pai
 ## Step 2 — Accounts, addresses and the `vexcms` org [dev]
 Why: Sponsors approval takes "a few days" (GitHub docs), and later steps need real usernames and inboxes (SECURITY.md, the CoC contact, FUNDING.yml, footer links). Applying first hides that lead time behind the rest of the work.
 Verify: the Sponsors application shows "pending review" or "approved"; a test mail to `hello@vexcms.dev` and one to `security@vexcms.dev` both arrive; `gh api orgs/vexcms --jq .login` prints `vexcms`; the Buy Me a Coffee and Buttondown usernames are recorded in `public-copy.md`
-- [ ] GitHub Sponsors for the personal account `ianyimi`: profile, bank/tax/2FA, tiers $3 / $10 / $50 / $250 monthly with one-time and custom amounts enabled, tier text from `public-copy.md`. Request approval. The goal is set in step 8
-- [ ] Buy Me a Coffee account (plain link only, no widget)
-- [ ] Buttondown account (free plan). Hosted subscribe page live at `https://buttondown.com/<user>`
-- [ ] `hello@vexcms.dev` and `security@vexcms.dev` forwarding to the developer's inbox (DNS-level forwarding at the vexcms.dev DNS host)
-- [ ] Claim the `vexcms` GitHub organisation (free). The repo stays at `ianyimi/vex`, and the transfer goes to the backlog (step 19)
+- [x] GitHub Sponsors for the personal account `ianyimi`: profile, bank/tax/2FA, tiers $3 / $10 / $50 / $250 monthly with one-time and custom amounts enabled, tier text from `public-copy.md`. Request approval. The goal is set in step 8
+- [x] Buy Me a Coffee account (plain link only, no widget)
+- [x] Buttondown account (free plan). Hosted subscribe page live at `https://buttondown.com/<user>`
+- [x] `hello@vexcms.dev` and `security@vexcms.dev` forwarding to the developer's inbox (DNS-level forwarding at the vexcms.dev DNS host)
+- [x] Claim the `vexcms` GitHub organisation (free). The repo stays at `ianyimi/vex`, and the transfer goes to the backlog (step 19)
 
 ## Step 3 — Label taxonomy and sync script [agent]
 Why: a reviewable, reproducible label set rather than click-ops. The check mode catches the silent failure GitHub documents: an issue-form label that doesn't exist in the repo is skipped without error.
@@ -103,10 +103,10 @@ Verify: `pnpm exec prettier --check CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.
 ## Step 6 — Repo settings: Discussions, private vulnerability reporting, social preview [dev]
 Why: Discussions is the only support channel at launch (no Discord). Private vulnerability reporting is what SECURITY.md promises. The social card is what every shared link shows.
 Verify: `gh api repos/ianyimi/vex --jq .has_discussions` prints `true`. The GraphQL `discussionCategories` query lists exactly Q&A (answerable), Ideas, Show and tell, Announcements. `gh api repos/ianyimi/vex/private-vulnerability-reporting --jq .enabled` prints `true`. Pasting the repo URL into a link unfurler (Slack/Discord/X card validator) shows the new card
-- [ ] Enable Discussions (`gh api -X PATCH repos/ianyimi/vex -F has_discussions=true`). Delete General and Polls; keep Q&A, Ideas, Show and tell, Announcements. Categories are UI-only (no API mutation exists). Pin a welcome post in Announcements with the support-channel line
-- [ ] `gh api -X PUT repos/ianyimi/vex/private-vulnerability-reporting`
-- [ ] `.github/assets/social-preview.png`: 1280×640, < 1 MB, wordmark card per `2026-08-30-wp4-docs-repo-polish/github-page.md`, uploaded in Settings → Social preview
-- [ ] Settings → General → Features: Wiki off (unused; Discussions and the docs replace it)
+- [x] Enable Discussions (`gh api -X PATCH repos/ianyimi/vex -F has_discussions=true`). Delete General and Polls; keep Q&A, Ideas, Show and tell, Announcements. Categories are UI-only (no API mutation exists). Pin a welcome post in Announcements with the support-channel line
+- [x] `gh api -X PUT repos/ianyimi/vex/private-vulnerability-reporting`
+- [x] `.github/assets/social-preview.png`: 1280×640, < 1 MB, wordmark card per `2026-08-30-wp4-docs-repo-polish/github-page.md`, uploaded in Settings → Social preview
+- [x] Settings → General → Features: Wiki off (unused; Discussions and the docs replace it)
 
 ## Step 7 — Starter issues [agent drafts, dev files]
 Why: launch visitors who want to help need scoped work, and every post-0.1.0 roadmap item needs a 👍-countable `planned` issue that the docs roadmap links to.
@@ -118,7 +118,7 @@ Verify: `gh issue list --repo ianyimi/vex --label planned --json number --jq len
 ## Step 8 — FUNDING.yml and the Sponsors profile [dev]
 Why: renders the repo's Sponsor button (on `master`) and finishes the profile once GitHub approves it.
 Verify: on the Sponsors dashboard the goal and all 4 tiers are published; `node -e "require('yaml').parse(require('fs').readFileSync('.github/FUNDING.yml','utf8'))"` parses; after the Release merge the repo header shows "Sponsor" with GitHub Sponsors and Buy Me a Coffee
-- [ ] `.github/FUNDING.yml`: `github: ianyimi` and `buy_me_a_coffee: <user>`
+- [x] `.github/FUNDING.yml`: `github: ianyimi` and `buy_me_a_coffee: <user>` (`buy_me_a_coffee: zaye`; parses)
 - [ ] Sponsors profile: bio from `public-copy.md`, featured work = `ianyimi/vex`, and a monthly-amount goal using the goal copy (you set the amount at this step), with public visibility opted in
 
 ## Step 9 — Docs roadmap rewrite [dev]
@@ -166,11 +166,11 @@ Verify: `pnpm --filter www exec vex generate && pnpm --filter www typecheck && p
 - [x] `apps/www/e2e/routes.ts`: `{ path: "/posts/vexcms-0-1-0", draft: true }` in `QUALITY_ROUTES`, if the file exists. The `draft` flag is removed in the D1 edit that publishes the post
 
 ## Step 15 — Private planning docs out of the public repo [dev]
-Why: Q keeps tiers, pricing, licence enforcement and customer specifics private. All of it is public today: `.agent/` is tracked on `master` and `dev` of a public repo (pitch deck, `post-v0.1.0-plan.md`, `product/roadmap.md`). Launch traffic is when strangers read the tree. This is a launch blocker for L.
-Verify: on GitHub, `gh api "repos/ianyimi/vex/contents/.agent?ref=dev"` returns 404 once the change is pushed. `git ls-files .agent | wc -l` prints `0`, and `.agent` resolves through the `harness install` link. `harness doctor` is clean. Whether history is rewritten is recorded as an explicit decision
-- [ ] `[agent]` `private-inventory.md`: every tracked file holding tiers, prices, licence enforcement, ENT-P or customer specifics, with the matching line counts (this spec folder included). It's the evidence for the history-rewrite decision; the move itself takes all of `.agent/`
-- [ ] `[dev]` Move the whole `.agent/` to the central `../agents` link with `harness install` (option A, cross-spec decision 10), as soon as no session has unstaged `.agent/` edits. Every `.agent/docs/specs/…` path keeps resolving through the link
-- [ ] `[dev]` Decide on history rewriting (destructive: `git filter-repo` + force-push, and clones and forks keep the old history). Record the decision either way
+Why: Q keeps tiers and pricing private. The pitch deck, monetization research and private-tier notes were tracked on `master` and `dev` of a public repo. The 2026-11-17 cleanup moved them to the git-ignored `.agent/docs/business/`; the rest of `.agent/` stays tracked (developer, 2026-11-22, replacing cross-spec decision 10's move to `../agents`). Customer names are not private (developer, 2026-11-22). Launch traffic is when strangers read the tree. This is a launch blocker for L.
+Verify: after the push, `gh api "repos/ianyimi/vex/contents/.agent/docs/research/pitch-deck?ref=dev"` returns 404; `.agent/docs/business` is git-ignored; the private-inventory search (terms kept in the git-ignored archive) finds nothing in `git ls-files`; `harness doctor` is clean
+- [x] `[agent]` `private-inventory.md`: every tracked file holding tiers, prices, licence enforcement, ENT-P or customer specifics, with the matching line counts (this spec folder included). It's the evidence for the history-rewrite decision (written 2026-11-07; moved to the git-ignored business archive in the 2026-11-17 cleanup)
+- [ ] `[dev]` Commit and push the 2026-11-17 cleanup with the next normal commit (deleted pitch deck + monetization docs, cleaned plan docs, the `.agent/docs/business/` `.gitignore` lines)
+- [x] `[dev]` History rewrite: no rewrite (developer, 2026-11-22). Pre-cleanup commits keep the removed files; cited SHAs stay valid
 
 ## Step 16 — Demo media: hero GIF, screenshots, demo video [dev] [blocked: quality-pass steps 6–7 (admin and www visual fixes)]
 Why: recorded media freezes the UI. Recording before the quality pass's admin and www fixes would ship pre-fix screens to the README, `/brand`, `/tour` and U's posts. One shared session covers this step, launch-kit step 8's clips and launch-infra's `/tour` recapture (cross-spec decision 7).
@@ -185,12 +185,12 @@ Verify: the GIF is ≤ 10 MB and loops on GitHub; the MP4 is H.264, 30–60 s, �
 ## Step 17 — README quick start [dev] [blocked: launch-infra step 19 (N's template run-through)]
 Why: the quick start must be the command list that N's manual run-through proved on a fresh Convex deployment, not today's 7-command flow.
 Verify: the three commands, run verbatim in an empty directory against a fresh Convex deployment, end at a signed-in admin
-- [ ] `README.md` quick start: the three commands from N's run-through and a link to the docs quickstart for the manual setup
+- [x] `README.md` quick start: the three commands from N's run-through and a link to the docs quickstart for the manual setup
 
 ## Step 18 — 0.1.0 release notes and release-day copy flip [dev] [blocked: Release (everything else shipped)]
 Why: release notes describe what actually shipped. The alpha wording changes on the day `0.1.0` is on npm, through launch-kit's `copy-flip.patch`, which L reviews (launch-kit steps 11 and 21) and Release applies unchanged (cross-spec decision 2). Nothing changes after L except the Release version bumps and that patch.
 Verify: `gh release view v0.1.0 --repo ianyimi/vex --json isLatest --jq .isLatest` prints `true`. `gh api repos/ianyimi/vex/releases/latest --jq .tag_name` prints `v0.1.0`. Post-apply check: `rg -n "@alpha|0\.1\.0-alpha" README.md apps/docs/src/content/docs apps/docs/astro.config.mjs apps/www/convex/seed.ts apps/test/convex/seed.ts apps/www/package.json apps/www/src/vexcms/blocks apps/test/src/vexcms/blocks` returns nothing; a hit is a gap in the patch, reported back to L, not hand-fixed. The announcement is still a draft
-- [ ] `[agent]` `release-notes.md` drafted from `.changeset/*.md`, the package CHANGELOGs and the docs roadmap's shipped list: highlights, breaking changes since the alphas, upgrade notes. `[dev]` edits it before L reads it
+- [x] `[agent]` `release-notes.md` drafted from `.changeset/*.md`, the package CHANGELOGs and the docs roadmap's shipped list: highlights, breaking changes since the alphas, upgrade notes. `[dev]` edits it before L reads it (drafted 2026-11-09, PP-18)
 - [ ] `[dev]` Apply `.agent/docs/specs/2026-11-06-launch-kit-final-review/copy-flip.patch` unchanged (`git apply`), then `seed:reinit` on production
 - [ ] `[dev]` Once changesets has published, run `gh release create v0.1.0 --target master --title "VexCMS 0.1.0" --notes-file .agent/docs/specs/2026-11-06-public-presence/release-notes.md --latest`
 
@@ -200,4 +200,4 @@ D1 note (not part of Release): on D1 morning the announcement is published from 
 Why: plan and backlog stay the source of truth. This step edits them directly (cross-spec decision 8).
 Verify: launch plan item 16 and the Q, R, O and T task lists ticked, with commit refs; each new backlog entry follows `backlog.md`'s entry format; `harness doctor` clean
 - [ ] `v0.1.0-launch-plan.md`: tick item 16 and the Q, R, O and T tasks, with evidence. The Q task's paid line and free-feature list are updated to the decided wording
-- [ ] `backlog.md`: the repo transfer to `vexcms`; the inline newsletter form; `createGithubReleases: false` + one release per version; a generated sponsors image. (No posts-index entry: launch-kit's `/launch-week` recap page resolved it)
+- [x] `backlog.md`: the repo transfer to `vexcms`; the inline newsletter form; `createGithubReleases: false` + one release per version; a generated sponsors image. (No posts-index entry: launch-kit's `/launch-week` recap page resolved it) (PP-19: § Repo transfer, § Inline newsletter form, § Stop per-package GitHub Releases, § Generated sponsors image)

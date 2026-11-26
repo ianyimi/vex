@@ -16,6 +16,7 @@ export const ADMIN_FIELDS = {
     defaultValue: "",
     kind: "data",
     inputMasks: true,
+    hasNullToggle: false,
   },
   email: {
     type: "email",
@@ -24,6 +25,7 @@ export const ADMIN_FIELDS = {
     defaultValue: "",
     kind: "data",
     inputMasks: true,
+    hasNullToggle: false,
   },
   textarea: {
     type: "textarea",
@@ -32,6 +34,7 @@ export const ADMIN_FIELDS = {
     defaultValue: "",
     kind: "data",
     inputMasks: false,
+    hasNullToggle: false,
   },
   url: {
     type: "url",
@@ -40,6 +43,7 @@ export const ADMIN_FIELDS = {
     defaultValue: "",
     kind: "data",
     inputMasks: true,
+    hasNullToggle: false,
   },
   color: {
     type: "color",
@@ -48,14 +52,16 @@ export const ADMIN_FIELDS = {
     defaultValue: "",
     kind: "data",
     inputMasks: false,
+    hasNullToggle: false,
   },
   number: {
     type: "number",
     interfaceType: "number",
     validator: "v.number()",
-    defaultValue: 0,
+    defaultValue: undefined,
     kind: "data",
     inputMasks: true,
+    hasNullToggle: false,
   },
   checkbox: {
     type: "checkbox",
@@ -64,6 +70,7 @@ export const ADMIN_FIELDS = {
     defaultValue: false,
     kind: "data",
     inputMasks: false,
+    hasNullToggle: true,
   },
   date: {
     type: "date",
@@ -72,6 +79,7 @@ export const ADMIN_FIELDS = {
     defaultValue: undefined,
     kind: "data",
     inputMasks: false,
+    hasNullToggle: false,
   },
   commitTs: {
     type: "commitTs",
@@ -80,6 +88,7 @@ export const ADMIN_FIELDS = {
     defaultValue: undefined,
     kind: "data",
     inputMasks: false,
+    hasNullToggle: false,
   },
   select: {
     type: "select",
@@ -88,6 +97,7 @@ export const ADMIN_FIELDS = {
     defaultValue: [] as string[],
     kind: "data",
     inputMasks: false,
+    hasNullToggle: false,
   },
   relationship: {
     type: "relationship",
@@ -96,6 +106,7 @@ export const ADMIN_FIELDS = {
     defaultValue: [] as string[],
     kind: "data",
     inputMasks: false,
+    hasNullToggle: false,
   },
   array: {
     type: "array",
@@ -104,6 +115,7 @@ export const ADMIN_FIELDS = {
     defaultValue: [],
     kind: "data",
     inputMasks: false,
+    hasNullToggle: true,
   },
   group: {
     type: "group",
@@ -113,6 +125,17 @@ export const ADMIN_FIELDS = {
     defaultValue: {} as Record<string, any>,
     kind: "data",
     inputMasks: false,
+    hasNullToggle: true,
+  },
+  keyValue: {
+    type: "keyValue",
+    interfaceType: "Record<string, any>", // placeholder - keyValue() overrides per instance
+    validator: "v.record(v.string(), v.any())", // placeholder - keyValueFieldToValidator builds dynamically
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    defaultValue: {} as Record<string, any>,
+    kind: "data",
+    inputMasks: false,
+    hasNullToggle: true,
   },
   blocks: {
     type: "blocks",
@@ -121,6 +144,7 @@ export const ADMIN_FIELDS = {
     defaultValue: [],
     kind: "data",
     inputMasks: false,
+    hasNullToggle: true,
   },
   upload: {
     type: "upload",
@@ -129,6 +153,7 @@ export const ADMIN_FIELDS = {
     defaultValue: undefined,
     kind: "data",
     inputMasks: false,
+    hasNullToggle: false,
   },
   richtext: {
     type: "richtext",
@@ -137,6 +162,7 @@ export const ADMIN_FIELDS = {
     defaultValue: [],
     kind: "data",
     inputMasks: false,
+    hasNullToggle: true,
   },
   json: {
     type: "json",
@@ -145,6 +171,25 @@ export const ADMIN_FIELDS = {
     defaultValue: undefined,
     kind: "data",
     inputMasks: false,
+    hasNullToggle: true,
+  },
+  variant: {
+    type: "variant",
+    interfaceType: "unknown",
+    validator: "v.any()",
+    defaultValue: undefined,
+    kind: "data",
+    inputMasks: false,
+    hasNullToggle: true,
+  },
+  bytes: {
+    type: "bytes",
+    interfaceType: "ArrayBuffer",
+    validator: "v.bytes()",
+    defaultValue: undefined,
+    kind: "data",
+    inputMasks: false,
+    hasNullToggle: false,
   },
   tabs: {
     type: "tabs",
@@ -153,6 +198,7 @@ export const ADMIN_FIELDS = {
     defaultValue: undefined,
     kind: "ui",
     inputMasks: false,
+    hasNullToggle: false,
   },
   collapsible: {
     type: "collapsible",
@@ -161,6 +207,7 @@ export const ADMIN_FIELDS = {
     defaultValue: undefined,
     kind: "ui",
     inputMasks: false,
+    hasNullToggle: false,
   },
   row: {
     type: "row",
@@ -169,6 +216,7 @@ export const ADMIN_FIELDS = {
     defaultValue: undefined,
     kind: "ui",
     inputMasks: false,
+    hasNullToggle: false,
   },
   ui: {
     type: "ui",
@@ -177,6 +225,7 @@ export const ADMIN_FIELDS = {
     defaultValue: undefined,
     kind: "ui",
     inputMasks: false,
+    hasNullToggle: false,
   },
 } as const;
 
@@ -186,6 +235,23 @@ export type AdminFieldType = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["t
 export type AdminFieldValidator = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["validator"];
 /** Union of all TypeScript type strings corresponding to the supported field types (e.g. `"string"` | `"number"` | ...). */
 export type AdminFieldTsType = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["interfaceType"];
+
+/**
+ * Convex storage validator names a field's `schema: { validator }` option may
+ * select, mirroring Convex's own vocabulary. `number` accepts `"int64"`;
+ * `select` accepts `"literal" | "string"`; `relationship`/`upload` accept
+ * `"id" | "string"`. Each field type's own `schema` input narrows this to its
+ * own subset.
+ */
+export const FIELD_SCHEMA_VALIDATORS = {
+  int64: "int64",
+  literal: "literal",
+  string: "string",
+  id: "id",
+} as const;
+
+/** Derived from {@link FIELD_SCHEMA_VALIDATORS}. */
+export type FieldSchemaValidator = (typeof FIELD_SCHEMA_VALIDATORS)[keyof typeof FIELD_SCHEMA_VALIDATORS];
 
 /** Literal type `"text"` — the discriminant value on {@link TextField}. */
 export type TextFieldType = typeof ADMIN_FIELDS.text.type;
@@ -226,6 +292,9 @@ export type TextareaFieldType = typeof ADMIN_FIELDS.textarea.type;
 /** Literal type `"group"` — the discriminant value on {@link GroupField}. */
 export type GroupFieldType = typeof ADMIN_FIELDS.group.type;
 
+/** Literal type `"keyValue"` — the discriminant value on {@link KeyValueField}. */
+export type KeyValueFieldType = typeof ADMIN_FIELDS.keyValue.type;
+
 /** Literal type `"blocks"` — the discriminant value on {@link BlocksField}. */
 export type BlocksFieldType = typeof ADMIN_FIELDS.blocks.type;
 
@@ -237,6 +306,12 @@ export type RichTextFieldType = typeof ADMIN_FIELDS.richtext.type;
 
 /** Literal type `"json"` — the discriminant value on {@link JsonField}. */
 export type JsonFieldType = typeof ADMIN_FIELDS.json.type;
+
+/** Literal type `"variant"` — the discriminant value on {@link VariantField}. */
+export type VariantFieldType = typeof ADMIN_FIELDS.variant.type;
+
+/** Literal type `"bytes"` — the discriminant value on {@link BytesField}. */
+export type BytesFieldType = typeof ADMIN_FIELDS.bytes.type;
 
 /** Literal type `"tabs"` — the discriminant value on {@link TabsField}. */
 export type TabsFieldType = typeof ADMIN_FIELDS.tabs.type;

@@ -71,6 +71,7 @@ export function date<
     // Core properties with defaults
     label: "",
     required: false,
+    nullable: false,
     defaultValue: ADMIN_FIELDS.date.defaultValue,
     ...options,
 

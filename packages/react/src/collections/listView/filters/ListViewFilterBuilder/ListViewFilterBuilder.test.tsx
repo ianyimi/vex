@@ -211,6 +211,17 @@ describe("ListViewFilterBuilder", () => {
     expect(await screen.findByRole("option", { name: "≥ gte" })).toBeInTheDocument();
   });
 
+  it("never throws syncing a where tree containing a bigint int64 filter value", async () => {
+    const where = { field: "views", op: "eq", value: 9007199254740993n } as never;
+    expect(() =>
+      render(
+        <ListViewFilterBuilder collection={collection}
+        where={where}
+        onWhereChange={vi.fn()}  />,
+      ),
+    ).not.toThrow();
+  });
+
   it("renders a read-only panel for a where outside DNF form (e.g. `not`)", async () => {
     const user = userEvent.setup();
     const where = { not: { field: "title", op: "eq", value: "x" } } as never;
@@ -222,6 +233,18 @@ describe("ListViewFilterBuilder", () => {
     const dialog = await openFilterPopover(user);
     expect(within(dialog).getByText(/can.t be edited here/i)).toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: "AND" })).not.toBeInTheDocument();
+  });
+
+  it("renders the read-only debug panel's bigint value as exact digits, not a crash", async () => {
+    const user = userEvent.setup();
+    const where = { not: { field: "views", op: "eq", value: 9007199254740993n } } as never;
+    render(
+      <ListViewFilterBuilder collection={collection}
+      where={where}
+      onWhereChange={vi.fn()}  />,
+    );
+    const dialog = await openFilterPopover(user);
+    expect(within(dialog).getByText(/9007199254740993/)).toBeInTheDocument();
   });
 
   it("offers the synthetic vex_status field on a versioned collection", async () => {

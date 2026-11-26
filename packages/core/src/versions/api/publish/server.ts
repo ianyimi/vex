@@ -28,7 +28,11 @@ export type PublishServerArgs<DataModel extends GenericDataModel> = {
   access?: AccessCallOptions<string>;
   /** Resolved caller identity, forwarded to `hasPermission`. */
   auth?: VexApiAuth;
-  /** Field values to merge on top of the current draft/published row before publishing. */
+  /**
+   * Field values to merge on top of the current draft/published row before
+   * publishing. A `null` value for an optional, non-nullable field unsets
+   * it; a `nullable` field stores the literal `null` instead.
+   */
   data?: Record<string, unknown>;
   /** Publish this history version's snapshot instead of the draft. */
   version?: number;

@@ -2,6 +2,8 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 /**
  * The S5 document-context shape every edit-view slot contribution reads via
  * `useVexDocument()`. Deliberately excludes live, per-keystroke form values —
@@ -38,7 +40,9 @@ export type VexDocumentState = {
  * `null`, so a consumer rendered outside any provider gets a clear thrown
  * error instead of a silently stale document.
  */
-export const VexDocumentContext = createContext<VexDocumentState | null>(null);
+export const VexDocumentContext = globalSingleton("documents/VexDocumentContext", () =>
+  createContext<VexDocumentState | null>(null),
+);
 
 /**
  * Mounts `VexDocumentContext` for the subtree it wraps. `CollectionEditView`

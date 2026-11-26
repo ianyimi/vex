@@ -366,7 +366,7 @@ export async function search<
 
   const finalDocs =
     !effectivePopulate || Object.keys(effectivePopulate).length === 0
-      ? (docs as DocReturnItem<TCollectionSlug, TPopulate, D>[])
+      ? (docs as unknown as DocReturnItem<TCollectionSlug, TPopulate, D>[])
       : ((await populateDocs(
           args.ctx,
           docs,
@@ -375,7 +375,7 @@ export async function search<
           args.config,
           access,
           args.auth,
-        )) as DocReturnItem<TCollectionSlug, TPopulate, D>[]);
+        )) as unknown as DocReturnItem<TCollectionSlug, TPopulate, D>[]);
 
   if (args.paginationOpts) {
     // See `find/server.ts`'s identical `viewerId` doc comment.
@@ -413,13 +413,13 @@ export async function search<
       // Return Convex pagination result directly with populated docs
       return {
         ...convexPaginationResult,
-        page: finalDocs as DocReturnItem<TCollectionSlug, TPopulate, D>[],
+        page: finalDocs,
         viewerId,
       };
     }
   }
 
-  return finalDocs as DocReturnItem<TCollectionSlug, TPopulate, D>[];
+  return finalDocs;
 }
 
 function buildQuery<

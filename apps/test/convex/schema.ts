@@ -31,9 +31,11 @@ import {
   testimonials,
   telemetryEvents,
   telemetryProjects,
+  storage_shapes,
 } from "./vex.schema";
 
 export default defineSchema({
+  storage_shapes,
   telemetryEvents,
   telemetryProjects,
   testimonials,

@@ -20,8 +20,8 @@ import type { VexResourceSlug } from "@vexcms/core";
 export const relationshipTargetCollection = defineCollection({
   slug: "documents",
   labels: { singular: "Document", plural: "Documents" },
-  fields: { title: text({ required: true }) },
-  admin: { useAsTitle: "title" },
+  fields: { title: text({ required: true, searchIndex: { name: "search_title", filterFields: [] } }) },
+  admin: { useAsTitle: "title", view: { searchFields: ["title"] } },
 });
 
 /**
@@ -56,4 +56,29 @@ export const relationshipFieldFixture: FieldFixture<
   valid: ["kg2fake00000000000000001;documents"],
   invalid: undefined,
   empty: [],
+};
+
+/**
+ * `schema: { validator: "id" }` scalar storage — `hasMany: false` with a
+ * bare `Id<"documents">` value instead of `Id<"documents">[]`. Covers the
+ * shared contract's generic `valid`/`invalid`/`empty` assertions for the
+ * scalar branch the array fixture above never exercises; the real
+ * empty/filled/picker surface for scalar storage is covered by
+ * `Field.test.tsx`'s own "relationship scalar storage" describe block.
+ */
+export const scalarRelationshipFieldFixture: FieldFixture<
+  RelationshipField<VexResourceSlug, CollectionFieldMeta>,
+  string
+> = {
+  fieldType: "relationship",
+  fieldDef: relationship<VexResourceSlug, never, CollectionFieldMeta>({
+    collection: { slug: "documents" },
+    hasMany: false,
+    schema: { validator: "id" },
+    required: true,
+    meta: { collectionSlug: testCollection.slug },
+  }),
+  valid: "kg2fake00000000000000001;documents",
+  invalid: undefined,
+  empty: undefined,
 };

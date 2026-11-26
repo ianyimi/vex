@@ -45,9 +45,9 @@ export interface FieldCellContractOptions<
   collection?: CollectionConfig;
   /**
    * Truncation threshold. Defaults to 77 — `text/Cell.tsx`'s own cutoff — and the
-   * assertion runs by DEFAULT. Pass `false` ONLY for the four types where truncation
-   * is meaningless: `date` (fixed format), `number`, `checkbox` (boolean), and `color`
-   * (`#e8622a`).
+   * assertion runs by DEFAULT. Pass `false` for a one-off, PER-CALL opt-out; when
+   * left unset, falls back to `fixture.cellTruncates` (a per-FIXTURE opt-out —
+   * see {@link FieldFixture.cellTruncates}), then to the 77-character default.
    */
   truncates?: number | false;
   /** Type-specific rendering assertions, appended inside the same `describe` block. */
@@ -161,7 +161,7 @@ export function runFieldCellContractSuite<TField extends AdminDataField, TValue>
 ): void {
   const { fixture, Component, extra } = options;
   const collection = options.collection ?? testCollection;
-  const truncates = options.truncates ?? DEFAULT_TRUNCATE_THRESHOLD;
+  const truncates = options.truncates ?? (fixture.cellTruncates === false ? false : DEFAULT_TRUNCATE_THRESHOLD);
 
   function renderCell(props: { value: unknown; isTitleField?: boolean; id?: string }): RenderResult {
     // A `QueryClient` whose default `queryFn` never resolves — the same pattern

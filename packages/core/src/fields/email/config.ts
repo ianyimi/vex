@@ -56,6 +56,7 @@ export function email<
     // Core properties with defaults
     label: "",
     required: false,
+    nullable: false,
     defaultValue: ADMIN_FIELDS.email.defaultValue,
     ...options,
 

@@ -61,6 +61,7 @@ export function text<
     // Core properties with defaults
     label: "",
     required: false,
+    nullable: false,
     defaultValue: ADMIN_FIELDS.text.defaultValue,
     ...options,
 

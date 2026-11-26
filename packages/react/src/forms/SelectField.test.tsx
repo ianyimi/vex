@@ -17,13 +17,19 @@ const options = [
   { label: "Published", value: "published" },
 ];
 
-function RadioHarness(props: { initialValue: string[]; hasMany?: boolean }) {
+function RadioHarness(props: { initialValue: string[] | string; hasMany?: boolean; scalar?: boolean }) {
   const form = useAppForm({ defaultValues: { status: props.initialValue } });
   return (
     <form.AppForm>
       <form.AppField name="status">
         {(field) => (
-          <field.SelectField label="Status" options={options} display="radio" hasMany={props.hasMany} />
+          <field.SelectField
+            label="Status"
+            options={options}
+            display="radio"
+            hasMany={props.hasMany}
+            scalar={props.scalar}
+          />
         )}
       </form.AppField>
       <form.Subscribe selector={(state) => state.values.status}>
@@ -88,5 +94,22 @@ describe("SelectField: radio display", () => {
     const hiddenInputs = container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
     await user.click(hiddenInputs[publishedIndex]!);
     expect(screen.getByTestId("value-probe")).toHaveTextContent('["draft","published"]');
+  });
+});
+
+describe("SelectField: scalar binding", () => {
+  it("commits a scalar string, not a one-element array, when a radio is selected", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<RadioHarness initialValue="" scalar />);
+    const publishedIndex = options.findIndex((o) => o.label === "Published");
+    const hiddenInputs = container.querySelectorAll<HTMLInputElement>('input[type="radio"]');
+    await user.click(hiddenInputs[publishedIndex]!);
+    expect(screen.getByTestId("value-probe")).toHaveTextContent('"published"');
+  });
+
+  it("pre-selects the radio matching a scalar initial value", () => {
+    const { container } = render(<RadioHarness initialValue="draft" scalar />);
+    const hiddenInputs = container.querySelectorAll<HTMLInputElement>('input[type="radio"]');
+    expect(hiddenInputs[0]?.checked).toBe(true);
   });
 });

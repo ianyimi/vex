@@ -64,6 +64,7 @@ export function color<
     // Core properties with defaults
     label: "",
     required: false,
+    nullable: false,
     defaultValue: ADMIN_FIELDS.color.defaultValue,
     ...options,
 

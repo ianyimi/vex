@@ -220,7 +220,7 @@ own fields are walked once, as flat entries in `fields` under `${id}.fN`.
 
 Every field reports its `type` and only allowlisted booleans, numbers and enum options for
 that type. Any string value a field can hold (defaults, labels, descriptions, regex
-patterns, URLs) is dropped entirely, except the three allowlisted booleans/enums below.
+patterns, URLs) is dropped entirely, except the allowlisted booleans/enums/counts below.
 
 | Field | Type | Description |
 |---|---|---|
@@ -228,6 +228,7 @@ patterns, URLs) is dropped entirely, except the three allowlisted booleans/enums
 | `type` | `AdminFieldType` | The field type (e.g. `"text"`, `"richText"`, `"relationship"`). |
 | `required` | `boolean \| undefined` | Whether the field is required. |
 | `hidden` | `boolean \| undefined` | Whether the field is hidden in the admin UI. |
+| `nullable` | `boolean \| undefined` | Whether the field stores `v.nullable(...)`. |
 | `readOnly` | `boolean \| undefined` | Whether the field is read-only in the admin UI. |
 | `position` | `"main" \| "sidebar" \| undefined` | Admin layout position. |
 | `cellAlignment` | `Alignment \| undefined` | List-view cell alignment. |
@@ -236,7 +237,7 @@ patterns, URLs) is dropped entirely, except the three allowlisted booleans/enums
 | `hasSearchIndex` | `boolean \| undefined` | Whether the field is part of a search index. |
 | `hasMask` | `boolean \| undefined` | Whether an input mask is configured — never its pattern. |
 | `min` | `number \| undefined` | Minimum value/length constraint. |
-| `max` | `number \| undefined` | Maximum value/length constraint. |
+| `max` | `number \| undefined` | Maximum value/length constraint, or a `bytes` field's `maxSize` in bytes. |
 | `step` | `number \| undefined` | Numeric step constraint. |
 | `rows` | `number \| undefined` | Textarea row count. |
 | `defaultValue` | `boolean \| undefined` | Whether a default value is configured (checkbox fields only) — never the value itself. |
@@ -252,7 +253,8 @@ patterns, URLs) is dropped entirely, except the three allowlisted booleans/enums
 | `display` | `SelectDisplay \| undefined` | Select field display mode. |
 | `searchable` | `boolean \| undefined` | Relationship field: whether target search is enabled. |
 | `target` | `string \| undefined` | Relationship/upload field: the resolved target resource's `path` (e.g. `c5`, `m1`) — never the real collection name. |
-| `hasAccept` | `boolean \| undefined` | Upload field: whether a file-type allowlist is configured — never the list itself. |
+| `schemaValidator` | `FieldSchemaValidator \| undefined` | Number/select/relationship/upload field with a `schema.validator` storage override: which override is set (`"int64"`, `"literal"`, `"string"`, or `"id"`). Absent when the field uses its default storage. |
+| `hasAccept` | `boolean \| undefined` | Upload/bytes field: whether a file-type (`accept`) allowlist is configured — never the list itself. |
 | `hasMediaTarget` | `boolean \| undefined` | Upload field: whether a specific media collection target is set. |
 | `defaultCollapsed` | `boolean \| undefined` | Array/blocks/group/collapsible field: whether it starts collapsed. |
 | `tabCount` | `number \| undefined` | Tabs field: number of tabs. |
@@ -260,6 +262,9 @@ patterns, URLs) is dropped entirely, except the three allowlisted booleans/enums
 | `enableSorting` | `boolean \| undefined` | Whether the list view can sort by this field. |
 | `enableHiding` | `boolean \| undefined` | Whether this field's column can be hidden in the list view. |
 | `on` | `"create" \| "update" \| "publish" \| undefined` | `commitTs` field: which lifecycle event sets the timestamp. |
+| `keyKind` | `"string" \| "id" \| undefined` | `keyValue` field: whether keys are plain strings or a collection's document ids — never which collection. |
+| `hasDiscriminator` | `boolean \| undefined` | `variant` field: whether `discriminator` is set (an object union) or not (a primitive union). |
+| `variantCount` | `number \| undefined` | `variant` field: number of configured members. |
 
 Any config key not on this allowlist is silently dropped, not sent as-is.
 

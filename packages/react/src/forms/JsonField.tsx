@@ -51,6 +51,10 @@ function parseJsonFieldText(props: { text: string }): JsonFieldParseResult {
 export type JsonFieldProps = BaseFormFieldProps<unknown> & {
   /** Forwarded to the built-in editor's placeholder, shown only when the document is empty. */
   placeholder?: string;
+  /** Whether this field's value is currently `null`. Ignored unless `onIsNullChange` is also given. */
+  isNull?: boolean;
+  /** Toggles `isNull`; forwarded to the inner `FormFieldLayout`. */
+  onIsNullChange?: (isNull: boolean) => void;
 };
 
 /**
@@ -100,6 +104,8 @@ export function JsonField(props: JsonFieldProps): ReactNode {
         submissionAttempts={submissionAttempts}
         className={props.className}
         readOnly={props.readOnly}
+        isNull={props.isNull}
+        onIsNullChange={props.onIsNullChange}
       >
         {control}
       </FormFieldLayout>
@@ -117,6 +123,8 @@ export function JsonField(props: JsonFieldProps): ReactNode {
         submissionAttempts={submissionAttempts}
         className={props.className}
         readOnly={props.readOnly}
+        isNull={props.isNull}
+        onIsNullChange={props.onIsNullChange}
       >
         <JsonEditor
           id={field.name}
@@ -171,11 +179,14 @@ export function JsonField(props: JsonFieldProps): ReactNode {
   return (
     <FormFieldLayout
       id={field.name}
+      label={props.label}
       field={field}
       submissionAttempts={submissionAttempts}
       description={props.description}
       className={props.className}
       readOnly={props.readOnly}
+      isNull={props.isNull}
+      onIsNullChange={props.onIsNullChange}
       after={parseError ? <p className="text-[0.8rem] text-destructive">{parseError}</p> : undefined}
       labelContent={
         <div className="flex items-center justify-between gap-2">

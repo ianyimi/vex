@@ -7,6 +7,7 @@ const collection = defineCollection({
   fields: {
     title: text({ required: false, searchIndex: { name: "search_title", filterFields: [] } }),
     rating: number({ required: false }),
+    viewCount: number({ required: false, schema: { validator: "int64" } }),
     featured: checkbox({ required: false }),
     publishedAt: date({ required: false }),
     source: select({ required: false, options: [{ label: "G2", value: "g2" }, { label: "Site", value: "site" }] }),
@@ -173,6 +174,18 @@ describe("parseListViewUrlState", () => {
       op: "gte",
       value: 4,
     });
+  });
+
+  it("parses an int64 filter value as a bigint", () => {
+    expect(parse("?filter=(viewCount.gte.9007199254740993)").filter).toEqual({
+      field: "viewCount",
+      op: "gte",
+      value: 9007199254740993n,
+    });
+  });
+
+  it("drops an int64 filter row with a non-integer value", () => {
+    expect(parse("?filter=(viewCount.gte.4.5)").filter).toBeUndefined();
   });
 
   it("returns undefined for an all-invalid filter", () => {
@@ -367,6 +380,13 @@ describe("serializeListViewUrlState", () => {
     expect(out.get("filter")).toBe("(rating.gte.4)");
   });
 
+  it("serializes a bigint filter value as plain decimal digits", () => {
+    const out = new URLSearchParams(
+      serialize({ filter: { field: "viewCount", op: "gte", value: 9007199254740993n } }),
+    );
+    expect(out.get("filter")).toBe("(viewCount.gte.9007199254740993)");
+  });
+
   it("serializes isEmpty/isNotEmpty from a value: undefined leaf", () => {
     const out = new URLSearchParams(
       serialize({ filter: { field: "company", op: "eq", value: undefined } }),
@@ -412,7 +432,9 @@ describe("serializeListViewUrlState", () => {
 
   it("omits cols when it matches the collection's own default order exactly", () => {
     expect(
-      serialize({ cols: ["title", "rating", "featured", "publishedAt", "source", "company", "updatedAt"] }),
+      serialize({
+        cols: ["title", "rating", "viewCount", "featured", "publishedAt", "source", "company", "updatedAt"],
+      }),
     ).toBe("");
   });
 
@@ -501,6 +523,7 @@ describe("serializeListViewUrlState — diffs against the active view's own base
           cols: [
             "rating",
             "title",
+            { field: "viewCount", hidden: true },
             { field: "featured", hidden: true },
             { field: "publishedAt", hidden: true },
             { field: "source", hidden: true },
