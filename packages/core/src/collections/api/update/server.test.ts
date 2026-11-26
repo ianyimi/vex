@@ -9,7 +9,7 @@ import type { VexConfig } from "../../../config";
 import { update } from "./server";
 import { defineAccess } from "../../../access/config";
 import type { AdminField } from "../../../fields";
-import { array, commitTs, defineCollection, text, checkbox } from "../../../index";
+import { array, bytes, commitTs, defineCollection, text, checkbox } from "../../../index";
 import { VexAccessError, WILDCARD_KEY } from "../../../access";
 
 const postsResource = defineCollection({
@@ -932,6 +932,24 @@ describe("update (server) — versioned collection", () => {
       // The draft row is left untouched.
       const draft = await ctx.db.get(draftId);
       expect(draft?.title).toBe("Live draft");
+    });
+  });
+});
+
+describe("update (server) — null unsets an optional, non-nullable field", () => {
+  test("patching a v.optional(v.bytes()) field with null removes the stored value", async () => {
+    const postsWithPayload = defineCollection({
+      slug: "posts",
+      fields: { title: text(), slug: text(), payload: bytes() },
+    });
+    const payloadConfig = { collections: [postsWithPayload] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", { title: "Old", slug: "old", payload: new ArrayBuffer(4) });
+      await update({ ctx, id, collection: "posts", config: payloadConfig, data: { payload: null } });
+      const doc = await ctx.db.get(id);
+      expect(doc?.payload).toBeUndefined();
+      expect(doc && "payload" in doc).toBe(false);
     });
   });
 });

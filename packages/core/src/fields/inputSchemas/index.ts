@@ -14,10 +14,13 @@ import { colorFieldToInputSchema } from "../color";
 import { relationshipFieldToInputSchema } from "../relationship";
 import { arrayFieldToInputSchema } from "../array";
 import { groupFieldToInputSchema } from "../group";
+import { keyValueFieldToInputSchema } from "../keyValue";
 import { blocksFieldToInputSchema } from "../blocks";
 import { uploadFieldToInputSchema } from "../upload";
 import { richTextFieldToInputSchema } from "../richtext";
 import { jsonFieldToInputSchema } from "../json";
+import { bytesFieldToInputSchema } from "../bytes";
+import { variantFieldToInputSchema } from "../variant";
 import { isFieldConditionMet } from "../utils";
 
 /**
@@ -155,6 +158,11 @@ export function adminFieldToInputSchema(props: {
         data: props.data,
         siblingData: childSiblingData,
       });
+    case ADMIN_FIELDS.keyValue.type:
+      return keyValueFieldToInputSchema({
+        field: effectiveField,
+        ignoreRequired: props.ignoreRequired,
+      });
     case ADMIN_FIELDS.blocks.type:
       return blocksFieldToInputSchema({
         field: effectiveField,
@@ -167,6 +175,15 @@ export function adminFieldToInputSchema(props: {
       return richTextFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.json.type:
       return jsonFieldToInputSchema({ field: effectiveField });
+    case ADMIN_FIELDS.variant.type:
+      return variantFieldToInputSchema({
+        field: effectiveField,
+        ignoreRequired: props.ignoreRequired,
+        data: props.data,
+        siblingData: childSiblingData,
+      });
+    case ADMIN_FIELDS.bytes.type:
+      return bytesFieldToInputSchema({ field: effectiveField });
     default: {
       const unhandled: never = effectiveField;
       throw new Error(

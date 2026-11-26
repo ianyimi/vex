@@ -343,13 +343,14 @@ function expectControlValue(control: HTMLElement, expected: unknown): void {
     return;
   }
   if (input.type === "file") return;
-  // jest-dom's `toHaveValue` coerces its own expected argument against the
-  // control's type — a `type="number"` input demands a `number` (or
-  // `undefined`/`null` for "empty"), not a stringified one, or the matcher
-  // itself throws a type-mismatch failure that has nothing to do with the
-  // component under test.
+  // jest-dom's `toHaveValue` treats an `undefined` expected argument as "has
+  // ANY value" (`expectsValue = expectedValue !== undefined`), not "is
+  // empty" — asserting emptiness on a `type="number"` input needs its own
+  // `null` (what `getSingleElementValue` itself reports for an empty
+  // number input), matching jest-dom's own documented convention; a
+  // non-numeric control instead empties to `""`.
   if (input.type === "number") {
-    expect(control).toHaveValue(expected === undefined || expected === null ? undefined : Number(expected));
+    expect(control).toHaveValue(expected === undefined || expected === null ? null : Number(expected));
     return;
   }
   expect(control).toHaveValue(expected === undefined || expected === null ? "" : String(expected));
@@ -377,10 +378,27 @@ function hasInertSignal(control: Element): boolean {
 }
 
 /**
- * Resolves the field's control deterministically by the `id` this factory itself
- * assigns (`FormLabel` wires `htmlFor={name}` and every field input sets
- * `id={name}`), falling back to an accessible-label lookup only when a field
- * type doesn't set the id.
+ * Resolves the field's control deterministically — the `role="group"`
+ * container this factory's own wrapper assigns
+ * (`[role="group"][aria-labelledby="${FIELD_NAME}-label"]`) when the field
+ * renders one, else the `id` this factory itself assigns elsewhere
+ * (`FormLabel` wires `htmlFor={name}` and every field input sets
+ * `id={name}`), falling back to an accessible-label lookup only when
+ * neither pattern is present.
+ *
+ * Container-first, not id-first: a primitive `variant()`'s active member
+ * renders its OWN top-level control bound to the SAME form path as the
+ * variant field itself (so its value lives directly at that path, not
+ * nested under a key) — when that member is a labelled control (`text()`,
+ * `number()`, …), ITS `id`/`<label for>` is `FIELD_NAME` too, literally
+ * colliding with the variant field's own identity. The variant field
+ * always renders its labelled `role="group"` wrapper regardless of mode
+ * (`fields/variant/Field.tsx`), so checking it first resolves to the
+ * variant field's own container even when a same-id member control exists
+ * inside it. Every OTHER container field (`array`/`group`/`blocks`/
+ * `keyValue`) has no element sharing `id={FIELD_NAME}` at all, so checking
+ * the container first changes nothing for them — the `id` lookup there was
+ * already falling through to this same branch.
  *
  * NOT `getByLabelText(label, { exact: false })`: substring matching collides
  * whenever another element's accessible name embeds the field label — measured
@@ -407,33 +425,34 @@ function hasInertSignal(control: Element): boolean {
  * @returns The resolved control element.
  */
 export function getControl(container: HTMLElement, labelText: string): HTMLElement {
-  const byId = container.querySelector<HTMLElement>(`#${FIELD_NAME}`);
-  if (byId) return byId;
   const group = container.querySelector<HTMLElement>(
     `[role="group"][aria-labelledby="${FIELD_NAME}-label"]`,
   );
   if (group) return group;
+  const byId = container.querySelector<HTMLElement>(`#${FIELD_NAME}`);
+  if (byId) return byId;
   return screen.getByLabelText(labelText, { exact: false });
 }
 
 /**
  * Resolves the accessible label node for either labelling pattern this suite
- * supports: a single-control field's `<label for={FIELD_NAME}>` (`FormLabel`),
- * or a container field's `role="group"` wrapper whose `aria-labelledby`
- * resolves to a plain labelled node (array/group/blocks — no single control
- * for `htmlFor` to point at).
+ * supports: a container field's `role="group"` wrapper whose `aria-labelledby`
+ * resolves to a plain labelled node (array/group/blocks/variant — checked
+ * first for the same id-collision reason {@link getControl} does), or a
+ * single-control field's `<label for={FIELD_NAME}>` (`FormLabel`).
  *
  * @param container - The rendered form's root element to search within.
  * @returns The resolved label node, or `null` if neither pattern is present.
  */
 function getLabelNode(container: HTMLElement): HTMLElement | null {
-  const labelEl = container.querySelector<HTMLElement>(`label[for="${FIELD_NAME}"]`);
-  if (labelEl) return labelEl;
-
   const group = container.querySelector<HTMLElement>('[role="group"]');
   const labelledBy = group?.getAttribute("aria-labelledby");
-  if (!labelledBy) return null;
-  return container.querySelector<HTMLElement>(`#${labelledBy}`);
+  if (labelledBy) {
+    const labelNode = container.querySelector<HTMLElement>(`#${labelledBy}`);
+    if (labelNode) return labelNode;
+  }
+
+  return container.querySelector<HTMLElement>(`label[for="${FIELD_NAME}"]`);
 }
 
 /**
@@ -595,9 +614,9 @@ export function runFieldInputContractSuite<TField extends AdminDataField, TValue
     const schema = adminFieldToInputSchema({ field: fixture.fieldDef });
     const validation = schema.safeParse(fixture.invalid);
     if (validation.success) {
-      // Not a fixture-authoring bug in every case: several field types'
+      // Not a fixture-authoring bug in every case: some field types' own
       // inputSchema ends in an UNCONDITIONAL `.default(field.defaultValue)`
-      // (verified in number's and checkbox's) which is never gated behind
+      // (verified in checkbox's) which is never gated behind
       // `!field.required` the way `applyBaseInputSchemaMeta`'s `.optional()`
       // is — so a missing value is silently replaced by the default and
       // validated as that, and required-ness is unenforceable at the schema
@@ -752,24 +771,24 @@ export function runFieldInputContractSuite<TField extends AdminDataField, TValue
         initialValue: fixture.valid,
       });
 
-      // Scoped to THIS field's own `for`, not the first `<label>` anywhere in
-      // the container — a container field (array/group/blocks) renders each
-      // nested sub-field's own real `<label for="testField[0]">` inside it,
-      // which a bare `querySelector("label")` would find first and
-      // misidentify as this field's own labelling pattern.
-      const labelEl = container.querySelector(`label[for="${FIELD_NAME}"]`);
-      if (labelEl) {
-        expect(getControl(container, label)).toHaveAttribute("id", FIELD_NAME);
+      // Scoped to THIS field's own `role="group"`/`aria-labelledby`
+      // container, checked FIRST — a primitive `variant()`'s active member
+      // can render its OWN real `<label for="testField">` (its control
+      // shares the field's own path), which a bare `querySelector("label")`
+      // would find first and misidentify as this field's own labelling
+      // pattern; the field's own container always wins when present.
+      const group = container.querySelector('[role="group"]');
+      const labelledBy = group?.getAttribute("aria-labelledby");
+      if (labelledBy) {
+        const labelNode = container.querySelector(`#${labelledBy}`);
+        expect(labelNode).not.toBeNull();
+        expect(labelNode?.textContent).toContain(label);
         return;
       }
 
-      const group = container.querySelector('[role="group"]');
-      expect(group).not.toBeNull();
-      const labelledBy = group?.getAttribute("aria-labelledby");
-      expect(labelledBy).toBeTruthy();
-      const labelNode = labelledBy ? container.querySelector(`#${labelledBy}`) : null;
-      expect(labelNode).not.toBeNull();
-      expect(labelNode?.textContent).toContain(label);
+      const labelEl = container.querySelector(`label[for="${FIELD_NAME}"]`);
+      expect(labelEl).not.toBeNull();
+      expect(getControl(container, label)).toHaveAttribute("id", FIELD_NAME);
     });
 
     it("falls back to the field name when fieldDef.label is empty", async () => {

@@ -17,7 +17,7 @@ import { useVexConfig } from "../../config/VexConfigContext";
  * `null`, or an empty array (no selection).
  *
  * @param props - Component props
- * @param props.value - Array of selected option values from the document
+ * @param props.value - Scalar or array of selected option values from the document
  * @param props.fieldDef - Resolved `SelectField` definition
  * @returns A row of Badge components, one per selected option
  *
@@ -29,9 +29,10 @@ import { useVexConfig } from "../../config/VexConfigContext";
 export function SelectFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<SelectField, TData>,
 ) {
-  if (props.value === undefined || props.value === null || props.value.length === 0) return <span>—</span>;
+  const selectedValues = Array.isArray(props.value) ? props.value : props.value ? [props.value] : [];
+  if (selectedValues.length === 0) return <span>—</span>;
   const config = useVexConfig();
-  const fields = props.value
+  const fields = selectedValues
     .map((v) => props.fieldDef.options.find((o) => o.value === v))
     .filter((option): option is SelectField["options"][number] => option != null);
   const joinedLabels = fields.map((f) => f.label).join(", ");

@@ -52,6 +52,9 @@ import {
   GroupFieldCell,
   GroupFieldAdmin,
   GroupFieldDisplay,
+  KeyValueFieldCell,
+  KeyValueFieldAdmin,
+  KeyValueFieldDisplay,
   BlocksFieldAdmin,
   BlocksFieldCell,
   BlocksFieldDisplay,
@@ -65,6 +68,12 @@ import {
   JsonFieldAdmin,
   JsonFieldCell,
   JsonFieldDisplay,
+  VariantFieldAdmin,
+  VariantFieldCell,
+  VariantFieldDisplay,
+  BytesFieldAdmin,
+  BytesFieldCell,
+  BytesFieldDisplay,
 } from "./fields";
 import { CollectionEditView, CollectionListView } from "./collections";
 import { DashboardView } from "./admin";
@@ -197,6 +206,11 @@ function buildReactAdapter(): FrameworkAdapterInput<ReactHKT> {
         cell: GroupFieldCell,
         display: GroupFieldDisplay,
       },
+      [ADMIN_FIELDS.keyValue.type]: {
+        field: KeyValueFieldAdmin,
+        cell: KeyValueFieldCell,
+        display: KeyValueFieldDisplay,
+      },
       [ADMIN_FIELDS.blocks.type]: {
         field: BlocksFieldAdmin,
         cell: BlocksFieldCell,
@@ -217,6 +231,16 @@ function buildReactAdapter(): FrameworkAdapterInput<ReactHKT> {
         field: JsonFieldAdmin,
         cell: JsonFieldCell,
         display: JsonFieldDisplay,
+      },
+      [ADMIN_FIELDS.variant.type]: {
+        field: VariantFieldAdmin,
+        cell: VariantFieldCell,
+        display: VariantFieldDisplay,
+      },
+      [ADMIN_FIELDS.bytes.type]: {
+        field: BytesFieldAdmin,
+        cell: BytesFieldCell,
+        display: BytesFieldDisplay,
       },
     },
     views: {

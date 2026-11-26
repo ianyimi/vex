@@ -5,6 +5,7 @@ import {
   array,
   beforeChangeHook,
   blocks,
+  bytes,
   checkbox,
   collapsible,
   color,
@@ -19,6 +20,7 @@ import {
   globalBeforeChangeHook,
   group,
   json,
+  keyValue,
   number,
   relationship,
   richtext,
@@ -30,6 +32,7 @@ import {
   ui,
   upload,
   url,
+  variant,
   type MediaCollectionConfig,
   type VexAuthAdapter,
   type VexConfig,
@@ -128,6 +131,7 @@ describe("anonymizeConfig — exact shape", () => {
           path: "c1.f1",
           type: "text",
           required: true,
+          nullable: false,
           hidden: false,
           readOnly: false,
           position: "main",
@@ -145,6 +149,7 @@ describe("anonymizeConfig — exact shape", () => {
           path: "c1.f2",
           type: "checkbox",
           required: false,
+          nullable: false,
           hidden: false,
           readOnly: false,
           position: "main",
@@ -459,6 +464,42 @@ describe("anonymizeConfig — array and tabs paths", () => {
   });
 });
 
+describe("anonymizeConfig — keyValue", () => {
+  it("records keyKind: \"string\" by default and paths the value at .v", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      timestamps: false,
+      fields: { scores: keyValue({ value: number({ required: true }) }) },
+    });
+    const config = defineServerConfig({ config: defineConfig({ collections: [collection] }) });
+
+    const output = anonymizeConfig({ config });
+
+    const keyValueField = output.fields.find((field) => field.path === "c1.f1")!;
+    expect(keyValueField.type).toBe("keyValue");
+    expect(keyValueField.keyKind).toBe("string");
+    expect(output.fields.find((field) => field.path === "c1.f1.v" && field.type === "number")).toBeDefined();
+  });
+
+  it("records keyKind: \"id\" when keys.collection is set", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      timestamps: false,
+      fields: {
+        userScores: keyValue({
+          keys: { collection: { slug: "secretProjectClients" } },
+          value: number({ required: true }),
+        }),
+      },
+    });
+    const config = defineServerConfig({ config: defineConfig({ collections: [collection] }) });
+
+    const output = anonymizeConfig({ config });
+
+    expect(output.fields.find((field) => field.path === "c1.f1")!.keyKind).toBe("id");
+  });
+});
+
 describe("anonymizeConfig — depth budget", () => {
   it("keeps the full built event's max JSON nesting depth within budget for a deliberately deep config (blocks in tabs in arrays in groups)", () => {
     const deepBlock = defineBlock({ slug: "deepBlock", label: "Deep Block", fields: { value: text() } });
@@ -496,6 +537,97 @@ describe("anonymizeConfig — depth budget", () => {
     });
 
     expect(jsonDepth(event)).toBeLessThanOrEqual(8);
+  });
+});
+
+describe("anonymizeConfig — select schema.validator", () => {
+  it("records schemaValidator only when the override is set", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      timestamps: false,
+      fields: {
+        plain: select({ hasMany: true, options: [{ label: "A", value: "a" }] }),
+        scalar: select({
+          hasMany: false,
+          schema: { validator: "literal" },
+          options: [{ label: "A", value: "a" }],
+        }),
+      },
+    });
+    const config = defineServerConfig({ config: defineConfig({ collections: [collection] }) });
+
+    const fields = anonymizeConfig({ config }).fields;
+    expect(fields.find((f) => f.path === "c1.f1")?.schemaValidator).toBeUndefined();
+    expect(fields.find((f) => f.path === "c1.f2")?.schemaValidator).toBe("literal");
+  });
+});
+
+describe("anonymizeConfig — bytes", () => {
+  it("records max from maxSize and hasAccept, never the accept pattern itself", () => {
+    const collection = defineCollection({
+      slug: "attachments",
+      timestamps: false,
+      fields: {
+        plain: bytes({}),
+        thumbnail: bytes({ maxSize: 65_536, accept: "image/*" }),
+      },
+    });
+    const config = defineServerConfig({ config: defineConfig({ collections: [collection] }) });
+
+    const fields = anonymizeConfig({ config }).fields;
+    const plainField = fields.find((f) => f.path === "c1.f1")!;
+    expect(plainField.max).toBe(524_288);
+    expect(plainField.hasAccept).toBe(false);
+
+    const thumbnailField = fields.find((f) => f.path === "c1.f2")!;
+    expect(thumbnailField.max).toBe(65_536);
+    expect(thumbnailField.hasAccept).toBe(true);
+  });
+});
+
+describe("anonymizeConfig — variant", () => {
+  it("records hasDiscriminator/variantCount and recurses into discriminated members", () => {
+    const collection = defineCollection({
+      slug: "notifications",
+      timestamps: false,
+      fields: {
+        channel: variant({
+          discriminator: "kind",
+          variants: {
+            email: { label: "Email", fields: { address: text({ required: true }) } },
+            sms: { label: "SMS", fields: { number: text({ required: true }) } },
+          },
+        }),
+      },
+    });
+    const config = defineServerConfig({ config: defineConfig({ collections: [collection] }) });
+
+    const fields = anonymizeConfig({ config }).fields;
+    const variantField = fields.find((f) => f.path === "c1.f1")!;
+    expect(variantField.hasDiscriminator).toBe(true);
+    expect(variantField.variantCount).toBe(2);
+    expect(fields.find((f) => f.path === "c1.f1.v1.f1" && f.type === "text")).toBeDefined();
+    expect(fields.find((f) => f.path === "c1.f1.v2.f1" && f.type === "text")).toBeDefined();
+  });
+
+  it("records hasDiscriminator: false and recurses into undiscriminated members", () => {
+    const collection = defineCollection({
+      slug: "notifications",
+      timestamps: false,
+      fields: {
+        amount: variant({
+          variants: { label: text(), count: number() },
+        }),
+      },
+    });
+    const config = defineServerConfig({ config: defineConfig({ collections: [collection] }) });
+
+    const fields = anonymizeConfig({ config }).fields;
+    const variantField = fields.find((f) => f.path === "c1.f1")!;
+    expect(variantField.hasDiscriminator).toBe(false);
+    expect(variantField.variantCount).toBe(2);
+    expect(fields.find((f) => f.path === "c1.f1.v1" && f.type === "text")).toBeDefined();
+    expect(fields.find((f) => f.path === "c1.f1.v2" && f.type === "number")).toBeDefined();
   });
 });
 
@@ -675,6 +807,34 @@ describe("anonymizeConfig — leak test", () => {
     expect(uploadField.target).toBe("m1");
   });
 
+  it("records schemaValidator for a scalar relationship/upload field, and omits it when unset", () => {
+    const output = anonymizeConfig({ config });
+    const relationshipField = output.fields.find((field) => field.type === "relationship")!;
+    expect(relationshipField.schemaValidator).toBeUndefined();
+
+    const scalarConfig: VexConfig = {
+      ...config,
+      collections: config.collections.map((collection) =>
+        collection.slug === POSTS_SLUG
+          ? {
+              ...collection,
+              fields: {
+                ...collection.fields,
+                client: relationship({
+                  collection: { slug: CLIENTS_SLUG },
+                  hasMany: false,
+                  schema: { validator: "id" },
+                }),
+              },
+            }
+          : collection,
+      ),
+    };
+    const scalarOutput = anonymizeConfig({ config: scalarConfig });
+    const scalarRelationshipField = scalarOutput.fields.find((field) => field.type === "relationship")!;
+    expect(scalarRelationshipField.schemaValidator).toBe("id");
+  });
+
   it("never includes a collection, field, block, or role name — every string is a generated path or an allowlisted literal", () => {
     const output = anonymizeConfig({ config });
     const serialized = JSON.stringify(output);
@@ -689,5 +849,26 @@ describe("anonymizeConfig — leak test", () => {
         GENERATED_PATH_PATTERN.test(value) || ALLOWED_FIELD_TYPES.has(value) || ALLOWED_ENUM_VALUES.has(value);
       expect(allowed).toBe(true);
     }
+  });
+});
+
+describe("number field schemaValidator", () => {
+  it("records schemaValidator only on the int64 field", () => {
+    const collection = defineCollection({
+      slug: "items",
+      fields: {
+        count: number(),
+        views: number({ schema: { validator: "int64" }, min: 5n }),
+      },
+    });
+    const config = defineServerConfig({ config: defineConfig({ collections: [collection] }) });
+
+    const output = anonymizeConfig({ config });
+    const countField = output.fields.find((field) => field.path === "c1.f1")!;
+    const viewsField = output.fields.find((field) => field.path === "c1.f2")!;
+
+    expect(countField.schemaValidator).toBeUndefined();
+    expect(viewsField.schemaValidator).toBe("int64");
+    expect(viewsField.min).toBe(5);
   });
 });

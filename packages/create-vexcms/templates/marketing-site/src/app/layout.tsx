@@ -8,6 +8,7 @@ import localFont from "next/font/local"
 import ClientProviders from "~/components/providers/client"
 import ServerProviders from "~/components/providers/server"
 import { ThemeScript } from "~/components/ThemeScript"
+import { ScrollRestoreScript } from "~/components/ScrollRestoreScript"
 import { ThemeLive } from "~/components/ThemeLive"
 
 /**
@@ -78,6 +79,9 @@ export default function RootLayout({
             flash). Site theming now renders in `(frontend)/(site)/layout.tsx`
             — the admin layout re-emits its own scope for `/admin`. */}
         <ThemeScript />
+        {/* Restores the edit view's form scroll position before first
+            paint on a hard reload. */}
+        <ScrollRestoreScript />
       </head>
       <body>
         <ServerProviders>

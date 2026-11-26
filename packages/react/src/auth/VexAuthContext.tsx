@@ -3,6 +3,8 @@
 import type { VexApiAuth } from "@vexcms/core";
 import { createContext, useContext } from "react";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 // A stable, module-private reference — `createContext()` runs once, so this
 // object's IDENTITY (not its shape) is what `useIsVexAuthProviderMounted`
 // below compares against. `VexAuthProvider` always passes a FRESH `{ user,
@@ -13,7 +15,7 @@ import { createContext, useContext } from "react";
 // from "outside the admin tree entirely" (every public page), which the
 // VALUE `{ user: null }` alone cannot distinguish.
 const DEFAULT_VEX_AUTH: VexApiAuth = { user: null };
-const VexAuthContext = createContext<VexApiAuth>(DEFAULT_VEX_AUTH);
+const VexAuthContext = globalSingleton("auth/VexAuthContext", () => createContext<VexApiAuth>(DEFAULT_VEX_AUTH));
 
 /**
  * Reads the RBAC caller `{ user, organization }` provided by the admin server

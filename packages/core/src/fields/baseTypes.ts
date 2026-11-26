@@ -1,4 +1,5 @@
 import type { CollectionsFieldTypeMap, DocumentByResourceSlug, GlobalsFieldTypeMap, VexMutationCtx, VexResourceSlug } from "../types/generated";
+import type { FieldSchemaValidator } from "./constants";
 import type { FieldConditionProps } from "./conditions";
 import type { VexCallbackApi } from "../server";
 import type {
@@ -480,6 +481,20 @@ export interface ResolvedFieldIndexInput {
 export type ResolvedFieldIndexConfigInput = string | ResolvedFieldIndexInput;
 
 /**
+ * Types a field's `schema.validator` input: `never` when the field is
+ * `hasMany: true` (overrides apply only to single-value storage — see
+ * `select()`/`relationship()`/`upload()`), otherwise an optional
+ * `{ validator }` narrowed to `TValidator`. The RESOLVED field type never
+ * uses this — it carries a plain, non-conditional `{ validator: TValidator }`
+ * (traveling values stay generic-erased; only the authoring-time input is
+ * gated).
+ */
+export type SchemaOverrideInput<
+  THasMany extends boolean,
+  TValidator extends FieldSchemaValidator,
+> = THasMany extends true ? never : { validator?: TValidator };
+
+/**
  * Properties shared by all field types.
  *
  * Every field type (text, number, checkbox, etc.) extends this interface
@@ -522,6 +537,16 @@ export interface BaseFieldInput<
    * Default: `false`
    */
   required?: boolean;
+  /**
+   * Whether `null` is a legal value for this field, in addition to its
+   * normal type. `required: true` emits `v.nullable(X)`; `required: false`
+   * emits `v.optional(v.nullable(X))`. Clearing the field's input (or, for
+   * a container/checkbox field with no natural empty state, its
+   * `FormFieldLayout` null toggle) writes `null`.
+   *
+   * Default: `false`
+   */
+  nullable?: boolean;
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -603,6 +628,8 @@ export interface BaseField<
   label: string;
   /** Whether this field is required in the database schema. */
   required: boolean;
+  /** Whether `null` is a legal value for this field, in addition to its normal type. */
+  nullable: boolean;
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -676,6 +703,7 @@ export interface BaseUIFieldInput<
     | "validate"
     | "dependsOn"
     | "admin"
+    | "nullable"
   > {
   /** Admin UI configuration for this UI field. */
   admin?: UIFieldAdminInput<TCollectionSlug>;
@@ -700,6 +728,7 @@ export interface BaseUIField<
     | "validate"
     | "dependsOn"
     | "admin"
+    | "nullable"
   > {
   /** Resolved admin UI configuration with all defaults applied. */
   admin: UIFieldAdminConfig<TCollectionSlug>;

@@ -7,7 +7,7 @@ import * as _generatedApi from "./test/convex/_generated/api";
 import schema from "./test/convex/schema";
 import { CRUD_ACTIONS, VexAccessError } from "../access";
 import { defineAccess } from "../access/config";
-import { defineCollection, defineGlobal, text, checkbox, array, group } from "../index";
+import { defineCollection, defineGlobal, text, checkbox, array, group, select, blocks, defineBlock, variant, keyValue } from "../index";
 import type { VexConfig } from "../config";
 import { prepareEdit } from "./prepareEdit";
 
@@ -489,6 +489,166 @@ describe("prepareEdit", () => {
       });
       const links = result.patch.links as { label: string; id: string }[];
       expect(links[0]!.id).toBe("kept-id");
+    });
+  });
+
+  test("backfills an id onto an object-array item nested inside a discriminated variant's active member", async () => {
+    const postsWithChannel = defineCollection({
+      slug: "posts",
+      fields: {
+        channel: variant({
+          discriminator: "kind",
+          variants: {
+            email: {
+              label: "Email",
+              fields: { links: array({ items: group({ fields: { label: text({ required: true }) } }) }) },
+            },
+          },
+        }),
+      },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const result = await prepareEdit({
+        ctx,
+        config: { collections: [postsWithChannel] } as unknown as VexConfig,
+        target: { kind: "collection", config: postsWithChannel },
+        action: CRUD_ACTIONS.create,
+        storedDoc: undefined,
+        changes: { channel: { kind: "email", links: [{ label: "a" }] } },
+        partial: false,
+        validateKeys: "all",
+      });
+      const channel = result.patch.channel as { links: { label: string; id: string }[] };
+      expect(typeof channel.links[0]!.id).toBe("string");
+      expect(channel.links[0]!.id.length).toBeGreaterThan(0);
+    });
+  });
+
+  test("backfills an id onto a block's own object-array item nested inside a keyValue field's value", async () => {
+    const itemBlock = defineBlock({
+      slug: "item",
+      label: "Item",
+      fields: { links: array({ items: group({ fields: { label: text({ required: true }) } }) }) },
+    });
+    const postsWithNotes = defineCollection({
+      slug: "posts",
+      fields: {
+        notes: keyValue({ value: blocks({ blocks: [itemBlock] }) }),
+      },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const result = await prepareEdit({
+        ctx,
+        config: { collections: [postsWithNotes] } as unknown as VexConfig,
+        target: { kind: "collection", config: postsWithNotes },
+        action: CRUD_ACTIONS.create,
+        storedDoc: undefined,
+        changes: { notes: { entry1: [{ id: "block-1", blockType: "item", links: [{ label: "a" }] }] } },
+        partial: false,
+        validateKeys: "all",
+      });
+      const notes = result.patch.notes as Record<string, { links: { label: string; id: string }[] }[]>;
+      expect(typeof notes.entry1![0]!.links[0]!.id).toBe("string");
+      expect(notes.entry1![0]!.links[0]!.id.length).toBeGreaterThan(0);
+    });
+  });
+
+  test("a null value for an optional, non-nullable field unsets it", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const stored = { title: "Original", slug: "original" };
+      const result = await prepareEdit({
+        ctx,
+        config: fixtureConfig,
+        target: { kind: "collection", config: posts },
+        action: CRUD_ACTIONS.update,
+        storedDoc: stored as never,
+        changes: { slug: null },
+        partial: true,
+        validateKeys: "changed",
+      });
+      expect(result.transformedFields.slug).toBeUndefined();
+      expect("slug" in result.patch).toBe(true);
+      expect(result.patch.slug).toBeUndefined();
+      expect(Array.from(result.changedKeys)).toEqual(["slug"]);
+    });
+  });
+
+  test("a null value for a nullable field is stored as null, not unset", async () => {
+    const postsWithNullable = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }), slug: text(), note: text({ nullable: true }) },
+    });
+    const nullableConfig = { collections: [postsWithNullable] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const stored = { title: "Original", slug: "original", note: "Something" };
+      const result = await prepareEdit({
+        ctx,
+        config: nullableConfig,
+        target: { kind: "collection", config: postsWithNullable },
+        action: CRUD_ACTIONS.update,
+        storedDoc: stored as never,
+        changes: { note: null },
+        partial: true,
+        validateKeys: "changed",
+      });
+      expect(result.transformedFields.note).toBeNull();
+      expect(result.patch.note).toBeNull();
+    });
+  });
+
+  test("an empty string for a non-required scalar select unsets it, not stores it", async () => {
+    const postsWithScalarSelect = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text({ required: true }),
+        slug: text(),
+        status: select({
+          hasMany: false,
+          schema: { validator: "literal" },
+          options: [{ label: "Active", value: "active" }],
+        }),
+      },
+    });
+    const scalarSelectConfig = { collections: [postsWithScalarSelect] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const stored = { title: "Original", slug: "original", status: "active" };
+      const result = await prepareEdit({
+        ctx,
+        config: scalarSelectConfig,
+        target: { kind: "collection", config: postsWithScalarSelect },
+        action: CRUD_ACTIONS.update,
+        storedDoc: stored as never,
+        changes: { status: "" } as never,
+        partial: true,
+        validateKeys: "changed",
+      });
+      expect(result.transformedFields.status).toBeUndefined();
+      expect("status" in result.patch).toBe(true);
+      expect(result.patch.status).toBeUndefined();
+    });
+  });
+
+  test("a null value for a required, non-nullable field still fails normal required validation", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const stored = { title: "Original", slug: "original" };
+      await expect(
+        prepareEdit({
+          ctx,
+          config: fixtureConfig,
+          target: { kind: "collection", config: posts },
+          action: CRUD_ACTIONS.update,
+          storedDoc: stored as never,
+          changes: { title: null },
+          partial: true,
+          validateKeys: "changed",
+        }),
+      ).rejects.toThrow(ConvexError);
     });
   });
 });

@@ -31,17 +31,17 @@ export function selectFieldToColumnDef<TData extends TDocument = TDocument>(prop
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TData, string[]> {
+}): ColumnDef<TData, string | string[]> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
     header: props.fieldDef.label || props.fieldKey,
 
     cell: ({ row }) => {
-      const value = row.getValue(props.fieldKey) as string[] | undefined;
+      const value = row.getValue(props.fieldKey) as string | string[] | undefined;
       return (
         <SelectFieldCell<TData>
-          value={value ?? []}
+          value={value ?? (props.fieldDef.schema !== undefined ? "" : [])}
           row={row}
           collection={props.collection}
           fieldDef={props.fieldDef}

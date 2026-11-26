@@ -52,7 +52,7 @@ export const VexLink = forwardRef<HTMLAnchorElement, VexLinkProps>(
       );
     }
     return (
-      <a href={href} ref={ref} {...rest}>
+      <a href={href} ref={ref} {...rest} className={className}>
         {children}
       </a>
     );

@@ -103,4 +103,37 @@ describe("useBlockClipboard", () => {
 
     expect(result.current.clipboard).toEqual(envelope);
   });
+
+  it("round-trips a block carrying a bigint field losslessly", () => {
+    const { result } = renderHook(() => useBlockClipboard());
+    const counterBlock: GenericBlock = {
+      id: "block-2",
+      blockType: "counter",
+      amount: 9007199254740993n,
+    };
+
+    act(() => {
+      result.current.copyBlocks({ blocks: [counterBlock] });
+    });
+
+    expect(result.current.clipboard?.blocks).toEqual([counterBlock]);
+  });
+
+  it("round-trips a block carrying an ArrayBuffer field losslessly", () => {
+    const { result } = renderHook(() => useBlockClipboard());
+    const bytes = new Uint8Array([9, 8, 7]).buffer;
+    const payloadBlock: GenericBlock = {
+      id: "block-3",
+      blockType: "payload",
+      data: bytes,
+    };
+
+    act(() => {
+      result.current.copyBlocks({ blocks: [payloadBlock] });
+    });
+
+    const data = result.current.clipboard?.blocks[0]?.data;
+    if (!(data instanceof ArrayBuffer)) throw new Error("expected the clipboard block's data to round-trip as an ArrayBuffer");
+    expect(new Uint8Array(data)).toEqual(new Uint8Array(bytes));
+  });
 });

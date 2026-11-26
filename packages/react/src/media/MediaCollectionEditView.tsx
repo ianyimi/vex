@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { CRUD_ACTIONS, getDataFields, vexConvexApi, buildGetArgs } from "@vexcms/core";
+import { CRUD_ACTIONS, getDataFields, resolveNullableSaveValues, vexConvexApi, buildGetArgs } from "@vexcms/core";
 import type {
   MediaCollectionConfig,
   MediaCollectionSlug,
@@ -167,7 +167,7 @@ function MediaCollectionEditForm(props: {
     fields: collection.fields,
     readableFieldKeys,
     onSubmit: async () => {
-      const changes = changedValues(form);
+      const changes = resolveNullableSaveValues({ values: changedValues(form), fields: collection.fields });
       if (Object.keys(changes).length === 0) return;
       await mutateAsync({
         id: currentDocument._id,
@@ -181,6 +181,7 @@ function MediaCollectionEditForm(props: {
   useLiveFieldMerge({
     form,
     document: currentDocument,
+    fields: collection.fields,
     fieldKeys: readableFieldKeys,
   });
 

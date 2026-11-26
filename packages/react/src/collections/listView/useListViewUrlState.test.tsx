@@ -553,6 +553,20 @@ describe("isQueryAffectingViewSwitch", () => {
     };
     expect(isQueryAffectingViewSwitch(current, patch)).toBe(false);
   });
+
+  it("never throws comparing where filters containing a bigint, and detects a real change", () => {
+    const current = { filter: { field: { eq: 9007199254740993n } } };
+    const patch = { filter: { field: { eq: 9007199254740993n } } };
+    expect(() =>
+      isQueryAffectingViewSwitch({ filter: current } as never, { filter: patch } as never),
+    ).not.toThrow();
+    expect(
+      isQueryAffectingViewSwitch(
+        { filter: current } as never,
+        { filter: { field: { eq: 1n } } } as never,
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("useListViewUrlState — setPeek/setCols apply their own URL value without requiring the query-affecting fields to change (sanity check the real setters still work after the isQueryPending split)", () => {

@@ -1,6 +1,8 @@
 "use client"
 
 import { createContext, useContext } from "react";
+
+import { globalSingleton } from "../../utils/globalSingleton";
 import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 
 export interface DroppableContextValue {
@@ -8,8 +10,8 @@ export interface DroppableContextValue {
   innerRef: (node: HTMLElement | null) => void;
   isDraggingOver: boolean;
 }
-export const DroppableContext = createContext<DroppableContextValue | null>(
-  null,
+export const DroppableContext = globalSingleton("ui/dnd/context/DroppableContext", () =>
+  createContext<DroppableContextValue | null>(null),
 );
 
 /**
@@ -28,8 +30,8 @@ export interface DraggableContextValue {
   dragHandleProps: DraggableProvidedDragHandleProps | null;
   isDragging: boolean;
 }
-export const DraggableContext = createContext<DraggableContextValue | null>(
-  null,
+export const DraggableContext = globalSingleton("ui/dnd/context/DraggableContext", () =>
+  createContext<DraggableContextValue | null>(null),
 );
 
 /**

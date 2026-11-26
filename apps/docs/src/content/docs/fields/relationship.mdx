@@ -154,6 +154,36 @@ or `false` — a single relationship is a one-element array, not a bare `Id`. Ke
 anywhere you compare against it: in a `find`/`get` call's `where`, in an access rule's
 `withIndex`/`where`, or in a plain JS predicate.
 
+## Storage override
+
+`relationship()` always stores `v.array(v.id("slug"))` (see above) unless `schema.validator`
+is set AND `hasMany` is `false` — when `hasMany` is `true`, `schema` is typed `never`: the
+override only applies to a single reference.
+
+`schema: { validator: "id" }` stores a scalar `v.id("slug")`, typed `Id<"slug">`. `schema: {
+validator: "string" }` stores a scalar `v.string()`, typed `string` — for a reference column a
+library owns and keeps as a plain string (Better Auth's own `references` attributes use this;
+see the [auth guide](/guides/auth/)). Populate, `depth`, `where`, auto-generated indexes,
+access rules, and draft-relationship guards all accept the scalar id directly — none of them
+need the one-element-array unwrapping a `hasMany: false` array-stored relationship needs.
+
+```ts
+// Default storage — always an array, even with hasMany: false
+author: v.optional(v.array(v.id("authors")))
+
+// schema: { validator: "id" }, hasMany: false — scalar Id
+owner: relationship({ collection: { slug: "users" }, schema: { validator: "id" } })
+// owner: v.optional(v.id("users"))
+
+// schema: { validator: "string" }, hasMany: false — scalar string, library-owned reference
+userId: relationship({ collection: { slug: "users" }, schema: { validator: "string" } })
+// userId: v.optional(v.string())
+```
+
+Changing `schema.validator` on a field over a table that already has data does not migrate
+existing rows — migrate the column's stored shape manually first if it doesn't already match
+the new validator; VexCMS performs no automatic migration of a field's storage shape.
+
 **A single relationship (`hasMany: false`) matches an exact value with an array literal,**
 and is index-pushable through the field's auto-generated `by_<fieldKey>` index:
 

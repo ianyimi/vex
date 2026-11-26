@@ -18,6 +18,8 @@ import { Icon as LucideIcon } from "lucide-react";
 import { DynamicIcon as UntypedDynamicIcon } from "lucide-react/dynamic.mjs";
 import { createContext, useContext, useMemo, type ComponentType } from "react";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 import { iconKeyOf, isIconName, type IconKey } from "./iconKey";
 
 export type { IconName };
@@ -28,7 +30,7 @@ const DynamicIcon: typeof DynamicIconType = UntypedDynamicIcon;
 /** Icon nodes keyed by lucide key ("layout-grid"), as built by `resolveIconNodes`. */
 export type IconNodeMap = Partial<Record<IconKey, IconNode>>;
 
-const IconNodeContext = createContext<IconNodeMap>({});
+const IconNodeContext = globalSingleton("ui/Icon/IconNodeContext", () => createContext<IconNodeMap>({}));
 
 /**
  * Supplies server-resolved icon nodes so `Icon` renders them synchronously,
@@ -47,7 +49,9 @@ export function IconNodeProvider(props: { nodes: IconNodeMap; children: ReactNod
 /** Lucide icon components keyed by PascalCase name — `lucide-react`'s `icons` export. */
 export type IconComponentMap = Partial<Record<string, ComponentType<LucideProps>>>;
 
-const IconComponentsContext = createContext<IconComponentMap | null>(null);
+const IconComponentsContext = globalSingleton("ui/Icon/IconComponentsContext", () =>
+  createContext<IconComponentMap | null>(null),
+);
 
 /**
  * Supplies a full, statically imported icon set so every `Icon` below renders

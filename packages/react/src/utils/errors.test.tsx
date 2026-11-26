@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { act, render } from "@testing-library/react";
 import { useForm } from "@tanstack/react-form";
 import { ConvexError } from "convex/values";
-import { applyVexFieldErrors } from "./errors";
+import { applyVexFieldErrors, vexFieldErrorKeys } from "./errors";
 import type { AnyFormApi } from "../forms";
 
 /**
@@ -88,5 +88,31 @@ describe("applyVexFieldErrors", () => {
       applyVexFieldErrors(form, new Error("boom"));
     });
     expect(form.state.fieldMeta.title?.errorMap.onSubmit).toBeUndefined();
+  });
+});
+
+describe("vexFieldErrorKeys", () => {
+  it("returns the single named field", () => {
+    expect(
+      vexFieldErrorKeys(new ConvexError({ message: "Title already taken", field: "title" })),
+    ).toEqual(["title"]);
+  });
+
+  it("returns every Zod issue's joined path", () => {
+    const issues = [
+      { path: ["tagList", 0], message: "This field is required." },
+      { path: ["address", "city"], message: "This field is required." },
+    ];
+    expect(
+      vexFieldErrorKeys(new ConvexError({ message: "Validation failed", errors: JSON.stringify(issues) })),
+    ).toEqual(["tagList[0]", "address.city"]);
+  });
+
+  it("returns an empty array for a non-ConvexError", () => {
+    expect(vexFieldErrorKeys(new Error("boom"))).toEqual([]);
+  });
+
+  it("returns an empty array for a ConvexError matching neither shape", () => {
+    expect(vexFieldErrorKeys(new ConvexError({ message: "Something broke" }))).toEqual([]);
   });
 });

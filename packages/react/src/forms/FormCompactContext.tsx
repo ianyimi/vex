@@ -10,6 +10,8 @@ import {
   useState,
 } from "react";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 /**
  * The form-column width (px) below which item actions move from inline icons
  * into a ⋯ menu — the same 32rem as the `@lg/form` container queries the rest
@@ -18,7 +20,7 @@ import {
 export const FORM_COMPACT_WIDTH_PX = 512;
 
 /** Whether the nearest measured form column is compact — see {@link useCompactForm}. */
-export const FormCompactContext = createContext(false);
+export const FormCompactContext = globalSingleton("forms/FormCompactContext", () => createContext(false));
 
 /**
  * Whether the enclosing form column is narrower than

@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, type ReactNode } from "react";
+
+import { globalSingleton } from "../utils/globalSingleton";
 import type { ArrayItemsOpenSignal } from "./useArrayItems";
 
 /**
@@ -18,4 +20,6 @@ export interface ArrayItemHeader {
 }
 
 /** Carries the enclosing array item's header content down to its `GroupField`. */
-export const ArrayItemHeaderContext = createContext<ArrayItemHeader | null>(null);
+export const ArrayItemHeaderContext = globalSingleton("forms/ArrayItemHeaderContext", () =>
+  createContext<ArrayItemHeader | null>(null),
+);

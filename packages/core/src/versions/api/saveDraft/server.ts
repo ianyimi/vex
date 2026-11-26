@@ -26,7 +26,11 @@ export type SaveDraftServerArgs<DataModel extends GenericDataModel> = {
   access?: AccessCallOptions<string>;
   /** Resolved caller identity, forwarded to `hasPermission`. */
   auth?: VexApiAuth;
-  /** Partial field values to merge into the draft row. Unspecified fields are left unchanged. */
+  /**
+   * Partial field values to merge into the draft row. Unspecified fields
+   * are left unchanged. A `null` value for an optional, non-nullable field
+   * unsets it; a `nullable` field stores the literal `null` instead.
+   */
   data: Record<string, unknown>;
   /**
    * The version number this save restores from, when the caller is reverting to

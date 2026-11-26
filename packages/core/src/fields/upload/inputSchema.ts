@@ -27,6 +27,13 @@ import type { UploadField } from "./types";
 export function uploadFieldToInputSchema(props: { field: UploadField }): ZodType {
   const { field } = props;
 
+  if (field.schema !== undefined) {
+    const scalarSchema = field.required
+      ? z.string({ error: "This field is required." })
+      : z.string().optional();
+    return applyBaseInputSchemaMeta({ field, inputSchema: scalarSchema });
+  }
+
   const requiredError = "This field is required.";
   let inputSchema = field.required
     ? z.array(z.string(), { error: requiredError }).min(1, requiredError)

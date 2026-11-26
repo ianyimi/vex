@@ -4,8 +4,11 @@ import { useMemo, useState } from "react";
 import {
   type MediaCollectionConfig,
   type VexMediaDocument,
+  CRUD_ACTIONS,
   formatBytes,
   formatMimeType,
+  PERMISSION_SCOPES,
+  readableListViewSearchFields,
 } from "@vexcms/core";
 import {
   Button,
@@ -15,12 +18,21 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
+  Skeleton,
 } from "../ui";
+import { ScrollSection } from "../ui/ScrollSection";
 import { Icon } from "../ui/Icon";
 import { FilePreview } from "./FilePreview";
 import { usePaginatedSearch } from "../hooks";
+import { useFieldPermissions } from "../access";
 import { cn } from "../utils/cn";
 import { getVexErrorMessage } from "../utils/errors";
+
+/** Fixed pixel height of the results scroll area — same across pending/empty/results states. */
+const RESULTS_HEIGHT = 420;
+
+/** Number of skeleton tiles rendered while the grid is pending. */
+const SKELETON_TILE_COUNT = 12;
 
 /**
  * Props for the MediaLibraryGrid component.
@@ -91,6 +103,17 @@ export function MediaLibraryGrid({
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState("all");
 
+  const fieldPermissions = useFieldPermissions({
+    resource: targetCollectionConfig.slug,
+    action: CRUD_ACTIONS.read,
+    scope: PERMISSION_SCOPES.any,
+  });
+  const searchFields = readableListViewSearchFields({
+    collection: targetCollectionConfig,
+    fieldPermissions,
+  });
+  const showSearch = searchFields.length > 0;
+
   const acceptPatterns = useMemo(
     () =>
       (accept ?? "")
@@ -109,7 +132,7 @@ export function MediaLibraryGrid({
   const { documents, isPending, isError, error, hasMore, isLoadingMore, loadMore } =
     usePaginatedSearch<VexMediaDocument>({
       collection: targetCollectionConfig,
-      query: search,
+      query: showSearch ? search : "",
       mimeTypes,
     });
 
@@ -137,14 +160,16 @@ export function MediaLibraryGrid({
   return (
     <>
       <div className="flex items-center gap-2 pb-2">
-        <Input
-          className="vex-input sm"
-          placeholder={`Search ${targetCollectionConfig.labels.plural} by filename or alt…`}
-          value={search}
-          isPending={search.length > 0 && isPending}
-          iconLeft={{ name: "Search" }}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        {showSearch && (
+          <Input
+            className="vex-input sm"
+            placeholder={`Search ${targetCollectionConfig.labels.plural} by filename or alt…`}
+            value={search}
+            isPending={search.length > 0 && isPending}
+            iconLeft={{ name: "Search" }}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -175,18 +200,22 @@ export function MediaLibraryGrid({
       <div role="status" aria-live="polite" className="sr-only">
         {statusText}
       </div>
-      <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden">
+      <ScrollSection height={RESULTS_HEIGHT} className="overflow-x-hidden">
         {isError ? (
-          <p className="p-8 text-center text-xs text-destructive">
+          <p className="flex h-full items-center justify-center p-8 text-center text-xs text-destructive">
             {getVexErrorMessage(error)}
           </p>
+        ) : isPending ? (
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+            {Array.from({ length: SKELETON_TILE_COUNT }).map((_, i) => (
+              <MediaTileSkeleton key={i} />
+            ))}
+          </div>
         ) : documents.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            {isPending
-              ? "Loading..."
-              : search.length > 0
-                ? "No media files match your search"
-                : "No media files yet"}
+          <div className="flex h-full items-center justify-center text-center text-muted-foreground">
+            {search.length > 0
+              ? "No media files match your search"
+              : "No media files yet"}
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
@@ -200,7 +229,7 @@ export function MediaLibraryGrid({
             ))}
           </div>
         )}
-      </div>
+      </ScrollSection>
       {hasMore && (
         <div className="px-5 pb-3 pt-2">
           <Button
@@ -214,6 +243,24 @@ export function MediaLibraryGrid({
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Skeleton tile matching {@link MediaDocumentPreview}'s real shape, shown
+ * in place of settled tiles while the grid's query is pending.
+ *
+ * @returns A skeleton tile with the same thumbnail + two-line footer shape.
+ */
+function MediaTileSkeleton() {
+  return (
+    <div className="flex flex-col gap-2 rounded-sm border border-border bg-card p-2">
+      <Skeleton className="aspect-square w-full rounded-sm" />
+      <div className="min-w-0">
+        <Skeleton className="h-3 w-3/4" />
+        <Skeleton className="mt-1 h-2.5 w-1/2" />
+      </div>
+    </div>
   );
 }
 

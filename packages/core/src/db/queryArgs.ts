@@ -447,9 +447,11 @@ export function convertCommitTsWhereToNs<S extends string = string>(props: {
 function isArrayStoredField(
   field: AdminField,
 ): field is Extract<AdminField, { type: "select" | "relationship" | "upload" }> {
-  return field.type === ADMIN_FIELDS.select.type
-    || field.type === ADMIN_FIELDS.relationship.type
-    || field.type === ADMIN_FIELDS.upload.type;
+  if (field.type === ADMIN_FIELDS.select.type) return field.schema === undefined;
+  if (field.type === ADMIN_FIELDS.relationship.type || field.type === ADMIN_FIELDS.upload.type) {
+    return field.schema === undefined;
+  }
+  return false;
 }
 
 /**
@@ -497,7 +499,12 @@ function isArrayStoredField(
  *    this check). `eq` → `or(eq [], eq undefined)`; `neq` → `not(or(eq
  *    [], eq undefined))`. Neither shape is index-pushable (`or`/`not`
  *    were already excluded from pushdown before this function existed),
- *    so both stay in `.filter()`, same as before.
+ *    so both stay in `.filter()`, same as before. A NULLABLE
+ *    array-stored field's empty check additionally matches a literal stored
+ *    `null` — a real, distinct value once `nullable` is set, not just the
+ *    legacy-row shorthand `null` was before. A nullable SCALAR field's own
+ *    `isEmpty`/`isNotEmpty` wire form (`eq`/`neq` with `value: undefined`)
+ *    is rewritten the same way, matching either `undefined` or `null`.
  *
  * @param props - Input props.
  * @param props.where - The caller's `where`, or `undefined`.
@@ -510,10 +517,13 @@ export function normalizeArrayStoredWhere<S extends string = string>(props: {
   fields: Record<string, AdminField>;
 }): VexWhereNode<S> | undefined {
   if (props.where === undefined) return undefined;
-  const arrayFields = new Map<string, { hasMany: boolean }>();
+  const arrayFields = new Map<string, { hasMany: boolean; nullable: boolean }>();
+  const nullableScalarFields = new Set<string>();
   for (const [key, field] of Object.entries(props.fields)) {
     if (isArrayStoredField(field)) {
-      arrayFields.set(key, { hasMany: field.hasMany });
+      arrayFields.set(key, { hasMany: field.hasMany, nullable: field.nullable });
+    } else if ("nullable" in field && field.nullable) {
+      nullableScalarFields.add(key);
     }
   }
   function walk(node: VexWhereNode<S>): VexWhereNode<S> {
@@ -522,22 +532,32 @@ export function normalizeArrayStoredWhere<S extends string = string>(props: {
     if ("not" in node) return { not: walk(node.not) };
     if (node.op !== "eq" && node.op !== "neq") return node;
     const arrayField = arrayFields.get(node.field as string);
-    if (arrayField === undefined) return node;
-    if (node.value === undefined || node.value === null) {
-      // `ConstraintValue<TDoc, F>` is inferred per-collection from `S`, so TS
-      // cannot know an array-stored field's value type admits `[]`/`undefined`
-      // combinator nodes here — this generic walk only inspects `node.field`'s
-      // runtime type, same cast pattern as `convertCommitTsWhereToNs` above.
+    if (arrayField !== undefined) {
+      if (node.value === undefined || node.value === null) {
+        // `ConstraintValue<TDoc, F>` is inferred per-collection from `S`, so TS
+        // cannot know an array-stored field's value type admits `[]`/`undefined`/
+        // `null` combinator nodes here — this generic walk only inspects
+        // `node.field`'s runtime type, same cast pattern as
+        // `convertCommitTsWhereToNs` above.
+        const emptyValues: unknown[] = arrayField.nullable ? [[], undefined, null] : [[], undefined];
+        const isEmptyNode = {
+          or: emptyValues.map((value) => ({ field: node.field, op: "eq", value })),
+        } as unknown as VexWhereNode<S>;
+        return node.op === "eq" ? isEmptyNode : ({ not: isEmptyNode } as unknown as VexWhereNode<S>);
+      }
+      if (arrayField.hasMany || Array.isArray(node.value)) return node;
+      return { ...node, value: [node.value] } as VexWhereNode<S>;
+    }
+    if (nullableScalarFields.has(node.field as string) && node.value === undefined) {
       const isEmptyNode = {
         or: [
-          { field: node.field, op: "eq", value: [] },
           { field: node.field, op: "eq", value: undefined },
+          { field: node.field, op: "eq", value: null },
         ],
       } as unknown as VexWhereNode<S>;
       return node.op === "eq" ? isEmptyNode : ({ not: isEmptyNode } as unknown as VexWhereNode<S>);
     }
-    if (arrayField.hasMany || Array.isArray(node.value)) return node;
-    return { ...node, value: [node.value] } as VexWhereNode<S>;
+    return node;
   }
   return walk(props.where);
 }

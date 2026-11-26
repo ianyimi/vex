@@ -36,3 +36,28 @@ describe("NumberFilterInput", () => {
     expect(screen.getByRole("spinbutton", { name: "Rating" })).toBeInTheDocument();
   });
 });
+
+describe("NumberFilterInput: int64", () => {
+  const int64FieldDef = number({ schema: { validator: "int64" }, label: "Views" });
+
+  it("renders a digits-only text input with the current bigint value", () => {
+    render(<NumberFilterInput field={int64FieldDef} value={9007199254740993n} op="gte" onChange={vi.fn()} />);
+    expect(screen.getByRole("textbox")).toHaveValue("9007199254740993");
+  });
+
+  it("calls onChange with a parsed BigInt", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<NumberFilterInput field={int64FieldDef} value={undefined} op="gte" onChange={onChange} />);
+    await user.type(screen.getByRole("textbox"), "123");
+    expect(onChange).toHaveBeenLastCalledWith(123n);
+  });
+
+  it("ignores a non-digit keystroke", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<NumberFilterInput field={int64FieldDef} value={5n} op="gte" onChange={onChange} />);
+    await user.type(screen.getByRole("textbox"), "x");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});

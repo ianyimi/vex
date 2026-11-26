@@ -10,6 +10,8 @@
 - Pre-launch dependency upgrades (spec 2026-11-07-pre-launch-dependency-upgrades)
 - Contributor workflow (spec 2026-11-10-contributor-workflow)
 - Golden use cases — 4 demo examples (spec 2026-11-09-golden-use-cases)
+- Convex field-type coverage (spec 2026-11-22-field-type-coverage)
+- Project-init agent skill (spec 2026-11-22-project-init-agent-skill)
 
 ## Inbox
 ### v0.1.0 launch track — work in this order (`.agent/docs/product/v0.1.0-launch-plan.md`)
@@ -31,6 +33,11 @@
 - Polish follow-up (list view): `isQueryAffectingViewSwitch` (useListViewUrlState.ts ~450) compares raw URL params, not the effective state, so an external link with an explicit param equal to the target view's default dims once on view switch (P3)
 - Template ships no dependency patches: scaffolded projects miss the @convex-dev/better-auth getToken x-forwarded-host remap (#422, dormant) and the better-auth-ui password-toggle label + footer-link nesting fixes; needs a package-manager-neutral fix or upstream PRs
 - betterAuthAdapter index parity: a custom Better Auth fieldName on an indexed field drops that compound index silently (candidates resolve through tableDef.fields[f].fieldName but adapter fields are keyed by the logical name) — lookups fall back to a full-table scan
+- 25a GUARD — stale-write guard (launch plan 25a; prompt in v0.1.0-final-sprint.md § 3c)
+- 25b TEL — runtime telemetry + production receiver (launch plan 25b; § 3c)
+- 25c ONBOARD — connection pill + config error banner (launch plan 25c; § 3c)
+- 25d TPL — base-template posts example + role constants (launch plan 25d; § 3c)
+- 25e INIT — existing-app setup guide + check script (launch plan 25e; § 3c)
 
 ## Recently Done
 - 4. E — Live preview — shipped `b5263dc`, 2026-09-20 (spec 2026-09-18-live-preview; ADR-012, with a dual `postMessage` + `BroadcastChannel` transport and a cookie-gated public route)

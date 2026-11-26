@@ -412,3 +412,36 @@ describe("array: min error association on the role=group wrapper", () => {
     expect(group.getAttribute("aria-describedby")).toContain(errorId);
   });
 });
+describe("array: null-toggle restore rule", () => {
+  function NullableArrayHarness(props: { initialValue: unknown[] | null }) {
+    const fieldDef = array({ label: "Tags", nullable: true, items: text() });
+    const form = useForm({ defaultValues: { testField: props.initialValue } });
+    return (
+      <VexConfigProvider config={testConfig}>
+        <AppForm form={form}>
+          <ArrayFieldAdmin name="testField" fieldDef={fieldDef} collection={testCollection} readOnly={false} />
+          <form.Subscribe selector={(state) => state.values.testField}>
+            {(value) => <output data-testid="value-probe">{JSON.stringify(value)}</output>}
+          </form.Subscribe>
+        </AppForm>
+      </VexConfigProvider>
+    );
+  }
+
+  it("unchecking after typing restores the value typed before Null was checked", async () => {
+    const user = userEvent.setup();
+    render(<NullableArrayHarness initialValue={["typed value"]} />);
+    await user.click(screen.getByRole("checkbox", { name: /Set Tags to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("null");
+    await user.click(screen.getByRole("checkbox", { name: /Set Tags to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent(JSON.stringify(["typed value"]));
+  });
+
+  it("a page loaded with the field already null falls back to the field's empty default when unchecked", async () => {
+    const user = userEvent.setup();
+    render(<NullableArrayHarness initialValue={null} />);
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("null");
+    await user.click(screen.getByRole("checkbox", { name: /Set Tags to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent(JSON.stringify([]));
+  });
+});

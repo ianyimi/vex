@@ -339,6 +339,46 @@ describe("populateDocs — nested blocks()/array()/group()", () => {
     const populatedContent = populatedDoc.content as Record<string, unknown>[];
     expect((populatedContent[0].image as Record<string, unknown>[])[0].filename).toBe("cover.png");
   });
+
+  test("populates a relationship nested in a discriminated variant() member, routed by its discriminator", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", { name: "Priya Shah" });
+      const page1 = await ctx.db.insert("nestedPages", {
+        title: "SMS page",
+        preference: { kind: "sms", contact: authorId },
+      });
+      const page2 = await ctx.db.insert("nestedPages", {
+        title: "Email page",
+        preference: { kind: "email", address: "hi@example.com" },
+      });
+      const docs = [(await ctx.db.get(page1))!, (await ctx.db.get(page2))!];
+      return populateDocs(ctx, docs, {
+        preference: { discriminator: "kind", variants: { sms: { contact: true } } },
+      } as PopulateShape);
+    });
+
+    const smsPage = (result as any[]).find((d) => d.title === "SMS page");
+    const emailPage = (result as any[]).find((d) => d.title === "Email page");
+    expect((smsPage.preference.contact as DocumentBySlug["authors"]).name).toBe("Priya Shah");
+    expect(emailPage.preference).toEqual({ kind: "email", address: "hi@example.com" });
+  });
+
+  test("does not clone a variant value whose discriminator key has no populate entry (S7 regression)", async () => {
+    const t = convexTest(schema, modules);
+    const sameReference = await t.run(async (ctx) => {
+      const page = await ctx.db.insert("nestedPages", {
+        title: "Email page",
+        preference: { kind: "email", address: "hi@example.com" },
+      });
+      const doc = (await ctx.db.get(page))!;
+      const populated = await populateDocs(ctx, [doc], {
+        preference: { discriminator: "kind", variants: { sms: { contact: true } } },
+      } as PopulateShape);
+      return (populated as any[])[0].preference === doc.preference;
+    });
+    expect(sameReference).toBe(true);
+  });
 });
 
 /**
@@ -540,5 +580,89 @@ describe("populateDocs — draft exclusion", () => {
 
     const populated = (result as any[])[0].author as DocumentBySlug["authors"][];
     expect(populated[0].name).toBe("Lena Park");
+  });
+});
+
+describe("populateDocs — scalar relationship storage (schema.validator)", () => {
+  test("populates a scalar id-storage field to a bare doc, not an array", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", { name: "Lena Park" });
+      const postId = await ctx.db.insert("posts", { title: "Hi", slug: "hi", ownerId: authorId });
+      const post = await ctx.db.get(postId);
+      return populateDocs(ctx, [post!], { ownerId: true } as PopulateShape);
+    });
+
+    const owner = (result[0] as unknown as Record<string, unknown>).ownerId as DocumentBySlug["authors"];
+    expect(Array.isArray(owner)).toBe(false);
+    expect(owner.name).toBe("Lena Park");
+  });
+
+  test("populates a scalar string-storage field via normalizeId, resolving to the same doc as the native id would", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", { name: "Dana" });
+      const postId = await ctx.db.insert("posts", { title: "Hi", slug: "hi", ownerRef: authorId });
+      const post = await ctx.db.get(postId);
+      return populateDocs(ctx, [post!], { ownerRef: true } as PopulateShape);
+    });
+
+    const owner = (result[0] as unknown as Record<string, unknown>).ownerRef as DocumentBySlug["authors"];
+    expect(owner.name).toBe("Dana");
+  });
+
+  test("drops an invalid string-storage value instead of throwing, leaving the raw value in place", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const postId = await ctx.db.insert("posts", {
+        title: "Hi",
+        slug: "hi",
+        ownerRef: "not-a-real-id",
+      });
+      const post = await ctx.db.get(postId);
+      return populateDocs(ctx, [post!], { ownerRef: true } as PopulateShape, undefined, fixtureConfig);
+    });
+
+    expect((result[0] as unknown as Record<string, unknown>).ownerRef).toBe("not-a-real-id");
+  });
+
+  test("a document with no value for the scalar field is left untouched", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const postId = await ctx.db.insert("posts", { title: "Hi", slug: "hi" });
+      const post = await ctx.db.get(postId);
+      return populateDocs(ctx, [post!], { ownerId: true } as PopulateShape);
+    });
+
+    expect((result[0] as unknown as Record<string, unknown>).ownerId).toBeUndefined();
+  });
+});
+
+/**
+ * `convex-test`'s own `db.get` silently returns `null` for a malformed id
+ * instead of throwing, which masks this class of bug end to end — a mock
+ * `ctx` whose `db.get` throws (matching the real backend's behavior for an
+ * invalid id) is the only way to prove the fix actually skips the id
+ * instead of ever calling `db.get` with it.
+ */
+describe("populateDocs — unresolvable scalar reference", () => {
+  test("skips a scalar reference that can't be placed on any collection, leaving the raw value in place, instead of sending it to db.get", async () => {
+    const throwingCtx = {
+      db: {
+        normalizeId: () => null,
+        get: (id: string) => {
+          throw new Error(`[Error] Server Error\nInvalid argument \`id\`: ${id}`);
+        },
+      },
+    };
+    const doc = { _id: "doc1", title: "Hi", ownerRef: "not-a-real-id" };
+
+    const result = await populateDocs(
+      throwingCtx as never,
+      [doc],
+      { ownerRef: true } as PopulateShape,
+    );
+
+    expect((result[0] as unknown as Record<string, unknown>).ownerRef).toBe("not-a-real-id");
   });
 });

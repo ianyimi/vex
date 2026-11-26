@@ -3,20 +3,22 @@ import {
   defineCollection,
   defineConfig,
   defineGlobal,
+  number,
   relationship,
   serializeListViewUrlState,
   text,
   upload,
+  valuesEqual,
   VexError,
   vexConvexApi,
 } from "@vexcms/core";
 import type { VexAccessConfig, VexApiAuth, VexConfig } from "@vexcms/core";
-import { HydrationBoundary } from "@tanstack/react-query";
 import { getFunctionName } from "convex/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as VexReactModule from "@vexcms/react";
 import { VexAuthProvider } from "@vexcms/react";
 
+import { HydrationBoundaryClient } from "./HydrationBoundaryClient";
 import { NextAdminPage } from "./NextAdminPage";
 
 const { fetchQueryMock, notFoundMock } = vi.hoisted(() => ({
@@ -72,6 +74,7 @@ const viewsPosts = defineCollection({
   fields: {
     title: text({ index: "by_title", searchIndex: { name: "search_title", filterFields: [] } }),
     featured: checkbox(),
+    viewCount: number({ schema: { validator: "int64" } }),
   },
   admin: {
     view: {
@@ -124,19 +127,21 @@ async function render(
 }
 
 /**
- * Finds one `funcRef`/`args` query's dehydrated cache entry inside the `HydrationBoundary`
+ * Finds one `funcRef`/`args` query's dehydrated cache entry inside the `HydrationBoundaryClient`
  * `state` `NextAdminPage`'s collection-list branch wraps its return in — every per-request
  * data fetch (`findPaginated`/`search`, `peek`, `listViews`) is prefetched+dehydrated
  * un-awaited now (shell-streaming follow-up, parts 1-3 complete), none threaded as explicit
- * `initial*` props anymore.
+ * `initial*` props anymore. Compared with `valuesEqual` rather than `JSON.stringify` equality
+ * — an int64 field's `where`/`args` value is a real `bigint`, which `JSON.stringify` throws on
+ * regardless of the RSC boundary (a plain JS/TS limitation, not a Flight one).
  */
 function dehydratedQueryState(element: unknown, funcRef: Parameters<typeof getFunctionName>[0], args: Record<string, unknown>) {
   const wrapped = element as { props: { children: { type: unknown; props: { state: { queries: unknown[] } } } } };
   const child = wrapped.props.children;
-  expect(child.type).toBe(HydrationBoundary);
+  expect(child.type).toBe(HydrationBoundaryClient);
   const queries = child.props.state.queries as { queryKey: unknown[]; state: { status: string; data: unknown } }[];
   const name = getFunctionName(funcRef);
-  const match = queries.find((q) => q.queryKey[1] === name && JSON.stringify(q.queryKey[2]) === JSON.stringify(args));
+  const match = queries.find((q) => q.queryKey[1] === name && valuesEqual(q.queryKey[2], args));
   expect(match).toBeDefined();
   return match?.state;
 }
@@ -265,6 +270,18 @@ describe("NextAdminPage — list view prerender", () => {
     expect(prefetchArgs(vexConvexApi.findPaginated)).toMatchObject({
       where: { field: "featured", op: "eq", value: true },
     });
+  });
+
+  it("an int64 field's bigint filter value prerenders without throwing crossing the RSC client boundary (native React Flight BigInt serialization — Next 16.4.5/React 19.2.9, no custom encode/decode needed)", async () => {
+    const element = await render(["collections", "posts2"], {
+      filter: "(viewCount.gte.9007199254740992)",
+    });
+    const realArgs = prefetchArgs(vexConvexApi.findPaginated) as Record<string, unknown>;
+    expect(realArgs).toMatchObject({
+      where: { field: "viewCount", op: "gte", value: 9_007_199_254_740_992n },
+    });
+    const queryState = dehydratedQueryState(element, vexConvexApi.findPaginated, realArgs);
+    expect(queryState?.status).toBe("success");
   });
 
   it("size changes paginationOpts.numItems (serverPageSize is 3, below the requested size)", async () => {

@@ -886,9 +886,9 @@ behind a database-adapter interface, ship it as `@vexcms/convex`, and later add
 `@vexcms/postgres` (Drizzle) + `@vexcms/supabase`, with MongoDB last. Non-Convex adapters
 expose fewer guarantees (live queries, catch-all after-hooks, migration-free schema).
 
-**Why.** Today the market is capped at the Convex ecosystem (~10k paying teams). Supabase
-alone has ~100k customers and recovers most Convex features (Realtime, Storage, `pg_cron`).
-It also answers the "platform risk" investor objection.
+**Why.** Today the market is capped at the Convex ecosystem. Supabase alone recovers most
+Convex features (Realtime, Storage, `pg_cron`) with a much larger install base. It also
+answers the platform-risk concern (dependence on a single backend vendor).
 
 **Measured lift.** ~52% of core LOC (58 of 199 non-test files) imports Convex. The public API
 also exposes Convex's execution model (`ctx`-taking server API). The access layer already
@@ -1333,32 +1333,6 @@ give the table-size picker an APG Grid keyboard model (arrows move, Enter insert
 
 **Why deferred.** Beyond the quality pass's fix boundary (≤ ~30 lines, no structural change);
 each needs its own interaction design.
-
-## LLC billing stack for paid tiers (ENT-0 prerequisite)
-
-**What.** The corporate billing layer for Pro / Agency / Enterprise sign-ups: Stripe (or
-equivalent) on the LLC (the existing uifoundry.dev entity, reused for VexCMS), a
-`billing@vexcms.dev` mailbox (Google Workspace secondary domain on the LLC's existing
-Workspace — never a primary-domain rename), terms of sale, and invoices issued by the LLC.
-
-**Why we want it.** Paid-tier revenue must flow through the corporate entity for tax
-control (developer decision, 2026-11-07). The donation stream stays separate and personal
-forever: GitHub Sponsors on `ianyimi` and Buy Me a Coffee stay personal; Sponsors profiles
-are non-transferable, which is acceptable only because donations never need to move.
-Buttondown (release emails, registered as `vexcms`) is subscriber data, not money, and is
-transferable whenever needed.
-
-**Lift.** Unassessed; standard SaaS billing setup plus legal copy.
-
-**Blocks.** The first paid signup. Nothing in the 0.1.0 launch track.
-
-**Why deferred.** Post-launch: business-tier design is ENT-0 (`post-v0.1.0-plan.md`), and no
-paid product exists at 0.1.0. Fold this into the ENT-0 spec's scope so the entity layer
-exists before the first paid customer.
-
-**Detail.** 2026-11-07 session discussion (launch coordination); `post-v0.1.0-plan.md` § ENT-0.
-
----
 
 ## `@daveyplate/better-auth-ui` unlabelled controls and invalid nesting
 
@@ -1821,7 +1795,7 @@ pattern from the guides.
 
 **Lift.** Small: one guide page, adapted from the www example.
 
-**When.** With launch-plan item 17's step L (final review), as part of updating all docs.
+**When.** With launch-plan item 26's step L (final review), as part of updating all docs.
 Developer request, 2026-11-09.
 
 **Where.** Explained in the 2026-11-09 LI session after the admin icon revert (changeset
@@ -2030,3 +2004,55 @@ richtext images) stay full-colour. Decide whether read-only image previews get a
 (opacity/grayscale) and apply it consistently.
 
 **Why deferred.** Developer decision (2026-11-12): ignore images for now, maybe build later.
+
+---
+
+## Framework adapters: TanStack Start, React + Vite, Astro
+
+**What.** After 0.1.0, admin and helper adapters in this order: TanStack Start, then React +
+Vite (client-only admin, React Router library mode), then `@vexcms/astro`. `@vexcms/astro`
+mounts the React admin as an island at `/admin` and lets slot and field overrides be written in
+any framework Astro supports (React, Vue, Svelte, Solid, Preact). It does this with a bridge
+that mounts a foreign component into its DOM node using that framework's own mount call, plus
+a framework-neutral store exposing what the React context hooks expose.
+
+**Why.** Only Next.js apps get the admin and helpers today. TanStack Start is already on the
+public roadmap and has a Convex quickstart; React + Vite is Convex's main React quickstart.
+Astro can't render one framework inside another framework's component and doesn't share
+context between islands (docs.astro.build, framework components and sharing state), so
+any-framework components need VexCMS's own bridge.
+
+**Workaround until then.** Run the admin as a separate Next.js app under `/admin` on the same
+domain (`basePath: "/admin"` plus a rewrite from the main site), on the same Convex deployment.
+Worth a short docs guide.
+
+**Not planned.** NestJS (backend only; uses the REST endpoints), React Router framework mode,
+Vue/Nuxt admin.
+
+**Lift.** TanStack Start medium; React + Vite small to medium; Astro large. The store is
+designed with the Astro adapter: the bridge passes which document and field path a component
+belongs to, and the existing React hooks become thin wrappers over the store, so nothing
+breaks. The plugin-system spec only needs to keep hook return values plain data.
+
+**Why deferred.** Developer decision (2026-11-19): post-0.1.0.
+
+---
+
+## Dev-only unstyled first frame on admin reload
+
+**What.** On `next dev` (Turbopack), an occasional admin reload paints one frame (~26ms) before the
+app stylesheet applies: the right-hand sidebar drops below the fold, the content goes full width,
+and buttons/badges are unstyled for that frame. Production (`next build && next start`) doesn't
+show it (developer-verified, 2026-11-25).
+
+**Why.** Next's React 19 stylesheet streaming requests the app CSS chunk as non-render-blocking
+and upgrades it to blocking ~2ms later (Chrome trace: `ResourceSendRequest` → 
+`PreloadRenderBlockingStatusChange`). With dev-server timing jitter, the browser can present a
+frame in between. The sidebar layout is Tailwind-class-only (`flex`, `hidden md:block`), so an
+unstyled frame stacks the sidebar below the content.
+
+**Lift.** Small, if it's ever wanted: inline `display: flex` plus the sidebar width on the sidebar
+wrapper/panel (`packages/react/src/ui/sidebar.tsx`), and a browser test that delays the CSS
+response and asserts the wrapper's computed `display` is `flex`.
+
+**Why deferred.** Dev-only; the production build doesn't reproduce it.

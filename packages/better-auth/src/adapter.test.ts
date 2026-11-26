@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { betterAuthAdapter } from "./adapter";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { admin, deviceAuthorization } from "better-auth/plugins";
-import { getDataFields, type AdminDataField } from "@vexcms/core";
+import { getDataFields, relationshipFieldToValidator, type AdminDataField } from "@vexcms/core";
 
 describe("betterAuthAdapter", () => {
   it("returns correct adapter shape", () => {
@@ -123,7 +123,32 @@ describe("betterAuthAdapter", () => {
     const adapter = betterAuthAdapter();
     const session = adapter.collections.find((c) => c.slug === "session");
     expect(session?.fields.userId).toBeDefined();
-    expect(session?.fields.userId?.type).toBe("text");
+    expect(session?.fields.userId?.type).toBe("relationship");
+  });
+
+  it("targets the user collection's resolved slug on a references field", () => {
+    const adapter = betterAuthAdapter({ config: { user: { modelName: "people" } } });
+    const session = adapter.collections.find((c) => c.slug === "session");
+    expect(session?.fields.userId?.type).toBe("relationship");
+    expect(
+      session?.fields.userId?.type === "relationship" ? session.fields.userId.collection.slug : undefined,
+    ).toBe("people");
+  });
+
+  it("stores a references field as a string, not a Convex id", () => {
+    const adapter = betterAuthAdapter();
+    const session = adapter.collections.find((c) => c.slug === "session");
+    expect(
+      session?.fields.userId?.type === "relationship" ? session.fields.userId.schema : undefined,
+    ).toEqual({ validator: "string" });
+  });
+
+  it("generates v.string() storage for a references relationship field", () => {
+    const adapter = betterAuthAdapter();
+    const session = adapter.collections.find((c) => c.slug === "session");
+    const userIdField = session?.fields.userId;
+    if (!userIdField || userIdField.type !== "relationship") throw new Error("expected relationship field");
+    expect(relationshipFieldToValidator({ field: userIdField })).toBe("v.string()");
   });
 
   it("maps boolean fields to checkbox type", () => {

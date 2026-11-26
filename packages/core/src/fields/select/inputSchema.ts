@@ -43,6 +43,25 @@ export function selectFieldToInputSchema(props: {
       : z.string();
 
   const requiredError = "This field is required.";
+
+  if (field.schema !== undefined) {
+    if (field.required) {
+      const requiredItemSchema =
+        optionValues.length > 0
+          ? z.enum(optionValues as [string, ...string[]], { error: requiredError })
+          : z.string({ error: requiredError });
+      return applyBaseInputSchemaMeta({ field, inputSchema: requiredItemSchema });
+    }
+    const optionalItemSchema =
+      optionValues.length > 0
+        ? z.enum(["", ...optionValues] as [string, ...string[]])
+        : z.string();
+    return applyBaseInputSchemaMeta({
+      field,
+      inputSchema: optionalItemSchema.default(field.defaultValue as string),
+    });
+  }
+
   let inputSchema = field.required
     ? z.array(itemSchema, { error: requiredError }).min(1, requiredError)
     : z.array(itemSchema);
@@ -57,6 +76,6 @@ export function selectFieldToInputSchema(props: {
 
   return applyBaseInputSchemaMeta({
     field,
-    inputSchema: inputSchema.default(field.defaultValue),
+    inputSchema: inputSchema.default(field.defaultValue as string[]),
   });
 }

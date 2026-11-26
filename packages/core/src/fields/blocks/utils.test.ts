@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { defineBlock, blocks } from "./config";
 import { text } from "../text";
 import { group } from "../group";
+import { keyValue } from "../keyValue";
 import type { GenericBlock } from "./types";
 import { buildDefaultBlock, cloneBlockWithFreshIds, coerceBlockToDefinition } from "./utils";
 
@@ -77,6 +78,22 @@ describe("cloneBlockWithFreshIds", () => {
     expect(inner).toHaveLength(1);
     expect(inner[0]?.id).not.toBe("i2");
     expect(inner[0]?.label).toBe("B");
+  });
+
+  it("regenerates ids nested inside a keyValue field's value", () => {
+    const nestedBlock = defineBlock({
+      slug: "gallery",
+      label: "Gallery",
+      fields: { items: keyValue({ value: blocks({ blocks: [itemBlock] }) }) },
+    });
+    const block: GenericBlock = {
+      id: "orig",
+      blockType: "gallery",
+      items: { featured: [{ id: "child-orig", blockType: "item", label: "a" }] },
+    };
+    const cloned = cloneBlockWithFreshIds({ block, blockDef: nestedBlock });
+    const items = cloned.items as Record<string, GenericBlock[]>;
+    expect(items.featured![0]!.id).not.toBe("child-orig");
   });
 
   it("leaves an unrecognised nested blockType untouched", () => {

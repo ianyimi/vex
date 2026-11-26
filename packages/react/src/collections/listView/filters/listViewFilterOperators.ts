@@ -50,10 +50,10 @@ export const LIST_VIEW_FILTER_STATUS_FIELD_KEY = VERSION_SYSTEM_FIELDS.status.sl
  * looked up by its own KEY, not through this type-keyed map — see
  * {@link listViewFilterOpsForFieldType}.
  *
- * `json`/`richtext`/`array`/`blocks`/`group` are explicit entries too
- * (bug fix): these five structured-data types used to fall
+ * `json`/`bytes`/`richtext`/`array`/`blocks`/`group` are explicit entries too
+ * (bug fix): these six structured/binary-value types used to fall
  * through to {@link LIST_VIEW_FILTER_DEFAULT_OPS}'s `eq`/`neq`, offering a
- * comparison against a structured value that was never meaningful and had
+ * comparison against a value that was never meaningful and had
  * no matching value control (`fieldToFilterInputComponent` registers none
  * for them) — now they list ONLY the two value-less operators, matching
  * the control-free row `ListViewFilterBuilder`'s own call site already
@@ -64,10 +64,13 @@ export const LIST_VIEW_FILTER_OPS_BY_FIELD_TYPE: Record<string, ListViewFilterOp
   date: ["gte", "lte", "isEmpty", "isNotEmpty"],
   commitTs: ["gte", "lte", "isEmpty", "isNotEmpty"],
   json: ["isEmpty", "isNotEmpty"],
+  bytes: ["isEmpty", "isNotEmpty"],
   richtext: ["isEmpty", "isNotEmpty"],
   array: ["isEmpty", "isNotEmpty"],
   blocks: ["isEmpty", "isNotEmpty"],
   group: ["isEmpty", "isNotEmpty"],
+  keyValue: ["isEmpty", "isNotEmpty"],
+  variant: ["isEmpty", "isNotEmpty"],
 };
 
 /** Every field type NOT listed in {@link LIST_VIEW_FILTER_OPS_BY_FIELD_TYPE} — equality plus the two value-less operators. No ordering comparisons: "greater than" has no meaning for text, a checkbox, a relationship, or a select. */

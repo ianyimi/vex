@@ -13,6 +13,8 @@ import {
   useEffect,
 } from "react";
 
+import { globalSingleton } from "../../utils/globalSingleton";
+
 export interface DndContextValue {
   register: (id: string, handler: (from: number, to: number) => void) => () => void;
   /** The droppableId that currently owns the active drag, or null when idle. */
@@ -29,7 +31,9 @@ export interface DndContextValue {
   mounted: boolean;
 }
 
-export const DndContext = createContext<DndContextValue | null>(null);
+export const DndContext = globalSingleton("ui/dnd/DndProvider/DndContext", () =>
+  createContext<DndContextValue | null>(null),
+);
 
 export function useDndContext(): DndContextValue {
   const dnd = useContext(DndContext);

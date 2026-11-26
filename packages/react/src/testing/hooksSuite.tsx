@@ -53,8 +53,13 @@ function deriveIndeterminate(state: { mode: string; selectedIds: Set<string> }, 
 
 /**
  * Wires a fresh `convex-test` instance through the real `ConvexQueryClient` +
- * `QueryClient` pair — byte-for-byte the same wiring `bridge.test.tsx` and
- * `relationship/Input.test.tsx` use — so `usePaginatedQuery`'s
+ * `QueryClient` pair — byte-for-byte the same wiring `bridge.test.tsx`,
+ * `relationship/Input.test.tsx`, and the real app's own
+ * `providers/convex.tsx` use (including `queryKeyHashFn:
+ * convexQueryClient.hashFn()` — `@convex-dev/react-query`'s own hash
+ * routes every query key's args through `convexToJson` before
+ * `JSON.stringify`, unlike TanStack's plain-`JSON.stringify` default, which
+ * throws on a `bigint` int64 filter value) — so `usePaginatedQuery`'s
  * `convexQuery(vexConvexApi.findPaginated, …)` call resolves real
  * `PaginationResult` data from the seeded `documents` table.
  *
@@ -70,7 +75,9 @@ function buildQueryClient(t: Parameters<typeof createFakeConvexClient>[0]): {
   const fakeClient = createFakeConvexClient(t) as ConvexReactClient;
   const convexQueryClient = new ConvexQueryClient(fakeClient);
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { queryFn: convexQueryClient.queryFn(), retry: false } },
+    defaultOptions: {
+      queries: { queryFn: convexQueryClient.queryFn(), queryKeyHashFn: convexQueryClient.hashFn(), retry: false },
+    },
   });
   convexQueryClient.connect(queryClient);
   return { queryClient, fakeClient };
@@ -1424,6 +1431,29 @@ export function runHooksSuite(options?: { only?: HooksSuiteMember[] }): void {
         });
         await waitFor(() => expect(result.current.totalDocs).toBe(6));
         expect(result.current.results).toHaveLength(6);
+      });
+
+      it("accepts a bigint where leaf value (int64 field filter) without throwing from the resetKey hash", async () => {
+        const t = convexTest(schema, testModules);
+        await seedDocuments(t, 5);
+        const { queryClient } = buildQueryClient(t);
+
+        const where: VexWhereNode<string> = {
+          field: "title",
+          op: "gte",
+          value: 9_007_199_254_740_993n,
+        };
+        const { result } = renderHook(
+          () =>
+            usePaginatedQuery({
+              query: { collection: "documents", where, paginationOpts: { numItems: 2, cursor: null } },
+            }),
+          { wrapper: makeWrapper(queryClient) },
+        );
+
+        await waitFor(() => expect(result.current.isPending).toBe(false));
+        expect(result.current.error).toBeUndefined();
+        expect(result.current.results).toEqual([]);
       });
     });
   }

@@ -176,6 +176,30 @@ get({ ctx, id, collection: "posts", populate: { featuredImage: true } });
 // featuredImage: Image[] — the real media document(s), not raw ids
 ```
 
+## Storage override
+
+`upload()` always stores `v.array(v.id("<to-slug>"))` (see above) unless `schema.validator` is
+set AND `hasMany` is `false` — when `hasMany` is `true`, `schema` is typed `never`: the override
+only applies to a single file reference.
+
+`schema: { validator: "id" }` stores a scalar `v.id("<to-slug>")`, typed `Id<"<to-slug>">`.
+`schema: { validator: "string" }` stores a scalar `v.string()`, typed `string`, for a
+library-owned media reference kept as a plain string. Populate and `depth` accept the scalar id
+directly.
+
+```ts
+// Default storage — always an array, even with hasMany: false
+featuredImage: v.optional(v.array(v.id("images")))
+
+// schema: { validator: "id" }, hasMany: false — scalar Id
+cover: upload({ to: "images", schema: { validator: "id" } })
+// cover: v.optional(v.id("images"))
+```
+
+Changing `schema.validator` on a field over a table that already has data does not migrate
+existing rows — migrate the column's stored shape manually first if it doesn't already match
+the new validator; VexCMS performs no automatic migration of a field's storage shape.
+
 This reaches an `upload()` field nested inside a `blocks()` block (keyed by the block's
 `blockType`), an `array()` item, or a `group()` — the same paths a nested `relationship()`
 field reaches. See the [blocks field guide](/fields/blocks/#populating-a-relationshipupload-field-nested-inside-a-block)

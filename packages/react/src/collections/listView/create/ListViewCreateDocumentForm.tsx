@@ -2,12 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button, DialogFooter } from "../../../ui";
-import { getDataFields, type CollectionConfig, vexConvexApi } from "@vexcms/core";
+import {
+  getDataFields,
+  resolveNullableSaveValues,
+  type CollectionConfig,
+  type VexVersionStatus,
+  vexConvexApi,
+} from "@vexcms/core";
 import { AppForm } from "../../../forms";
 import { RenderFields } from "../../../fields/RenderFields";
 import { useFieldsForm } from "../../../fields/useFieldsForm";
 import { useVexMutation } from "../../../hooks";
-import { applyVexFieldErrors } from "../../../utils/errors";
+import { applyVexFieldErrors, vexFieldErrorKeys } from "../../../utils/errors";
 
 /**
  * Props for {@link ListViewCreateDocumentForm}.
@@ -28,23 +34,43 @@ export interface ListViewCreateDocumentFormProps {
   onSubmittingChange?: (isSubmitting: boolean) => void;
   /**
    * Which fields to render. `"required"` (default) is the quick-create form's
-   * existing behavior. `"all"` is the duplicate fallback's all-fields mode
-   * (decision 7) — every field the caller can read, not just the required ones.
+   * existing behavior. `"all"` renders every field the caller can read, not
+   * just the required ones.
    */
   fieldsMode?: "required" | "all";
   /**
-   * Pre-fills the form's default values, overlaid on the fields' own declared
-   * defaults — the same `document` overlay `useFieldsForm` already applies in
-   * edit mode. The duplicate fallback passes the clone here.
+   * Pre-fills the rendered fields' default values, overlaid on the fields'
+   * own declared defaults — the same `document` overlay `useFieldsForm`
+   * already applies in edit mode. Also merged beneath the submitted `data`
+   * verbatim (the form's own values win for any key both define), so a key
+   * `fieldsMode` doesn't render — a non-required field in `"required"` mode —
+   * still creates with it. Duplicate relies on this: `cloneDocumentForDuplicate`'s
+   * clone goes here, so only the required fields need review but every cloned
+   * value is still carried onto the new document.
    */
   initialValues?: Record<string, unknown>;
   /**
-   * Submits once, on mount, instead of waiting for a user click — the
-   * duplicate fallback's "submits immediately" behavior (decision 7). Ignored
-   * on every later render; a dialog that stays open across a failed
+   * Submits once, on mount, instead of waiting for a user click. Ignored on
+   * every later render; a dialog that stays open across a failed
    * `submitOnOpen` attempt waits for the user from then on.
    */
   submitOnOpen?: boolean;
+  /**
+   * Forces the created document's `vex_status`, overriding `collection.versions.defaultStatus`
+   * for this create only. Duplicate passes `"draft"` on a versioned collection — a duplicate
+   * is unreviewed new content regardless of the collection's own default.
+   */
+  forceStatus?: VexVersionStatus;
+  /**
+   * Called instead of silently applying a rejected create's field error when that error targets
+   * a key `fieldsMode` didn't render — nothing on screen could show it otherwise. Called with
+   * the full submitted values (the form's own values merged over `initialValues`, same shape
+   * `onCreated` would have gotten), so the caller can reopen with every field rendered and the
+   * user's edits preserved. Duplicate passes a callback that reopens its dialog with
+   * `fieldsMode: "all"`, those values as `initialValues`, and `submitOnOpen` so the identical
+   * rejection recurs there and lands the error on the now-visible field.
+   */
+  onUnrenderedFieldError?: (values: Record<string, unknown>) => void;
 }
 
 /**
@@ -69,6 +95,8 @@ export function ListViewCreateDocumentForm({
   fieldsMode = "required",
   initialValues,
   submitOnOpen = false,
+  forceStatus,
+  onUnrenderedFieldError,
 }: ListViewCreateDocumentFormProps) {
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,21 +137,29 @@ export function ListViewCreateDocumentForm({
     readableFieldKeys: fieldKeys,
     onSubmit: async ({ value }) => {
       let id: string;
+      const data = resolveNullableSaveValues({
+        values: { ...initialValues, ...value },
+        fields: collection.fields,
+      });
       try {
-        id = await mutateAsync({ collection: collection.slug, data: value });
+        id = await mutateAsync({
+          collection: collection.slug,
+          data,
+          ...(forceStatus !== undefined ? { status: forceStatus } : {}),
+        });
       } catch (error) {
-        applyVexFieldErrors(form, error);
-        // Rethrown (not swallowed): TanStack's own `_handleSubmit` catches this,
-        // sets `isSubmitSuccessful: false`, and re-throws — which is what
-        // `AppForm`'s `failedSubmitAttempt` effect needs to run `focusFirstFieldError`
-        // and land the user on the field `applyVexFieldErrors` just marked invalid.
+        const unrenderedKey = vexFieldErrorKeys(error).find((key) => !fieldKeys.includes(key));
+        if (unrenderedKey !== undefined && onUnrenderedFieldError) {
+          onUnrenderedFieldError(data);
+        } else {
+          applyVexFieldErrors(form, error);
+        }
         throw error;
       } finally {
         endSubmit();
       }
       onCreated(id);
     },
-    onSubmitInvalid: endSubmit,
   });
 
   const submitOnOpenRef = useRef(submitOnOpen);

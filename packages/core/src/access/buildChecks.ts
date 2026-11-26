@@ -117,9 +117,11 @@ export function indexedEqCheck<S extends string, F extends AccessIndexedFieldFor
  * field's index.
  *
  * The comparison value is built per request from `user`, and its shape follows the
- * field's declared type: a relationship column stores `Id[]`, so the value is
- * `[user._id]`; anything else compares the id directly. That decision needs the
- * resource config, which is why this is a distinct builder rather than a call to
+ * field's declared type: a relationship column stores `Id[]` unless it has a `schema`
+ * override (`schema.validator` set makes it a bare `Id`), so the comparison value is
+ * `[user._id]` only for array-stored relationships; anything else — including a
+ * scalar relationship — compares the id directly. That decision needs the resource
+ * config, which is why this is a distinct builder rather than a call to
  * {@link indexedEqCheck}.
  *
  * @typeParam S - Resource slug, inferred from `props.resource`.
@@ -134,13 +136,14 @@ export function indexedOwnerCheck<S extends string, F extends AccessIndexedField
   resource: AccessResourceRef<S>;
 }): AccessCheck<S> {
   const index = indexNameFor(props.resource, props.field);
-  const isRelationship =
-    props.resource.fields[props.field]?.type === ADMIN_FIELDS.relationship.type;
+  const ownerField = props.resource.fields[props.field] as AdminField | undefined;
+  const isArrayStoredRelationship =
+    ownerField?.type === ADMIN_FIELDS.relationship.type && ownerField.schema === undefined;
   return {
     withIndex: ({ user }: { user: AuthUserDocument }) => ({
       name: index,
       range: (ix: never) =>
-        (ix as unknown as RawRange).eq(props.field, isRelationship ? [user._id] : user._id),
+        (ix as unknown as RawRange).eq(props.field, isArrayStoredRelationship ? [user._id] : user._id),
     }),
   } as unknown as AccessCheck<S>;
 }

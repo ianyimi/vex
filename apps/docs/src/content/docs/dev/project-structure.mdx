@@ -29,6 +29,12 @@ Templates are hand-maintained copies kept in sync with the apps they're
 derived from, not generated — there is no extraction/codegen layer between
 an app and its template.
 
+The root `skills/` folder isn't a package. It holds the
+[agent skills](/guides/agent-skills/) users install into their own coding
+agents with `npx skills add ianyimi/vex`: one `vexcms-<task>/SKILL.md` folder
+per skill, numbered in `skills/README.md`. It isn't built or published to npm;
+the `skills` CLI reads it straight from GitHub.
+
 ## Dependency diagram
 
 ```

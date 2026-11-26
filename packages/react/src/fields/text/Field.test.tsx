@@ -223,6 +223,7 @@ describe("text: admin.mask", () => {
     await waitFor(() =>
       expect(withMaskMock).toHaveBeenCalledWith("(999) 999-9999", {
         rightAlign: false,
+        clearMaskOnLostFocus: false,
         autoUnmask: true,
       }),
     );

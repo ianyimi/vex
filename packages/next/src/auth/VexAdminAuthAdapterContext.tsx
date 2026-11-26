@@ -4,7 +4,7 @@
 // explicitly here too so `tsc`/vitest (which never run tsup) see it.
 
 import { createContext, useContext, type ReactNode } from "react";
-import type { FrameworkAuthAdapter } from "@vexcms/react";
+import { globalSingleton, type FrameworkAuthAdapter } from "@vexcms/react";
 
 /**
  * Carries the app's sign-in/out actions (`@vexcms/react`'s `FrameworkComponents.auth`,
@@ -22,20 +22,26 @@ import type { FrameworkAuthAdapter } from "@vexcms/react";
  * `undefined` default (not an empty object) distinguishes "no provider mounted" from "a
  * provider mounted with no adapter" — `AdminTopNav`'s own control renders nothing either
  * way, but the distinction matters for anyone debugging why it's missing.
+ *
+ * Created through `@vexcms/react`'s `globalSingleton`, so a bundler that loads this module
+ * twice still hands every copy the same context instance and the provider stays visible.
  */
-export const VexAdminAuthAdapterContext = createContext<FrameworkAuthAdapter | undefined>(
-  undefined,
+export const VexAdminAuthAdapterContext = globalSingleton(
+  "next/auth/VexAdminAuthAdapterContext",
+  () => createContext<FrameworkAuthAdapter | undefined>(undefined),
 );
 
 /**
  * Mounts the sign-in/out adapter for the admin panel's top-bar control.
  *
- * `signOut` must hard-navigate (full document load) to the project's resolved
- * `config.auth.signOut.redirectTo` once the session cookie clears — never
- * `router.push`/`router.refresh`, which keep the admin layout mounted while
- * queries re-run anonymously and the route guard redirects underneath it (the
- * multi-second "sidebar lingers, then a sign-in flash" sequence this contract
- * exists to avoid). See {@link FrameworkAuthAdapter.signOut} for the full contract.
+ * `signOut` must full-reload the current document (`window.location.reload()`)
+ * once the session cookie clears — never `router.push`/`router.refresh`, which
+ * keep the admin layout mounted while queries re-run anonymously and the route
+ * guard redirects underneath it (the multi-second "sidebar lingers, then a
+ * sign-in flash" sequence this contract exists to avoid). The reload
+ * re-requests the exact URL the caller was on — the project's own server-side
+ * access guards decide what it shows signed out. See
+ * {@link FrameworkAuthAdapter.signOut} for the full contract.
  *
  * @example
  * ```tsx
@@ -43,8 +49,6 @@ export const VexAdminAuthAdapterContext = createContext<FrameworkAuthAdapter | u
  * import { VexAdminAuthAdapterProvider } from "@vexcms/next/auth";
  * import { signOut } from "~/auth/client";
  * import { useAuthTransition } from "@vexcms/react";
- *
- * import config from "~/vex.config";
  *
  * function AuthAdapterProvider({ children }: { children: React.ReactNode }) {
  *   // Needs an `AuthTransitionProvider` ancestor (the app's own
@@ -56,17 +60,17 @@ export const VexAdminAuthAdapterContext = createContext<FrameworkAuthAdapter | u
  *       value={{
  *         signInHref: (redirectTo) => `/auth/sign-in?redirectTo=${encodeURIComponent(redirectTo)}`,
  *         signOut: () => {
- *           // `skipRefresh: true` — this sign-out already hard-navigates
+ *           // `skipRefresh: true` — this sign-out already full-reloads
  *           // below; without it, `useNextAuthTransitionRefresh` fires its
  *           // OWN `router.refresh()` for this same transition, racing the
- *           // hard navigation (see that hook's own doc comment).
+ *           // reload (see that hook's own doc comment).
  *           beginTransition(null, { skipRefresh: true });
- *           const goToDestination = () => {
- *             window.location.href = config.auth.signOut.redirectTo;
+ *           const reloadPage = () => {
+ *             window.location.reload();
  *           };
- *           return signOut().then(goToDestination).catch(goToDestination);
- *           // hard-navigate either way — a stale client cache after a failed
- *           // sign-out is worse than a redundant navigation.
+ *           return signOut().then(reloadPage).catch(reloadPage);
+ *           // reload either way — a stale client cache after a failed
+ *           // sign-out is worse than a redundant reload.
  *         },
  *       }}
  *     >

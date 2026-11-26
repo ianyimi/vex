@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import type { GenericBlock } from "@vexcms/core";
+import { parseConvexValue, serializeConvexValue, type GenericBlock } from "@vexcms/core";
 
 /**
  * `localStorage` key for the admin block clipboard. Same origin means the
@@ -50,7 +50,7 @@ function readClipboard(): BlockClipboard | null {
     return cachedClipboard;
   }
   try {
-    const parsed: unknown = JSON.parse(raw);
+    const parsed: unknown = parseConvexValue({ text: raw });
     cachedClipboard = isBlockClipboard(parsed) ? parsed : null;
   } catch {
     cachedClipboard = null;
@@ -105,7 +105,7 @@ export function useBlockClipboard(): {
     try {
       window.localStorage.setItem(
         BLOCK_CLIPBOARD_STORAGE_KEY,
-        JSON.stringify(envelope),
+        serializeConvexValue({ value: envelope }),
       );
     } catch {
       return;

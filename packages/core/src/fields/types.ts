@@ -4,6 +4,7 @@ import { TextField } from "./text";
 import { EmailField } from "./email";
 import { TextareaField } from "./textarea";
 import { JsonField } from "./json";
+import { BytesField } from "./bytes";
 import { CheckboxField } from "./checkbox";
 import { DateField } from "./date";
 import { CommitTsField } from "./commitTs";
@@ -15,6 +16,7 @@ import { ColorField } from "./color";
 import { RelationshipField } from "./relationship";
 import { ArrayField, ArrayType } from "./array";
 import { GroupField } from "./group";
+import { KeyValueField } from "./keyValue";
 import { RichTextField } from "./richtext";
 import { BlocksField } from "./blocks";
 import { UploadField } from "./upload";
@@ -25,12 +27,15 @@ import { TabsField } from "./tabs";
 import { CollapsibleField } from "./collapsible";
 import { RowField } from "./row";
 import { UIField } from "./ui";
+import { VariantField } from "./variant";
 import { ADMIN_FIELDS } from "./constants";
 
 export * from "./text/types";
 export * from "./email/types";
 export * from "./textarea/types";
 export * from "./json/types";
+export * from "./bytes/types";
+export * from "./variant/types";
 export * from "./number/types";
 export * from "./checkbox/types";
 export * from "./commitTs/types";
@@ -97,8 +102,11 @@ export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
   | UploadField<VexResourceSlug, TFieldMeta>
   | BlocksField<VexResourceSlug, TFieldMeta>
   | GroupField<VexResourceSlug, TFieldMeta>
+  | KeyValueField<VexResourceSlug, TFieldMeta>
   | RichTextField<VexResourceSlug, TFieldMeta>
   | JsonField<VexResourceSlug, TFieldMeta>
+  | BytesField<VexResourceSlug, TFieldMeta>
+  | VariantField<VexResourceSlug, TFieldMeta>
   | TabsField<VexResourceSlug, TFieldMeta>
   | CollapsibleField<VexResourceSlug, TFieldMeta>
   | RowField<VexResourceSlug, TFieldMeta>

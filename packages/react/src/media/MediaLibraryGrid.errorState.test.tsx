@@ -32,6 +32,7 @@ function baseResult(
 const targetCollectionConfig = {
   slug: "images",
   labels: { singular: "Image", plural: "Images" },
+  admin: { view: { state: { searchFields: ["filename"] } } },
 } as unknown as MediaCollectionConfig;
 
 describe("MediaLibraryGrid — error state (mocked usePaginatedSearch)", () => {

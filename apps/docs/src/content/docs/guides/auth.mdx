@@ -28,27 +28,19 @@ user-defined collections via `mergeAuthCollections`.
 
 ## Signing out of the admin panel
 
-`defineConfig()`'s client-safe `auth` group also carries the admin panel's post-sign-out
-destination — distinct from `server.auth.adapter` (the live adapter instance, server-only):
+`AdminTopNav`'s "Sign out" control calls the framework adapter's `signOut()` (see the
+[framework adapters guide](/guides/framework-adapters/), Step 10, for the full contract):
+once the session cookie actually clears, `signOut()` performs a **full reload of the
+current document** (`window.location.reload()`) — never a client-side `router.push`/
+`router.refresh`. The admin shell (sidebar, top bar) must never render in a signed-out
+state; a client-side refresh instead keeps it mounted while every query re-runs
+anonymously and the route guard redirects underneath it, which is exactly the multi-second
+"sidebar lingers, then a sign-in flash" sequence this full reload avoids.
 
-```ts
-// vex.config.ts (client)
-export default defineConfig({
-  auth: { signOut: { redirectTo: "/goodbye" } }, // defaults to "/"
-  collections: [posts, authors],
-});
-```
-
-`AdminTopNav`'s "Sign out" control reads this through the framework adapter's `signOut()`
-(see the [framework adapters guide](/guides/framework-adapters/), Step 10, for the full
-contract): once the session cookie actually clears, `signOut()` performs a
-**hard, full-document navigation** straight to `config.auth.signOut.redirectTo` — never a
-client-side `router.push`/`router.refresh`. The admin shell (sidebar, top bar) must never
-render in a signed-out state; a client-side refresh instead keeps it mounted while every
-query re-runs anonymously and the route guard redirects underneath it, which is exactly the
-multi-second "sidebar lingers, then a sign-in flash, then the destination" sequence this
-hard navigation avoids. The only case a sign-in screen is ever seen after clicking "Sign
-out" is `redirectTo` itself pointing at the sign-in page.
+The reload re-requests the exact URL you were on, so your app's own server-side access
+guards decide what it shows signed out — the same page if it's readable by `anonRole` (see
+the [Access Control guide](/guides/access-control/#read-only-public-admin-via-anonrole)),
+a redirect to sign-in, or `/unauthorized`, the same as any other fresh request to that URL.
 
 The same reasoning applies to a successful **sign-in**: a client-side `router.push`
 dispatched right after an unawaited `router.refresh()` can race that refresh's own RSC

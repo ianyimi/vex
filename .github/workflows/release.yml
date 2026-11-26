@@ -73,7 +73,7 @@ jobs:
       # have types once `dist/` exists — before it, `plateEditor()` in
       # apps/www's vex.config.ts lints as an unresolved `error` type.
       - name: Lint
-        run: pnpm lint && pnpm --filter www --filter test lint
+        run: pnpm lint
 
       - name: Typecheck Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" typecheck

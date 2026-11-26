@@ -58,3 +58,7 @@
 /**/playwright-report
 /**/.lighthouseci
 /**/e2e/.auth
+
+# Private business files stay here, untracked (.agent/ is public). Never commit them.
+/.agent/docs/business/
+/.agent/docs/specs/2026-11-12-business-plan/

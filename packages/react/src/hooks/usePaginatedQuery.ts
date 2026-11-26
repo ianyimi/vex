@@ -6,7 +6,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useAuthTransition, useVexAuth } from "../auth";
 import type { FindClientPaginatedArgs } from "../client";
 import { whereArg } from "../collections/api/whereArg";
-import { vexConvexApi } from "@vexcms/core";
+import { stringifyConvexValue, vexConvexApi } from "@vexcms/core";
 import type { CollectionSlug, PaginationResult, VexDocument } from "@vexcms/core";
 
 /**
@@ -274,13 +274,15 @@ export function usePaginatedQuery<
   // already this exact codebase's established identity signal for the SAME class of problem
   // (`useFieldPermissions()` reactively drops a now-unreadable `sort`/`search`/filter field
   // the identical way).
-  const resetKey = JSON.stringify({
-    collection: query.collection,
-    where: resolvedWhere,
-    sort: query.sort,
-    drafts: query.drafts,
-    numItems: query.paginationOpts.numItems,
-    identity,
+  const resetKey = stringifyConvexValue({
+    value: {
+      collection: query.collection,
+      where: resolvedWhere,
+      sort: query.sort,
+      drafts: query.drafts,
+      numItems: query.paginationOpts.numItems,
+      identity,
+    },
   });
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
   // Developer-reported regression fix: Convex's own React Query integration pushes a

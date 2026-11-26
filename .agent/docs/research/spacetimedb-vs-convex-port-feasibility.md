@@ -508,9 +508,8 @@ milestone (justified by the Svelte adapter, not by SpacetimeDB) → *then* spike
 1. **RAM is the database size limit.** All data in memory. A media-heavy CMS storing binaries
    inline is paying RAM prices for blobs. Push files to S3/R2 and keep only metadata.
 2. **BSL license, not MIT/Apache.** Business Source License 1.1, converts to AGPLv3 + linking
-   exception after a few years. Your monetization plan is "MIT core forever + BSL enterprise
-   packages" — worth checking that a BSL dependency doesn't complicate what you tell users
-   about the MIT core.
+   exception after a few years. Worth checking that a BSL dependency doesn't complicate what you
+   tell users about the core's own licence (planned privately — see the business plan).
 3. **Beta/unstable surface area.** Procedures: unstable in Rust/C#/C++. HTTP handlers: beta.
    RLS: experimental, docs discourage it. Submodules: TypeScript only. You'd build on
    pre-1.0 primitives.

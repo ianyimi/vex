@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { CollectionConfig, VexDocument } from "@vexcms/core";
+import { defineCollection, text, type CollectionConfig, type VexDocument } from "@vexcms/core";
 import type * as HooksModule from "../../hooks";
 import {
   relationshipFieldFixture,
@@ -39,6 +39,13 @@ function baseResult(
 }
 
 const targetCollection = relationshipTargetCollection as CollectionConfig;
+
+const collectionWithNoSearchFields = defineCollection({
+  slug: "documents_no_search_fields",
+  labels: { singular: "Doc", plural: "Docs" },
+  fields: { title: text({ required: true }) },
+  admin: { useAsTitle: "title" },
+}) as CollectionConfig;
 
 describe("RelationshipDocumentList", () => {
   it("renders skeleton rows while pending", () => {
@@ -295,5 +302,102 @@ describe("RelationshipDocumentList", () => {
 
     await user.click(screen.getByRole("button", { name: "Load more" }));
     expect(loadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("reserves the Load more button's height inside the fixed results area, instead of growing the dialog below it", () => {
+    usePaginatedSearchMock.mockReturnValue(
+      baseResult({ documents: [makeDoc("a", "Alpha")], hasMore: true, loadMore: vi.fn() }),
+    );
+    const { container } = render(
+      <RelationshipDocumentList
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={targetCollection}
+        selectedIds={[]}
+        drafts={false}
+        onSelectionChange={vi.fn()}
+      />,
+    );
+    const results = container.querySelector('[data-testid="relationship-results"]') as HTMLElement;
+    expect(results.style.height).toBe("360px");
+    const loadMoreButton = screen.getByRole("button", { name: "Load more" });
+    expect(results.contains(loadMoreButton)).toBe(true);
+  });
+
+  it("keeps the results container at the same fixed height across pending, empty, and many-result renders", () => {
+    usePaginatedSearchMock.mockReturnValue(baseResult({ isPending: true }));
+    const { container, rerender } = render(
+      <RelationshipDocumentList
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={targetCollection}
+        selectedIds={[]}
+        drafts={false}
+        onSelectionChange={vi.fn()}
+      />,
+    );
+    const getHeight = () =>
+      (container.querySelector('[data-testid="relationship-results"]') as HTMLElement)
+        .style.height;
+    const pendingHeight = getHeight();
+    expect(pendingHeight).toBe("360px");
+
+    usePaginatedSearchMock.mockReturnValue(baseResult());
+    rerender(
+      <RelationshipDocumentList
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={targetCollection}
+        selectedIds={[]}
+        drafts={false}
+        onSelectionChange={vi.fn()}
+      />,
+    );
+    expect(getHeight()).toBe(pendingHeight);
+
+    usePaginatedSearchMock.mockReturnValue(
+      baseResult({
+        documents: Array.from({ length: 20 }, (_, i) => makeDoc(`d${i}`, `Doc ${i}`)),
+      }),
+    );
+    rerender(
+      <RelationshipDocumentList
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={targetCollection}
+        selectedIds={[]}
+        drafts={false}
+        onSelectionChange={vi.fn()}
+      />,
+    );
+    expect(getHeight()).toBe(pendingHeight);
+  });
+
+  it("hides the search input when the target collection declares no readable admin.view.state.searchFields", () => {
+    usePaginatedSearchMock.mockReturnValue(baseResult());
+    render(
+      <RelationshipDocumentList
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={collectionWithNoSearchFields}
+        selectedIds={[]}
+        drafts={false}
+        onSelectionChange={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByPlaceholderText(`Search ${collectionWithNoSearchFields.labels.plural}…`),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the search input when the target collection declares readable admin.view.state.searchFields", () => {
+    usePaginatedSearchMock.mockReturnValue(baseResult());
+    render(
+      <RelationshipDocumentList
+        fieldDef={relationshipFieldFixture.fieldDef}
+        targetCollection={targetCollection}
+        selectedIds={[]}
+        drafts={false}
+        onSelectionChange={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByPlaceholderText(`Search ${targetCollection.labels.plural}…`),
+    ).toBeInTheDocument();
   });
 });

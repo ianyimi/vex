@@ -1,6 +1,7 @@
 import {
   ADMIN_CUSTOM_SUBJECTS,
   ADMIN_FIELDS,
+  FIELD_SCHEMA_VALIDATORS,
   type AdminDataField,
   type AdminField,
   type AdminUIField,
@@ -180,6 +181,7 @@ function dataFieldBase(props: { field: AdminDataField; path: string; context: An
     path,
     type: field.type,
     required: field.required,
+    nullable: field.nullable,
     hidden: field.admin.hidden,
     readOnly: field.admin.readOnly,
     position: field.admin.position,
@@ -248,9 +250,12 @@ function anonymizeField(props: { field: AdminField; context: AnonymizeContext; p
       context.fields.push({
         ...dataFieldBase({ field, path, context }),
         hasMask,
-        min: field.min?.[0],
-        max: field.max?.[0],
+        min: field.min === undefined ? undefined : Number(field.min[0]),
+        max: field.max === undefined ? undefined : Number(field.max[0]),
         step: field.step,
+        ...(field.schema?.validator === FIELD_SCHEMA_VALIDATORS.int64
+          ? { schemaValidator: field.schema.validator }
+          : {}),
       });
       return;
     }
@@ -288,12 +293,14 @@ function anonymizeField(props: { field: AdminField; context: AnonymizeContext; p
         optionCount: field.options.length,
         display: field.admin.display,
         searchable: field.admin.searchable,
+        schemaValidator: field.schema?.validator,
       });
       return;
     case ADMIN_FIELDS.relationship.type:
       context.fields.push({
         ...dataFieldBase({ field, path, context }),
         hasMany: field.hasMany,
+        schemaValidator: field.schema?.validator,
         min: field.min?.[0],
         max: field.max?.[0],
         target: context.collectionPaths.get(field.collection.slug),
@@ -303,6 +310,7 @@ function anonymizeField(props: { field: AdminField; context: AnonymizeContext; p
       context.fields.push({
         ...dataFieldBase({ field, path, context }),
         hasMany: field.hasMany,
+        schemaValidator: field.schema?.validator,
         min: field.min?.[0],
         max: field.max?.[0],
         hasAccept: field.accept.length > 0,
@@ -314,6 +322,13 @@ function anonymizeField(props: { field: AdminField; context: AnonymizeContext; p
       return;
     case ADMIN_FIELDS.json.type:
       context.fields.push(dataFieldBase({ field, path, context }));
+      return;
+    case ADMIN_FIELDS.bytes.type:
+      context.fields.push({
+        ...dataFieldBase({ field, path, context }),
+        max: field.maxSize,
+        hasAccept: field.accept.length > 0,
+      });
       return;
     case ADMIN_FIELDS.array.type:
       context.fields.push({
@@ -327,6 +342,13 @@ function anonymizeField(props: { field: AdminField; context: AnonymizeContext; p
       context.fields.push({ ...dataFieldBase({ field, path, context }), defaultCollapsed: field.admin.defaultCollapsed });
       walkFields({ fields: field.fields, context, parentPath: path });
       return;
+    case ADMIN_FIELDS.keyValue.type:
+      context.fields.push({
+        ...dataFieldBase({ field, path, context }),
+        keyKind: field.keys ? "id" : "string",
+      });
+      anonymizeField({ field: field.value, context, path: `${path}.v` });
+      return;
     case ADMIN_FIELDS.blocks.type:
       context.fields.push({
         ...dataFieldBase({ field, path, context }),
@@ -337,6 +359,22 @@ function anonymizeField(props: { field: AdminField; context: AnonymizeContext; p
       field.blocks.forEach((block, index) => {
         registerBlockPlacement({ block, context, placementPath: `${path}.b${index + 1}` });
       });
+      return;
+    case ADMIN_FIELDS.variant.type:
+      context.fields.push({
+        ...dataFieldBase({ field, path, context }),
+        hasDiscriminator: field.discriminator !== undefined,
+        variantCount: Object.keys(field.variants).length,
+      });
+      if (field.discriminator !== undefined) {
+        Object.values(field.variants).forEach((member, index) => {
+          walkFields({ fields: member.fields, context, parentPath: `${path}.v${index + 1}` });
+        });
+      } else {
+        Object.values(field.variants).forEach((member, index) => {
+          anonymizeField({ field: member, context, path: `${path}.v${index + 1}` });
+        });
+      }
       return;
     case ADMIN_FIELDS.tabs.type:
       context.fields.push({ ...uiFieldBase({ field, path, context }), tabCount: field.tabs.length });

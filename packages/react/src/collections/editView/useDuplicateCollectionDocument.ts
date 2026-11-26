@@ -2,59 +2,70 @@
 
 import {
   cloneDocumentForDuplicate,
+  resolveDuplicateTitle,
   VERSION_STATUSES,
-  vexConvexApi,
   type CollectionConfig,
+  type VexVersionStatus,
 } from "@vexcms/core";
 import { adminHref } from "../../admin/adminHref";
 import { useVexConfig } from "../../config/VexConfigContext";
-import { useVexMutation } from "../../hooks";
 import { useVexNavigate } from "../../config/useVexNavigate";
 import { useReleaseUnsavedChangesGuard } from "../../documents/useUnsavedChangesGuard";
 
 /** Props for {@link useDuplicateCollectionDocument}. */
 export interface UseDuplicateCollectionDocumentProps {
-  /** The collection `document` belongs to — supplies `fields` for the clone and `versions.drafts` for the forced-draft call. */
-  collection: CollectionConfig;
   /**
-   * The currently-loaded document to duplicate, or `undefined` before it has loaded —
-   * `duplicate()` is a no-op until then. Typed as `useVexDocument().saved`'s own shape (not
-   * `VexDocument`) — the caller reads this straight off `useVexDocument()`, which only knows a
-   * plain field-keyed record, not the full server row.
+   * The collection `document` belongs to — supplies `fields`/`admin.useAsTitle` for the clone
+   * and `versions.drafts` for the forced-draft create. `undefined` before `config.collections`
+   * resolves `props.slug` (the caller's own `collection!` would otherwise have to dereference
+   * it before its own not-found guard) — `clone`/`forceStatus` stay `undefined` until then.
+   */
+  collection: CollectionConfig | undefined;
+  /**
+   * The currently-loaded document to duplicate, or `undefined` before it has loaded — `clone`
+   * is `undefined` until then. Typed as `useVexDocument().saved`'s own shape (not `VexDocument`)
+   * — the caller reads this straight off `useVexDocument()`, which only knows a plain
+   * field-keyed record, not the full server row.
    */
   document: Record<string, unknown> | undefined;
-  /**
-   * Called with the clone when the first create attempt is rejected (most commonly a
-   * unique-field conflict). A callback, not hook-owned state — the fallback dialog lives in
-   * `CollectionDuplicateMenuItem`'s own `useEditActionsMenuDialog().open(...)` call, since the create
-   * rejects asynchronously, after `CollectionDuplicateMenuItem` has already unmounted (base-ui
-   * tears down `DropdownMenuContent` and every item in it on select), so this hook's own state
-   * would vanish with it. The caller owns where the fallback renders.
-   */
-  onConflict: (clone: Record<string, unknown>) => void;
 }
 
 /** Return value of {@link useDuplicateCollectionDocument}. */
 export interface UseDuplicateCollectionDocumentResult {
-  /** Starts a duplicate attempt. Never throws — a rejection calls `onConflict` instead. */
-  duplicate: () => void;
-  /** Whether the first (clone-and-create) attempt is in flight. */
-  isPending: boolean;
+  /**
+   * The duplicate's prefill — `props.document` cloned via `cloneDocumentForDuplicate`, its title
+   * renamed. `undefined` until `props.document` has loaded. Pass as `ListViewCreateDocumentForm`'s
+   * `initialValues`.
+   */
+  clone: Record<string, unknown> | undefined;
+  /**
+   * The duplicate dialog's "copied from" note — names the source document's current title when
+   * `collection.admin.useAsTitle` resolves to one, else a generic fallback.
+   */
+  note: string;
+  /**
+   * Forces a draft on a versioned collection — a duplicate is unreviewed new content regardless
+   * of `collection.versions.defaultStatus`. `undefined` for a non-versioned collection. Pass as
+   * `ListViewCreateDocumentForm`'s `forceStatus`.
+   */
+  forceStatus: VexVersionStatus | undefined;
+  /**
+   * Releases the unsaved-changes guard and navigates to the new document. Pass as
+   * `ListViewCreateDocumentForm`'s `onCreated`.
+   */
+  onCreated: (id: string) => void;
 }
 
 /**
- * Drives decision 6/7/9's two-step duplicate flow: clone the loaded document, try a server
- * `create` with it, and navigate to the new document on success. On a rejected create, calls
- * `props.onConflict` with the same clone instead of surfacing a toast —
- * `CollectionDuplicateMenuItem` opens the all-fields fallback dialog from there, prefilled with
- * the clone (`ListViewCreateDocumentForm` with `fieldsMode: "all"`, `initialValues: clone`,
- * `submitOnOpen: true`), so the SAME failing create re-runs there and `AppForm`'s
- * `focusFirstFieldError` lands the user on the exact input.
+ * Drives the duplicate dialog's prefill and post-create navigation. The dialog always opens
+ * (decision: developer feedback — no more eager create-then-fallback-on-conflict): this hook
+ * clones the loaded document (title renamed via `resolveDuplicateTitle`/`cloneDocumentForDuplicate`)
+ * for `ListViewCreateDocumentForm`'s `initialValues`, and releases the unsaved-changes guard plus
+ * navigates once the user reviews/edits the required fields and submits. The create itself — and
+ * any unique-field conflict — is the form's own concern; this hook never calls `create` directly.
  *
- * @param props - The collection and document being duplicated, plus `onConflict`.
- * @returns `{ duplicate, isPending }` — see {@link UseDuplicateCollectionDocumentResult}.
- * @throws Never — `duplicate()` itself never throws; a create rejection is routed to
- *   `props.onConflict`, not re-thrown.
+ * @param props - The collection and document being duplicated.
+ * @returns `{ clone, note, forceStatus, onCreated }` — see {@link UseDuplicateCollectionDocumentResult}.
  */
 export function useDuplicateCollectionDocument(
   props: UseDuplicateCollectionDocumentProps,
@@ -62,37 +73,29 @@ export function useDuplicateCollectionDocument(
   const config = useVexConfig();
   const navigate = useVexNavigate();
   const release = useReleaseUnsavedChangesGuard();
-  const { mutateAsync, isPending } = useVexMutation({
-    collection: props.collection.slug,
-    mutationFn: vexConvexApi.create,
-    operation: "create",
-    getChanges: ({ args, result }) => [{ after: { ...args.data, _id: result } }],
-    // `false`, not omitted: omitting `errorToast` falls back to a generic "Request
-    // failed" toast (`useVexMutation`'s own default) — a rejection here opens the
-    // fallback dialog instead, which has its own `ListViewCreateDocumentForm`/`errorToast`.
-    errorToast: false,
-  });
 
-  function duplicate(): void {
-    if (!props.document) return;
-    const clone = cloneDocumentForDuplicate({
-      fields: props.collection.fields,
-      document: props.document,
-    });
-    const isVersioned = props.collection.versions.drafts;
-    void mutateAsync({
-      collection: props.collection.slug,
-      data: clone,
-      ...(isVersioned ? { status: VERSION_STATUSES.draft.key } : {}),
-    })
-      .then((id) => {
-        release();
-        navigate(adminHref({ type: "document", slug: props.collection.slug, id }, config.basePath));
-      })
-      .catch(() => {
-        props.onConflict(clone);
-      });
+  const useAsTitle = props.collection?.admin.useAsTitle;
+  const clone =
+    props.collection && props.document
+      ? cloneDocumentForDuplicate({ fields: props.collection.fields, document: props.document, useAsTitle })
+      : undefined;
+  const sourceTitle = props.document
+    ? resolveDuplicateTitle({ useAsTitle, document: props.document })
+    : undefined;
+  const note = sourceTitle
+    ? `All other fields are copied from ${sourceTitle}.`
+    : "All other fields are copied from the duplicated document.";
+
+  function onCreated(id: string): void {
+    if (!props.collection) return;
+    release();
+    navigate(adminHref({ type: "document", slug: props.collection.slug, id }, config.basePath));
   }
 
-  return { duplicate, isPending };
+  return {
+    clone,
+    note,
+    forceStatus: props.collection?.versions.drafts ? VERSION_STATUSES.draft.key : undefined,
+    onCreated,
+  };
 }

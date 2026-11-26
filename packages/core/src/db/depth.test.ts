@@ -296,4 +296,90 @@ describe("buildDepthPopulate", () => {
     ]);
     expect(buildDepthPopulate(withPlainGroup, "pages", 1)).toEqual({ author: true });
   });
+
+  it("a relationship nested inside a keyValue's value becomes { kind: \"record\", populate: true }", () => {
+    const withScores = makeConfig([
+      {
+        slug: "pages",
+        fields: {
+          scores: {
+            type: "keyValue",
+            value: { type: "relationship", collection: { slug: "authors" } },
+          },
+        },
+      },
+      { slug: "authors", fields: { name: { type: "text" } } },
+    ]);
+    expect(buildDepthPopulate(withScores, "pages", 1)).toEqual({
+      scores: { kind: "record", populate: true },
+    });
+  });
+
+  it("a keyValue with nothing populatable in its value is omitted entirely", () => {
+    const withPlainScores = makeConfig([
+      { slug: "pages", fields: { scores: { type: "keyValue", value: { type: "number" } } } },
+    ]);
+    expect(buildDepthPopulate(withPlainScores, "pages", 1)).toEqual({});
+  });
+
+  describe("buildDepthPopulate — nested variant()", () => {
+    it("depth 1 — a relationship nested in a discriminated variant() member becomes true, keyed by variant", () => {
+      const withVariant = makeConfig([
+        {
+          slug: "pages",
+          fields: {
+            channel: {
+              type: "variant",
+              discriminator: "kind",
+              variants: {
+                email: { fields: { address: { type: "text" } } },
+                sms: { fields: { contact: { type: "relationship", collection: { slug: "authors" } } } },
+              },
+            },
+          },
+        },
+        { slug: "authors", fields: { name: { type: "text" } } },
+      ]);
+      expect(buildDepthPopulate(withVariant, "pages", 1)).toEqual({
+        channel: { discriminator: "kind", variants: { sms: { contact: true } } },
+      });
+    });
+
+    it("a variant() with nothing populatable in any member is omitted entirely", () => {
+      const withVariant = makeConfig([
+        {
+          slug: "pages",
+          fields: {
+            channel: {
+              type: "variant",
+              discriminator: "kind",
+              variants: { email: { fields: { address: { type: "text" } } } },
+            },
+            author: { type: "relationship", collection: { slug: "authors" } },
+          },
+        },
+        { slug: "authors", fields: { name: { type: "text" } } },
+      ]);
+      expect(buildDepthPopulate(withVariant, "pages", 1)).toEqual({ author: true });
+    });
+
+    it("a primitive variant() field is omitted — which member is active varies per document, so there is no static populate shape", () => {
+      const withPrimitive = makeConfig([
+        {
+          slug: "pages",
+          fields: {
+            refs: {
+              type: "variant",
+              variants: {
+                single: { type: "relationship", collection: { slug: "authors" } },
+                many: { type: "array", items: { type: "text" } },
+              },
+            },
+          },
+        },
+        { slug: "authors", fields: { name: { type: "text" } } },
+      ]);
+      expect(buildDepthPopulate(withPrimitive, "pages", 1)).toEqual({});
+    });
+  });
 });

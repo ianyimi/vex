@@ -303,7 +303,7 @@ describe("url: admin.mask", () => {
       </VexConfigContext.Provider>,
     );
     await waitFor(() =>
-      expect(withMaskMock).toHaveBeenCalledWith("url", { rightAlign: false, autoUnmask: true }),
+      expect(withMaskMock).toHaveBeenCalledWith("url", { rightAlign: false, clearMaskOnLostFocus: false, autoUnmask: true }),
     );
   });
 
@@ -315,7 +315,7 @@ describe("url: admin.mask", () => {
       </VexConfigContext.Provider>,
     );
     await waitFor(() =>
-      expect(withMaskMock).toHaveBeenCalledWith("url", { rightAlign: false, autoUnmask: true }),
+      expect(withMaskMock).toHaveBeenCalledWith("url", { rightAlign: false, clearMaskOnLostFocus: false, autoUnmask: true }),
     );
   });
 

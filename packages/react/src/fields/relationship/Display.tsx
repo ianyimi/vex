@@ -52,7 +52,11 @@ export function RelationshipFieldDisplay<TData extends TDocument = TDocument>(
   props: DisplayComponentProps<RelationshipField, TData>,
 ) {
   const config = useVexConfig();
-  const raw = Array.isArray(props.value) ? props.value : [];
+  const raw = Array.isArray(props.value)
+    ? props.value
+    : props.value == null
+      ? []
+      : [props.value];
   if (isDisplayValueEmpty(raw)) {
     return <span className="text-muted-foreground">—</span>;
   }

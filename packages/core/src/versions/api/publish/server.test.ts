@@ -9,7 +9,7 @@ import type { VexConfig } from "../../../config";
 import { saveDraft } from "../saveDraft/server";
 import { assertUniqueAmongPublished } from "../../assertUniqueAmongPublished";
 import { publish } from "./server";
-import { commitTs, defineCollection, defineGlobal, relationship, text } from "../../../index";
+import { bytes, commitTs, defineCollection, defineGlobal, relationship, text } from "../../../index";
 import type { AdminField } from "../../../fields";
 
 const versionedPosts = defineCollection({
@@ -515,6 +515,45 @@ describe("publish (server)", () => {
         publish({ ctx, config: fixtureConfig, collection: "posts", id: draftId, version: 99 }),
       ).rejects.toThrow(/Version 99 does not exist/);
       expect((await ctx.db.get(draftId))?.vex_status).toBe("draft");
+    });
+  });
+});
+
+describe("publish (server) — null unsets an optional, non-nullable field", () => {
+  test("a null payload sent through saveDraft, then publish, removes the stored bytes field at each step", async () => {
+    const versionedPostsWithPayload = defineCollection({
+      slug: "posts",
+      fields: { title: text(), slug: text({ required: true }), payload: bytes() },
+      versions: { drafts: true },
+    });
+    const payloadConfig = { collections: [versionedPostsWithPayload] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+        payload: new ArrayBuffer(4),
+      });
+      const draftId = await saveDraft({
+        ctx,
+        config: payloadConfig,
+        collection: "posts",
+        id: publishedId,
+        data: { payload: null },
+      });
+      const draftRow = await ctx.db.get(draftId as never);
+      expect(draftRow?.payload).toBeUndefined();
+
+      const returnedId = await publish({
+        ctx,
+        config: payloadConfig,
+        collection: "posts",
+        id: draftId as never,
+      });
+      expect(returnedId).toBe(publishedId);
+      const row = await ctx.db.get(publishedId);
+      expect(row?.payload).toBeUndefined();
     });
   });
 });

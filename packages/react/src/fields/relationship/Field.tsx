@@ -58,17 +58,33 @@ function getFieldErrorMessage(field: AnyFieldApi): string | undefined {
 function RelationshipFieldAdminInner(
   props: FieldComponentProps<CollectionFieldMeta, RelationshipField<VexResourceSlug, CollectionFieldMeta>>,
 ) {
-  const field = useFieldContext<string[]>();
+  const field = useFieldContext<string | string[] | undefined>();
   const config = useVexConfig();
   const [activeField, setActiveField] = useQueryState(
     MODALS.relationshipPicker.urlParam,
     parseAsString,
   );
+  // `isOpen` is LOCAL state, not derived from `activeField` on every render
+  // (only read once, lazily, to honor a deep link on first mount) — two
+  // sibling relationship fields on one document share this exact
+  // `useQueryState` key, and nuqs's async URL round trip (its own internal
+  // batching/throttling of `history.replaceState` across MULTIPLE
+  // subscribed hook instances for that one key) can race: closing field
+  // A's picker and, immediately after, opening field B's can observably
+  // flap — the URL transiently reverts to A's own name and A's dialog
+  // remounts — right as `field.handleChange` fires, dropping the value.
+  // Deriving `isOpen` from local state makes open/close instantaneous and
+  // immune to that cross-subscriber timing; `setActiveField` is still
+  // called (fire-and-forget) purely so the URL stays shareable/inspectable.
+  const [isOpen, setIsOpen] = useState(() => activeField === props.name);
   const [defaultTab, setDefaultTab] = useState<"select" | "create">("select");
-  const isOpen = activeField === props.name;
   const isReadOnly = props.readOnly || props.fieldDef.admin.readOnly;
   const drafts = props.documentStatus === VERSION_STATUSES.draft.key;
-  const value: string[] = field.state.value ?? [];
+  const isScalar = props.fieldDef.schema !== undefined;
+  const rawValue = field.state.value;
+  const value: string[] = isScalar
+    ? (typeof rawValue === "string" ? [rawValue] : [])
+    : ((rawValue as string[] | undefined) ?? []);
 
   const targetCollection = config.collections.find(
     (c) => c.slug === props.fieldDef.collection.slug,
@@ -100,26 +116,32 @@ function RelationshipFieldAdminInner(
     );
   }
 
-  async function openPicker(tab: "select" | "create" = "select") {
+  function openPicker(tab: "select" | "create" = "select") {
     setDefaultTab(tab);
-    await setActiveField(props.name);
+    setIsOpen(true);
+    void setActiveField(props.name);
   }
 
-  async function closePicker() {
-    await setActiveField(null);
+  function closePicker() {
+    setIsOpen(false);
+    void setActiveField(null);
   }
 
-  async function handleSelect(ids: string[]) {
-    await closePicker();
-    field.handleChange(ids);
+  function handleSelect(ids: string[]) {
+    closePicker();
+    field.handleChange(isScalar ? ids[0] : ids);
   }
 
   function handleRemove(docId: string) {
+    if (isScalar) {
+      field.handleChange(undefined);
+      return;
+    }
     field.handleChange(value.filter((id) => id !== docId));
   }
 
   function handleClear() {
-    field.handleChange([]);
+    field.handleChange(isScalar ? undefined : []);
   }
 
   function handleReorder(from: number, to: number) {

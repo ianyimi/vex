@@ -1,6 +1,6 @@
 "use client";
 
-import { type CellComponentProps, type GroupField, TDocument } from "@vexcms/core";
+import { type CellComponentProps, type GroupField, stringifyConvexValue, TDocument } from "@vexcms/core";
 import { adminHref } from "../../admin/adminHref";
 import { VexLink } from "../../ui";
 import { useVexConfig } from "../../config/VexConfigContext";
@@ -35,7 +35,7 @@ export function GroupFieldCell<TData extends TDocument = TDocument>(
     return <span className="text-muted-foreground">—</span>;
   }
 
-  const preview = JSON.stringify(value);
+  const preview = stringifyConvexValue({ value });
 
   const content = (
     <span className="text-xs text-muted-foreground font-mono" title={preview}>

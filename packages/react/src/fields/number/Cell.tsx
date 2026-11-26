@@ -12,10 +12,11 @@ import { useVexConfig } from "../../config/VexConfigContext";
 /**
  * Number field cell component for the data-table list view.
  *
- * Renders the numeric value of a number field.
+ * Renders the numeric value of a number field — a plain `number`, or a
+ * `bigint` for an int64 field (`schema.validator: "int64"`).
  *
  * @param props - Component props
- * @param props.value - Raw numeric value from the document
+ * @param props.value - Raw value from the document — `number`, or `bigint` for an int64 field
  * @param props.fieldDef - Resolved `NumberField` definition
  * @returns The Cell Component for this field type
  *

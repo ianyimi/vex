@@ -9,6 +9,7 @@ export * from "./headers";
 export * from "./images";
 export * from "./pages";
 export * from "./posts";
+export * from "./storageShapes";
 export * from "./telemetryEvents";
 export * from "./telemetryProjects";
 export * from "./testimonials";

@@ -42,6 +42,7 @@ export default defineConfig({
 						'- Config is split in two: `vex.config.ts` is client-safe and imported by the browser, `vex.config.server.ts` layers on the auth adapter and storage adapters. Server-only values never appear on the client half.',
 						'- The Convex schema and TypeScript types are GENERATED from the config by `vex dev` / `vex generate`; never hand-edit `convex/vex.schema.ts` or `src/vex.types.ts`.',
 						'- `/api/**` pages are generated from source TSDoc by TypeDoc. They are the precise signatures; the guides and field pages carry the intent.',
+						'- Coding agents setting up a new project: follow https://docs.vexcms.dev/agent-setup.md, which loads the `vexcms-project-init` agent skill. Installing the skills: https://docs.vexcms.dev/guides/agent-skills/.',
 					].join('\n'),
 					optionalLinks: [
 						{
@@ -68,7 +69,7 @@ export default defineConfig({
 					// so a truncated read gets the guides rather than half an interface.
 					exclude: ['api/**'],
 					demote: ['api/**'],
-					promote: ['index*', 'guides/quickstart*', 'roadmap*'],
+					promote: ['index*', 'guides/quickstart*', 'guides/agent-skills*', 'roadmap*'],
 				}),
 			],
 			sidebar: [

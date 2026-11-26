@@ -56,6 +56,7 @@ export function commitTs<
 
     label: "",
     required: false,
+    nullable: false,
     defaultValue: undefined,
     on: options?.on ?? "save",
     ...options,

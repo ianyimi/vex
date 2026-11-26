@@ -60,6 +60,7 @@ export function checkbox<
     // Core properties with defaults
     label: "",
     required: false,
+    nullable: false,
     defaultValue: ADMIN_FIELDS.checkbox.defaultValue,
     ...options,
 

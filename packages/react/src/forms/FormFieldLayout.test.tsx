@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
 import { useForm } from "@tanstack/react-form";
 import { FormFieldLayout, fieldDescribedBy, isFieldShowingError } from "./FormFieldLayout";
@@ -12,6 +13,8 @@ function Harness(props: {
   submissionAttempts?: number;
   validate?: (value: string) => string | undefined;
   readOnly?: boolean;
+  isNull?: boolean;
+  onIsNullChange?: (isNull: boolean) => void;
 }) {
   const form = useForm({
     defaultValues: { name: props.initialValue },
@@ -38,6 +41,8 @@ function Harness(props: {
             field={field}
             submissionAttempts={props.submissionAttempts ?? 0}
             readOnly={props.readOnly}
+            isNull={props.isNull}
+            onIsNullChange={props.onIsNullChange}
           >
             <input
               id="name"
@@ -126,6 +131,25 @@ describe("FormFieldLayout", () => {
     const group = screen.getByRole("group");
     expect(group).not.toHaveAttribute("aria-invalid");
     expect(group).not.toHaveAttribute("aria-describedby");
+  });
+
+  it("renders no Null switch when onIsNullChange is omitted", () => {
+    render(<Harness initialValue="" label="Name" />);
+    expect(screen.queryByText("Null")).not.toBeInTheDocument();
+  });
+
+  it("renders a Null switch beside the label when onIsNullChange is given", () => {
+    render(<Harness initialValue="" label="Name" onIsNullChange={() => {}} />);
+    expect(screen.getByText("Null")).toBeInTheDocument();
+  });
+
+  it("hides children while isNull, and calls onIsNullChange on toggle", async () => {
+    const user = userEvent.setup();
+    const onIsNullChange = vi.fn();
+    render(<Harness initialValue="hi" label="Name" isNull onIsNullChange={onIsNullChange} />);
+    expect(screen.queryByDisplayValue("hi")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox"));
+    expect(onIsNullChange).toHaveBeenCalledWith(false);
   });
 });
 

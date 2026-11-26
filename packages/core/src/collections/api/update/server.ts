@@ -32,7 +32,9 @@ export interface UpdateServerArgs<
   /**
    * Partial field values to merge into the document. Only the keys present
    * here are written; unspecified fields are left unchanged. `_id` and
-   * `_creationTime` are excluded — Convex manages them.
+   * `_creationTime` are excluded — Convex manages them. A `null` value for
+   * an optional, non-nullable field unsets it (removes the stored value);
+   * a `nullable` field stores the literal `null` instead.
    *
    * Passed through `v.any()` at the network boundary; CLI codegen validates
    * the shape against the Convex schema at build time.

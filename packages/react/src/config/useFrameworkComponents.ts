@@ -7,6 +7,8 @@ import type {
 } from "react";
 import { createContext, useContext } from "react";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 /**
  * Props the `VexLink` helper accepts — and that the injected `Link` component must handle.
  *
@@ -178,26 +180,30 @@ export interface FrameworkAuthAdapter {
    */
   signInHref: (redirectTo: string) => string;
   /**
-   * Signs the current session out, then hard-navigates (a full document load — e.g.
-   * `window.location.href = …`, never `router.push`/`router.refresh`/any other
-   * client-side transition) to `config.auth.signOut.redirectTo` once the session cookie
-   * is actually cleared. The admin shell (sidebar, top bar) must never re-render in a
-   * signed-out state — a client-side refresh keeps the admin layout mounted while queries
-   * re-run anonymously and a route guard redirects underneath it, which is exactly the
-   * multi-second "sidebar lingers, then a sign-in flash, then the destination" sequence
-   * this hard-navigation contract exists to avoid. The ONLY case a sign-in screen is seen
-   * is `redirectTo` itself pointing at the sign-in page.
+   * Signs the current session out, then full-reloads the current document
+   * (`window.location.reload()`, never `router.push`/`router.refresh`/a
+   * navigation to a different destination) once the session cookie is
+   * actually cleared. The admin shell (sidebar, top bar) must never
+   * re-render in a signed-out state — a client-side refresh keeps the admin
+   * layout mounted while queries re-run anonymously and a route guard
+   * redirects underneath it, which is exactly the multi-second "sidebar
+   * lingers, then a sign-in flash, then the destination" sequence this
+   * full-reload contract exists to avoid. The reload re-requests the exact
+   * URL the caller was on — the app's own server-side access guards decide
+   * what it shows signed out: the same page (if still readable, e.g. an
+   * `anonRole`-readable collection/global), a redirect to sign-in, or
+   * `/unauthorized`, same as any other fresh request to that URL.
    *
    * `AdminTopNav` only calls this once and shows a pending state until it settles — the
-   * adapter owns the whole sequence (auth-client sign-out call AND the navigation), not
+   * adapter owns the whole sequence (auth-client sign-out call AND the reload), not
    * just the Better Auth call.
    *
    * @returns A promise that resolves once the ENTIRE sign-out sequence (not just the
    *   auth-client call) completes — `AdminTopNav`'s own pending state matches its
    *   lifetime. Should resolve even on failure (matching `SessionButton.tsx`'s own "a
    *   stale client cache after a failed sign-out is worse than a redundant refresh"
-   *   reasoning) rather than rejecting and leaving the control stuck pending — the hard
-   *   navigation itself should still run on failure, same reasoning.
+   *   reasoning) rather than rejecting and leaving the control stuck pending — the
+   *   reload itself should still run on failure, same reasoning.
    */
   signOut: () => Promise<void>;
 }
@@ -216,8 +222,8 @@ export const COVERING_ROUTE_LINK_ATTRIBUTE = "data-vex-covering-route";
  * <Link />
  * <Image />
  */
-export const FrameworkComponentsContext = createContext<FrameworkComponents>(
-  {},
+export const FrameworkComponentsContext = globalSingleton("config/useFrameworkComponents/FrameworkComponentsContext", () =>
+  createContext<FrameworkComponents>({}),
 );
 
 /**

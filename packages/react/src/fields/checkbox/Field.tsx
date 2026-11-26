@@ -2,20 +2,31 @@
 
 import { type ComponentOverrideInput, type CheckboxField as CheckboxFieldDef } from "@vexcms/core";
 import type { AnyFieldApi } from "@tanstack/react-form";
-import { CheckboxField } from "../../forms";
+import { CheckboxField, useFieldContext } from "../../forms";
 import type { FieldControlProps, FieldComponentProps } from "@vexcms/core";
 import type { ReactHKT } from "../../adapter";
 import { Checkbox } from "../../ui/checkbox";
 import { useFieldControlOverride } from "../useFieldControlOverride";
 import { AdminFieldBinding } from "../AdminFieldBinding";
+import { useNullToggle } from "../useNullToggle";
 
 /**
- * Checkbox admin field — maps `fieldDef` to `@vexcms/react/form`'s `CheckboxField` props.
+ * Checkbox admin field's own render body — reads the `FieldApi` provided by
+ * the enclosing `AdminFieldBinding` via `useFieldContext()` to compute the
+ * null-toggle state/handler (via {@link useNullToggle}) the app form's
+ * `CheckboxField` forwards to `NullFieldToggle`, and maps `fieldDef` to
+ * `@vexcms/react/form`'s `CheckboxField` props.
  *
  * @param props - {@link FieldComponentProps} narrowed to `CheckboxField`.
  * @returns `CheckboxField`, configured for this field instance.
  */
-export function CheckboxFieldAdmin(props: FieldComponentProps<{}, CheckboxFieldDef> & { field?: AnyFieldApi }) {
+function CheckboxFieldAdminInner(props: FieldComponentProps<{}, CheckboxFieldDef>) {
+  const field = useFieldContext<boolean | null>();
+  const { isNull, onIsNullChange } = useNullToggle({
+    field,
+    nullable: props.fieldDef.nullable,
+    emptyValue: () => props.fieldDef.defaultValue,
+  });
   function renderBareControl(controlProps: FieldControlProps<boolean>) {
     return (
       <Checkbox
@@ -39,15 +50,31 @@ export function CheckboxFieldAdmin(props: FieldComponentProps<{}, CheckboxFieldD
     defaultControl: renderBareControl,
   });
   return (
-    <AdminFieldBinding name={props.name} field={props.field}>
-      <CheckboxField
-        label={props.fieldDef.label || props.name}
-        description={props.fieldDef.description}
-        required={props.fieldDef.required}
-        readOnly={props.readOnly || props.fieldDef.admin.readOnly}
+    <CheckboxField
+      label={props.fieldDef.label || props.name}
+      description={props.fieldDef.description}
+      required={props.fieldDef.required}
+      readOnly={props.readOnly || props.fieldDef.admin.readOnly}
       index={props.index}
-        renderControl={overrideControl}
-      />
+      renderControl={overrideControl}
+      isNull={isNull}
+      onIsNullChange={onIsNullChange}
+    />
+  );
+}
+
+/**
+ * Checkbox admin field — binds `props.name` to the nearest `<AppForm>` (or
+ * an explicit `field` prop) via `AdminFieldBinding`, then renders the app
+ * form's `CheckboxField`.
+ *
+ * @param props - {@link FieldComponentProps} narrowed to `CheckboxField`.
+ * @returns `CheckboxField`, configured for this field instance.
+ */
+export function CheckboxFieldAdmin(props: FieldComponentProps<{}, CheckboxFieldDef> & { field?: AnyFieldApi }) {
+  return (
+    <AdminFieldBinding name={props.name} field={props.field}>
+      <CheckboxFieldAdminInner {...props} />
     </AdminFieldBinding>
   );
 }

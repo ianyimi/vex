@@ -2,7 +2,7 @@
 
 import { type ComponentOverrideInput, type JsonField as JsonFieldDef } from "@vexcms/core";
 import type { AnyFieldApi } from "@tanstack/react-form";
-import { JsonField } from "../../forms";
+import { JsonField, useFieldContext } from "../../forms";
 import type { FieldControlProps, FieldComponentProps } from "@vexcms/core";
 import type { ReactHKT } from "../../adapter";
 import { JsonEditor } from "../../ui/JsonEditor";
@@ -10,12 +10,20 @@ import { useFieldControlOverride } from "../useFieldControlOverride";
 import { AdminFieldBinding } from "../AdminFieldBinding";
 
 /**
- * JSON admin field — maps `fieldDef` to `@vexcms/react/form`'s `JsonField` props.
+ * JSON admin field's own render body — reads the `FieldApi` provided by the
+ * enclosing `AdminFieldBinding` to compute the null-toggle state/handler
+ * when `fieldDef.nullable`, and maps `fieldDef` to `@vexcms/react/form`'s
+ * `JsonField` props.
  *
  * @param props - {@link FieldComponentProps} narrowed to `JsonField`.
  * @returns `JsonField`, configured for this field instance.
  */
-export function JsonFieldAdmin(props: FieldComponentProps<{}, JsonFieldDef> & { field?: AnyFieldApi }) {
+function JsonFieldAdminInner(props: FieldComponentProps<{}, JsonFieldDef>) {
+  const field = useFieldContext<unknown>();
+  const isNull = Boolean(props.fieldDef.nullable) && field.state.value === null;
+  const onIsNullChange = props.fieldDef.nullable
+    ? (nextIsNull: boolean) => field.handleChange(nextIsNull ? null : props.fieldDef.defaultValue)
+    : undefined;
   function renderBareControl(controlProps: FieldControlProps<unknown>) {
     return (
       <JsonEditor
@@ -45,16 +53,32 @@ export function JsonFieldAdmin(props: FieldComponentProps<{}, JsonFieldDef> & { 
     defaultControl: renderBareControl,
   });
   return (
+    <JsonField
+      label={props.fieldDef.label || props.name}
+      description={props.fieldDef.description}
+      required={props.fieldDef.required}
+      readOnly={props.readOnly || props.fieldDef.admin.readOnly}
+      index={props.index}
+      placeholder={props.fieldDef.admin.placeholder}
+      renderControl={overrideControl}
+      isNull={isNull}
+      onIsNullChange={onIsNullChange}
+    />
+  );
+}
+
+/**
+ * JSON admin field — binds `props.name` to the nearest `<AppForm>` (or an
+ * explicit `field` prop) via `AdminFieldBinding`, then renders the field's
+ * own body.
+ *
+ * @param props - {@link FieldComponentProps} narrowed to `JsonField`.
+ * @returns `JsonField`, configured for this field instance.
+ */
+export function JsonFieldAdmin(props: FieldComponentProps<{}, JsonFieldDef> & { field?: AnyFieldApi }) {
+  return (
     <AdminFieldBinding name={props.name} field={props.field}>
-      <JsonField
-        label={props.fieldDef.label || props.name}
-        description={props.fieldDef.description}
-        required={props.fieldDef.required}
-        readOnly={props.readOnly || props.fieldDef.admin.readOnly}
-        index={props.index}
-        placeholder={props.fieldDef.admin.placeholder}
-        renderControl={overrideControl}
-      />
+      <JsonFieldAdminInner {...props} />
     </AdminFieldBinding>
   );
 }

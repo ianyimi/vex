@@ -40,7 +40,7 @@ export interface UploadFilledStateProps {
   /** Callback to reorder items (multi only). */
   onReorder?: (from: number, to: number) => void;
   /** Callback to open the media picker. */
-  openPicker: () => Promise<void>;
+  openPicker: () => void;
 }
 
 /**

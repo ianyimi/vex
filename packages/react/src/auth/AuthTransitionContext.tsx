@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 /** The marker {@link useAuthTransition} returns. */
 export interface AuthTransitionState {
   /**
@@ -37,15 +39,15 @@ export interface AuthTransitionState {
    *
    * @param options.skipRefresh - Pass `true` from a call site that ALREADY
    *   triggers its own navigation for this exact transition (a same-tab
-   *   sign-out's `signOut` wrapper, which hard-navigates to
-   *   `config.auth.signOut.redirectTo` once the session clears) —
+   *   sign-out's `signOut` wrapper, which full-reloads the current page
+   *   once the session clears) —
    *   `useNextAuthTransitionRefresh` (`@vexcms/next`) consumes this via
    *   {@link consumeSkipRefresh} to skip the ONE `router.refresh()` that
    *   transition would otherwise trigger, which — fired synchronously,
-   *   long before the hard navigation's own `signOut()` round trip resolves
-   *   — raced it: the admin shell briefly re-rendered signed-out and the
+   *   long before the full reload's own `signOut()` round trip resolves —
+   *   raced it: the admin shell briefly re-rendered signed-out and the
    *   route guard redirected to the sign-in page, visible for a moment
-   *   before the hard navigation finally took over. Omit (or pass `false`)
+   *   before the full reload finally took over. Omit (or pass `false`)
    *   for every OTHER call site — in particular the reactive
    *   `authClient.useSession()` watcher, which has no navigation of its own
    *   and is this hook's whole reason to exist (another tab signing out, or
@@ -77,7 +79,9 @@ const defaultAuthTransitionState: AuthTransitionState = {
   confirmTransition: () => {},
 };
 
-const AuthTransitionContext = createContext<AuthTransitionState>(defaultAuthTransitionState);
+const AuthTransitionContext = globalSingleton("auth/AuthTransitionContext", () =>
+  createContext<AuthTransitionState>(defaultAuthTransitionState),
+);
 
 /**
  * Reads the current auth-transition marker — see {@link AuthTransitionState}'s

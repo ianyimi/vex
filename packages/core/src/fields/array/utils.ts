@@ -1,5 +1,7 @@
 import { nanoid } from "nanoid";
 import { ADMIN_FIELDS } from "../constants";
+import { walkVariantValue } from "../variant";
+import type { BlocksField } from "../blocks";
 import type { AdminField } from "../types";
 
 /** Singular item label used when an array's `items` field has no `label`. */
@@ -73,10 +75,13 @@ export function withArrayItemId<T>(props: { item: T; itemField: AdminField }): T
  * anywhere in `data` — walking `fields` the same shape
  * `getFieldsInputSchema`/`validateFields` already do: into a `group`'s own
  * sub-fields, into an `array`'s items (including a nested `array` of
- * `array`), and into each `blocks()` item's own matching block-type fields
- * — so an array of groups nested inside a block or another group gets ids
- * too, not just a top-level array field. Pure: returns a new object, never
- * mutates `data`.
+ * `array`), into each `blocks()` item's own matching block-type fields, into
+ * a `keyValue`'s entries, and into a `variant`'s active member's fields
+ * (discriminated: the stored discriminator's member; primitive: the member
+ * {@link classifyVariantValueKind} resolves the stored value to) — so an
+ * array of groups nested inside a block, another group, a keyValue entry, or
+ * a variant member gets ids too, not just a top-level array field. Pure:
+ * returns a new object, never mutates `data`.
  *
  * Called by `prepareEdit` on `mergedFields`, before the `beforeChange` hook
  * runs — the one place EVERY write (`create`, `update`, the Local API, a
@@ -100,25 +105,42 @@ export function assignArrayItemIds(props: {
 }): Record<string, unknown> {
   const result: Record<string, unknown> = { ...props.data };
   for (const [key, field] of Object.entries(props.fields)) {
-    const value = result[key];
-    if (field.type === ADMIN_FIELDS.array.type) {
-      result[key] = backfillArrayValue({ itemField: field.items, value });
-    } else if (field.type === ADMIN_FIELDS.group.type && value && typeof value === "object") {
-      result[key] = assignArrayItemIds({
-        fields: field.fields,
-        data: value as Record<string, unknown>,
-      });
-    } else if (field.type === ADMIN_FIELDS.blocks.type && Array.isArray(value)) {
-      result[key] = value.map((block) => {
-        const blockItem = block as Record<string, unknown>;
-        const blockDef = field.blocks.find((b) => b.blockType === blockItem.blockType);
-        return blockDef
-          ? assignArrayItemIds({ fields: blockDef.fields, data: blockItem })
-          : block;
-      });
-    }
+    result[key] = backfillFieldValue({ value: result[key], field });
   }
   return result;
+}
+
+/**
+ * Backfills ids reachable through one field's value — the recursive step
+ * {@link assignArrayItemIds} delegates to per field-map entry, generalized
+ * to a single `(value, field)` pair so {@link walkVariantValue} can recurse
+ * through a `variant()` member's own sub-fields the same way.
+ *
+ * @returns `props.value` unchanged for a leaf field type or an unmatched
+ *   container value; otherwise a new value with every reachable id backfilled.
+ */
+function backfillFieldValue(props: { value: unknown; field: AdminField }): unknown {
+  const { value, field } = props;
+  if (field.type === ADMIN_FIELDS.array.type) {
+    return backfillArrayValue({ itemField: field.items, value });
+  }
+  if (field.type === ADMIN_FIELDS.group.type && value && typeof value === "object") {
+    return assignArrayItemIds({ fields: field.fields, data: value as Record<string, unknown> });
+  }
+  if (field.type === ADMIN_FIELDS.blocks.type && Array.isArray(value)) {
+    return backfillBlocksValue({ field, value });
+  }
+  if (field.type === ADMIN_FIELDS.keyValue.type && value && typeof value === "object") {
+    const record: Record<string, unknown> = {};
+    for (const [entryKey, entryValue] of Object.entries(value as Record<string, unknown>)) {
+      record[entryKey] = backfillKeyValueEntry({ valueField: field.value, value: entryValue });
+    }
+    return record;
+  }
+  if (field.type === ADMIN_FIELDS.variant.type) {
+    return walkVariantValue({ value, field, recurse: backfillFieldValue });
+  }
+  return value;
 }
 
 /**
@@ -148,4 +170,54 @@ function backfillArrayValue(props: { itemField: AdminField; value: unknown }): u
     return props.value.map((row) => backfillArrayValue({ itemField: itemField.items, value: row }));
   }
   return props.value;
+}
+
+/**
+ * Backfills ids on a `blocks()` value's items — mapping each stored item to
+ * its matching block type and delegating to {@link assignArrayItemIds} for
+ * that type's own `fields`. Shared by {@link backfillFieldValue} (a
+ * top-level/nested `blocks()`-typed field) and {@link backfillKeyValueEntry}
+ * (a `keyValue()` whose `value` is `blocks()`-typed) so the block-type
+ * lookup isn't re-derived in both places.
+ *
+ * @returns A new array with every recognised block's fields backfilled; an
+ *   item whose `blockType` matches no block definition is returned unchanged.
+ */
+function backfillBlocksValue(props: { field: BlocksField; value: unknown[] }): unknown[] {
+  const blockDefMap = new Map(props.field.blocks.map((blockDef) => [blockDef.blockType, blockDef]));
+  return props.value.map((block) => {
+    const blockItem = block as Record<string, unknown>;
+    const blockDef = blockDefMap.get(blockItem.blockType as string);
+    return blockDef ? assignArrayItemIds({ fields: blockDef.fields, data: blockItem }) : block;
+  });
+}
+
+/**
+ * Backfills ids reachable through one keyValue field's `value` definition —
+ * the recursive step `assignArrayItemIds` delegates keyValue-typed fields to,
+ * mirroring `backfillArrayValue`'s own per-item-type dispatch but applied to
+ * every record ENTRY rather than every array INDEX.
+ *
+ * @returns `props.value` unchanged for a scalar `valueField`; otherwise a new
+ *   value with every reachable object-shaped id backfilled.
+ */
+function backfillKeyValueEntry(props: { valueField: AdminField; value: unknown }): unknown {
+  const { valueField, value } = props;
+  if (valueField.type === ADMIN_FIELDS.group.type && value && typeof value === "object") {
+    return assignArrayItemIds({ fields: valueField.fields, data: value as Record<string, unknown> });
+  }
+  if (valueField.type === ADMIN_FIELDS.array.type) {
+    return backfillArrayValue({ itemField: valueField.items, value });
+  }
+  if (valueField.type === ADMIN_FIELDS.blocks.type && Array.isArray(value)) {
+    return backfillBlocksValue({ field: valueField, value });
+  }
+  if (valueField.type === ADMIN_FIELDS.keyValue.type && value && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [entryKey, entryValue] of Object.entries(value as Record<string, unknown>)) {
+      result[entryKey] = backfillKeyValueEntry({ valueField: valueField.value, value: entryValue });
+    }
+    return result;
+  }
+  return value;
 }

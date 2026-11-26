@@ -256,8 +256,10 @@ describe("CollectionEditView — duplicate", () => {
     convexMutationMock.mockReset();
   });
 
-
-  it("navigates to the new document on a successful duplicate", async () => {
+  it("opens the duplicate dialog and creates on submit, carrying every cloned field even ones the dialog never renders, then navigates to the new document", async () => {
+    // `testCollection`'s fields are both non-required (and `admin.useAsTitle` defaults to
+    // `_id`, so no rename applies either) — the dialog shows no inputs to review, so this
+    // proves `status`/`title` still reach `create()` through `initialValues`, not the form.
     const assignSpy = mockLocationAssign();
     convexMutationMock.mockResolvedValueOnce("newDoc1");
     const doc = await t.run((ctx) => ctx.db.insert("documents", { status: "a", title: "Original" }));
@@ -270,55 +272,51 @@ describe("CollectionEditView — duplicate", () => {
     fireEvent.click(utils.getByRole("button", { name: "More actions" }));
     fireEvent.click(await utils.findByRole("menuitem", { name: "Duplicate" }));
 
+    const dialog = await utils.findByRole("dialog");
+    expect(dialog).toHaveTextContent("All other fields are copied from the duplicated document.");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create" }));
+
+    await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
+    expect(convexMutationMock.mock.calls[0]?.[0]?.data).toEqual({ status: "a", title: "Original" });
+
     await waitFor(() => expect(assignSpy.assign).toHaveBeenCalledWith("/admin/collections/posts/newDoc1"));
     assignSpy.restore();
   });
 
-  it("opens the all-fields fallback and focuses the conflicting field when the create is rejected", async () => {
-    // Rejects every `create` call (not just the first) — the SAME rejection has to recur
-    // on the fallback form's own `submitOnOpen` resubmission, which goes through this same
-    // mock via a separate `useVexMutation` instance; a `...Once` here would resolve that
-    // second call successfully instead and close the dialog before these assertions run.
-    //
-    // Conflict targets `title` — the SECOND field in `fieldsMode: "all"`'s render order
-    // (`status` then `title`), not the first. `DialogContent` autofocuses its first
-    // focusable input on open regardless of any error, so a conflict on the first field
-    // would pass this test even if `focusFirstFieldError` never ran at all.
-    convexMutationMock.mockRejectedValue(
-      new ConvexError({ message: "title already taken", field: "title" }),
-    );
-    const doc = await t.run((ctx) =>
-      ctx.db.insert("documents", { status: "a", title: "taken" }),
-    );
+  it("prefills a required field with the renamed title and respects an edit over the clone's own value", async () => {
+    const assignSpy = mockLocationAssign();
+    convexMutationMock.mockResolvedValueOnce("newDoc2");
+    const requiredTitleCollection = defineCollection({
+      slug: testCollection.slug,
+      fields: { status: text(), title: text({ required: true }) },
+      admin: { useAsTitle: "title" },
+    });
+    const config = defineConfig({ collections: [requiredTitleCollection] });
+    const doc = await t.run((ctx) => ctx.db.insert("documents", { status: "a", title: "Original" }));
     const utils = renderView(
-      createElement(CollectionEditView, { collection: testCollection.slug, documentId: doc }),
-      { convex: t },
+      createElement(CollectionEditView, { collection: requiredTitleCollection.slug, documentId: doc }),
+      { convex: t, config },
     );
     await waitFor(() => expect(utils.container.querySelector("#title")).not.toBeNull());
 
     fireEvent.click(utils.getByRole("button", { name: "More actions" }));
     fireEvent.click(await utils.findByRole("menuitem", { name: "Duplicate" }));
 
-    // The fallback dialog opens prefilled with the clone, fields: "all" (both `status` and
-    // `title`, not just the required `status`), and auto-submits via `submitOnOpen`.
-    const dialog = await waitFor(() => utils.getByRole("dialog"));
-    const titleInput = await waitFor(() => {
-      const input = dialog.querySelector("#title") as HTMLInputElement | null;
-      expect(input).not.toBeNull();
-      return input!;
-    });
-    expect(dialog.querySelector("#status")).not.toBeNull();
-    expect(titleInput.value).toBe("taken");
+    const dialog = await utils.findByRole("dialog");
+    const titleInput = dialog.querySelector("#title") as HTMLInputElement;
+    expect(titleInput.value).toBe("Original (2)");
+    fireEvent.change(titleInput, { target: { value: "Edited title" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create" }));
 
-    // `submitOnOpen` re-ran the same create, which rejected the same way — `applyVexFieldErrors`
-    // put the server's message on `title`, and `AppForm`'s `failedSubmitAttempt` effect
-    // ran `focusFirstFieldError`, overriding the dialog's own first-input autofocus.
-    await waitFor(() => expect(titleInput).toHaveFocus());
-    expect(dialog).toHaveTextContent("title already taken");
+    await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
+    expect(convexMutationMock.mock.calls[0]?.[0]?.data).toEqual({ status: "a", title: "Edited title" });
+
+    await waitFor(() => expect(assignSpy.assign).toHaveBeenCalledWith("/admin/collections/posts/newDoc2"));
+    assignSpy.restore();
   });
 
   it("forces a draft on a versioned collection even when defaultStatus is published", async () => {
-    convexMutationMock.mockResolvedValueOnce("newDoc2");
+    convexMutationMock.mockResolvedValueOnce("newDoc3");
     const assignSpy = mockLocationAssign();
     const versionedCollection = {
       ...testCollection,
@@ -339,11 +337,49 @@ describe("CollectionEditView — duplicate", () => {
     fireEvent.click(utils.getByRole("button", { name: "More actions" }));
     fireEvent.click(await utils.findByRole("menuitem", { name: "Duplicate" }));
 
+    const dialog = await utils.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create" }));
+
     await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
     expect(convexMutationMock.mock.calls[0]?.[0]).toMatchObject({
       status: VERSION_STATUSES.draft.key,
     });
     assignSpy.restore();
+  });
+
+  it("reopens with every field rendered when the create rejects with an error on a key the required-only dialog never showed", async () => {
+    // `testCollection`'s fields are both non-required — the first dialog renders no inputs at
+    // all, so a `title` field error from the rejected create targets a key that dialog could
+    // never have shown. Persists the rejection (not `...Once`): `onUnrenderedFieldError`'s
+    // reopened "all" dialog resubmits via `submitOnOpen`, which hits this same mock again.
+    convexMutationMock.mockRejectedValue(
+      new ConvexError({ message: "title already taken", field: "title" }),
+    );
+    const doc = await t.run((ctx) => ctx.db.insert("documents", { status: "a", title: "taken" }));
+    const utils = renderView(
+      createElement(CollectionEditView, { collection: testCollection.slug, documentId: doc }),
+      { convex: t },
+    );
+    await waitFor(() => expect(utils.container.querySelector("#title")).not.toBeNull());
+
+    fireEvent.click(utils.getByRole("button", { name: "More actions" }));
+    fireEvent.click(await utils.findByRole("menuitem", { name: "Duplicate" }));
+
+    const firstDialog = await utils.findByRole("dialog");
+    expect(firstDialog.querySelector("#title")).toBeNull();
+    fireEvent.click(within(firstDialog).getByRole("button", { name: "Create" }));
+
+    const titleInput = await waitFor(() => {
+      const reopened = utils.getByRole("dialog");
+      const input = reopened.querySelector("#title") as HTMLInputElement | null;
+      expect(input).not.toBeNull();
+      return input!;
+    });
+    expect(utils.getByRole("dialog").querySelector("#status")).not.toBeNull();
+    expect(titleInput.value).toBe("taken");
+
+    await waitFor(() => expect(titleInput).toHaveFocus());
+    expect(utils.getByRole("dialog")).toHaveTextContent("title already taken");
   });
 });
 
@@ -540,5 +576,23 @@ describe("CollectionEditView — responsive header collapse", () => {
       .getAllByRole("menuitem")
       .map((item) => item.textContent?.trim());
     expect(itemNames).toEqual(["Cancel", "Preview", "History", "Revalidate", "Duplicate", "Delete"]);
+  });
+});
+
+describe("CollectionEditView — scroll restore key", () => {
+  const t = convexTest(schema, testModules);
+
+  it("carries data-vex-scroll-key on the scroll container, matching the collection slug and document id, identically on server and client", async () => {
+    const doc = await t.run((ctx) => ctx.db.insert("documents", { status: "a", title: "Original" }));
+    const stored = await t.run((ctx) => ctx.db.get(doc));
+    const utils = renderView(
+      createElement(CollectionEditView, { collection: testCollection.slug, documentId: doc, initialData: stored }),
+      { convex: t },
+    );
+    await waitFor(() => expect(utils.container.querySelector("#title")).not.toBeNull());
+    const scroller = utils.container.querySelector("[data-vex-scroll-key]");
+    expect(scroller).not.toBeNull();
+    expect(scroller).toHaveAttribute("data-vex-scroll-key", `${testCollection.slug}:${doc}`);
+    expect(utils.container.querySelector("script")).toBeNull();
   });
 });

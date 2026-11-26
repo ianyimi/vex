@@ -10,7 +10,8 @@
 - [ ] `pnpm typecheck` passes (full workspace)
 - [ ] `pnpm test` passes (full workspace)
 - [ ] `pnpm build` passes (full workspace — includes `apps/docs` build, which runs TypeDoc with `treatWarningsAsErrors`; catches tsup/exports breakage and any broken `{@link}`/undocumented type)
-- [ ] `pnpm lint` passes (eslint-plugin-jsdoc — every export documented)
+- [ ] `pnpm lint` passes (eslint-plugin-jsdoc — every export documented). It lints `packages/*/src` plus `apps/www` and `apps/test` with their own ESLint configs, the same command CI runs.
+- [ ] CI's remaining checks pass: `node scripts/check-import-cost.mjs`, `node scripts/check-site-bundle.mjs --app apps/test`, `node scripts/check-packed-manifests.mjs` and `node scripts/check-packed-manifests.mjs --packed`. Whenever `.github/workflows/ci.yml` gains a `run:` step, add it here, so this gate stays a superset of CI.
 - [ ] `harness struct --check` reports no naming violations
 - [ ] `pnpm install --frozen-lockfile` passes — this is how CI and Vercel install. A `package.json` dependency edit that was never followed by an install leaves `pnpm-lock.yaml` stale, and `.npmrc`'s `shamefully-hoist=true` hides it locally: the package resolves from the hoisted root and every other check passes. CI then fails with `ERR_PNPM_OUTDATED_LOCKFILE`. Run it whenever any `package.json` changed, and commit the resulting `pnpm-lock.yaml`.
 - [ ] `pnpm check:vercel` passes when `apps/www` or any package it imports changed — a pristine copy of tracked + untracked files, `pnpm install --frozen-lockfile`, then the real `vercel.json` build. Catches faults invisible in this working copy (missing `packages/*/dist`, stale lockfile, unbuilt workspace deps). Needs network: a pristine tree has no `.next/cache`, so `next/font` fetches Geist from `fonts.googleapis.com` and the build fails offline — that failure is environmental, not a code fault.

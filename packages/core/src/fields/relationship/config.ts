@@ -1,4 +1,4 @@
-import { ADMIN_FIELDS } from "../constants";
+import { ADMIN_FIELDS, FIELD_SCHEMA_VALIDATORS } from "../constants";
 import type { RelationshipFieldInput, RelationshipField } from "./types";
 import type { CollectionSlug , VexResourceSlug } from "../../types/generated";
 import { ComponentHKT } from "../../components/types";
@@ -48,16 +48,23 @@ export function relationship<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  THasMany extends boolean = boolean,
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 >(
-  options: RelationshipFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, TTargetSlug, TComponent>,
+  options: RelationshipFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, THasMany, TTargetSlug, TComponent>,
 ): RelationshipField<TCollectionSlug, TFieldMeta, TTargetSlug, TComponent> {
+  const schema =
+    options.schema?.validator !== undefined
+      ? { validator: options.schema.validator }
+      : undefined;
   return {
     label: "",
     required: false,
+    nullable: false,
     hasMany: false,
     ...options,
+    schema,
     min: resolveFieldLimit({
       limit: options.min,
       defaultError: (value) => `Must be at least ${value} related items.`,
@@ -67,11 +74,12 @@ export function relationship<
       defaultError: (value) => `Must be no more than ${value} related items.`,
     }),
     type: ADMIN_FIELDS.relationship.type,
-    // Per-field override of the static `ADMIN_FIELDS.relationship.interfaceType`
-    // (`Id<CollectionSlug>[]`): emitting the target slug as a literal is what
-    // lets `RelationshipTargetOf` recover it, so `populate`/`depth` can narrow
-    // the populated field to `Doc<target>[]` instead of a union of every doc.
-    interfaceType: `Id<"${options.collection.slug}">[]`,
+    interfaceType:
+      options.schema?.validator === FIELD_SCHEMA_VALIDATORS.id
+        ? `Id<"${options.collection.slug}">`
+        : options.schema?.validator === FIELD_SCHEMA_VALIDATORS.string
+          ? "string"
+          : `Id<"${options.collection.slug}">[]`,
     admin: {
       hidden: false,
       readOnly: false,

@@ -12,7 +12,7 @@ import {
   TrashIcon,
 } from "lucide-react";
 import { useFieldContext, useFormContext } from "./formContext";
-import { FormFieldLayout } from "./FormFieldLayout";
+import { FormFieldLayout, NullFieldToggle } from "./FormFieldLayout";
 import { useArrayItems, type ArrayItemsField } from "./useArrayItems";
 import { useCompactForm } from "./FormCompactContext";
 import { useFieldErrorCount, useFailedSubmitAttempt } from "./useFieldErrorCount";
@@ -100,6 +100,10 @@ export interface BlocksFieldProps<TBlock extends GenericBlockItem> extends BaseF
    * reads `fieldDef`/`blockDef`, so it cannot synthesize a clone itself.
    */
   cloneBlock?: (block: TBlock) => TBlock;
+  /** Whether this blocks field's value is currently `null`. Ignored unless `onIsNullChange` is also given. */
+  isNull?: boolean;
+  /** Toggles `isNull`; forwarded to the inner `FormFieldLayout`. */
+  onIsNullChange?: (isNull: boolean) => void;
 }
 
 function BlockPickerDialog<TBlock extends GenericBlockItem>(props: {
@@ -385,7 +389,13 @@ export function BlocksField<TBlock extends GenericBlockItem>(props: BlocksFieldP
   const headerActionsNode = props.headerActions?.({ pushMany, replaceAll });
 
   return (
-    <FormFieldLayout id={field.name} field={field} submissionAttempts={submissionAttempts} className={props.className} readOnly={props.readOnly}>
+    <FormFieldLayout
+      id={field.name}
+      field={field}
+      submissionAttempts={submissionAttempts}
+      className={props.className}
+      readOnly={props.readOnly}
+    >
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between gap-2">
@@ -402,15 +412,26 @@ export function BlocksField<TBlock extends GenericBlockItem>(props: BlocksFieldP
                 </span>
               )}
             </div>
-            {(headerActionsNode !== undefined || items.length > 0) && (
-              <div className="flex shrink-0 items-center gap-1">
-                {!compact && items.length > 0 && collapseExpandControls("inline")}
-                {(headerActionsNode !== undefined || compact) && (
-                  <ActionsMenu label={`${label} actions`}>
-                    {compact && items.length > 0 && collapseExpandControls("menu")}
-                    {compact && items.length > 0 && headerActionsNode !== undefined && <DropdownMenuSeparator />}
-                    {headerActionsNode}
-                  </ActionsMenu>
+            {(headerActionsNode !== undefined || items.length > 0 || props.onIsNullChange) && (
+              <div className="flex shrink-0 items-center gap-2">
+                {(headerActionsNode !== undefined || items.length > 0) && (
+                  <div className="flex shrink-0 items-center gap-1">
+                    {!compact && items.length > 0 && collapseExpandControls("inline")}
+                    {(headerActionsNode !== undefined || compact) && (
+                      <ActionsMenu label={`${label} actions`}>
+                        {compact && items.length > 0 && collapseExpandControls("menu")}
+                        {compact && items.length > 0 && headerActionsNode !== undefined && <DropdownMenuSeparator />}
+                        {headerActionsNode}
+                      </ActionsMenu>
+                    )}
+                  </div>
+                )}
+                {props.onIsNullChange && (
+                  <NullFieldToggle
+                    isNull={Boolean(props.isNull)}
+                    onIsNullChange={props.onIsNullChange}
+                    label={label}
+                  />
                 )}
               </div>
             )}
@@ -422,69 +443,73 @@ export function BlocksField<TBlock extends GenericBlockItem>(props: BlocksFieldP
           </Activity>
         </div>
 
-        {items.length === 0 && (
-          <div className="rounded-sm border-2 border-dashed border-border py-8 text-center">
-            <LayersIcon className="mx-auto mb-2 size-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No {itemLabelPlural} yet.</p>
-          </div>
-        )}
+        {!props.isNull && (
+          <>
+            {items.length === 0 && (
+              <div className="rounded-sm border-2 border-dashed border-border py-8 text-center">
+                <LayersIcon className="mx-auto mb-2 size-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">No {itemLabelPlural} yet.</p>
+              </div>
+            )}
 
-        {items.length > 0 && (
-          <Accordion multiple={true} value={openIds} onValueChange={setOpenIds} className="w-full">
-            <Droppable id={field.name} div={{ className: "gap-0" }} onReorder={reorder}>
-              {items.map((block, index) => {
-                const blockType = blockTypeMap.get(block.blockType);
-                if (!blockType) {
-                  return (
-                    <div key={block.id} className="rounded-sm border border-destructive/40 px-3 py-2 text-sm text-destructive">
-                      Unknown block type: <code>{block.blockType}</code>
-                      <Button type="button" variant="ghost" size="icon-xs" disabled={Boolean(props.readOnly)} onClick={() => remove(index)} className="ml-2">
-                        <TrashIcon className="size-3.5" />
-                      </Button>
-                    </div>
-                  );
-                }
-                const itemActionsNode = props.itemActions?.({
-                  index,
-                  itemCount: items.length,
-                  readOnly: Boolean(props.readOnly),
-                  canAdd: !atMax,
-                  onDuplicate: props.cloneBlock ? () => duplicate(index) : undefined,
-                  onInsertAbove: () => requestInsert(index),
-                  onInsertBelow: () => requestInsert(index + 1),
-                  onMoveUp: () => moveUp(index),
-                  onMoveDown: () => moveDown(index),
-                  onRemove: () => remove(index),
-                  insertAt: (position, blocks) => insertMany(position, blocks),
-                });
-                return (
-                  <BlocksFieldItem
-                    key={itemKeys[index]}
-                    name={field.name}
-                    index={index}
-                    itemsKey={itemKeys[index]!}
-                    itemCount={items.length}
-                    block={block}
-                    blockType={blockType}
-                    readOnly={Boolean(props.readOnly)}
-                    isOpen={openIds.includes(block.id)}
-                    itemActionsNode={itemActionsNode}
-                    renderBlock={props.renderBlock}
-                    onUpdateBlockName={(blockName) => updateBlockName(index, blockName)}
-                    onOpen={() => setOpenIds((open) => (open.includes(block.id) ? open : [...open, block.id]))}
-                  />
-                );
-              })}
-            </Droppable>
-          </Accordion>
-        )}
+            {items.length > 0 && (
+              <Accordion multiple={true} value={openIds} onValueChange={setOpenIds} className="w-full">
+                <Droppable id={field.name} div={{ className: "gap-0" }} onReorder={reorder}>
+                  {items.map((block, index) => {
+                    const blockType = blockTypeMap.get(block.blockType);
+                    if (!blockType) {
+                      return (
+                        <div key={block.id} className="rounded-sm border border-destructive/40 px-3 py-2 text-sm text-destructive">
+                          Unknown block type: <code>{block.blockType}</code>
+                          <Button type="button" variant="ghost" size="icon-xs" disabled={Boolean(props.readOnly)} onClick={() => remove(index)} className="ml-2">
+                            <TrashIcon className="size-3.5" />
+                          </Button>
+                        </div>
+                      );
+                    }
+                    const itemActionsNode = props.itemActions?.({
+                      index,
+                      itemCount: items.length,
+                      readOnly: Boolean(props.readOnly),
+                      canAdd: !atMax,
+                      onDuplicate: props.cloneBlock ? () => duplicate(index) : undefined,
+                      onInsertAbove: () => requestInsert(index),
+                      onInsertBelow: () => requestInsert(index + 1),
+                      onMoveUp: () => moveUp(index),
+                      onMoveDown: () => moveDown(index),
+                      onRemove: () => remove(index),
+                      insertAt: (position, blocks) => insertMany(position, blocks),
+                    });
+                    return (
+                      <BlocksFieldItem
+                        key={itemKeys[index]}
+                        name={field.name}
+                        index={index}
+                        itemsKey={itemKeys[index]!}
+                        itemCount={items.length}
+                        block={block}
+                        blockType={blockType}
+                        readOnly={Boolean(props.readOnly)}
+                        isOpen={openIds.includes(block.id)}
+                        itemActionsNode={itemActionsNode}
+                        renderBlock={props.renderBlock}
+                        onUpdateBlockName={(blockName) => updateBlockName(index, blockName)}
+                        onOpen={() => setOpenIds((open) => (open.includes(block.id) ? open : [...open, block.id]))}
+                      />
+                    );
+                  })}
+                </Droppable>
+              </Accordion>
+            )}
 
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => requestInsert(undefined)} disabled={Boolean(props.readOnly) || atMax} icon="Plus">
-            Add {itemLabelSingular}
-          </Button>
-          {atMax && <span className="text-xs text-muted-foreground">Maximum {props.max} {itemLabelPlural} reached</span>}
-        </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => requestInsert(undefined)} disabled={Boolean(props.readOnly) || atMax} icon="Plus">
+                Add {itemLabelSingular}
+              </Button>
+              {atMax && <span className="text-xs text-muted-foreground">Maximum {props.max} {itemLabelPlural} reached</span>}
+            </div>
+          </>
+        )}
       </div>
 
       <BlockPickerDialog

@@ -6,6 +6,7 @@ import {
   ArrayType,
   arrayItemLabel,
   arrayPluralLabel,
+  stringifyConvexValue,
   TDocument,
 } from "@vexcms/core";
 import { VexLink } from "../../ui";
@@ -42,7 +43,7 @@ export function ArrayFieldCell<
   const isSingle = props.value.length === 1;
   const label = isSingle ? arrayItemLabel(props.fieldDef) : arrayPluralLabel(props.fieldDef);
   const summary = props.value
-    .map((item) => (typeof item === "string" ? item : JSON.stringify(item)))
+    .map((item) => (typeof item === "string" ? item : stringifyConvexValue({ value: item })))
     .join(", ");
   const content = (
     <span title={summary}>
