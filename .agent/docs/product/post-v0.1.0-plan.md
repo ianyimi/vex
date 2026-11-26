@@ -23,26 +23,17 @@
 | 1 | maprios www gets **its own Convex deployment** | The www migration is greenfield — no multi-component or adoption work on its critical path |
 | 2 | maprios content is **reseeded from code**, no Payload importer | Vex needs a first-class init/seed hook (MW-2) |
 | 3 | maprios media **moves to Convex storage** | No Vercel Blob adapter; seed must upload media (MW-3) |
-| 4 | **Collaboration is paid, except presence** — presence and the viewer facepile are free (revised 2026-10-17); per-field indicators, cursors, follow mode, Yjs co-editing, and conflict resolution are paid | The free/paid line must be published before any of it ships (ENT-0) |
-| 5 | First three enterprise features: **SSO, audit log, collaborative editing** — probable order SSO + audit, then collab | Collab is built against a finished identity and attribution model |
-| 6 | `email` / `textarea` / `json` fields and the **B2 localization ADR** are pulled into 0.1.0, ahead of G | Removed from this plan; handed to the launch track |
-| 7 | **Form builder is not in 0.1.0** and not on the maprios critical path | Lives in Track FR |
-| 8 | **Localization is free** (2026-10-17) — code-first competitors ship it free (Payload built in, Strapi Community and Sanity free with unlimited locales). A paid add-on may cover translation *workflow* (AI translation, per-locale approvals) | Removed from the enterprise list; the B2 ADR records it as core |
-| 9 | **A/B testing is an enterprise candidate** (2026-10-17) | Added under Later enterprise |
-| 10 | **Three paid tiers, no per-seat pricing** (2026-10-17): Community (free) · Pro · Agency · Enterprise, priced per company in bands by **revenue / company size**. Renewing customers keep their price (grandfathered while renewals continue); no pay-once licences | ENT-0 licence design |
-| 11 | **Licence enforcement never breaks a running deployment** (2026-10-17): checked at package install (private registry token) and at build (`vex dev` / `vex deploy`, signed offline key); grace periods are dates signed into the key | ENT-0 licence design |
-| 12 | **Paid tiers ship in price order: Pro → Agency → Enterprise** (2026-10-17) | Supersedes "SSO + audit first": co-editing (ENT-3) is now the first paid build |
-| 13 | **Enterprise cannot ship without its paperwork** (2026-10-17) — MSA, SLA, trust pack, invoicing are a spec of their own (ENT-P) | ENT-P gates the Enterprise tier |
-| 14 | **Plugin system first** (2026-10-21) — Track PL leads the post-0.1.0 order; admin slots are built into launch specs G / H / I | MW-4 and AD-7 fold into PL; first-party adapters and paid tiers ship as plugins |
-| 15 | **Paid tiers are not announced at launch** (2026-10-26) — public pages carry one line ("paid add-ons may come later, after the free roadmap; nothing free becomes paid") and name no tier or paid feature until one is close to shipping | Launch plan Q / R; each tier (and ENT-0) needs its own spec before any public mention |
-| 16 | **Community-funded until Agency / Enterprise ship** (2026-10-26) — sponsorship is the funding model through the free-tier roadmap; investor funding is being pursued, but the best case defers it. Reason: once paying customers land they take precedence, so free-tier bug-fix turnaround must already be funded and staffed (agent-assisted) before then, or the community sees service drop | Launch plan R frames sponsorship as funding the free tier; ENT-0 timing and support-load planning account for both queues |
+| 4 | `email` / `textarea` / `json` fields and the **B2 localization ADR** are pulled into 0.1.0, ahead of G | Removed from this plan; handed to the launch track |
+| 5 | **Form builder is not in 0.1.0** and not on the maprios critical path | Lives in Track FR |
+| 6 | **Localization is free** (2026-10-17) — code-first competitors ship it free (Payload built in, Strapi Community and Sanity free with unlimited locales). A paid add-on may cover translation *workflow* (AI translation, per-locale approvals) | Removed from the enterprise list; the B2 ADR records it as core |
+| 7 | **Plugin system first** (2026-10-21) — Track PL leads the post-0.1.0 order; admin slots are built into launch specs G / H / I | MW-4 and AD-7 fold into PL; first-party adapters ship as plugins |
 
 ### Why the form builder is not first
 
 - **Maprios does not use one.** No `@payloadcms/plugin-form-builder`; the contact form is a
   hard-coded `Contact_6` block posting to `apps/www/src/app/api/contact/route.ts`, which
   writes a fixed six-field `ContactSubmissions` document. Migrating it needs `email()` +
-  `textarea()` (decision 6) and public-create hardening (MW-5) — not a builder.
+  `textarea()` (decision 4) and public-create hardening (MW-5) — not a builder.
 - **Its prerequisites are unbuilt.** A builder renders editor-defined fields, so it needs the
   leaf fields, conditional fields (`admin.condition`, launch spec G — absent from source
   today), and the same rate limiting MW-5 builds. Built first, it would build all three.
@@ -55,28 +46,37 @@
 
 | Order | Track | Gate it clears | Status |
 |---|---|---|---|
-| 1 | **PL** — Plugin system + admin extension points | Third parties (incl. Convex component authors) extend Vex without forking; slots pre-built in G / H / I | ☐ |
-| 2 | **MW** — maprios www migration | A real Payload → Vex migration, written up as a case study | ☐ |
-| 3 | **AD** — Brownfield adoption | An existing Convex app can adopt Vex table by table without rewriting | ☐ |
-| 4 | **ENT-0** — Paid foundation | Licence, boundary, private registry, signed keys, build-time check | ☐ |
-| 5 | **Pro** — ENT-3 co-editing, visual editor, basic A/B testing | First sellable tier | ☐ |
-| 6 | **Agency** — white-label, client-project licence terms, licence handoff | Second tier | ☐ |
-| 7 | **ENT-P** — Procurement & compliance readiness | Enterprise is buyable: MSA with capped indemnity, support SLA, trust/security-questionnaire pack, invoicing (PO, net terms, tax forms) | ☐ |
-| 8 | **Enterprise** — ENT-1 SSO, SCIM, ENT-2 audit log, approval workflows, branching | Third tier; cannot ship before ENT-P | ☐ |
-| — | **FR** — Free features | Interleave as demand appears; none gates the tracks above | ☐ |
+| 0 | **INIT** — automated `vex init` (add VexCMS to an existing Next.js + Convex app, no table takeover); 0.1.0 ships the manual guide and check script it builds on | Existing apps can add the admin without re-scaffolding | ☐ |
+| 1 | **PL** — Plugin system + admin extension points, shipping together with a plugin marketplace site and a free agent plugin (the "plugin launch"); includes a free access-control extension hook | Third parties (incl. Convex component authors) extend Vex without forking; slots pre-built in G / H / I | ☐ |
+| 2 | **FR-core** — Form builder (plugin or core, decided in its spec), SEO fields (meta title/description, OG image, canonical, redirects), localization; small items alongside: rich-text markdown/HTML export, admin title/logo | A CMS needs these before paid work ships | ☐ |
+| 3 | **PRES** — Presence and facepile (free) | Editors see who else is on a document | ☐ |
+| 3b | **Paid add-ons** — planned privately (separate packages; nothing free becomes paid); first release targeted by end of 2027 | — | ☐ |
+| 4 | **AD** — Brownfield adoption | An existing Convex app can adopt Vex table by table without rewriting | ☐ |
+| 5 | **FR-rest** — Remaining free features (scheduled publishing, webhooks, API keys + team management, search improvements), ordered by upvotes in a pinned GitHub Discussion | Interleave as demand appears; none gates the tracks above | ☐ |
+
+Free line (developer, 2026-11-24): everything a developer can express in code — roles,
+collection- and field-level permissions, organizations — stays free.
 
 **Sequencing principle (inherited from the launch plan):** each item consumes what earlier
 items built; nothing ships inert code whose only justification is a later item.
 
 - PL first: every later track adds admin UI or config; building it on extension points
   means each one is also a worked example for plugin authors, and the paid tiers attach as
-  plugins instead of private paths.
-- MW before AD: MW is greenfield, so it exercises the 0.1.0 surface plus small additions;
-  AD changes how Vex relates to tables it did not create, which is a larger design.
-- AD before ENT: an enterprise on Convex already has an app. Without AD there is nobody to
-  sell SSO to.
-- ENT-0 before any paid feature: the site promises *"Nothing free today becomes paid
-  later"* (`apps/www/convex/seed.ts:989`). The line must be public before code lands.
+  plugins instead of private paths. PL ships as the plugin launch, with the marketplace
+  site and a free agent plugin alongside it.
+- Core free features before paid work: a CMS needs its basic free features — the form
+  builder, SEO fields, and localization — before paid work, so the free offering stands on
+  its own regardless of what's for sale.
+- Brownfield adoption after the first paid release: adapting Vex to tables it did not
+  create is a larger design than anything above it, and nothing requires it to precede paid
+  add-ons now that no large buyer on an existing Convex app is on the near-term roadmap —
+  there is no one AD exists to unlock a sale to.
+- Paid add-ons ship only once the free/paid line is public: the site promises *"Nothing free
+  today becomes paid later"* (`apps/www/convex/seed.ts:989`). The line must be public before
+  code lands. Paid add-ons' first release is targeted by the end of 2027.
+- The remaining free features interleave by community vote: a pinned GitHub Discussion
+  collects upvotes on scheduled publishing, webhooks, API keys + team management, and
+  search improvements; votes set the order they ship in.
 
 **Inherited from 0.1.0:** MW depends on launch spec G for `admin.width` (maprios uses 3
 `row` layouts), the media-picker MIME filter (the PDF block), and `admin.condition`.
@@ -114,7 +114,7 @@ global, 40 block configs across 17 block types.
 |---|---|---|
 | Drafts + autosave (Pages, SiteConfig), live preview | ✅ shipped (C, E) | — |
 | Lexical rich text (CaseStudy, FAQ, Service) | ✅ `richtext()` (D) | Seed writes Plate JSON directly (decision 2) |
-| `email` ×2, `textarea` ×6+, `json` (`Themes.styles`) | ❌ | 0.1.0 (decision 6) |
+| `email` ×2, `textarea` ×6+, `json` (`Themes.styles`) | ❌ | 0.1.0 (decision 4) |
 | `row` ×3 | `admin.width` declared, unread | 0.1.0 G |
 | `tabs` ×1 (SiteConfig), `collapsible` ×1 | ❌ | Substitute `group`; no work |
 | `ui` ×1 (`ImportThemeTrigger`), custom `icon` field | ❌ | MW-4 |
@@ -287,90 +287,10 @@ the common case and is what maprios needs: its app already composes a component
 
 ---
 
-## Enterprise
+## Paid tiers
 
-### ENT-0 — Foundation ☐ (blocks every paid item)
-
-- **Open-core ADR** (next free number — the 0.1.0 B2 ADR lands first): open-core boundary, licence for private packages (commercial EULA / BSL /
-  FSL), licence-key verification that never phones home (no hosting, no cloud — founder
-  decision 2026-10-12), and how enterprise
-  packages attach (adapter pattern, like `VexAuthAdapter`).
-- `packages/enterprise` private submodule and its release path.
-- **Licence design (decisions 10–11):**
-  - *Distribution gating* — paid packages install only from a private registry with a
-    per-customer token (Sidekiq's model); a lapsed token blocks new versions, never
-    installed code.
-  - *Signed offline key* — Ed25519-signed JSON (customer, tier, size band, features,
-    `paidThrough`, `graceUntil`); the public key ships inside the paid packages, never in
-    the Apache core. Core/CLI exposes only a generic build-time plugin-check hook.
-  - *Where it is checked* — by the CLI at `vex dev` / `vex deploy` (CI compute, not the
-    customer's Convex runtime). Past `paidThrough`: warnings in CLI and admin; past
-    `graceUntil`: `vex deploy` refuses to deploy the paid packages. Already-deployed
-    production keeps running.
-  - *Customer tracking* stays on the vendor side (billing + key issuance + registry access
-    logs) — no phone-home from customer deployments.
-  - Enforcement is honesty-keeping; the contract is the real enforcement.
-- **Collaboration is published as paid, presence as free** (2026-10-16, revised
-  2026-10-17): `apps/docs/src/content/docs/roadmap.md` lists presence under *Planned* and
-  the rest under *Enterprise*; `apps/www/convex/seed.ts` (cost FAQ and roadmap block)
-  matches. The optimistic-concurrency guard (rejecting a stale write) is on the paid side —
-  revisit if it should be free as data integrity rather than collaboration.
-
-### ENT-1 — SSO ☐ · ENT-2 — Audit log ☐
-
-**Why these ship together:**
-
-- **Same buyer, same checklist.** Security review and SOC 2 / ISO 27001 vendor
-  questionnaires ask "SSO?" and "audit trail?" together; every comparable CMS gates them in
-  one tier (Strapi, Sanity, Directus, Payload — `04-business-model.md` § 2).
-- **Each is weaker alone.** SSO moves identity to the customer's IdP — logins, JIT
-  provisioning, IdP-group → role sync, deprovisioning. The audit log is what proves those
-  events happened ("who had editor access on the 3rd?"). Audit without SSO attributes
-  actions to locally-managed accounts compliance does not trust.
-- **Both are cheap here.** SSO builds on Better Auth's SSO plugin (SAML/OIDC); the audit
-  log builds on the write pipeline and triggers (F) plus `vex_versions`, which already
-  records `createdBy` per version.
-
-They are not technically coupled — either can ship first.
-
-**ENT-1 scope:** SAML/OIDC, IdP group → role mapping into `userRolesField`, JIT
-provisioning, deprovisioning (SCIM optional).
-
-**ENT-2 scope:** append-only events for content writes, publish/unpublish, access denials,
-auth and role changes; retention and export. Same coverage limit as hooks: dashboard edits
-and `npx convex import` bypass it — document it, or close it with AD-5's check.
-
-### ENT-3 — Collaborative editing ☐
-
-Paid except presence and the facepile (decision 4). Design: `backlog.md` § Presence, live cursors, and § Concurrent-
-edit conflict-resolution UX; `research/edit-view-presence-and-viewer-facepile.md`.
-
-**Why after ENT-1/2:** the SSO coupling is small — presence identity is the session user,
-whatever issued it. The real coupling is **audit attribution**: a Yjs-merged save carries
-edits from several people, so the audit log needs a multi-author event model before
-co-editing produces them.
-
-**Prerequisites:**
-
-- A shared field-input wrapper — every `packages/react/src/components/fields/*/Input.tsx`
-  assembles its own chrome, and per-field indicators need one injection point.
-- Plate ≥ 53 for `@platejs/yjs`; the workspace catalog pins 52.3.21.
-- A Convex Yjs sync provider (update batching, snapshot compaction, reconnect catch-up,
-  GC) — the one genuinely large piece; no official reference exists.
-- `create-vexcms` has no template-variant mechanism for "preconfigured with presence".
-
-**Order inside the item:** presence + facepile (free, ships in core or an opt-in free
-package) → per-field indicators → conflict UX → richtext co-editing → cursors and follow
-mode.
-
-### Later enterprise
-
-| Item | Builds on |
-|---|---|
-| Approval workflows | `DRAFT_ACTIONS` `publish` gate (shipped with C) + RBAC |
-| A/B testing | Variant overlay on the draft model + edge assignment — design pending |
-| Content branching | `backlog.md` § Enterprise content branching — merge semantics undesigned |
-| Git one-way mirror | `backlog.md` § Git as the versioning store (b) — pairs with ENT-2 |
+Paid-tier design is planned privately as separate packages; nothing free becomes paid.
+See the business plan for details.
 
 ---
 
@@ -382,7 +302,7 @@ Split every Convex-specific piece out of `@vexcms/core` behind a `VexDatabaseAda
 core LOC imports Convex, and the public API exposes Convex's execution model (`ctx`-taking
 server API) and query grammar (`withIndex`).
 
-- **Order:** after the Enterprise tier. Every paid feature built before the split
+- **Order:** after the paid add-ons ship. Every paid feature built before the split
   (co-editing's Yjs provider, presence) needs a per-backend implementation afterwards.
 - **Second backend = Supabase** (Realtime keeps the admin live; managed DB; auth/storage),
   not generic Postgres, where Payload is free and mature.
@@ -444,5 +364,5 @@ Ordered by expected demand. None gates the tracks above.
 | Image transforms | — |
 | API keys / team management | Better Auth `apiKey` schema already present |
 | MCP server | Typed functions exposed to agents |
-| TanStack Start adapter | — |
+| Framework adapters: TanStack Start → React + Vite → Astro | `backlog.md` § Framework adapters |
 | Unify type and schema generators | `backlog.md` — every new field type is implemented twice today |

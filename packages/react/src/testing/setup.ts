@@ -134,6 +134,20 @@ export function installDomPolyfills(): void {
     return stub as unknown as MediaQueryList;
   }) as typeof window.matchMedia;
   globalThis.PointerEvent ??= PointerEventPolyfill as unknown as typeof PointerEvent;
+  // jsdom's `Blob`/`File` implement neither `arrayBuffer()` nor `text()` — the
+  // `bytes` field's File-tab control reads the dropped/selected `File` via
+  // `file.arrayBuffer()`, which otherwise throws "is not a function" before a
+  // single byte is read. `FileReader.readAsArrayBuffer` is jsdom's actual,
+  // working read path, so the polyfill wraps that instead of re-implementing
+  // chunk slicing.
+  File.prototype.arrayBuffer ??= function arrayBuffer(this: File): Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(this);
+    });
+  };
   installLocalStorage();
 }
 

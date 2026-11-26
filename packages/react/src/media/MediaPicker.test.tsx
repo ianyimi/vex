@@ -17,7 +17,7 @@ function makeMockMediaCollection(): MediaCollectionConfig {
     slug: "images",
     fields: {},
     labels: { singular: "Image", plural: "Images" },
-    admin: { useAsTitle: "_id", components: {} },
+    admin: { useAsTitle: "_id", components: {}, view: { state: { searchFields: ["filename"] } } },
     meta: { storageAdapter: "convex" },
   } as unknown as MediaCollectionConfig;
 }

@@ -28,16 +28,29 @@ import type { VersionedTargetRows } from "./resolveVersionedTarget";
  * (bootstrapped as a full copy of the published state, or of `{}` for a
  * brand-new document, and every `saveDraft` patch lands flatly on that
  * same complete set), so `{ ...toUserFields(draftRow ?? publishedRow),
- * ...data }`, passed as `prepareEdit`'s `changes` — merged over
- * `storedDoc` via `prepareEdit`'s own `{ ...storedDoc, ...changes }` step
- * — reproduces the full intended content, the same "every field, no
- * partial merge" shape `create`'s own strict pass already has. `storedDoc`
- * is the current published row's fields when one exists; on a FIRST-EVER
- * publish it falls back to the draft row, because `hasPermission`
- * evaluates owner rules against `storedDoc` — an empty `{}` there denied
- * every owner-scoped publish before the document existed publicly, while
- * the draft row carries the very ownership fields the rule reads (the
- * same row `saveDraft` already authorizes against).
+ * ...data }` — layered with one correction (next paragraph) — passed as
+ * `prepareEdit`'s `changes`, merged over `storedDoc` via `prepareEdit`'s
+ * own `{ ...storedDoc, ...changes }` step, reproduces the full intended
+ * content, the same "every field, no partial merge" shape `create`'s own
+ * strict pass already has. `storedDoc` is the current published row's
+ * fields when one exists; on a FIRST-EVER publish it falls back to the
+ * draft row, because `hasPermission` evaluates owner rules against
+ * `storedDoc` — an empty `{}` there denied every owner-scoped publish
+ * before the document existed publicly, while the draft row carries the
+ * very ownership fields the rule reads (the same row `saveDraft` already
+ * authorizes against).
+ *
+ * The one correction: a key present on the stored (published) row's
+ * fields but ABSENT from the draft's own complete copy was explicitly
+ * unset somewhere along the draft's own saves (`prepareEdit`'s own
+ * null-unset translation — see `PrepareEditProps.changes`). Relying on
+ * `{ ...toUserFields(baseRow), ...data }` alone loses that signal: a
+ * missing key in the spread's SOURCE never overrides a key already
+ * present from `storedDoc` in `prepareEdit`'s own merge, so the removal
+ * would silently revert to the stored row's stale value. Every such key
+ * is carried forward as an explicit `undefined` in `changes` instead, so
+ * it propagates through the merge the same way `prepareEdit` already
+ * propagates an explicit `undefined` anywhere else.
  *
  * Validates STRICTLY (`partial: false, validateKeys: "all"` — decision 4): a
  * draft may be incomplete, a published document may not.
@@ -113,7 +126,15 @@ export async function publishShared<DataModel extends GenericDataModel>(props: {
     throw new ConvexError("Nothing to publish: no draft and no changes.");
   }
   const baseRow = draftRow ?? publishedRow;
-  const changes = { ...(baseRow ? props.rows.toUserFields(baseRow) : {}), ...data };
+  const baseUserFields = baseRow ? props.rows.toUserFields(baseRow) : {};
+  const storedRow = publishedRow ?? draftRow;
+  const storedUserFields = storedRow ? props.rows.toUserFields(storedRow) : {};
+  const clearedFields = Object.fromEntries(
+    Object.keys(storedUserFields)
+      .filter((key) => !(key in baseUserFields))
+      .map((key) => [key, undefined]),
+  );
+  const changes = { ...baseUserFields, ...clearedFields, ...data };
 
   const { transformedFields } = await prepareEdit<DataModel>({
     ctx: props.ctx,

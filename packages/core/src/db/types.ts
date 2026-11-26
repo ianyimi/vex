@@ -155,17 +155,58 @@ export type SortableKeysOf<TCollectionSlug extends CollectionSlug> = FieldKeysOf
 export type RelationshipTargetOf<
   TCollectionSlug extends CollectionSlug,
   TKey extends string,
-> = TCollectionSlug extends keyof DocumentBySlug
-  ? TKey extends keyof DocumentBySlug[TCollectionSlug]
-    ? NonNullable<DocumentBySlug[TCollectionSlug][TKey]> extends ReadonlyArray<{
-        __tableName: infer T;
-      }>
-      ? T extends CollectionSlug
-        ? T
+> = TCollectionSlug extends keyof CollectionsPopulateMap
+  ? TKey extends keyof CollectionsPopulateMap[TCollectionSlug]
+    ? CollectionsPopulateMap[TCollectionSlug][TKey] extends {
+        kind: "relationship" | "upload";
+        target: infer Target extends string;
+      }
+      ? Target extends CollectionSlug
+        ? Target
         : CollectionSlug
       : CollectionSlug
     : CollectionSlug
   : CollectionSlug;
+
+/**
+ * The non-`record` branches of {@link PopulateOptionForEntry}, factored out
+ * so `record`'s own branch can call it on `value` WITHOUT `PopulateOptionForEntry`
+ * referencing itself directly for an UNRESOLVED/abstract `TEntry` — a direct
+ * self-call there (verified empirically against `collections/api/types.ts`'s
+ * own generic `find`/`search` usage, where `TCollectionSlug`/`TPopulate` stay
+ * abstract type parameters inside the function body) hits TypeScript's
+ * instantiation depth limit (`Type instantiation is excessively deep`),
+ * unlike `group`/`blocks`/`variant`'s own recursion, which is always
+ * indirected through a `ContainerPopulateShape<Record<string, ...>>` mapped
+ * type rather than a bare self-call. Bounds a `keyValue()` nested directly
+ * inside another `keyValue()`'s `value` to ONE level at the TYPE level only
+ * (`db/depth.ts`'s runtime depth-populate still supports it at any depth —
+ * this only caps what the manually-typed `populate: {...}` config can
+ * express); record-in-group-in-record, etc. is unaffected, since each
+ * `group`/`blocks`/`variant` level's own nested fields still dispatch
+ * through the full {@link PopulateOptionForEntry}.
+ */
+type SimplePopulateOptionForEntry<TEntry extends PopulateMapEntry> = TEntry extends {
+  kind: "relationship" | "upload";
+  target: infer Target extends string;
+}
+  ? Target extends CollectionSlug
+    ? true | { populate: PopulateShape<Target> }
+    : true
+  : TEntry extends { kind: "group"; fields: infer TFields extends Record<string, PopulateMapEntry> }
+    ? ContainerPopulateShape<TFields>
+    : TEntry extends {
+          kind: "blocks";
+          blocks: infer TBlocks extends Record<string, Record<string, PopulateMapEntry>>;
+        }
+      ? { [B in keyof TBlocks]?: ContainerPopulateShape<TBlocks[B]> }
+      : TEntry extends {
+            kind: "variant";
+            discriminator: string;
+            variants: infer TVariants extends Record<string, Record<string, PopulateMapEntry>>;
+          }
+        ? { [V in keyof TVariants]?: ContainerPopulateShape<TVariants[V]> }
+        : never;
 
 /**
  * Resolves the populate OPTION type for one {@link PopulateMapEntry} —
@@ -180,24 +221,22 @@ export type RelationshipTargetOf<
  *   separate target collection to recurse into).
  * - `blocks` — an object keyed by each block's `blockType` slug, each
  *   value that block's own nested container shape.
+ * - `record` — the SAME option shape its `value` entry's own kind would
+ *   need standalone (`true`, `{ populate }`, a nested container shape),
+ *   one instruction applied to every dynamically-keyed entry rather than
+ *   keyed by entry. A `record` whose OWN `value` is itself a `record`
+ *   (`keyValue()` nested directly inside another `keyValue()`'s `value`)
+ *   resolves to `never` here — a documented one-level bound, see
+ *   {@link SimplePopulateOptionForEntry}'s own doc comment.
  *
  * @typeParam TEntry - One {@link CollectionsPopulateMap} leaf/container entry.
  */
 export type PopulateOptionForEntry<TEntry extends PopulateMapEntry> = TEntry extends {
-  kind: "relationship" | "upload";
-  target: infer Target extends string;
+  kind: "record";
+  value: infer TValueEntry extends PopulateMapEntry;
 }
-  ? Target extends CollectionSlug
-    ? true | { populate: PopulateShape<Target> }
-    : true
-  : TEntry extends { kind: "group"; fields: infer TFields extends Record<string, PopulateMapEntry> }
-    ? ContainerPopulateShape<TFields>
-    : TEntry extends {
-          kind: "blocks";
-          blocks: infer TBlocks extends Record<string, Record<string, PopulateMapEntry>>;
-        }
-      ? { [B in keyof TBlocks]?: ContainerPopulateShape<TBlocks[B]> }
-      : never;
+  ? SimplePopulateOptionForEntry<TValueEntry>
+  : SimplePopulateOptionForEntry<TEntry>;
 
 /**
  * Populate options for one container level of the field tree — a
@@ -358,19 +397,45 @@ type ApplyContainerPopulate<TValue, TMap extends Record<string, PopulateMapEntry
     : TValue[K];
 };
 
-/** One field's populated value, dispatched by its {@link PopulateMapEntry} kind. @see {@link Populated} */
-type ApplyEntryPopulate<TValue, TEntry extends PopulateMapEntry, TOpt> = TEntry extends {
+/**
+ * The populated result for ONE relationship/upload leaf, before `ApplyEntryPopulate`
+ * decides whether `TEntry` even matched a leaf shape — a bare doc/`HiddenDocument`
+ * union for a `scalar: true` entry (`schema` override, `hasMany: false`), an array of
+ * that union otherwise (array storage, the pre-existing shape). @see {@link ApplyEntryPopulate}
+ */
+type ApplyRelationshipEntryPopulate<Target extends CollectionSlug & keyof DocumentBySlug, TOpt, TScalar> = TOpt extends {
+  populate: infer NestedPopulate;
+}
+  ? NestedPopulate extends PopulateShape<Target>
+    ? TScalar extends true
+      ? Populated<Target, NestedPopulate> | HiddenDocument<Target>
+      : (Populated<Target, NestedPopulate> | HiddenDocument<Target>)[]
+    : TScalar extends true
+      ? DocumentBySlug[Target] | HiddenDocument<Target>
+      : (DocumentBySlug[Target] | HiddenDocument<Target>)[]
+  : TScalar extends true
+    ? DocumentBySlug[Target] | HiddenDocument<Target>
+    : (DocumentBySlug[Target] | HiddenDocument<Target>)[];
+
+/**
+ * The non-`record` branches of {@link ApplyEntryPopulate}, factored out for
+ * the same reason {@link SimplePopulateOptionForEntry} is — `record`'s own
+ * branch calls this on each entry's value instead of `ApplyEntryPopulate`
+ * referencing itself directly, which hits TypeScript's instantiation depth
+ * limit for `TEntry`/`TOpt` left abstract (verified empirically). Bounds a
+ * `keyValue()` nested directly inside another `keyValue()`'s `value` to ONE
+ * level — see {@link SimplePopulateOptionForEntry}'s own doc comment for the
+ * full reasoning, identical here.
+ */
+type SimpleApplyEntryPopulate<TValue, TEntry extends PopulateMapEntry, TOpt> = TEntry extends {
   kind: "relationship" | "upload";
   target: infer Target extends string;
+  scalar?: infer TScalar;
 }
   ? TOpt extends true | { populate: unknown }
     ? Target extends CollectionSlug
       ? Target extends keyof DocumentBySlug
-        ? TOpt extends { populate: infer NestedPopulate }
-          ? NestedPopulate extends PopulateShape<Target>
-            ? (Populated<Target, NestedPopulate> | HiddenDocument<Target>)[]
-            : (DocumentBySlug[Target] | HiddenDocument<Target>)[]
-          : (DocumentBySlug[Target] | HiddenDocument<Target>)[]
+        ? ApplyRelationshipEntryPopulate<Target, TOpt, TScalar>
         : TValue
       : TValue
     : TValue
@@ -389,7 +454,33 @@ type ApplyEntryPopulate<TValue, TEntry extends PopulateMapEntry, TOpt> = TEntry 
           ? ApplyBlockItemPopulate<Item, TBlocks, TOpt>[]
           : TValue
         : TValue
-      : TValue;
+      : TEntry extends {
+            kind: "variant";
+            discriminator: infer Disc extends string;
+            variants: infer TVariants extends Record<string, Record<string, PopulateMapEntry>>;
+          }
+        ? TOpt extends Record<string, unknown>
+          ? TValue extends Record<string, unknown>
+            ? TValue[Disc] extends infer DiscValue extends string
+              ? DiscValue extends keyof TVariants
+                ? DiscValue extends keyof TOpt
+                  ? ApplyContainerPopulate<TValue, TVariants[DiscValue], TOpt[DiscValue]>
+                  : TValue
+                : TValue
+              : TValue
+            : TValue
+          : TValue
+        : TValue;
+
+/** One field's populated value, dispatched by its {@link PopulateMapEntry} kind. @see {@link Populated} */
+type ApplyEntryPopulate<TValue, TEntry extends PopulateMapEntry, TOpt> = TEntry extends {
+  kind: "record";
+  value: infer TValueEntry extends PopulateMapEntry;
+}
+  ? TOpt extends PopulateOptionForEntry<TValueEntry>
+    ? { [K in keyof TValue]: SimpleApplyEntryPopulate<TValue[K], TValueEntry, TOpt> }
+    : TValue
+  : SimpleApplyEntryPopulate<TValue, TEntry, TOpt>;
 
 /**
  * Applies a `blocks()` populate option to one block-union member `TItem`.

@@ -2,6 +2,8 @@
 
 import { createContext, use, type ReactNode } from "react";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 /**
  * State {@link useEditActionsMenuDialog} exposes to an `edit.actionsMenu` contribution.
  */
@@ -24,8 +26,8 @@ export interface EditActionsMenuDialogState {
  * `DocumentEditActionsMenu`'s dropdown. Has no default — {@link useEditActionsMenuDialog} throws
  * outside it, the same pattern as `VexDocumentContext`/`DocumentEditRuntimeContext`.
  */
-export const EditActionsMenuDialogContext = createContext<EditActionsMenuDialogState | null>(
-  null,
+export const EditActionsMenuDialogContext = globalSingleton("documents/EditActionsMenuDialogContext", () =>
+  createContext<EditActionsMenuDialogState | null>(null),
 );
 
 /**

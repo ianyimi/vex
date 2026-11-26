@@ -22,6 +22,7 @@ import {
   type BlocksHeaderClipboardMutators,
   type BlocksItemActionsProps,
 } from "../../forms";
+import { useNullToggle } from "../useNullToggle";
 import type { ReactHKT } from "../../adapter";
 import { usePermission } from "../../access";
 import { VexConfigContext } from "../../config";
@@ -37,6 +38,21 @@ import {
   toastPasteOutcome,
   type BlocksHeaderActionsProps,
 } from "./clipboard";
+
+/**
+ * Narrows the resolved `BlocksField.defaultValue` — typed loosely as
+ * `Record<string, unknown>[]` since it's shared with other block-shaped
+ * config — to `GenericBlock[]` by checking each item already carries the
+ * `id`/`blockType` every real block value has. Used only as
+ * `useNullToggle`'s `emptyValue` fallback; the builder always resolves an
+ * unset `defaultValue` to `[]`, which trivially satisfies this.
+ *
+ * @param value - The block field's resolved `defaultValue`.
+ * @returns Whether every item has a string `id` and `blockType`.
+ */
+function isGenericBlockArray(value: Record<string, unknown>[]): value is GenericBlock[] {
+  return value.every((item) => typeof item.id === "string" && typeof item.blockType === "string");
+}
 
 /**
  * The blocks admin field's own render body — reads the `FieldApi` provided
@@ -62,7 +78,7 @@ import {
  * @returns The blocks field's `BlocksField` body, wrapped in a labelled group.
  */
 function BlocksFieldAdminInner(props: FieldComponentProps<{}, BlocksFieldDef>) {
-  const field = useFieldContext<GenericBlock[]>();
+  const field = useFieldContext<GenericBlock[] | null>();
   const config = useContext(VexConfigContext);
   const [activeField, setActiveField] = useQueryState(MODALS.editBlocks.urlParam, parseAsString);
   const blockDefMap = new Map(
@@ -74,6 +90,14 @@ function BlocksFieldAdminInner(props: FieldComponentProps<{}, BlocksFieldDef>) {
     scope: PERMISSION_SCOPES.any,
   });
   const readOnly = props.readOnly || props.fieldDef.admin.readOnly || !canEdit;
+  const { isNull, onIsNullChange } = useNullToggle({
+    field,
+    nullable: props.fieldDef.nullable,
+    emptyValue: () => {
+      const defaultValue = props.fieldDef.defaultValue;
+      return isGenericBlockArray(defaultValue) ? defaultValue : [];
+    },
+  });
   const items: GenericBlock[] = field.state.value ?? [];
   const maxValue = props.fieldDef.max?.[0];
 
@@ -138,6 +162,8 @@ function BlocksFieldAdminInner(props: FieldComponentProps<{}, BlocksFieldDef>) {
         itemLabelSingular={props.fieldDef.labels?.singular ?? "Block"}
         itemLabelPlural={props.fieldDef.labels?.plural ?? "Blocks"}
         readOnly={readOnly}
+        isNull={isNull}
+        onIsNullChange={onIsNullChange}
         blockTypes={blockTypes}
         picker={{
           open: activeField === props.name,

@@ -85,4 +85,44 @@ describe("UploadFieldDisplay", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Requires images/read" })).toBeInTheDocument();
   });
+
+  it("renders one chip for a scalar (non-array) populated media doc", () => {
+    render(
+      <VexConfigProvider config={config}>
+        <UploadFieldDisplay
+          field={uploadFieldFixture.fieldDef}
+          value={
+            {
+              _id: "images_4",
+              _creationTime: 0,
+              filename: "scalar-cover.png",
+              mimeType: "image/png",
+              size: 1024,
+              alt: "",
+              storageId: "storage_4",
+              deleted: false,
+              src: "https://example.com/scalar-cover.png",
+            } as never
+          }
+          document={document}
+          collection={testCollection}
+        />
+      </VexConfigProvider>,
+    );
+    expect(screen.getByText("scalar-cover.png")).toBeInTheDocument();
+  });
+
+  it("shows an em-dash for an undefined scalar upload value", () => {
+    render(
+      <VexConfigProvider config={config}>
+        <UploadFieldDisplay
+          field={uploadFieldFixture.fieldDef}
+          value={undefined}
+          document={document}
+          collection={testCollection}
+        />
+      </VexConfigProvider>,
+    );
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
 });

@@ -1,4 +1,4 @@
-import { ADMIN_FIELDS } from "../constants";
+import { ADMIN_FIELDS, FIELD_SCHEMA_VALIDATORS } from "../constants";
 import { BaseFieldMeta } from "../types";
 import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
@@ -28,19 +28,26 @@ export function upload<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldKey extends string = never,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  THasMany extends boolean = boolean,
 >(
-  options: UploadFieldInput<TCollectionSlug, TFieldKey, TFieldMeta>,
+  options: UploadFieldInput<TCollectionSlug, TFieldKey, TFieldMeta, THasMany>,
 ): UploadField<TCollectionSlug, TFieldMeta> {
   if (!options.to || !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(options.to)) {
     throw new Error(`upload(): "to" must be a valid collection slug. Got "${options.to}".`);
   }
 
+  const schema =
+    options.schema?.validator !== undefined
+      ? { validator: options.schema.validator }
+      : undefined;
   return {
     label: "",
     required: false,
+    nullable: false,
     hasMany: false,
     accept: "",
     ...options,
+    schema,
     min: resolveFieldLimit({
       limit: options.min,
       defaultError: (value) =>
@@ -52,11 +59,12 @@ export function upload<
         `Must be no more than ${value} file${value === 1 ? "" : "s"}.`,
     }),
     type: ADMIN_FIELDS.upload.type,
-    // Per-field override of the static `ADMIN_FIELDS.upload.interfaceType`
-    // (`Id<MediaCollectionSlug>[]`). `to` is validated as a slug above; emitting
-    // it as a literal keeps the populated type narrow once more than one media
-    // collection is registered (a single-member union masks the difference).
-    interfaceType: `Id<"${options.to}">[]`,
+    interfaceType:
+      options.schema?.validator === FIELD_SCHEMA_VALIDATORS.id
+        ? `Id<"${options.to}">`
+        : options.schema?.validator === FIELD_SCHEMA_VALIDATORS.string
+          ? "string"
+          : `Id<"${options.to}">[]`,
     admin: {
       hidden: false,
       readOnly: false,

@@ -63,9 +63,18 @@ describe("adminFieldToInputSchema — number", () => {
     expect(schema.safeParse(0).success).toBe(true);
   });
 
-  it("optional number accepts undefined and returns default 0", () => {
+  it("optional number with no explicit defaultValue stays undefined", () => {
     const schema = adminFieldToInputSchema({
       field: number({ required: false }),
+    });
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBeUndefined();
+  });
+
+  it("optional number with an explicit defaultValue still returns it", () => {
+    const schema = adminFieldToInputSchema({
+      field: number({ required: false, defaultValue: 0 }),
     });
     const result = schema.safeParse(undefined);
     expect(result.success).toBe(true);

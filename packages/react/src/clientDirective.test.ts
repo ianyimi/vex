@@ -5,11 +5,12 @@ import { describe, expect, test } from "vitest";
 const SRC_DIR = import.meta.dirname;
 
 // Files that intentionally lack "use client" despite matching the rule below.
-// `server/ThemeScript.tsx` runs as a genuine Server Component (see its doc
-// comment) — the `@vexcms/react/server` entry it anchors must stay
-// directive-free all the way down its import chain, or Next's production
-// build fails the moment anything in that chain picks one up.
-const ALLOWLIST = ["server/ThemeScript.tsx"];
+// `server/ThemeScript.tsx` and `server/ScrollRestoreScript.tsx` run as
+// genuine Server Components (see each one's own doc comment) — the
+// `@vexcms/react/server` entry they anchor must stay directive-free all
+// the way down its import chain, or Next's production build fails the
+// moment anything in that chain picks one up.
+const ALLOWLIST = ["server/ThemeScript.tsx", "server/ScrollRestoreScript.tsx"];
 
 const HOOK_CALL_PATTERN =
   /\b(useState|useEffect|useLayoutEffect|useReducer|useRef|useMemo|useCallback|useContext|useImperativeHandle|useSyncExternalStore|useTransition|useDeferredValue|useOptimistic|useId|useInsertionEffect)\s*\(/;

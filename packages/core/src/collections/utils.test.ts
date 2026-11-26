@@ -8,6 +8,7 @@ import {
   select,
   group,
   array,
+  variant,
   defineCollection,
 } from "../index";
 import { getFieldsDefaultValues, getFieldsInputSchema } from "../fields";
@@ -79,13 +80,13 @@ describe("getFieldsDefaultValues", () => {
     expect(getFieldsDefaultValues({ fields: collection.fields })).toEqual({ message: "" });
   });
 
-  it("returns 0 as default for number fields", () => {
+  it("leaves number fields undefined when no explicit defaultValue is set", () => {
     const collection = defineCollection({
       slug: "products",
       fields: { price: number({ required: true }) },
     });
     const defaults = getFieldsDefaultValues({ fields: collection.fields });
-    expect(defaults.price).toBe(0);
+    expect(defaults.price).toBeUndefined();
   });
 
   it("returns false as default for checkbox fields", () => {
@@ -113,6 +114,43 @@ describe("getFieldsDefaultValues", () => {
     });
     const defaults = getFieldsDefaultValues({ fields: collection.fields });
     expect(defaults.status).toEqual([]);
+  });
+
+  it("a non-required discriminated variant() has no default — create form starts with the field unset, not a preselected variant", () => {
+    const collection = defineCollection({
+      slug: "storage_shapes",
+      fields: {
+        name: text({ required: true }),
+        channel: variant({
+          discriminator: "kind",
+          variants: {
+            email: { fields: { address: text({ required: true }) } },
+            sms: { fields: { phoneNumber: text({ required: true }) } },
+          },
+        }),
+      },
+    });
+    const defaults = getFieldsDefaultValues({ fields: collection.fields });
+    expect(defaults.channel).toBeUndefined();
+    expect("channel" in defaults).toBe(true);
+    const schema = getFieldsInputSchema({ fields: collection.fields });
+    expect(schema.safeParse({ name: "Doc" }).success).toBe(true);
+  });
+
+  it("a non-required primitive variant() has no default — create form starts with the field unset, not a preselected member", () => {
+    const collection = defineCollection({
+      slug: "storage_shapes",
+      fields: {
+        name: text({ required: true }),
+        amount: variant({
+          variants: { fixed: text({ required: true }), metered: number({ required: true }) },
+        }),
+      },
+    });
+    const defaults = getFieldsDefaultValues({ fields: collection.fields });
+    expect(defaults.amount).toBeUndefined();
+    const schema = getFieldsInputSchema({ fields: collection.fields });
+    expect(schema.safeParse({ name: "Doc" }).success).toBe(true);
   });
 
   it("uses document values in edit mode", () => {
@@ -153,7 +191,59 @@ describe("getFieldsDefaultValues", () => {
     };
     const defaults = getFieldsDefaultValues({ fields: collection.fields, document });
     expect(defaults.title).toBe("Hello");
-    expect(defaults.score).toBe(0); // falls back to field default
+    expect(defaults.score).toBeUndefined(); // falls back to field default
+  });
+
+  it("loads a stored falsy value instead of the field's own default, for every falsy JS value a field can legitimately store", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        viewCount: number({ required: false, defaultValue: 9 }),
+        views: number({ required: false, schema: { validator: "int64" }, defaultValue: 9n }),
+        published: checkbox({ defaultValue: true }),
+        title: text({ required: false, defaultValue: "untitled" }),
+      },
+    });
+    const document = {
+      _id: "doc1",
+      _creationTime: 0,
+      viewCount: 0,
+      views: 0n,
+      published: false,
+      title: "",
+    };
+    const defaults = getFieldsDefaultValues({ fields: collection.fields, document });
+    expect(defaults.viewCount).toBe(0);
+    expect(defaults.views).toBe(0n);
+    expect(defaults.published).toBe(false);
+    expect(defaults.title).toBe("");
+  });
+
+  it("maps a stored null to the field's own default for a nullable scalar field", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text({ required: true }),
+        note: text({ nullable: true }),
+        score: number({ nullable: true }),
+      },
+    });
+    const document = { _id: "doc1", _creationTime: 0, title: "Hello", note: null, score: null };
+    const defaults = getFieldsDefaultValues({ fields: collection.fields, document });
+    expect(defaults.note).toBe("");
+    expect(defaults.score).toBeUndefined();
+  });
+
+  it("preserves a stored null for a nullable group so its null toggle starts active", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        meta: group({ nullable: true, fields: { note: text() } }),
+      },
+    });
+    const document = { _id: "doc1", _creationTime: 0, meta: null };
+    const defaults = getFieldsDefaultValues({ fields: collection.fields, document });
+    expect(defaults.meta).toBeNull();
   });
 
   // ─── comprehensive ─────────────────────────────────────────────────────────
@@ -164,7 +254,7 @@ describe("getFieldsDefaultValues", () => {
     });
 
     expect(defaults.title).toBe(""); // text default
-    expect(defaults.score).toBe(0); // number default
+    expect(defaults.score).toBeUndefined(); // number default
     expect(defaults.published).toBe(false); // checkbox default
     expect(defaults.publishedAt).toBeUndefined(); // date default
     expect(defaults.status).toEqual([]); // select default
@@ -295,7 +385,7 @@ describe("getFieldsInputSchema", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.title).toBe("");
-      expect(result.data.score).toBe(0);
+      expect(result.data.score).toBeUndefined();
       expect(result.data.published).toBe(false);
       expect(result.data.status).toEqual([]);
     }
@@ -323,7 +413,7 @@ describe("getFieldsInputSchema", () => {
     const minimalResult = schema.safeParse({ title: "https://example.com" });
     expect(minimalResult.success).toBe(true);
     if (minimalResult.success) {
-      expect(minimalResult.data.score).toBe(0);
+      expect(minimalResult.data.score).toBeUndefined();
       expect(minimalResult.data.published).toBe(false);
       expect(minimalResult.data.status).toEqual([]);
       expect(minimalResult.data.tags).toEqual([]);

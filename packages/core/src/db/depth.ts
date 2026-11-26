@@ -106,6 +106,13 @@ function buildContainerDepthPopulate(props: {
  * Builds one field's depth-populate value, or `undefined` when nothing on
  * `field` (at any depth) is populatable. @see {@link buildDepthPopulate}
  *
+ * A primitive `variant()` field (`field.discriminator === undefined`) is
+ * always `undefined` here too: which member is active varies per document,
+ * and `buildPopulateMapEntry` (`fields/utils.ts`) excludes primitive
+ * variant members from the type-level `PopulateMapEntry`/`DepthPopulate<>`
+ * surface for that same reason, so there is no typed `populate` option a
+ * caller could pass to reach one.
+ *
  * @returns `true` for a leaf, `{ populate: ... }` for an intermediate
  *   relationship, a container object for a `group()`/`blocks()`/`array()`
  *   with something populatable inside it, or `undefined` otherwise.
@@ -148,6 +155,11 @@ function buildFieldDepthPopulate(props: {
     return Object.keys(nested).length > 0 ? nested : undefined;
   }
 
+  if (field.type === ADMIN_FIELDS.keyValue.type) {
+    const nested = buildFieldDepthPopulate({ config, field: field.value, depth, visited });
+    return nested === undefined ? undefined : { kind: "record", populate: nested };
+  }
+
   if (field.type === ADMIN_FIELDS.blocks.type) {
     const blocksResult: Record<string, unknown> = {};
     for (const block of field.blocks) {
@@ -155,6 +167,17 @@ function buildFieldDepthPopulate(props: {
       if (Object.keys(nested).length > 0) blocksResult[block.blockType] = nested;
     }
     return Object.keys(blocksResult).length > 0 ? blocksResult : undefined;
+  }
+
+  if (field.type === ADMIN_FIELDS.variant.type) {
+    if (field.discriminator === undefined) return undefined;
+    const discriminator = field.discriminator;
+    const variantsResult: Record<string, unknown> = {};
+    for (const [key, member] of Object.entries(field.variants)) {
+      const nested = buildContainerDepthPopulate({ config, fields: member.fields, depth, visited });
+      if (Object.keys(nested).length > 0) variantsResult[key] = nested;
+    }
+    return Object.keys(variantsResult).length > 0 ? { discriminator, variants: variantsResult } : undefined;
   }
 
   return undefined;

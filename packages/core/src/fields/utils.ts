@@ -7,7 +7,6 @@ import type { FieldCondition } from "./conditions";
 import type { UIField } from "./ui/types";
 import { adminFieldToInputSchema } from "./inputSchemas";
 import type { TDocument } from "../documents/types";
-import { FieldLimit, FieldLimitInput } from "./baseTypes";
 import type {
   ComponentContributionInput,
   ComponentOverrideInput,
@@ -20,14 +19,16 @@ import { SLOT_IDS } from "../components/types";
 
 /**
  * Resolves a field's `min`/`max` input into its final `[value, error]`
- * tuple. A bare number input is paired with `defaultError(value)`; a
- * `[value, error]` tuple input is returned as-is; `undefined` stays
- * `undefined` (no constraint configured).
+ * tuple. A bare `number`/`bigint` input is paired with `defaultError(value)`;
+ * a `[value, error]` tuple input is returned as-is; `undefined` stays
+ * `undefined` (no constraint configured). Generic over `number | bigint` so
+ * an int64 `number()` field can resolve `bigint` limits through the same
+ * helper every other field type uses.
  *
  * @param props - Input props.
  * @param props.limit - The field's raw `min`/`max` input.
  * @param props.defaultError - Builds the default error message from the
- *   resolved value, when `limit` is a bare number. Ignored when `limit` is
+ *   resolved value, when `limit` is a bare value. Ignored when `limit` is
  *   already a `[value, error]` tuple.
  * @returns The resolved `[value, error]` tuple, or `undefined`.
  *
@@ -41,17 +42,19 @@ import { SLOT_IDS } from "../components/types";
  *
  * resolveFieldLimit({ limit: undefined, defaultError: () => "Too short." })
  * // → undefined
+ *
+ * resolveFieldLimit<bigint>({ limit: 5n, defaultError: (value) => `At least ${value}.` })
+ * // → [5n, "At least 5."]
  * ```
  */
-export function resolveFieldLimit(props: {
-  limit: FieldLimitInput | undefined;
-  defaultError: (value: number) => string;
-}): FieldLimit | undefined {
+export function resolveFieldLimit<T extends number | bigint = number>(props: {
+  limit: T | readonly [value: T, error: string] | undefined;
+  defaultError: (value: T) => string;
+}): readonly [value: T, error: string] | undefined {
   if (props.limit === undefined) return undefined;
-  if (typeof props.limit === "number") {
-    return [props.limit, props.defaultError(props.limit)] as const;
-  }
-  return props.limit;
+  if (Array.isArray(props.limit)) return props.limit as readonly [value: T, error: string];
+  const value = props.limit as T;
+  return [value, props.defaultError(value)] as const;
 }
 
 /**
@@ -257,13 +260,91 @@ export function getFieldsDefaultValues(props: {
   const res: Record<string, unknown> = {};
   for (const [fieldKey, fieldDef] of Object.entries(getDataFields({ fields: props.fields }))) {
     if (fieldDef.admin.hidden) continue;
-    if (props.document && Boolean(props.document[fieldKey])) {
-      res[fieldKey] = props.document[fieldKey];
+    const stored = props.document ? props.document[fieldKey] : undefined;
+    if (fieldDef.nullable && stored === null) {
+      res[fieldKey] = resolveNullableLoadValue({ field: fieldDef, value: null });
+    } else if (props.document && stored !== undefined) {
+      res[fieldKey] = stored;
     } else {
       res[fieldKey] = fieldDef.defaultValue;
     }
   }
   return res;
+}
+
+/**
+ * Resolves a nullable field's loaded form value from its stored document
+ * value. A field with no natural empty input state of its own
+ * (`ADMIN_FIELDS[field.type].hasNullToggle` — group/array/blocks/json/
+ * richtext/checkbox) keeps a literal `null` so its `FormFieldLayout` null
+ * toggle starts active; every other nullable field's `null` becomes its own
+ * `defaultValue`, since its control already shows that as "no value".
+ *
+ * @param props - Input props.
+ * @param props.field - The resolved field definition.
+ * @param props.value - The field's current value — only ever called with `null`.
+ * @returns `null` for a toggle field, else `field.defaultValue`.
+ */
+export function resolveNullableLoadValue(props: { field: AdminDataField; value: null }): unknown {
+  return ADMIN_FIELDS[props.field.type].hasNullToggle ? null : props.field.defaultValue;
+}
+
+/**
+ * Resolves one field's form value for the save payload.
+ *
+ * `undefined` always becomes `null`, regardless of `nullable` — Convex's
+ * client argument serializer drops an explicit `undefined` key before the
+ * request ever reaches the server, so a cleared field with no other empty
+ * representation (a scalar `relationship`/`upload`'s deselect, a `bytes`
+ * control's own Clear action) would otherwise vanish from the payload
+ * entirely and the stored value would never change. `null` survives the
+ * wire; {@link prepareEdit} (core `db/prepareEdit.ts`) translates it back
+ * on arrival — a `nullable` field stores the literal `null`, a
+ * non-nullable OPTIONAL field is unset, a non-nullable REQUIRED field
+ * fails its normal required validation.
+ *
+ * Beyond that: clearing a nullable scalar field's input (its own empty
+ * representation, per {@link isDisplayValueEmpty}) also writes `null`. A
+ * toggle field's value is already `null` or already a real value (set
+ * directly by its own `FormFieldLayout` null toggle) and passes through
+ * unchanged.
+ *
+ * @param props - Input props.
+ * @param props.field - The resolved field definition.
+ * @param props.value - The field's current form value.
+ * @returns `null` when `value` is `undefined`, regardless of field type;
+ *   otherwise `value`, or `null` when `field.nullable`, the field has no
+ *   null toggle, and `value` is that field's own empty representation.
+ */
+export function resolveNullableSaveValue(props: { field: AdminDataField; value: unknown }): unknown {
+  if (props.value === undefined) return null;
+  if (!props.field.nullable || ADMIN_FIELDS[props.field.type].hasNullToggle) return props.value;
+  return isDisplayValueEmpty(props.value) ? null : props.value;
+}
+
+/**
+ * Applies {@link resolveNullableSaveValue} across a values record keyed by
+ * field key — the save-path counterpart of {@link getFieldsDefaultValues}.
+ * A key with no matching data field (filtered out upstream, or not a
+ * declared field) passes through unchanged.
+ *
+ * @param props - Input props.
+ * @param props.values - The form values about to be submitted.
+ * @param props.fields - The resource's resolved field map.
+ * @returns A new record with every field's `undefined` value, and every
+ *   nullable scalar field's empty value, replaced by `null`.
+ */
+export function resolveNullableSaveValues(props: {
+  values: Record<string, unknown>;
+  fields: Record<string, AdminField>;
+}): Record<string, unknown> {
+  const dataFields = getDataFields({ fields: props.fields });
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(props.values)) {
+    const fieldDef = dataFields[key];
+    result[key] = fieldDef ? resolveNullableSaveValue({ field: fieldDef, value }) : value;
+  }
+  return result;
 }
 
 /**
@@ -308,7 +389,7 @@ export function fieldsToFieldTypeMap(props: {
  * (relationship/upload leaf, or a `group`/`blocks`/`array` container to
  * recurse through) rather than by target depth.
  *
- * Only `relationship`/`upload` leaves and `group`/`blocks`/`array`
+ * Only `relationship`/`upload` leaves and `group`/`blocks`/`array`/`keyValue`
  * containers that themselves carry at least one such leaf (at any depth)
  * produce an entry — a field with nothing populatable inside it (text,
  * richtext, a group of plain strings, …) is omitted entirely, so
@@ -364,10 +445,14 @@ function buildPopulateMapEntries(props: { fields: Record<string, AdminField> }):
 function buildPopulateMapEntry(props: { field: AdminDataField }): string | null {
   const { field } = props;
   if (field.type === ADMIN_FIELDS.relationship.type) {
-    return `{ kind: "relationship"; target: "${field.collection.slug}" }`;
+    return field.schema !== undefined
+      ? `{ kind: "relationship"; target: "${field.collection.slug}"; scalar: true }`
+      : `{ kind: "relationship"; target: "${field.collection.slug}" }`;
   }
   if (field.type === ADMIN_FIELDS.upload.type) {
-    return `{ kind: "upload"; target: "${field.to}" }`;
+    return field.schema !== undefined
+      ? `{ kind: "upload"; target: "${field.to}"; scalar: true }`
+      : `{ kind: "upload"; target: "${field.to}" }`;
   }
   if (field.type === ADMIN_FIELDS.array.type) {
     // Transparent: an array's own entry is whatever its `items` field's
@@ -389,6 +474,21 @@ function buildPopulateMapEntry(props: { field: AdminDataField }): string | null 
       })
       .filter((entry): entry is string => entry !== null);
     return blockEntries.length > 0 ? `{ kind: "blocks"; blocks: { ${blockEntries.join("; ")} } }` : null;
+  }
+  if (field.type === ADMIN_FIELDS.variant.type && field.discriminator !== undefined) {
+    const variantEntries = Object.entries(field.variants)
+      .map(([key, member]) => {
+        const inner = buildPopulateMapEntries({ fields: member.fields });
+        return inner ? `${key}: { ${inner} }` : null;
+      })
+      .filter((entry): entry is string => entry !== null);
+    return variantEntries.length > 0
+      ? `{ kind: "variant"; discriminator: "${field.discriminator}"; variants: { ${variantEntries.join("; ")} } }`
+      : null;
+  }
+  if (field.type === ADMIN_FIELDS.keyValue.type) {
+    const inner = buildPopulateMapEntry({ field: field.value });
+    return inner ? `{ kind: "record"; value: ${inner} }` : null;
   }
   return null;
 }
@@ -475,10 +575,18 @@ export function hasFieldConditions(props: {
     if (field.type === ADMIN_FIELDS.array.type) {
       return hasFieldConditions({ fields: { item: field.items } });
     }
+    if (field.type === ADMIN_FIELDS.keyValue.type) {
+      return hasFieldConditions({ fields: { value: field.value } });
+    }
     if (field.type === ADMIN_FIELDS.blocks.type) {
       return field.blocks.some((block) =>
         hasFieldConditions({ fields: block.fields }),
       );
+    }
+    if (field.type === ADMIN_FIELDS.variant.type) {
+      return field.discriminator !== undefined
+        ? Object.values(field.variants).some((member) => hasFieldConditions({ fields: member.fields }))
+        : Object.values(field.variants).some((member) => hasFieldConditions({ fields: { member } }));
     }
     return false;
   });

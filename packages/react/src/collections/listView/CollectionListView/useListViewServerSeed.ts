@@ -6,6 +6,7 @@ import { useQueryClient, useSuspenseQuery, type UseSuspenseQueryOptions } from "
 import {
   buildListViewFindQueryArgs,
   buildListViewSearchQueryArgs,
+  stringifyConvexValue,
   vexConvexApi,
   type CollectionConfig,
   type CollectionSlug,
@@ -131,10 +132,19 @@ export function useListViewServerSeed<TDoc extends TDocument = TDocument>(
     // shape) means it never sets up a subscription for the NEW key at all, while the OLD
     // (real) key's observer count drops to 0 the moment this component re-renders with
     // the new `activeSeedOptions` — `useVexListQuery` below already has `seed.data` as its
-    // own `initialData` by then, so this never re-suspends anything.
+    // own `initialData` by then, so this never re-suspends anything. The embedded key is
+    // `stringifyConvexValue`'d, not the raw `queryKey` array — `isConvexQuery()` already
+    // rejects this key, so TanStack's own `ConvexQueryClient.hashFn()` falls through to
+    // its plain-`JSON.stringify` default for it, which throws on a `bigint` leaf (an
+    // int64 `number()` field's filter value, inside the find/search args this key
+    // embeds) — confirmed live: `QueryClient.setQueryData` → `hashQueryKeyByOptions` →
+    // `hashKey` → `JSON.stringify`, `TypeError: Do not know how to serialize a BigInt`.
     if (activeSeedOptions !== initialQueryOptionsRef.current) return;
     const releasedOptions: UseSuspenseQueryOptions<PaginationResult<VexDocument>> = {
-      queryKey: ["vex-seed-released", initialQueryOptionsRef.current.queryKey] as unknown as readonly unknown[],
+      queryKey: [
+        "vex-seed-released",
+        stringifyConvexValue({ value: initialQueryOptionsRef.current.queryKey }),
+      ] as unknown as readonly unknown[],
       queryFn: () => seed.data,
       staleTime: Infinity,
     };

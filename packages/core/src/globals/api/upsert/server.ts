@@ -27,6 +27,8 @@ export interface UpsertGlobalServerArgs<
    * User field data. May be the full flat document (system keys `_id`,
    * `_creationTime`, `_slug` are stripped server-side) or just the field
    * values. The `GlobalEditView` component sends the flat form values here.
+   * A `null` value for an optional, non-nullable field unsets it; a
+   * `nullable` field stores the literal `null` instead.
    */
   data: Record<string, unknown>;
 }

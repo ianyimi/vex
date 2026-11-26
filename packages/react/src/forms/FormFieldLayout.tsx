@@ -1,9 +1,12 @@
 "use client";
 
 import type { AnyFieldApi } from "@tanstack/react-form";
-import { Activity, createContext, useContext, type ReactNode } from "react";
+import { Activity, createContext, useContext, useId, type ReactNode } from "react";
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "../ui/field";
 import { cn } from "../utils/cn";
+import { Checkbox } from "../ui/checkbox";
+
+import { globalSingleton } from "../utils/globalSingleton";
 
 /**
  * When `true`, `FormFieldLayout`'s own label stays in the accessibility
@@ -15,7 +18,24 @@ import { cn } from "../utils/cn";
  * shown); ported from the deleted `components/form/FormLabel.tsx`'s
  * `HideFieldLabelContext`.
  */
-export const HideFieldLabelContext = createContext(false);
+export const HideFieldLabelContext = globalSingleton("forms/FormFieldLayout/HideFieldLabelContext", () => createContext(false));
+
+/**
+ * Overrides the `id` `FormFieldLayout` gives its own `<FieldLabel>` element
+ * — default `${props.id}-label`. `htmlFor`/the control's own `id` are
+ * UNAFFECTED (the native label-for association, and every other id this
+ * field renders, stay exactly `props.id`-derived); only the label
+ * element's own `id` attribute changes, for a caller who needs that one id
+ * to be collision-free from something ELSE sharing `props.id` — a
+ * primitive `variant()`'s active member renders at the SAME path as the
+ * variant field itself (`fields/variant/Field.tsx`), so its own label
+ * would otherwise claim the identical `${name}-label` id the variant's own
+ * accordion trigger already uses for its `aria-labelledby` target.
+ * Defaults to `undefined` (no override, the default id applies).
+ */
+export const FieldLabelIdContext = globalSingleton("forms/FormFieldLayout/FieldLabelIdContext", () =>
+  createContext<string | undefined>(undefined),
+);
 
 /**
  * Extracts a field's current validation-error message, if any. TanStack Form
@@ -145,24 +165,50 @@ export function FormFieldLayout(props: {
    * read-only at a glance, not just its (greyed-out, easy to miss) control.
    */
   readOnly?: boolean;
+  /**
+   * Whether this field's value is currently `null`. Ignored unless
+   * `onIsNullChange` is also given.
+   */
+  isNull?: boolean;
+  /**
+   * Toggles `isNull`. When given, renders a "Null" switch in the label row
+   * (beside `label`/`labelContent`, or alone when neither is set) and hides
+   * `before`/`children` while `isNull` is `true`. Omit to render no switch.
+   */
+  onIsNullChange?: (isNull: boolean) => void;
+  /**
+   * Whether this field's own error message renders in its footer.
+   * Default `true`. Set `false` when another `FormFieldLayout` bound to the
+   * SAME form path already renders it — e.g. a primitive `variant()`'s own
+   * accordion wrapper, whose active member's control shares the field's
+   * path and already shows the error right under the input itself.
+   * `data-invalid` on the outer {@link Field} follows the same suppression,
+   * so a hidden error never leaves a stray "invalid" border with nothing
+   * visible explaining it.
+   */
+  showError?: boolean;
 }): ReactNode {
   const errorMessage = getFieldErrorMessage(props.field);
-  const showError = isFieldShowingError({
-    field: props.field,
-    submissionAttempts: props.submissionAttempts,
-  });
+  const showError =
+    props.showError !== false &&
+    isFieldShowingError({
+      field: props.field,
+      submissionAttempts: props.submissionAttempts,
+    });
   const descriptionId = `${props.id}-description`;
   const errorId = `${props.id}-error`;
   const labelHidden = useContext(HideFieldLabelContext);
+  const labelIdOverride = useContext(FieldLabelIdContext);
   const hasLabel = props.labelContent !== undefined || props.label !== undefined;
   const hasDescription = Boolean(props.description);
+  const hasNullToggle = props.onIsNullChange !== undefined;
 
   const labelNode =
     props.labelContent ??
     (props.label !== undefined && (
       <FieldLabel
         htmlFor={props.id}
-        id={`${props.id}-label`}
+        id={labelIdOverride ?? `${props.id}-label`}
         className={cn(labelHidden && "sr-only")}
       >
         {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
@@ -173,7 +219,18 @@ export function FormFieldLayout(props: {
 
   return (
     <Field className={props.className} data-invalid={showError} data-disabled={props.readOnly || undefined}>
-      {hasLabel && labelNode}
+      {(hasLabel || hasNullToggle) && (
+        <div className="flex items-center justify-between gap-2">
+          {hasLabel && labelNode}
+          {hasNullToggle && (
+            <NullFieldToggle
+              isNull={Boolean(props.isNull)}
+              onIsNullChange={props.onIsNullChange!}
+              label={props.label}
+            />
+          )}
+        </div>
+      )}
       <Activity mode={hasDescription ? "visible" : "hidden"}>
         <FieldDescription
           id={hasDescription ? descriptionId : undefined}
@@ -184,8 +241,8 @@ export function FormFieldLayout(props: {
         </FieldDescription>
       </Activity>
       <FieldContent className={cn((hasDescription || (hasLabel && !labelHidden)) && "mt-2")}>
-        {props.before}
-        {props.children}
+        {!props.isNull && props.before}
+        {!props.isNull && props.children}
         {props.after}
         {(showError || props.counter) && (
           <div className="flex flex-wrap items-start gap-x-2 gap-y-1" data-slot="field-footer">
@@ -199,5 +256,44 @@ export function FormFieldLayout(props: {
         )}
       </FieldContent>
     </Field>
+  );
+}
+
+/**
+ * The "Null" switch `FormFieldLayout` renders in its label row when
+ * `onIsNullChange` is given. Exported directly for `richtext`'s admin
+ * field, `CheckboxField`, and the container fields (`GroupField`'s
+ * accordion variant, `ArrayField`, `BlocksField`) that build their own
+ * header row outside `FormFieldLayout`.
+ *
+ * @param props - Input props.
+ * @param props.isNull - Current toggle state.
+ * @param props.onIsNullChange - Commits the new toggle state.
+ * @param props.label - The field's own label, folded into a specific
+ *   `aria-label` ("Set {label} to null") so the toggle's accessible name
+ *   names which field it clears even though its visible text stays
+ *   "Null". Falls back to a generic "Set field to null" when omitted.
+ * @returns A small labelled checkbox reading "Null".
+ */
+export function NullFieldToggle(props: {
+  isNull: boolean;
+  onIsNullChange: (isNull: boolean) => void;
+  label?: string;
+}): ReactNode {
+  const id = useId();
+  const ariaLabel = props.label ? `Set ${props.label} to null` : "Set field to null";
+  return (
+    <label
+      htmlFor={id}
+      className="flex shrink-0 items-center gap-1.5 text-xs font-normal text-muted-foreground"
+    >
+      <Checkbox
+        id={id}
+        aria-label={ariaLabel}
+        checked={props.isNull}
+        onCheckedChange={(checked) => props.onIsNullChange(Boolean(checked))}
+      />
+      Null
+    </label>
   );
 }

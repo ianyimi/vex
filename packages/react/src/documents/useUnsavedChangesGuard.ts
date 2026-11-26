@@ -4,6 +4,8 @@ import { createContext, createElement, useContext, useEffect, useRef, useState, 
 import { useFrameworkComponents } from "../config/useFrameworkComponents";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 /**
  * What {@link useUnsavedChangesGuard} shares with the rest of the edit view
  * tree via {@link UnsavedChangesGuardContext}.
@@ -38,9 +40,9 @@ export interface UnsavedChangesGuardContextValue {
  * `viewSuite` harness that doesn't mount the guard) — consumers treat that
  * as "never blocking".
  */
-export const UnsavedChangesGuardContext = createContext<
-  UnsavedChangesGuardContextValue | undefined
->(undefined);
+export const UnsavedChangesGuardContext = globalSingleton("documents/useUnsavedChangesGuard/UnsavedChangesGuardContext", () =>
+  createContext<UnsavedChangesGuardContextValue | undefined>(undefined),
+);
 
 /**
  * Reads the nearest edit view's guard `release()` so a built-in can bypass

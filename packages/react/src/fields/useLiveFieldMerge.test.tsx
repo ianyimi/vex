@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { act, render } from "@testing-library/react";
 import { useForm } from "@tanstack/react-form";
+import { text, type AdminField } from "@vexcms/core";
 import { changedValues, isFieldKeyDirty } from "../forms/changedValues";
+import { useFieldsForm } from "./useFieldsForm";
 import { useLiveFieldMerge } from "./useLiveFieldMerge";
 import type { AnyFormApi } from "../forms";
 
 type Doc = { name: string; price: number; tags: string[]; light: { background: string } };
 
 const FIELD_KEYS = ["name", "price", "tags", "light"] as const;
+const FIELDS: Record<string, AdminField> = {};
 
 function baseDocument(): Doc {
   return { name: "Widget", price: 10, tags: ["red", "blue"], light: { background: "white" } };
@@ -27,7 +30,7 @@ function renderMergeHarness(initialDocument: Doc) {
   function Harness({ document }: { document: Doc }) {
     const form = useForm({ defaultValues: document });
     formRef.current = form as AnyFormApi;
-    useLiveFieldMerge({ form: form as AnyFormApi, document, fieldKeys: FIELD_KEYS });
+    useLiveFieldMerge({ form: form as AnyFormApi, document, fields: FIELDS, fieldKeys: FIELD_KEYS });
     return (
       <>
         <form.Field name="name">{() => null}</form.Field>
@@ -175,5 +178,30 @@ describe("useLiveFieldMerge", () => {
     setDocument({ ...initial, tags: ["red", "blue"] });
 
     expect(formRef.current!.state.values.tags).toBe(before);
+  });
+
+  it("maps a nullable field's stored null through resolveNullableLoadValue, not verbatim", () => {
+    const nullableFields: Record<string, AdminField> = { note: text({ nullable: true }) };
+
+    function NullableHarness({ document }: { document: { note: string | null } }) {
+      const form = useFieldsForm({ fields: nullableFields, document });
+      formRef.current = form;
+      useLiveFieldMerge({ form, document, fields: nullableFields, fieldKeys: ["note"] });
+      return <form.Field name="note">{() => null}</form.Field>;
+    }
+
+    const formRef: { current: AnyFormApi | undefined } = { current: undefined };
+    const view = render(<NullableHarness document={{ note: "hello" }} />);
+
+    // The live document now stores the field's `null` (cleared elsewhere) —
+    // the merge must map it through `resolveNullableLoadValue`, the same
+    // mapping `getFieldsDefaultValues` applies on initial load, not adopt the
+    // raw `null` verbatim.
+    act(() => {
+      view.rerender(<NullableHarness document={{ note: null }} />);
+    });
+
+    expect(formRef.current!.state.values.note).toBe("");
+    expect(formRef.current!.state.isDefaultValue).toBe(true);
   });
 });

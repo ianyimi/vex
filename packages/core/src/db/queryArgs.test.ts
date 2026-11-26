@@ -6,7 +6,7 @@ import type { ConstraintBuilder, FilterConstraintBuilder } from "../access/query
 import { VexError } from "../errors";
 import * as _generatedApi from "./test/convex/_generated/api";
 import schema from "./test/convex/schema";
-import { checkbox, commitTs, relationship, row, select, tabs, text } from "../fields";
+import { checkbox, commitTs, number, relationship, row, select, tabs, text } from "../fields";
 import {
   andConvexQueryFilters,
   convertCommitTsWhereToNs,
@@ -169,6 +169,11 @@ describe("validateWhereNode", () => {
 
   test("still rejects a leaf missing `op` even with only two keys", () => {
     expect(() => validateWhereNode({ node: { field: "title", value: "x" } })).toThrow(VexError);
+  });
+
+  test("accepts a bigint leaf value (int64 number field)", () => {
+    const node = { field: "viewCount", op: "gte", value: 9_007_199_254_740_993n };
+    expect(validateWhereNode({ node, fields: ["viewCount"] })).toEqual(node);
   });
 });
 
@@ -333,6 +338,12 @@ describe("convertCommitTsWhereToNs", () => {
     const where = { field: "title", op: "eq", value: 1.5 } as const;
     expect(convertCommitTsWhereToNs({ where: where as never, fields })).toEqual(where);
   });
+
+  test("leaves an int64 number leaf's bigint value untouched (not a commitTs field)", () => {
+    const fieldsWithInt64 = { ...fields, viewCount: number({ schema: { validator: "int64" } }) };
+    const where = { field: "viewCount", op: "gte", value: 9_007_199_254_740_993n } as const;
+    expect(convertCommitTsWhereToNs({ where, fields: fieldsWithInt64 })).toEqual(where);
+  });
 });
 
 describe("normalizeArrayStoredWhere", () => {
@@ -346,6 +357,13 @@ describe("normalizeArrayStoredWhere", () => {
     contributorId: relationship({ collection: { slug: "authors" }, hasMany: false }),
     coAuthors: relationship({ collection: { slug: "authors" }, hasMany: true }),
     title: text(),
+    scalarStatus: select({
+      hasMany: false,
+      schema: { validator: "literal" },
+      options: [{ label: "Won", value: "won" }],
+    }),
+    nullableTitle: text({ nullable: true }),
+    nullableStatus: select({ nullable: true, hasMany: false, options: [{ label: "Won", value: "won" }] }),
   };
 
   test("undefined in, undefined out", () => {
@@ -382,6 +400,11 @@ describe("normalizeArrayStoredWhere", () => {
 
   test("leaves a non-array-stored field's eq value untouched", () => {
     const where = { field: "title", op: "eq", value: "hi" } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual(where);
+  });
+
+  test("leaves a scalar-stored select field's eq value untouched (no array wrap)", () => {
+    const where = { field: "scalarStatus", op: "eq", value: "won" } as const;
     expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual(where);
   });
 
@@ -428,6 +451,54 @@ describe("normalizeArrayStoredWhere", () => {
         ],
       },
     });
+  });
+
+  test("adds a null alternative to a nullable array-stored field's isEmpty rewrite", () => {
+    const where = { field: "nullableStatus", op: "eq", value: undefined } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual({
+      or: [
+        { field: "nullableStatus", op: "eq", value: [] },
+        { field: "nullableStatus", op: "eq", value: undefined },
+        { field: "nullableStatus", op: "eq", value: null },
+      ],
+    });
+  });
+
+  test("omits the null alternative for a non-nullable array-stored field (contributorId, above)", () => {
+    const where = { field: "contributorId", op: "eq", value: undefined } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual({
+      or: [
+        { field: "contributorId", op: "eq", value: [] },
+        { field: "contributorId", op: "eq", value: undefined },
+      ],
+    });
+  });
+
+  test("rewrites isEmpty on a nullable scalar field to match null or undefined", () => {
+    const where = { field: "nullableTitle", op: "eq", value: undefined } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual({
+      or: [
+        { field: "nullableTitle", op: "eq", value: undefined },
+        { field: "nullableTitle", op: "eq", value: null },
+      ],
+    });
+  });
+
+  test("rewrites isNotEmpty on a nullable scalar field the same way, negated", () => {
+    const where = { field: "nullableTitle", op: "neq", value: undefined } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual({
+      not: {
+        or: [
+          { field: "nullableTitle", op: "eq", value: undefined },
+          { field: "nullableTitle", op: "eq", value: null },
+        ],
+      },
+    });
+  });
+
+  test("leaves a non-nullable scalar field's isEmpty wire form untouched", () => {
+    const where = { field: "title", op: "eq", value: undefined } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields })).toEqual(where);
   });
 
   test("recurses through and/or/not, rewriting only array-stored leaves", () => {
@@ -511,5 +582,18 @@ describe("normalizeArrayStoredWhere", () => {
     const docs = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.query("posts").filter(filter).collect());
     expect(docs.map((d) => d._id)).toEqual([withAuthorId]);
     expect(docs.map((d) => d._id)).not.toContain(emptyId);
+  });
+
+  test("leaves a scalar-storage (schema.validator set) relationship field's eq value unwrapped", () => {
+    const scalarFields = {
+      ...fields,
+      contributorId: relationship({
+        collection: { slug: "authors" },
+        hasMany: false,
+        schema: { validator: "id" },
+      }),
+    };
+    const where = { field: "contributorId", op: "eq", value: "author_123" } as const;
+    expect(normalizeArrayStoredWhere({ where: where as never, fields: scalarFields })).toEqual(where);
   });
 });

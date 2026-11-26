@@ -17,6 +17,19 @@ describe("numberFieldToInputSchema", () => {
     expect(schema.safeParse(null).success).toBe(false);
   });
 
+  it("leaves an optional number field undefined with no explicit defaultValue", () => {
+    const field = number({ required: false });
+    const schema = numberFieldToInputSchema({ field });
+
+    expect(schema.safeParse(42).success).toBe(true);
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toBeUndefined();
+    }
+  });
+
   it("generates optional number schema with default", () => {
     const field = number({ required: false, defaultValue: 0 });
     const schema = numberFieldToInputSchema({ field });
@@ -184,6 +197,58 @@ describe("numberFieldToInputSchema", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
+});
+
+describe("numberFieldToInputSchema: int64", () => {
+  it("accepts bigint and rejects a plain number", () => {
+    const field = number({ schema: { validator: "int64" }, required: true });
+    const schema = numberFieldToInputSchema({ field });
+
+    expect(schema.safeParse(42n).success).toBe(true);
+    expect(schema.safeParse(42).success).toBe(false);
+  });
+
+  it("leaves an optional int64 field undefined with no explicit defaultValue", () => {
+    const field = number({ schema: { validator: "int64" } });
+    const schema = numberFieldToInputSchema({ field });
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toBeUndefined();
+    }
+  });
+
+  it("still applies an explicit bigint defaultValue", () => {
+    const field = number({ schema: { validator: "int64" }, defaultValue: 0n });
+    const schema = numberFieldToInputSchema({ field });
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toBe(0n);
+    }
+  });
+
+  it("applies bigint min/max constraints", () => {
+    const field = number({ schema: { validator: "int64" }, required: true, min: 1n, max: 100n });
+    const schema = numberFieldToInputSchema({ field });
+
+    expect(schema.safeParse(0n).success).toBe(false);
+    expect(schema.safeParse(101n).success).toBe(false);
+    expect(schema.safeParse(50n).success).toBe(true);
+  });
+
+  it("clamps an out-of-range bigint default into min", () => {
+    const field = number({ schema: { validator: "int64" }, min: 10n, defaultValue: 1n });
+    const schema = numberFieldToInputSchema({ field });
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toBe(10n);
     }
   });
 });

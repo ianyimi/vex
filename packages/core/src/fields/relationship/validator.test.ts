@@ -65,3 +65,41 @@ describe("relationshipFieldToValidator", () => {
     );
   });
 });
+
+describe("relationshipFieldToValidator — schema override", () => {
+  it("emits v.id() for schema.validator 'id'", () => {
+    const field = relationship({
+      collection: { slug: "authors" },
+      schema: { validator: "id" },
+      required: true,
+    });
+    expect(relationshipFieldToValidator({ field })).toBe('v.id("authors")');
+  });
+
+  it("wraps v.id() in v.optional() when not required", () => {
+    const field = relationship({
+      collection: { slug: "authors" },
+      schema: { validator: "id" },
+      required: false,
+    });
+    expect(relationshipFieldToValidator({ field })).toBe('v.optional(v.id("authors"))');
+  });
+
+  it("emits v.string() for schema.validator 'string'", () => {
+    const field = relationship({
+      collection: { slug: "authors" },
+      schema: { validator: "string" },
+      required: true,
+    });
+    expect(relationshipFieldToValidator({ field })).toBe("v.string()");
+  });
+
+  it("wraps v.string() in v.optional() when not required", () => {
+    const field = relationship({
+      collection: { slug: "authors" },
+      schema: { validator: "string" },
+      required: false,
+    });
+    expect(relationshipFieldToValidator({ field })).toBe("v.optional(v.string())");
+  });
+});

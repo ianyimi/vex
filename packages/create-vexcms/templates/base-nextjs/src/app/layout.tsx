@@ -8,6 +8,7 @@ import localFont from "next/font/local"
 import ClientProviders from "~/components/providers/client"
 import ServerProviders from "~/components/providers/server"
 import { ThemeScript } from "~/components/ThemeScript"
+import { ScrollRestoreScript } from "~/components/ScrollRestoreScript"
 
 /**
  * Loaded from the `geist` package rather than `next/font/google`: Google Fonts
@@ -47,6 +48,9 @@ export default function RootLayout({
         {/* Applies the persisted light/dark class before first paint —
             without it the admin flashes light before the saved mode lands. */}
         <ThemeScript />
+        {/* Restores the edit view's form scroll position before first
+            paint on a hard reload. */}
+        <ScrollRestoreScript />
       </head>
       <body>
         <ServerProviders>

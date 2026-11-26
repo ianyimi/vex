@@ -6,25 +6,32 @@ import type { FieldComponentProps } from "@vexcms/core";
 import { GroupField, useFieldContext } from "../../forms";
 import { RenderFields } from "../RenderFields";
 import { AdminFieldBinding } from "../AdminFieldBinding";
+import { useNullToggle } from "../useNullToggle";
 
 /**
  * The group admin field's own render body — reads the `FieldApi` provided
- * by the enclosing `AdminFieldBinding` via `useFieldContext()` (only to
- * bind the accordion to the field's own form path) and maps `fieldDef.fields`
- * onto the app form's `GroupField` fieldset layout, rendering the group's
- * own fields through `RenderFields` as `children`. Wrapped in its own
- * `role="group" aria-disabled` element — `GroupField` itself sets
- * `aria-labelledby` on its accordion but never forwards a readOnly signal
- * of its own, unlike `ArrayField`/`BlocksField` — so this wraps one, same
- * `[role="group"][aria-labelledby]` contract every container field
- * exposes to the field-input-contract test harness.
+ * by the enclosing `AdminFieldBinding` via `useFieldContext()`, both to bind
+ * the accordion to the field's own form path and, when `fieldDef.nullable`,
+ * to compute the null-toggle state/handler (via {@link useNullToggle}) the
+ * app form's `GroupField` forwards to `FormFieldLayout` — and maps
+ * `fieldDef.fields` onto the group's own fields through `RenderFields` as
+ * `children`. Wrapped in its own `role="group" aria-disabled` element —
+ * `GroupField` itself sets `aria-labelledby` on its accordion but never
+ * forwards a readOnly signal of its own, unlike `ArrayField`/`BlocksField`
+ * — so this wraps one, same `[role="group"][aria-labelledby]` contract
+ * every container field exposes to the field-input-contract test harness.
  *
  * @param props - {@link FieldComponentProps} narrowed to `GroupField`, for this item's own level of nesting.
  * @returns The group's `GroupField` body, wrapped in a labelled group.
  */
 function GroupFieldAdminInner(props: FieldComponentProps<{}, GroupFieldDef>) {
-  useFieldContext();
+  const field = useFieldContext<Record<string, unknown> | null>();
   const readOnly = props.readOnly || props.fieldDef.admin.readOnly;
+  const { isNull, onIsNullChange } = useNullToggle({
+    field,
+    nullable: props.fieldDef.nullable,
+    emptyValue: () => props.fieldDef.defaultValue,
+  });
   return (
     <div role="group" aria-labelledby={`${props.name}-label`} aria-disabled={readOnly}>
       <GroupField
@@ -35,6 +42,8 @@ function GroupFieldAdminInner(props: FieldComponentProps<{}, GroupFieldDef>) {
         fieldCount={Object.keys(props.fieldDef.fields).length}
         defaultOpen={!props.fieldDef.admin.defaultCollapsed}
         readOnly={readOnly}
+        isNull={isNull}
+        onIsNullChange={onIsNullChange}
       >
         <RenderFields
           fields={props.fieldDef.fields}

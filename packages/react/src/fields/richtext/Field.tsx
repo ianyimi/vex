@@ -17,10 +17,11 @@ import {
 import { useDebouncedValue, useVexMutation } from "../../hooks";
 import { toast } from "sonner";
 import { getVexErrorMessage } from "../../utils/errors";
-import { useFieldContext, useFormContext, isFieldShowingError } from "../../forms";
+import { useFieldContext, useFormContext, isFieldShowingError, NullFieldToggle } from "../../forms";
 import { FieldError, FieldGroupBox } from "../../ui/field";
 import { useVexConfig } from "../../config/VexConfigContext";
 import { AdminFieldBinding } from "../AdminFieldBinding";
+import { useNullToggle } from "../useNullToggle";
 
 /**
  * Extracts a field's current validation-error message, if any. TanStack
@@ -56,11 +57,16 @@ function getFieldErrorMessage(field: AnyFieldApi): string | undefined {
  * @returns The rich text field's render body.
  */
 function RichTextFieldAdminInner(props: FieldComponentProps<{}, RichTextField>) {
-  const field = useFieldContext<RichTextDocument>();
+  const field = useFieldContext<RichTextDocument | null>();
   const config = useVexConfig();
   // Both readOnly sources are independent — either one alone disables
   // editing, matching every other field type's own OR-composition.
   const isReadOnly = props.readOnly || props.fieldDef.admin.readOnly;
+  const { isNull, onIsNullChange } = useNullToggle({
+    field,
+    nullable: props.fieldDef.nullable,
+    emptyValue: () => props.fieldDef.defaultValue ?? [],
+  });
 
   // Inline-image target — optional, unlike `upload()`'s required `to`. An
   // unknown slug already threw `VexStorageConfigError` at `defineConfig()`.
@@ -181,10 +187,18 @@ function RichTextFieldAdminInner(props: FieldComponentProps<{}, RichTextField>) 
       {props.fieldDef.required && <span className="text-red-500">*</span>}
     </span>
   );
+  const labelRow = onIsNullChange ? (
+    <div className="flex items-center justify-between gap-2">
+      {label}
+      <NullFieldToggle isNull={isNull} onIsNullChange={onIsNullChange} label={props.fieldDef.label || props.name} />
+    </div>
+  ) : (
+    label
+  );
 
   if (!config.editor) {
     return (
-      <FieldGroupBox labelId={`${props.name}-label`} label={label} description={props.fieldDef.description}>
+      <FieldGroupBox labelId={`${props.name}-label`} label={labelRow} description={props.fieldDef.description}>
         <div
           role="alert"
           className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
@@ -208,32 +222,34 @@ function RichTextFieldAdminInner(props: FieldComponentProps<{}, RichTextField>) 
   return (
     <FieldGroupBox
       labelId={`${props.name}-label`}
-      label={label}
+      label={labelRow}
       description={props.fieldDef.description}
       disabled={isReadOnly}
       error={showError && <FieldError role="alert">{errorMessage}</FieldError>}
     >
-      <EditorComponent
-        value={field.state.value ?? props.fieldDef.defaultValue ?? []}
-        onChange={(next) => field.handleChange(next)}
-        readOnly={isReadOnly}
-        name={props.name}
-        label={props.fieldDef.label}
-        description={props.fieldDef.description}
-        placeholder={props.fieldDef.admin.placeholder}
-        mediaCollectionSlug={props.fieldDef.mediaCollectionSlug}
-        mediaAltRequired={(targetCollectionConfig?.fields.alt as AdminDataField | undefined)?.required === true}
-        mediaResults={targetCollectionConfig ? mediaResults : undefined}
-        mediaSearchTerm={targetCollectionConfig ? mediaSearchTerm : undefined}
-        onMediaSearchChange={targetCollectionConfig ? setMediaSearchTerm : undefined}
-        mediaCanLoadMore={targetCollectionConfig ? mediaResults.length >= mediaLimit : undefined}
-        onMediaLoadMore={
-          targetCollectionConfig ? () => setMediaLimit((limit) => limit + 24) : undefined
-        }
-        mediaIsLoading={targetCollectionConfig ? mediaIsLoading : undefined}
-        generateUploadUrl={targetCollectionConfig ? handleGenerateUploadUrl : undefined}
-        createMediaDocument={targetCollectionConfig ? handleCreateMediaDocument : undefined}
-      />
+      {!isNull && (
+        <EditorComponent
+          value={field.state.value ?? props.fieldDef.defaultValue ?? []}
+          onChange={(next) => field.handleChange(next)}
+          readOnly={isReadOnly}
+          name={props.name}
+          label={props.fieldDef.label}
+          description={props.fieldDef.description}
+          placeholder={props.fieldDef.admin.placeholder}
+          mediaCollectionSlug={props.fieldDef.mediaCollectionSlug}
+          mediaAltRequired={(targetCollectionConfig?.fields.alt as AdminDataField | undefined)?.required === true}
+          mediaResults={targetCollectionConfig ? mediaResults : undefined}
+          mediaSearchTerm={targetCollectionConfig ? mediaSearchTerm : undefined}
+          onMediaSearchChange={targetCollectionConfig ? setMediaSearchTerm : undefined}
+          mediaCanLoadMore={targetCollectionConfig ? mediaResults.length >= mediaLimit : undefined}
+          onMediaLoadMore={
+            targetCollectionConfig ? () => setMediaLimit((limit) => limit + 24) : undefined
+          }
+          mediaIsLoading={targetCollectionConfig ? mediaIsLoading : undefined}
+          generateUploadUrl={targetCollectionConfig ? handleGenerateUploadUrl : undefined}
+          createMediaDocument={targetCollectionConfig ? handleCreateMediaDocument : undefined}
+        />
+      )}
     </FieldGroupBox>
   );
 }

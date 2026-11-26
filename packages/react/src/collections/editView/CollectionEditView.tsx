@@ -11,6 +11,7 @@ import {
   DRAFT_ACTIONS,
   getDataFields,
   resolveLivePreviewSettings,
+  resolveNullableSaveValues,
   SLOT_IDS,
   VERSION_STATUSES,
   vexConvexApi,
@@ -295,7 +296,7 @@ function CollectionEditForm(
     readableFieldKeys,
     onSubmit: async () => {
       if (isVersioned) {
-        const changes = changedValues(form);
+        const changes = resolveNullableSaveValues({ values: changedValues(form), fields: collection.fields });
         try {
           const draftId = await saveDraftMutation({
             collection: collection.slug,
@@ -312,7 +313,7 @@ function CollectionEditForm(
         }
         return;
       }
-      const changes = changedValues(form);
+      const changes = resolveNullableSaveValues({ values: changedValues(form), fields: collection.fields });
       if (Object.keys(changes).length === 0) return;
       try {
         await plainUpdateMutation.mutateAsync({
@@ -345,10 +346,11 @@ function CollectionEditForm(
   useLiveFieldMerge({
     form,
     document: formDocument,
+    fields: collection.fields,
     fieldKeys: readableFieldKeys,
   });
 
-  const resetWhenSaved = useResetWhenSaved({ form, document: currentDocument });
+  const resetWhenSaved = useResetWhenSaved({ form, document: currentDocument, fields: collection.fields });
 
   const isVersioned = collection.versions.drafts;
   const editAction = isVersioned ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update;
@@ -379,7 +381,7 @@ function CollectionEditForm(
     mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
   });
   const { hasUnsavedChanges: autosaveHasUnsavedChanges } = useAutosave({
-    values: changedValues(form),
+    values: resolveNullableSaveValues({ values: changedValues(form), fields: collection.fields }),
     onSave: async (changes) => {
       const draftId = await saveDraftMutation({
         collection: collection.slug,
@@ -529,7 +531,8 @@ function CollectionEditForm(
 
   const formPanelSize = props.initialPreviewPanelSize ?? DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE;
   const { ref: splitRef, minSizes: panelMinSizes } = useLivePreviewPanelMinSize();
-  const formScroll = usePreservedScrollTop();
+  const formScrollKey = `${collection.slug}:${activeDocumentId}`;
+  const formScroll = usePreservedScrollTop(formScrollKey);
 
   return (
     <UnsavedChangesGuardContext.Provider
@@ -705,6 +708,7 @@ function CollectionEditForm(
                     <div
                       ref={formScroll.ref}
                       onScroll={formScroll.onScroll}
+                      data-vex-scroll-key={formScrollKey}
                       className="vex-scroll-area [container-type:size] relative h-full overflow-y-auto pt-4 pr-4 pb-6 [container-name:form] [--vex-form-sticky-top:-1rem]"
                     >
                       <FormCompactProvider>{formContent}</FormCompactProvider>
@@ -728,6 +732,7 @@ function CollectionEditForm(
               <div
                 ref={formScroll.ref}
                 onScroll={formScroll.onScroll}
+                data-vex-scroll-key={formScrollKey}
                 className="vex-scroll-area [container-type:size] relative -mx-6 min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-6 [container-name:form] [--vex-form-sticky-top:-1rem]"
               >
                 <FormCompactProvider>{formContent}</FormCompactProvider>

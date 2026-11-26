@@ -7,9 +7,10 @@ import { RelationshipFieldCell } from "./Cell";
 /**
  * Creates a TanStack Table column definition for a relationship field.
  *
- * The column value accessor reads `string[] | undefined` from the document —
- * relationship fields always store an array of Convex IDs regardless of
- * `hasMany`. Rendering is delegated to `RelationshipFieldCell`.
+ * The column value accessor reads `string | string[] | undefined` from the
+ * document — array storage (no `schema` override) is always `string[]`;
+ * `schema.validator` scalar storage is a bare `string`. Rendering is
+ * delegated to `RelationshipFieldCell`, which normalizes either shape.
  *
  * @param props - Column generation props.
  * @param props.fieldDef - The resolved relationship field definition.
@@ -32,13 +33,13 @@ export function relationshipFieldToColumnDef<TData extends TDocument = TDocument
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TData, string[] | undefined> {
+}): ColumnDef<TData, string | string[] | undefined> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
     header: props.fieldDef.label || props.fieldKey,
     cell: ({ row }) => {
-      const value = row.getValue(props.fieldKey) as string[] | undefined;
+      const value = row.getValue(props.fieldKey) as string | string[] | undefined;
       return (
         <RelationshipFieldCell<TData>
           value={value}

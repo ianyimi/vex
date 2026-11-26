@@ -23,7 +23,7 @@ import type { AdminDataField, AdminField, BaseFieldMeta, DataFieldType, CellComp
 import { describe, expect, it } from "vitest";
 import { fieldToCellComponent, fieldToFieldComponent } from "../fields";
 import type { FieldInputContractOptions } from "./fieldInputContract";
-import { fieldFixtures } from "./fixtures";
+import { fieldFixtures, extraFieldFixtures } from "./fixtures";
 import type { FieldFixture } from "./fixtures/types";
 import { runFieldInputContractSuite } from "./fieldInputContract";
 import { runFieldCellContractSuite } from "./fieldCellContract";
@@ -73,6 +73,12 @@ const CONTAINER_CHILD_FIELD_TYPES: DataFieldType[] = ["text", "select", "date", 
  * default truncation assertion — a fixed-format date, a number, a boolean checkbox and a
  * `#rrggbb` color swatch never render an unbounded string; richtext and json assert
  * truncation in their own `Cell.test.tsx`. Mirrors each type's own `Cell.test.tsx` call.
+ *
+ * Per-TYPE only — a single fixture that needs the same opt-out while its
+ * type's OWN main fixture still truncates fine (e.g. a scalar `select`
+ * whose Cell renders matched option labels, not its raw value) sets
+ * `cellTruncates: false` on that fixture instead (`FieldFixture.cellTruncates`);
+ * `runFieldCellContractSuite` honors it the same way it honors this set.
  */
 const NO_TRUNCATION_FIELD_TYPES: ReadonlySet<DataFieldType> = new Set([
   "date",
@@ -87,6 +93,12 @@ const NO_TRUNCATION_FIELD_TYPES: ReadonlySet<DataFieldType> = new Set([
   // The json fixture's `valid` value is a number (see json/testFixture.ts), which the
   // generic builder cannot grow; json/Cell.test.tsx asserts its 80-character cut directly.
   "json",
+  // `BytesFieldCell` renders a formatted byte-size string ("12 B"), never the
+  // raw payload — mirrors bytes/Cell.test.tsx's own `truncates: false`.
+  "bytes",
+  // `KeyValueFieldCell` renders an entry COUNT ("2 entries"), never the raw
+  // record — mirrors keyValue/Cell.test.tsx's own `truncates: false`.
+  "keyValue",
 ]);
 
 /**
@@ -263,6 +275,9 @@ export function runVexReactSuite(options?: {
       const Component = InputComponent as unknown as FieldInputContractOptions<typeof fixture.fieldDef>["Component"];
 
       runFieldInputContractSuite({ fixture, Component });
+      for (const extraFixture of extraFieldFixtures[fieldType] ?? []) {
+        runFieldInputContractSuite({ fixture: extraFixture, Component });
+      }
 
       if (isContainerFieldType(fieldType)) {
         runNestedFieldContainerSuite({
@@ -284,12 +299,12 @@ export function runVexReactSuite(options?: {
       // returns `ComponentType<CellComponentProps<AdminField>>`, widened relative to the
       // fixture's own narrower `fieldDef` type.
       const Component = CellComponent as unknown as FieldCellComponent<typeof fixture.fieldDef>;
+      const truncates = NO_TRUNCATION_FIELD_TYPES.has(fieldType) ? false : undefined;
 
-      runFieldCellContractSuite({
-        fixture,
-        Component,
-        truncates: NO_TRUNCATION_FIELD_TYPES.has(fieldType) ? false : undefined,
-      });
+      runFieldCellContractSuite({ fixture, Component, truncates });
+      for (const extraFixture of extraFieldFixtures[fieldType] ?? []) {
+        runFieldCellContractSuite({ fixture: extraFixture, Component, truncates });
+      }
     }
   }
 
@@ -298,6 +313,9 @@ export function runVexReactSuite(options?: {
       const fixture = fieldFixtures[fieldType];
       if (!fixture) continue;
       runColumnDefSuite({ fixture });
+      for (const extraFixture of extraFieldFixtures[fieldType] ?? []) {
+        runColumnDefSuite({ fixture: extraFixture });
+      }
     }
   }
 
@@ -320,7 +338,7 @@ export { runNestedFieldContainerSuite } from "./nestedFieldContainer";
 export { runHooksSuite } from "./hooksSuite";
 export type { HooksSuiteMember } from "./hooksSuite";
 export { runRbacStateSuite } from "./rbacState";
-export { fieldFixtures } from "./fixtures";
+export { fieldFixtures, extraFieldFixtures } from "./fixtures";
 export type { FieldFixture } from "./fixtures/types";
 export { installDomPolyfills } from "./setup";
 export { expectNoA11yViolations } from "./a11y";

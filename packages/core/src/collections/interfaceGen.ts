@@ -1,4 +1,4 @@
-import { ADMIN_FIELDS, wrapLines, getFieldInterfaces, getDataFields } from "../fields";
+import { ADMIN_FIELDS, FIELD_SCHEMA_VALIDATORS, wrapLines, getFieldInterfaces, getDataFields } from "../fields";
 import { CollectionConfig } from "./types";
 import { slugToPascalCase } from "./utils";
 
@@ -48,35 +48,44 @@ export function collectionConfigToInterface(props: { collection: CollectionConfi
     .map(([fieldKey, field]) => {
       let fieldType = field.interfaceType;
       if (field.type === ADMIN_FIELDS.select.type) {
-        // Qualified by the collection's interface name, not the field key alone.
-        // The field key alone collides whenever two collections declare a `select`
-        // under the same name — `status` on three content collections emitted three
-        // `StatusOption` aliases and broke the generated file. Interface names are
-        // already unique (two collections sharing one would collide on the interface
-        // itself), so qualifying is sufficient without any cross-collection state.
-        //
-        // Safe to rename: this alias is deliberately NOT exported, so nothing outside
-        // the generated file can reference it.
-        const optionName =
-          field.optionInterfaceName ??
-          `${collection.interfaceName}${slugToPascalCase({ slug: fieldKey })}Option`;
-        collectionSubTypes.push(
-          `type ${optionName} = ${field.options.map((o) => `"${o.value}"`).join(" | ")}`,
-        );
-        // `[]` matters: a `select` stores `v.array(...)` (see `ADMIN_FIELDS.select`,
-        // whose own `interfaceType` is `string[]`), and substituting the bare union
-        // name here used to drop it — so the generated interface promised a scalar
-        // while the deployed schema rejected one. Inserting the documented value then
-        // failed at runtime with a validator error, and an access constraint written
-        // as `q.eq("status", "published")` typechecked against a shape that can never
-        // match a stored row.
-        fieldType = `${optionName}[]`;
+        if (field.schema?.validator === FIELD_SCHEMA_VALIDATORS.string) {
+          fieldType = "string";
+        } else {
+          // Qualified by the collection's interface name, not the field key alone.
+          // The field key alone collides whenever two collections declare a `select`
+          // under the same name — `status` on three content collections emitted three
+          // `StatusOption` aliases and broke the generated file. Interface names are
+          // already unique (two collections sharing one would collide on the interface
+          // itself), so qualifying is sufficient without any cross-collection state.
+          //
+          // Safe to rename: this alias is deliberately NOT exported, so nothing outside
+          // the generated file can reference it.
+          const optionName =
+            field.optionInterfaceName ??
+            `${collection.interfaceName}${slugToPascalCase({ slug: fieldKey })}Option`;
+          collectionSubTypes.push(
+            `type ${optionName} = ${field.options.map((o) => `"${o.value}"`).join(" | ")}`,
+          );
+          // `[]` matters: a `select` stores `v.array(...)` (see `ADMIN_FIELDS.select`,
+          // whose own `interfaceType` is `string[]`), and substituting the bare union
+          // name here used to drop it — so the generated interface promised a scalar
+          // while the deployed schema rejected one. Inserting the documented value then
+          // failed at runtime with a validator error, and an access constraint written
+          // as `q.eq("status", "published")` typechecked against a shape that can never
+          // match a stored row. `schema.validator: "literal"` is the one case that IS a
+          // scalar — the field's Convex column stores one option value, not an array.
+          fieldType =
+            field.schema?.validator === FIELD_SCHEMA_VALIDATORS.literal ? optionName : `${optionName}[]`;
+        }
       }
       if (field.type === ADMIN_FIELDS.group.type && field.interfaceName) {
         fieldType = field.interfaceName;
       }
       if (field.type === ADMIN_FIELDS.blocks.type && field.interfaceName) {
         fieldType = `${field.interfaceName}[]`;
+      }
+      if (field.type === ADMIN_FIELDS.variant.type && field.interfaceName) {
+        fieldType = field.interfaceName;
       }
       let jsdocComment = "";
       const jsdoc = field.interfaceDescription ?? field.description;
@@ -87,7 +96,7 @@ export function collectionConfigToInterface(props: { collection: CollectionConfi
         });
         jsdocComment = `\t/**\n${linesArray.map((l) => `\t * ${l}`).join("\n")}\n\t */\n`;
       }
-      return `${jsdocComment}\t${fieldKey}${field.required ? "" : "?"}: ${fieldType}`;
+      return `${jsdocComment}\t${fieldKey}${field.required ? "" : "?"}: ${fieldType}${field.nullable ? " | null" : ""}`;
     })
     .join("\n");
 

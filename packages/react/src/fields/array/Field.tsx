@@ -15,6 +15,7 @@ import {
 } from "@vexcms/core";
 import { ArrowDownIcon, ArrowUpIcon, CopyIcon, TrashIcon } from "lucide-react";
 import { ArrayField, fieldDescribedBy, GroupField, isFieldShowingError, useFieldContext, useFormContext } from "../../forms";
+import { useNullToggle } from "../useNullToggle";
 import { useFieldErrorCount } from "../../forms/useFieldErrorCount";
 import type { ReactHKT } from "../../adapter";
 import { VexConfigContext } from "../../config";
@@ -168,7 +169,7 @@ function PrimitiveArrayItemControl(props: {
  * @returns The array's `ArrayField` body, wrapped in a labelled group.
  */
 function ArrayFieldAdminInner(props: FieldComponentProps<{}, ArrayFieldDef<any, ArrayType>>) {
-  const field = useFieldContext<ArrayType[]>();
+  const field = useFieldContext<ArrayType[] | null>();
   const form = useFormContext();
   const submissionAttempts = useStore(form.store, (state) => state.submissionAttempts);
   const showError = isFieldShowingError({ field, submissionAttempts });
@@ -187,6 +188,11 @@ function ArrayFieldAdminInner(props: FieldComponentProps<{}, ArrayFieldDef<any, 
   const maxValue = props.fieldDef.max?.[0];
   const atMax = maxValue !== undefined && items.length >= maxValue;
   const readOnly = props.readOnly || props.fieldDef.admin.readOnly;
+  const { isNull, onIsNullChange } = useNullToggle({
+    field,
+    nullable: props.fieldDef.nullable,
+    emptyValue: () => props.fieldDef.defaultValue,
+  });
   const itemsHaveOwnHeader = itemFieldDef.type === ADMIN_FIELDS.group.type;
 
   return (
@@ -205,6 +211,8 @@ function ArrayFieldAdminInner(props: FieldComponentProps<{}, ArrayFieldDef<any, 
         pluralLabel={arrayPluralLabel(props.fieldDef)}
         max={maxValue}
         readOnly={readOnly}
+        isNull={isNull}
+        onIsNullChange={onIsNullChange}
         itemsHaveOwnHeader={itemsHaveOwnHeader}
         createItem={() =>
           withArrayItemId({ item: itemFieldDef.defaultValue as ArrayType, itemField: itemFieldDef })

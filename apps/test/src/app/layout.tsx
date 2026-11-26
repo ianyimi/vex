@@ -9,6 +9,7 @@ import ClientProviders from "~/components/providers/client";
 import ServerProviders from "~/components/providers/server";
 import { ThemeLive } from "~/components/ThemeLive";
 import { ThemeScript } from "~/components/ThemeScript";
+import { ScrollRestoreScript } from "~/components/ScrollRestoreScript";
 
 /**
  * Geist carries the whole type system — display through body — so weight is
@@ -91,6 +92,11 @@ export default function RootLayout({
             re-emits its own scope at higher specificity, so
             `siteSettings.adminTheme` opts out. */}
         <ThemeScript />
+        {/* `~/components/ScrollRestoreScript` — same App Router wrapper
+            pattern as `ThemeScript` above. Restores the edit view's form
+            scroll position before first paint on a hard reload, keyed via
+            `data-vex-scroll-key` on the scroll container it watches for. */}
+        <ScrollRestoreScript />
       </head>
       <body>
         <ServerProviders>

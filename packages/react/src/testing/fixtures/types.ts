@@ -25,4 +25,17 @@ export interface FieldFixture<TField extends AdminDataField = AdminDataField, TV
   invalid: TValue | undefined;
   /** The value a brand-new, untouched field starts with. */
   empty: TValue | undefined;
+  /**
+   * Opts this fixture out of `runFieldCellContractSuite`'s generic truncation
+   * assertion (`cellTruncates: false`), independent of its field TYPE's own
+   * default — for a fixture whose Cell renders something OTHER than its raw
+   * `valid` value (e.g. a scalar `select` fixture, whose Cell looks up a
+   * matching `fieldDef.options` label; the generic over-length-string probe
+   * matches no configured option and has nothing to truncate), even though
+   * the type's main fixture truncates fine. Honored by both
+   * `runFieldCellContractSuite` (when its own `truncates` option is unset)
+   * and `runVexReactSuite`. Omit when the type's own
+   * `NO_TRUNCATION_FIELD_TYPES` entry (`testing/index.ts`) already covers it.
+   */
+  cellTruncates?: false;
 }

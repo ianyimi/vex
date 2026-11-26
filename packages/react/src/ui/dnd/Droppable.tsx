@@ -19,6 +19,8 @@ import React, {
 import { cn } from "../../utils/cn";
 import { useDndRegistry } from "./DndProvider";
 
+import { globalSingleton } from "../../utils/globalSingleton";
+
 /**
  * Provides the parent droppable's effective type to child Draggable components.
  * Draggable reads this and passes it as `type` to DNDDraggable, so that the
@@ -26,7 +28,9 @@ import { useDndRegistry } from "./DndProvider";
  * signals — including the flash that occurs when a nested droppable is
  * geometrically inside an outer droppable and shares the same DragDropContext.
  */
-export const DroppableTypeContext = createContext<string | null>(null);
+export const DroppableTypeContext = globalSingleton("ui/dnd/Droppable/DroppableTypeContext", () =>
+  createContext<string | null>(null),
+);
 
 interface DroppableProps extends Omit<DNDDroppableProps, "children" | "droppableId"> {
   id: string;

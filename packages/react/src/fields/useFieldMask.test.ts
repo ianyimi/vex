@@ -37,6 +37,7 @@ describe("useFieldMask", () => {
     await waitFor(() =>
       expect(withMaskMock).toHaveBeenCalledWith("(999) 999-9999", {
         rightAlign: false,
+        clearMaskOnLostFocus: false,
         autoUnmask: true,
       }),
     );
@@ -53,6 +54,7 @@ describe("useFieldMask", () => {
     await waitFor(() =>
       expect(withMaskMock).toHaveBeenCalledWith("decimal", {
         rightAlign: false,
+        clearMaskOnLostFocus: false,
         autoUnmask: true,
       }),
     );
@@ -68,6 +70,7 @@ describe("useFieldMask", () => {
     await waitFor(() =>
       expect(withMaskMock).toHaveBeenCalledWith("decimal", {
         rightAlign: false,
+        clearMaskOnLostFocus: false,
         radixPoint: ",",
         autoUnmask: false,
       }),
@@ -84,6 +87,7 @@ describe("useFieldMask", () => {
     await waitFor(() =>
       expect(withMaskMock).toHaveBeenCalledWith("decimal", {
         rightAlign: true,
+        clearMaskOnLostFocus: false,
         autoUnmask: true,
       }),
     );

@@ -1,5 +1,6 @@
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
+import { FIELD_SCHEMA_VALIDATORS } from "../constants";
 import type { CollectionSlug } from "../../types/generated";
 import type { SelectField } from "./types";
 
@@ -31,6 +32,14 @@ import type { SelectField } from "./types";
  */
 export function selectFieldToValidator(props: { field: SelectField }): string {
   const { field } = props;
+  if (field.schema?.validator === FIELD_SCHEMA_VALIDATORS.string) {
+    return applyBaseValidators({ field, validator: "v.string()" });
+  }
+  if (field.schema?.validator === FIELD_SCHEMA_VALIDATORS.literal) {
+    const literals = field.options.map((o) => `v.literal("${o.value}")`);
+    const validator = literals.length === 1 ? literals[0]! : `v.union(${literals.join(", ")})`;
+    return applyBaseValidators({ field, validator });
+  }
   const optionLiterals = field.options
     .map((o) => `v.literal("${o.value}")`)
     .join(", ");
@@ -50,7 +59,7 @@ export function selectValidator<
   TCollectionSlug extends CollectionSlug,
 >(
   slug: TCollectionSlug,
-  fn: FieldValidate<TCollectionSlug, string[], SelectField>,
-): FieldValidate<TCollectionSlug, string[]> {
-  return fieldValidator<TCollectionSlug, string[], SelectField>(slug, fn);
+  fn: FieldValidate<TCollectionSlug, string | string[], SelectField>,
+): FieldValidate<TCollectionSlug, string | string[]> {
+  return fieldValidator<TCollectionSlug, string | string[], SelectField>(slug, fn);
 }

@@ -101,3 +101,37 @@ contains a given value uses `siblingData.tags?.includes("news")`. See the
 [Conditional fields & masks guide](/guides/conditional-fields-and-masks/#conditional-fields)
 for the same rule applied inside `admin.condition`.
 
+## Storage override
+
+`select()` always stores an array (see above) unless `schema.validator` is set AND `hasMany`
+is `false` — when `hasMany` is `true`, `schema` is typed `never`: the override only applies to
+single-value selects.
+
+`schema: { validator: "literal" }` stores a scalar `v.union(v.literal(a), v.literal(b), …)`
+(a single option collapses to a bare `v.literal(a)`), typed as the field's own
+`{FieldKey}Option` literal union — not wrapped in an array. `schema: { validator: "string" }`
+stores a scalar `v.string()`, typed `string` — stored data may hold a value off the configured
+`options` list; `options` still drives the admin dropdown and the Zod enforcement, just not the
+Convex validator.
+
+```ts
+// Default storage — always an array, even with hasMany: false
+tier: v.optional(v.array(v.string()))
+
+// schema: { validator: "literal" }, hasMany: false — scalar literal union
+literalStatus: select({
+  schema: { validator: "literal" },
+  options: [{ label: "Draft", value: "draft" }, { label: "Live", value: "live" }],
+})
+// literalStatus: v.optional(v.union(v.literal("draft"), v.literal("live")))
+
+// schema: { validator: "string" }, hasMany: false — scalar string, open-ended storage
+stringStatus: select({ schema: { validator: "string" }, options: [...] })
+// stringStatus: v.optional(v.string())
+```
+
+Changing `schema.validator` on a field over a table that already has data does not migrate
+existing rows — migrate the column's stored shape manually first if it doesn't already match
+the new validator; VexCMS performs no automatic migration of a field's storage shape.
+
+

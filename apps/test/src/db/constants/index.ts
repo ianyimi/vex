@@ -34,6 +34,8 @@ export const TABLE_SLUG_IMAGES = "images" as const;
 
 export const TABLE_SLUG_FIELDS = "fields" as const;
 
+export const TABLE_SLUG_STORAGE_SHAPES = "storage_shapes" as const;
+
 // ── Editorial content ───────────────────────────────────────────────────────
 // These four share an access-relevant field shape on purpose: the same
 // `authorId`/`status` field names and indexes, so the composable checks in

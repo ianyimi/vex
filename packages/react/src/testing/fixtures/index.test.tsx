@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ADMIN_FIELDS } from "@vexcms/core";
-import { fieldFixtures } from "./index";
+import { fieldFixtures, extraFieldFixtures } from "./index";
 
 describe("field fixture registry", () => {
   it("registers a fixture for every core field type", () => {
@@ -9,5 +9,11 @@ describe("field fixture registry", () => {
       .map(([type]) => type)
       .sort();
     expect(Object.keys(fieldFixtures).sort()).toEqual(dataFieldTypes);
+  });
+
+  it("keys extraFieldFixtures only by types already in fieldFixtures", () => {
+    for (const fieldType of Object.keys(extraFieldFixtures)) {
+      expect(fieldFixtures).toHaveProperty(fieldType);
+    }
   });
 });

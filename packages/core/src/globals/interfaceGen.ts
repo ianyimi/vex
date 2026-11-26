@@ -32,13 +32,16 @@ export function globalConfigToInterface(props: { global: GlobalConfig }): string
       if (field.type === ADMIN_FIELDS.blocks.type && field.interfaceName) {
         fieldType = `${field.interfaceName}[]`;
       }
+      if (field.type === ADMIN_FIELDS.variant.type && field.interfaceName) {
+        fieldType = field.interfaceName;
+      }
       let jsdocComment = "";
       const jsdoc = field.interfaceDescription ?? field.description;
       if (jsdoc) {
         const linesArray = wrapLines({ text: jsdoc, maxLen: 80 });
         jsdocComment = `\t/**\n${linesArray.map((l) => `\t * ${l}`).join("\n")}\n\t */\n`;
       }
-      return `${jsdocComment}\t${fieldKey}${field.required ? "" : "?"}: ${fieldType}`;
+      return `${jsdocComment}\t${fieldKey}${field.required ? "" : "?"}: ${fieldType}${field.nullable ? " | null" : ""}`;
     })
     .join("\n");
 

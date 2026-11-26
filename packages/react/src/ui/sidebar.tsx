@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { globalSingleton } from "../utils/globalSingleton"
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -67,7 +68,9 @@ type SidebarContextProps = {
   toggleSidebar: () => void
 }
 
-const SidebarContext = React.createContext<SidebarContextProps | null>(null)
+const SidebarContext = globalSingleton("ui/sidebar/SidebarContext", () =>
+  React.createContext<SidebarContextProps | null>(null),
+)
 
 function useSidebar() {
   const context = React.useContext(SidebarContext)

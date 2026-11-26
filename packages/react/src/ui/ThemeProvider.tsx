@@ -8,6 +8,8 @@ import {
   type ComponentPropsWithRef,
   type ReactNode,
 } from "react";
+
+import { globalSingleton } from "../utils/globalSingleton";
 import { useIsomorphicLayoutEffect } from "./datetime/input";
 
 /**
@@ -39,7 +41,9 @@ interface ThemeContextValue {
   mounted: boolean;
 }
 
-export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+export const ThemeContext = globalSingleton("ui/ThemeProvider/ThemeContext", () =>
+  createContext<ThemeContextValue | undefined>(undefined),
+);
 
 const STORAGE_KEY = "vex-theme";
 

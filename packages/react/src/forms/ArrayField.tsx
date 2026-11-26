@@ -5,7 +5,7 @@ import { Activity } from "react";
 import { useStore } from "@tanstack/react-form";
 import { ChevronsDownUpIcon, ChevronsUpDownIcon } from "lucide-react";
 import { useFieldContext, useFormContext } from "./formContext";
-import { FormFieldLayout, HideFieldLabelContext } from "./FormFieldLayout";
+import { FormFieldLayout, HideFieldLabelContext, NullFieldToggle } from "./FormFieldLayout";
 import { useArrayItems, type ArrayItemsField } from "./useArrayItems";
 import { ArrayItemHeaderContext } from "./ArrayItemHeaderContext";
 import { useCompactForm } from "./FormCompactContext";
@@ -56,6 +56,10 @@ export interface ArrayFieldProps<TItem> extends BaseFormFieldProps<TItem[]> {
   }) => ReactNode;
   /** Field-level actions rendered beside the label, ahead of Collapse all / Expand all. */
   headerActions?: ReactNode;
+  /** Whether this array's value is currently `null`. Ignored unless `onIsNullChange` is also given. */
+  isNull?: boolean;
+  /** Toggles `isNull`; forwarded to the inner `FormFieldLayout`. */
+  onIsNullChange?: (isNull: boolean) => void;
 }
 
 /**
@@ -132,18 +136,29 @@ export function ArrayField<TItem>(props: ArrayFieldProps<TItem>): ReactNode {
                 </span>
               )}
             </div>
-            {showHeaderActions &&
-              (compact ? (
-                <ActionsMenu label={`${label} actions`}>
-                  {props.headerActions}
-                  {props.itemsHaveOwnHeader && items.length > 0 && collapseExpandControls("menu")}
-                </ActionsMenu>
-              ) : (
-                <div className="flex shrink-0 items-center gap-1">
-                  {props.headerActions}
-                  {props.itemsHaveOwnHeader && items.length > 0 && collapseExpandControls("inline")}
-                </div>
-              ))}
+            {(showHeaderActions || props.onIsNullChange) && (
+              <div className="flex shrink-0 items-center gap-2">
+                {showHeaderActions &&
+                  (compact ? (
+                    <ActionsMenu label={`${label} actions`}>
+                      {props.headerActions}
+                      {props.itemsHaveOwnHeader && items.length > 0 && collapseExpandControls("menu")}
+                    </ActionsMenu>
+                  ) : (
+                    <div className="flex shrink-0 items-center gap-1">
+                      {props.headerActions}
+                      {props.itemsHaveOwnHeader && items.length > 0 && collapseExpandControls("inline")}
+                    </div>
+                  ))}
+                {props.onIsNullChange && (
+                  <NullFieldToggle
+                    isNull={Boolean(props.isNull)}
+                    onIsNullChange={props.onIsNullChange}
+                    label={label}
+                  />
+                )}
+              </div>
+            )}
           </div>
           <Activity mode={props.description ? "visible" : "hidden"}>
             <FieldDescription id={`${field.name}-description`} data-slot="form-description">
@@ -151,64 +166,68 @@ export function ArrayField<TItem>(props: ArrayFieldProps<TItem>): ReactNode {
             </FieldDescription>
           </Activity>
         </div>
-        {items.length > 0 ? (
-          <Droppable id={field.name} onReorder={reorder}>
-            {items.map((item, index) => {
-              const itemName = `${field.name}[${index}]`;
-              const itemActionsNode = props.itemActions?.({
-                index,
-                itemCount: items.length,
-                placement: compact ? "menu" : "inline",
-                onDuplicate: () => duplicate(index),
-                onMoveUp: () => moveUp(index),
-                onMoveDown: () => moveDown(index),
-                onRemove: () => remove(index),
-              });
-              const dragHandle = (
-                <DragHandle
-                  disabled={Boolean(props.readOnly)}
-                  aria-label={`Reorder ${props.itemLabel} ${index + 1}`}
-                />
-              );
-              return (
-                <Draggable key={itemKeys[index]} id={`${field.name}-${itemKeys[index]}`} index={index} isDragDisabled={Boolean(props.readOnly)}>
-                  {props.itemsHaveOwnHeader ? (
-                    <ArrayItemHeaderContext.Provider value={{ dragHandle, actions: itemActionsNode, openSignal }}>
-                      <HideFieldLabelContext.Provider value={false}>
-                        {props.renderItem({ name: itemName, index, item })}
-                      </HideFieldLabelContext.Provider>
-                    </ArrayItemHeaderContext.Provider>
-                  ) : (
-                    <div className="flex items-start gap-2">
-                      <div className="flex h-8 shrink-0 items-center gap-2">
-                        {dragHandle}
-                        <span className="w-4 text-center font-mono text-xs text-muted-foreground tabular-nums">{index + 1}</span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <HideFieldLabelContext.Provider value={true}>
-                          {props.renderItem({ name: itemName, index, item })}
-                        </HideFieldLabelContext.Provider>
-                      </div>
-                      <div className="flex h-8 shrink-0 items-center">{itemActionsNode}</div>
-                    </div>
-                  )}
-                </Draggable>
-              );
-            })}
-          </Droppable>
-        ) : (
-          <p className="text-muted-foreground text-sm">No {props.pluralLabel} yet.</p>
+        {!props.isNull && (
+          <>
+            {items.length > 0 ? (
+              <Droppable id={field.name} onReorder={reorder}>
+                {items.map((item, index) => {
+                  const itemName = `${field.name}[${index}]`;
+                  const itemActionsNode = props.itemActions?.({
+                    index,
+                    itemCount: items.length,
+                    placement: compact ? "menu" : "inline",
+                    onDuplicate: () => duplicate(index),
+                    onMoveUp: () => moveUp(index),
+                    onMoveDown: () => moveDown(index),
+                    onRemove: () => remove(index),
+                  });
+                  const dragHandle = (
+                    <DragHandle
+                      disabled={Boolean(props.readOnly)}
+                      aria-label={`Reorder ${props.itemLabel} ${index + 1}`}
+                    />
+                  );
+                  return (
+                    <Draggable key={itemKeys[index]} id={`${field.name}-${itemKeys[index]}`} index={index} isDragDisabled={Boolean(props.readOnly)}>
+                      {props.itemsHaveOwnHeader ? (
+                        <ArrayItemHeaderContext.Provider value={{ dragHandle, actions: itemActionsNode, openSignal }}>
+                          <HideFieldLabelContext.Provider value={false}>
+                            {props.renderItem({ name: itemName, index, item })}
+                          </HideFieldLabelContext.Provider>
+                        </ArrayItemHeaderContext.Provider>
+                      ) : (
+                        <div className="flex items-start gap-2">
+                          <div className="flex h-8 shrink-0 items-center gap-2">
+                            {dragHandle}
+                            <span className="w-4 text-center font-mono text-xs text-muted-foreground tabular-nums">{index + 1}</span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <HideFieldLabelContext.Provider value={true}>
+                              {props.renderItem({ name: itemName, index, item })}
+                            </HideFieldLabelContext.Provider>
+                          </div>
+                          <div className="flex h-8 shrink-0 items-center">{itemActionsNode}</div>
+                        </div>
+                      )}
+                    </Draggable>
+                  );
+                })}
+              </Droppable>
+            ) : (
+              <p className="text-muted-foreground text-sm">No {props.pluralLabel} yet.</p>
+            )}
+            <div className="flex items-center gap-2">
+              <Button type="button" disabled={Boolean(props.readOnly) || atMax} variant="outline" size="sm" onClick={add} icon="Plus">
+                Add {props.itemLabel}
+              </Button>
+              {atMax && (
+                <span className="text-xs text-muted-foreground">
+                  Maximum {props.max} {props.pluralLabel} reached
+                </span>
+              )}
+            </div>
+          </>
         )}
-        <div className="flex items-center gap-2">
-          <Button type="button" disabled={Boolean(props.readOnly) || atMax} variant="outline" size="sm" onClick={add} icon="Plus">
-            Add {props.itemLabel}
-          </Button>
-          {atMax && (
-            <span className="text-xs text-muted-foreground">
-              Maximum {props.max} {props.pluralLabel} reached
-            </span>
-          )}
-        </div>
       </div>
     </FormFieldLayout>
   );

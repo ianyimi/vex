@@ -5,7 +5,7 @@ import type { VexConfig } from "../config";
 import type { AccessCallOptions, VexApiAuth } from "./types";
 import type { TDocument } from "../documents/types";
 import { CRUD_ACTIONS, DRAFT_ACTIONS, hasPermission } from "../access";
-import { ADMIN_FIELDS, assignArrayItemIds, getFieldsInputSchema, validateFields } from "../fields";
+import { ADMIN_FIELDS, assignArrayItemIds, getDataFields, getFieldsInputSchema, validateFields } from "../fields";
 import { resolveAccessCall } from "../access/resolveAccessCall";
 import { toVexMutationCtx } from "./context";
 import { valuesEqual } from "../utils/valuesEqual";
@@ -76,7 +76,15 @@ export interface PrepareEditProps<DataModel extends GenericDataModel> {
    * brand-new `create` — nothing existing to exclude.
    */
   docId?: string;
-  /** The caller's raw incoming payload — what `hasPermission`'s `changes` argument checks. */
+  /**
+   * The caller's raw incoming payload — what `hasPermission`'s `changes`
+   * argument checks. A top-level key here whose value is `null` is
+   * translated before validation: a `nullable` field stores the literal
+   * `null`; a non-nullable, non-required field is UNSET (dropped from the
+   * merged doc, written as an explicit `undefined`); a non-nullable,
+   * required field is left as `null` and fails its normal required
+   * validation. Nested group/array item fields are unaffected.
+   */
   changes: Partial<TDocument>;
   /** `true` for lenient validation (`update`, `saveDraft` — a draft may be incomplete); `false` for strict, `create`-strength validation (`publish`). */
   partial?: boolean;
@@ -100,11 +108,28 @@ export interface PrepareEditResult {
 
 /**
  * Runs the write pipeline every field-mutating operation shares —
- * `hasPermission → merge → beforeChange → diff → validate → validateFields` —
- * and returns the prepared fields for the caller to write however its own
- * targeting requires. Does NOT touch `ctx.db`, call `createVersion`, or stamp
- * `updatedAt` — those steps differ per caller and stay in
- * `create()`/`update()`/`saveDraft()`/`publish()`/`upsertGlobal()` themselves.
+ * `hasPermission → merge → null-unset translation → beforeChange → diff →
+ * validate → validateFields` — and returns the prepared fields for the
+ * caller to write however its own targeting requires. Does NOT touch
+ * `ctx.db`, call `createVersion`, or stamp `updatedAt` — those steps differ
+ * per caller and stay in `create()`/`update()`/`saveDraft()`/`publish()`/
+ * `upsertGlobal()` themselves.
+ *
+ * Null-unset translation: `resolveNullableSaveValue(s)` (core
+ * `fields/utils.ts`) sends `null` on the wire for any field cleared to
+ * `undefined`, because Convex's client argument serializer drops a
+ * top-level `undefined` key before the request ever reaches the server.
+ * This function translates that `null` back, for every top-level key
+ * present in `props.changes`, BEFORE Zod/Convex validation runs — see
+ * {@link PrepareEditProps.changes} for the exact per-field rule. Nested
+ * group/array item fields are out of scope; only top-level keys are
+ * translated. The same loop also maps `""` to `undefined` for a
+ * non-required scalar `select()` (`schema.validator` set) — its own input
+ * schema accepts `""` as "no selection" to mirror `[]` on array storage,
+ * but the Convex literal-union validator for `"literal"` has no `""`
+ * member and rejects it outright, so every caller (form submission or a
+ * server mutation building `changes` directly) needs the same unset
+ * translation, not just the two the form's own save-value resolver covers.
  *
  * @typeParam DataModel - Convex data model (inferred from `props.ctx`).
  * @param props - See {@link PrepareEditProps}.
@@ -140,6 +165,26 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
     fields: props.target.config.fields,
     data: { ...fields, ...props.changes },
   }) as TDocument;
+
+  const dataFields = getDataFields({ fields: props.target.config.fields });
+  for (const key of Object.keys(props.changes)) {
+    const fieldDef = dataFields[key];
+    if (fieldDef === undefined) continue;
+    const value = props.changes[key];
+    if (value === null) {
+      if (fieldDef.nullable || fieldDef.required) continue;
+      mergedFields[key] = undefined;
+      continue;
+    }
+    if (
+      value === "" &&
+      fieldDef.type === ADMIN_FIELDS.select.type &&
+      fieldDef.schema !== undefined &&
+      !fieldDef.required
+    ) {
+      mergedFields[key] = undefined;
+    }
+  }
 
   const operation = props.action === CRUD_ACTIONS.create ? "create" : "update";
   const docForHooks = Object.fromEntries(

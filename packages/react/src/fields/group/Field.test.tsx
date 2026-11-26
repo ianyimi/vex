@@ -213,3 +213,37 @@ runNestedFieldContainerSuite({
   // throw during mount rather than silently under-cover a category.
   childFieldTypes: ["text", "select", "date", "upload", "array"],
 });
+
+describe("group: null-toggle restore rule", () => {
+  function NullableGroupHarness(props: { initialValue: Record<string, unknown> | null }) {
+    const fieldDef = group({ label: "Meta", nullable: true, fields: { note: text() } });
+    const form = useForm({ defaultValues: { testField: props.initialValue } });
+    return (
+      <VexConfigProvider config={testConfig}>
+        <AppForm form={form}>
+          <GroupFieldAdmin name="testField" fieldDef={fieldDef} collection={testCollection} readOnly={false} />
+          <form.Subscribe selector={(state) => state.values.testField}>
+            {(value) => <output data-testid="value-probe">{JSON.stringify(value)}</output>}
+          </form.Subscribe>
+        </AppForm>
+      </VexConfigProvider>
+    );
+  }
+
+  it("unchecking after typing restores the value typed before Null was checked", async () => {
+    const user = userEvent.setup();
+    render(<NullableGroupHarness initialValue={{ note: "typed value" }} />);
+    await user.click(screen.getByRole("checkbox", { name: /Set Meta to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("null");
+    await user.click(screen.getByRole("checkbox", { name: /Set Meta to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent(JSON.stringify({ note: "typed value" }));
+  });
+
+  it("a page loaded with the field already null falls back to the field's empty default when unchecked", async () => {
+    const user = userEvent.setup();
+    render(<NullableGroupHarness initialValue={null} />);
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("null");
+    await user.click(screen.getByRole("checkbox", { name: /Set Meta to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent(JSON.stringify({}));
+  });
+});

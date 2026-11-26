@@ -2,6 +2,8 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 import {
   type ClientUploadMap,
   type SubjectEntry,
@@ -24,7 +26,9 @@ import {
  * Default value is `null`, so a consumer rendered outside any provider gets a
  * clear thrown error from `useVexConfig()` instead of a silently empty config.
  */
-export const VexConfigContext = createContext<VexClientConfig | null>(null);
+export const VexConfigContext = globalSingleton("config/VexConfigContext", () =>
+  createContext<VexClientConfig | null>(null),
+);
 
 /**
  * Returns the live VexCMS client config from `VexConfigContext`.

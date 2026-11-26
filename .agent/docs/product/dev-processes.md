@@ -16,7 +16,7 @@ verified_at: 3a18c95eb3bed73e6c218a32a587d4cf36ce9d7a
 | `pnpm test` | `turbo run test` — Vitest in every package that has it. |
 | `pnpm test:e2e` | `turbo run test:e2e` — Playwright. |
 | `pnpm coverage` | `turbo run coverage` — v8 coverage report. |
-| `pnpm lint` / `pnpm lint:fix` | ESLint over `packages/*/src/**/*.{ts,tsx}`. |
+| `pnpm lint` / `pnpm lint:fix` | ESLint over `packages/*/src/**/*.{ts,tsx}`, then each of `apps/www` and `apps/test` with its own config. CI runs the same command. |
 | `pnpm changeset` | Create a changeset entry for release notes. |
 | `pnpm version:packages` | `changeset version` + sync script (template dep ranges + `apps/www` version). |
 | `pnpm release` | Build publishable packages + `changeset publish`. |

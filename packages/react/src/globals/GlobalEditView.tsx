@@ -12,6 +12,7 @@ import {
   getDataFields,
   GlobalEditViewProps,
   resolveLivePreviewSettings,
+  resolveNullableSaveValues,
   SLOT_IDS,
   VERSION_STATUSES,
   vexConvexApi,
@@ -245,11 +246,15 @@ function GlobalEditForm(
       if (isVersioned) {
         try {
           if (!globalDoc) {
-            await saveDraftMutation({ global: global.slug, data: value, ...restoredFrom });
+            await saveDraftMutation({
+              global: global.slug,
+              data: resolveNullableSaveValues({ values: value, fields: global.fields }),
+              ...restoredFrom,
+            });
             form.reset();
             return;
           }
-          const changes = changedValues(form);
+          const changes = resolveNullableSaveValues({ values: changedValues(form), fields: global.fields });
           await saveDraftMutation({ global: global.slug, data: changes, ...restoredFrom });
           setViewedVersion(null);
           resetWhenSaved(changes);
@@ -261,7 +266,10 @@ function GlobalEditForm(
       }
       if (!globalDoc) {
         try {
-          await mutateAsync({ slug: global.slug, data: value });
+          await mutateAsync({
+            slug: global.slug,
+            data: resolveNullableSaveValues({ values: value, fields: global.fields }),
+          });
         } catch (error) {
           applyVexFieldErrors(form, error);
           throw error;
@@ -269,7 +277,7 @@ function GlobalEditForm(
         form.reset();
         return;
       }
-      const changes = changedValues(form);
+      const changes = resolveNullableSaveValues({ values: changedValues(form), fields: global.fields });
       if (Object.keys(changes).length === 0) return;
       try {
         await mutateAsync({ slug: global.slug, data: changes });
@@ -284,11 +292,12 @@ function GlobalEditForm(
   useLiveFieldMerge({
     form,
     document: formDocument,
+    fields: global.fields,
     fieldKeys: readableFieldKeys,
   });
 
   // Post-save resets wait for the live row to reflect the save — see the hook.
-  const resetWhenSaved = useResetWhenSaved({ form, document: globalDoc });
+  const resetWhenSaved = useResetWhenSaved({ form, document: globalDoc, fields: global.fields });
 
   const canEdit = usePermission({
     resource: global.slug,
@@ -320,7 +329,10 @@ function GlobalEditForm(
     mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
   });
   const { hasUnsavedChanges: autosaveHasUnsavedChanges } = useAutosave({
-    values: globalDoc ? changedValues(form) : (form.state.values as Record<string, unknown>),
+    values: resolveNullableSaveValues({
+      values: globalDoc ? changedValues(form) : (form.state.values as Record<string, unknown>),
+      fields: global.fields,
+    }),
     onSave: async (changes) => {
       await saveDraftMutation({ global: global.slug, data: changes, ...restoredFrom });
       setViewedVersion(null);
@@ -391,9 +403,8 @@ function GlobalEditForm(
   // See CollectionEditView: per-column pixel floors expressed as shares of the
   // width available, the preview's being the larger of the two.
   const { ref: splitRef, minSizes: panelMinSizes } = useLivePreviewPanelMinSize();
-  // See CollectionEditView: the scroll container changes with the split, so
-  // the offset is carried across by hand.
-  const formScroll = usePreservedScrollTop();
+  const formScrollKey = `global:${global.slug}`;
+  const formScroll = usePreservedScrollTop(formScrollKey);
 
   const hasSidebarFields = Object.values(global.fields).some(
     (fieldDef) =>
@@ -617,6 +628,7 @@ function GlobalEditForm(
                   <div
                     ref={formScroll.ref}
                     onScroll={formScroll.onScroll}
+                    data-vex-scroll-key={formScrollKey}
                     className="vex-scroll-area relative h-full overflow-y-auto pt-4 pr-4 pb-6 [container-type:size] [container-name:form] [--vex-form-sticky-top:-1rem]"
                   >
                     <FormCompactProvider>{formContent}</FormCompactProvider>
@@ -642,6 +654,7 @@ function GlobalEditForm(
             <div
               ref={formScroll.ref}
               onScroll={formScroll.onScroll}
+              data-vex-scroll-key={formScrollKey}
               className="vex-scroll-area relative -mx-6 min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-6 [container-type:size] [container-name:form] [--vex-form-sticky-top:-1rem]"
             >
               <FormCompactProvider>{formContent}</FormCompactProvider>

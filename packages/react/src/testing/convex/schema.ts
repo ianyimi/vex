@@ -43,6 +43,11 @@ const schema = defineSchema({
     // every relationship shape a caller might want — one self-link
     // covers it, since only the id-vs-object SHAPE matters to a reader.
     related: v.optional(v.array(v.id("documents"))),
+    // An int64 `number({ schema: { validator: "int64" } })` field's own
+    // storage shape — optional, absent on every existing seeded row, so
+    // this is purely additive. Backs any test exercising a `bigint` filter
+    // value against the list-view query path.
+    viewCount: v.optional(v.int64()),
   }).searchIndex("search_title", { searchField: "title", filterFields: [] }),
   // The media counterpart of `documents`: `MediaLibraryGrid`, `FilePreview` and
   // `MediaUploadDropzone` all read `VexMediaDocument`'s own fields

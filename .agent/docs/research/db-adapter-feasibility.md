@@ -126,34 +126,8 @@ Payload is free and MIT-licensed on exactly those databases.
    (spec C, starting now) could take a small `{ insert, query… }` port instead of raw `ctx.db`.
    Only where this adds no indirection cost.
 
-## 6. Earnings upside
-
-Bottom-up method (updated 2026-10-17 to the tiered pricing in `../product/post-v0.1.0-plan.md`
-decision 10): paying-customer pool × 73% headless-in-market × 5–10% paid conversion × $1.46–3.03k
-blended revenue per customer (Pro / Agency / Enterprise mix). Superseded figures priced every
-customer at $2–10k.
-
-| Platform pool | Paying customers / developers | Source | Illustrative ARR ceiling |
-|---|---|---|---|
-| Convex (today) | ~10k paying teams; ~500k devs | [Convex](https://news.convex.dev/enterprise-launch/), [Series B](https://www.prnewswire.com/news-releases/convex-raises-57m-series-b-led-by-insight-partners-to-scale-the-reliable-backend-for-the-ai-era-302841686.html) | $0.53M–$2.2M |
-| + Supabase | >100k customers; 4M+ devs (Oct 2025) | [BuiltInSF](https://www.builtinsf.com/articles/supabase-raises-100m-series-e-5b-valuation-20251007) | +$5.3M–$22M (≈10× the Convex pool) |
-| + generic Postgres / Mongo / SQLite | Payload's market: `payload` ~1M weekly npm downloads | npm API | Large pool; conversion is the unknown |
-
-Caveats that shrink the multiplier:
-- **Conversion falls off Convex.** The differentiation there is "the only real CMS for this
-  backend". On Supabase it is "real-time-ish, plus Supabase-native auth and storage"
-  (FireCMS-on-Firebase and early Supabase CMSs show the slot exists but is contested). On plain
-  Postgres it is "a newer Payload", against a free, mature incumbent.
-- **Fixed engineering capacity** gets split across adapters (the solo-founder constraint).
-- **Feature parity matrix:** enterprise branching and presence are cheapest on Convex. Selling
-  them on Postgres costs more to build.
-
-Why it still matters for the pitch, even before it's built:
-- **It removes the biggest investor objection** (platform risk: VexCMS's market is capped by Convex's size) and widens the plausible acquirer list (Supabase, database vendors) beyond Convex.
-- Enterprise buyers of SSO, audit, and workflows mostly sit on Postgres. A Postgres-family adapter puts the paid packages in front of them.
-- A credible deck line: **"Convex-native today; adapter-ready core; Supabase next."** The
-  multiplier is roughly **10× on addressable customers, with a materially lower win rate**.
-  Model it as 2–5× on realistic ARR **[INFERENCE]**, not 10×.
+Business sizing for this split is planned privately (see the business plan); not
+reproduced here.
 
 ## Sources
 

@@ -7,7 +7,7 @@ import { testCollection } from "../../testing/harness/accessFixtures";
 import { assertHydratesWithoutMismatch } from "../../testing/ssrHydration";
 import { VexConfigContext } from "../../config/VexConfigContext";
 import { RelationshipFieldCell } from "./Cell";
-import { relationshipFieldFixture, relationshipTargetCollection } from "./testFixture";
+import { relationshipFieldFixture, relationshipTargetCollection, scalarRelationshipFieldFixture } from "./testFixture";
 
 /**
  * Minimal client config carrying the relationship's target collection — only
@@ -116,6 +116,41 @@ runFieldCellContractSuite({
         expect(screen.getByText(`Hidden ${relationshipTargetCollection.labels.singular}`)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Requires documents/read" })).toBeInTheDocument();
       });
+
+      it("renders '1 item' for a scalar (non-array) unpopulated raw id — schema.validator storage", () => {
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value: "doc_scalar_1" });
+        render(
+          withConfig(
+            <RelationshipFieldCell
+              value={"doc_scalar_1" as never}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
+        );
+        expect(screen.getByText("1 item")).toBeInTheDocument();
+      });
+
+      it("renders the resolved preview's title for a scalar (non-array) populated document", () => {
+        const populated = { _id: "doc_a", title: "Hello Relation" };
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value: populated });
+        render(
+          withConfig(
+            <RelationshipFieldCell
+              value={populated as never}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
+        );
+        expect(screen.getByText("Hello Relation")).toBeInTheDocument();
+      });
     });
 
     // No `isMounted` hydration gate (removed — see Cell.tsx's JSDoc):
@@ -161,4 +196,9 @@ runFieldCellContractSuite({
       });
     });
   },
+});
+
+runFieldCellContractSuite({
+  fixture: scalarRelationshipFieldFixture,
+  Component: RelationshipFieldCell,
 });

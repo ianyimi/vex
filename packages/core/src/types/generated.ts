@@ -352,6 +352,10 @@ export type CollectionsFieldTypeMap = GeneratedVexTypes extends {
  *   as a collection's top-level map).
  * - `blocks` — `blocks` is keyed by each block's `blockType` slug, each
  *   value that block's own nested populate map.
+ * - `record` — a `keyValue()` field; `value` is the ONE shared entry every
+ *   record key's stored value is populated against (the same entry, applied
+ *   to every dynamically-keyed entry — unlike `group`/`blocks`, there is no
+ *   static per-key map to express).
  *
  * `array()` never appears here: its own entry (built by
  * `fieldsToPopulateMap`) IS its `items` field's entry — an array of
@@ -359,9 +363,11 @@ export type CollectionsFieldTypeMap = GeneratedVexTypes extends {
  * `group()` items behaves like the group.
  */
 export type PopulateMapEntry =
-  | { kind: "relationship" | "upload"; target: string }
+  | { kind: "relationship" | "upload"; target: string; scalar?: true }
   | { kind: "group"; fields: Record<string, PopulateMapEntry> }
-  | { kind: "blocks"; blocks: Record<string, Record<string, PopulateMapEntry>> };
+  | { kind: "blocks"; blocks: Record<string, Record<string, PopulateMapEntry>> }
+  | { kind: "variant"; discriminator: string; variants: Record<string, Record<string, PopulateMapEntry>> }
+  | { kind: "record"; value: PopulateMapEntry };
 
 /**
  * Per-collection populate map. Augmented by `vex generate` from the user's

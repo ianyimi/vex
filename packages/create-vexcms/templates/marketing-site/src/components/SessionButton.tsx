@@ -1,7 +1,7 @@
 "use client"
 
 import { disableLivePreview } from "@vexcms/next/livePreview/client"
-import { buttonVariants, cn } from "@vexcms/react"
+import { buttonVariants, clearEditScrollStorage, cn } from "@vexcms/react"
 import { LoaderCircle, LogIn, LogOut } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -92,6 +92,10 @@ export function SessionButton({
         // comment. Fire-and-forget: it never throws, so it cannot block
         // sign-out either way.
         void disableLivePreview()
+        // Clears every persisted edit-view scroll offset, so a different
+        // identity signing in on this same tab never inherits this one's
+        // remembered scroll positions.
+        clearEditScrollStorage()
         signOut()
           .then(() => {
             router.refresh()

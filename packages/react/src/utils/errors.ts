@@ -14,6 +14,16 @@ interface StructuredErrorData {
 }
 
 /**
+ * Shape of the structured payload `vexFieldErrorTargets` reads — the `{ field }`/`{ errors }`
+ * shapes `applyVexFieldErrors`'s own doc comment names.
+ */
+interface VexFieldErrorData {
+  field?: unknown;
+  errors?: unknown;
+  message?: unknown;
+}
+
+/**
  * Extracts the most specific human-readable message from anything a Convex
  * mutation or query can throw or reject with. Never throws.
  *
@@ -75,15 +85,18 @@ function issuePath(path: readonly unknown[]): string {
 }
 
 /**
- * Applies a caught write-mutation error's field-specific detail onto a
- * TanStack Form instance, so the SAME error display every field input
- * already renders through (`forms/FormFieldLayout.tsx`'s `isFieldShowingError`, which reads
- * `field.state.meta.errors[0]`) shows it — no separate error UI. Setting
- * `errorMap.onSubmit` is what TanStack Form's own `errors` derivation reads
- * from (`field.state.meta.errors` is recomputed from `errorMap`'s values on
- * every store update, confirmed against the installed `@tanstack/form-core`
- * version), so this is the supported way to inject a server-side error
- * outside the library's own `validate()` lifecycle.
+ * One field-level detail a caught write-mutation error targets — a field key paired with the
+ * message to show on it.
+ */
+interface VexFieldErrorTarget {
+  field: string;
+  message: string;
+}
+
+/**
+ * Every field-level detail a caught write-mutation error targets — shared by
+ * {@link applyVexFieldErrors} (applies each) and {@link vexFieldErrorKeys} (checks which keys
+ * were hit before applying anything). Never throws.
  *
  * Recognizes exactly the two `ConvexError` shapes `prepareEdit`'s strict
  * pass (`publishShared`, matching `create`'s own strict path) can throw:
@@ -101,10 +114,82 @@ function issuePath(path: readonly unknown[]): string {
  *   segment — a validator nested inside an array/group/block item otherwise
  *   always marks the top-level field instead of the exact item.
  *
- * Never throws — an error that matches neither shape (or a Zod `errors`
- * string that fails to parse) is a silent no-op; `useVexMutation`'s own
- * generic `"Publish failed"` toast (via its `errorToast` option) already
- * covers that case.
+ * An error matching neither shape (or a Zod `errors` string that fails to parse) yields no
+ * targets.
+ *
+ * @param error - The value caught from the failed mutation call.
+ * @returns Every `{ field, message }` the error targets, empty when none.
+ */
+function vexFieldErrorTargets(error: unknown): VexFieldErrorTarget[] {
+  if (!(error instanceof ConvexError)) return [];
+  const data = error.data;
+  if (data === null || typeof data !== "object") return [];
+  const { field, errors, message } = data as VexFieldErrorData;
+
+  if (typeof field === "string") {
+    return [{ field, message: typeof message === "string" ? message : "Invalid value" }];
+  }
+
+  if (typeof errors === "string") {
+    let issues: unknown;
+    try {
+      issues = JSON.parse(errors);
+    } catch {
+      return [];
+    }
+    if (!Array.isArray(issues)) return [];
+    const targets: VexFieldErrorTarget[] = [];
+    for (const issue of issues) {
+      if (
+        issue === null ||
+        typeof issue !== "object" ||
+        !Array.isArray((issue as { path?: unknown }).path) ||
+        (issue as { path: unknown[] }).path.length === 0 ||
+        typeof (issue as { message?: unknown }).message !== "string"
+      ) {
+        continue;
+      }
+      targets.push({
+        field: issuePath((issue as { path: unknown[] }).path),
+        message: (issue as { message: string }).message,
+      });
+    }
+    return targets;
+  }
+
+  return [];
+}
+
+/**
+ * Every field key a caught write-mutation error targets — the `{ field }` shape's one name, or
+ * every `{ errors }` Zod issue's own joined path. See {@link vexFieldErrorTargets} for the
+ * recognized shapes. Empty when `error` isn't a recognized shape.
+ *
+ * A caller needing to act BEFORE applying the error reads this — e.g. the duplicate dialog
+ * reopens with every field rendered when a targeted key falls outside the ones it currently
+ * shows, instead of silently setting an error no input exists to show.
+ *
+ * @param error - The value caught from the failed mutation call.
+ * @returns Every targeted field key, empty when none.
+ */
+export function vexFieldErrorKeys(error: unknown): string[] {
+  return vexFieldErrorTargets(error).map((target) => target.field);
+}
+
+/**
+ * Applies a caught write-mutation error's field-specific detail onto a
+ * TanStack Form instance, so the SAME error display every field input
+ * already renders through (`forms/FormFieldLayout.tsx`'s `isFieldShowingError`, which reads
+ * `field.state.meta.errors[0]`) shows it — no separate error UI. Setting
+ * `errorMap.onSubmit` is what TanStack Form's own `errors` derivation reads
+ * from (`field.state.meta.errors` is recomputed from `errorMap`'s values on
+ * every store update, confirmed against the installed `@tanstack/form-core`
+ * version), so this is the supported way to inject a server-side error
+ * outside the library's own `validate()` lifecycle.
+ *
+ * Never throws — an error that matches neither shape {@link vexFieldErrorTargets} recognizes
+ * (or a Zod `errors` string that fails to parse) is a silent no-op; `useVexMutation`'s own
+ * generic `"Publish failed"` toast (via its `errorToast` option) already covers that case.
  *
  * @param form - The edit view's form instance.
  * @param error - The value caught from the failed mutation call.
@@ -121,50 +206,10 @@ function issuePath(path: readonly unknown[]): string {
  * ```
  */
 export function applyVexFieldErrors(form: AnyFormApi, error: unknown): void {
-  if (!(error instanceof ConvexError)) return;
-  const data = error.data;
-  if (data === null || typeof data !== "object") return;
-  const { field, errors, message } = data as {
-    field?: unknown;
-    errors?: unknown;
-    message?: unknown;
-  };
-
-  if (typeof field === "string") {
-    form.setFieldMeta(field, (prev) => ({
+  for (const target of vexFieldErrorTargets(error)) {
+    form.setFieldMeta(target.field, (prev) => ({
       ...prev,
-      errorMap: {
-        ...prev.errorMap,
-        onSubmit: typeof message === "string" ? message : "Invalid value",
-      },
+      errorMap: { ...prev.errorMap, onSubmit: target.message },
     }));
-    return;
-  }
-
-  if (typeof errors === "string") {
-    let issues: unknown;
-    try {
-      issues = JSON.parse(errors);
-    } catch {
-      return;
-    }
-    if (!Array.isArray(issues)) return;
-    for (const issue of issues) {
-      if (
-        issue === null ||
-        typeof issue !== "object" ||
-        !Array.isArray((issue as { path?: unknown }).path) ||
-        (issue as { path: unknown[] }).path.length === 0 ||
-        typeof (issue as { message?: unknown }).message !== "string"
-      ) {
-        continue;
-      }
-      const fieldName = issuePath((issue as { path: unknown[] }).path);
-      const issueMessage = (issue as { message: string }).message;
-      form.setFieldMeta(fieldName, (prev) => ({
-        ...prev,
-        errorMap: { ...prev.errorMap, onSubmit: issueMessage },
-      }));
-    }
   }
 }

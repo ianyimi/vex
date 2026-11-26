@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+
+import { globalSingleton } from "../utils/globalSingleton";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
@@ -40,7 +42,9 @@ type LivePreviewContextValue = {
  * `null` is the default so `useLivePreview` can tell "no provider mounted, or
  * preview mode disabled" from "provider mounted, nothing unsaved yet".
  */
-const LivePreviewContext = createContext<LivePreviewContextValue | null>(null);
+const LivePreviewContext = globalSingleton("livePreview/LivePreviewContext", () =>
+  createContext<LivePreviewContextValue | null>(null),
+);
 
 /**
  * Mounts the live-preview listener (both `postMessage` and `BroadcastChannel`)

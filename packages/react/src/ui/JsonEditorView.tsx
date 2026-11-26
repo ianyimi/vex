@@ -76,10 +76,13 @@ const theme = EditorView.theme({
  * Creates the `EditorView` once on mount and owns it imperatively from
  * there: external `value` changes are synced in with a dispatched
  * transaction (only when they differ from the editor's own document, so
- * typing doesn't fight itself), `readOnly` is toggled via a `Compartment`
- * reconfiguration, and `onChange`/`onBlur` are read through refs inside a
- * single `EditorView.updateListener` so neither callback identity needs to
- * recreate the view.
+ * typing doesn't fight itself), `readOnly`/`displayOnly` are toggled
+ * together via one `Compartment` reconfiguration, and `onChange`/`onBlur`
+ * are read through refs inside a single `EditorView.updateListener` so
+ * neither callback identity needs to recreate the view. `readOnly` dims
+ * the editor (`opacity-50`) for a normally-editable control that is
+ * temporarily disabled; `displayOnly` disables editing the same way
+ * without dimming, for a control that is permanently read-only by design.
  */
 export function JsonEditorView({
   id,
@@ -87,11 +90,14 @@ export function JsonEditorView({
   onChange,
   onBlur,
   readOnly = false,
+  displayOnly = false,
   invalid = false,
   "aria-labelledby": ariaLabelledBy,
   "aria-required": ariaRequired,
   placeholder,
 }: JsonEditorProps) {
+  const effectiveReadOnly = readOnly || displayOnly;
+
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const readOnlyCompartmentRef = useRef(new Compartment());
@@ -124,8 +130,8 @@ export function JsonEditorView({
         keymap.of([...defaultKeymap, ...historyKeymap, ...foldKeymap]),
         theme,
         readOnlyCompartment.of([
-          EditorState.readOnly.of(readOnly),
-          EditorView.editable.of(!readOnly),
+          EditorState.readOnly.of(effectiveReadOnly),
+          EditorView.editable.of(!effectiveReadOnly),
         ]),
         EditorView.contentAttributes.of({
           id,
@@ -166,11 +172,11 @@ export function JsonEditorView({
     if (!view) return;
     view.dispatch({
       effects: readOnlyCompartmentRef.current.reconfigure([
-        EditorState.readOnly.of(readOnly),
-        EditorView.editable.of(!readOnly),
+        EditorState.readOnly.of(effectiveReadOnly),
+        EditorView.editable.of(!effectiveReadOnly),
       ]),
     });
-  }, [readOnly]);
+  }, [readOnly, displayOnly]);
 
   return (
     <div
@@ -178,7 +184,7 @@ export function JsonEditorView({
       className={cn(
         "overflow-hidden rounded-sm border border-input bg-card shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:focus-ring",
         invalid && "border-destructive ring-3 ring-destructive/20",
-        readOnly && "opacity-50",
+        readOnly && !displayOnly && "opacity-50",
       )}
     />
   );

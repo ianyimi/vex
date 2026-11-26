@@ -135,6 +135,10 @@ function SiteNameForm() {
 Pass only user field values in `data` — system keys (`_id`, `_creationTime`, `_slug`) are
 stripped server-side if they end up in there.
 
+A top-level `null` in `data` unsets an optional, non-nullable field's key (the same as never
+setting it); on a `nullable: true` field it stores `null`; on a required, non-nullable field
+it fails validation. See [Nullable values](/fields/text/#nullable-values).
+
 ## Access control
 
 When `defineAccess` is configured, `updateGlobal`/`globals.upsert` authorizes writes against

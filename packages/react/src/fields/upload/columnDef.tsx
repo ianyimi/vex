@@ -7,9 +7,11 @@ import { UploadFieldCell } from "./Cell";
 /**
  * Creates a TanStack Table column definition for an upload field.
  *
- * The column value accessor reads `string[] | undefined` from the document —
- * upload fields always store an array of media document IDs regardless of
- * `hasMany`. Rendering is delegated to `UploadFieldCell`.
+ * The column value accessor reads `string | string[] | undefined` from the
+ * document — upload fields always store an array of media document IDs
+ * regardless of `hasMany` — unless `schema.validator` overrides it to scalar
+ * storage, in which case it's a bare `string`. Rendering is delegated to
+ * `UploadFieldCell`.
  *
  * @param props - Column generation props.
  * @param props.fieldDef - The resolved upload field definition.
@@ -33,13 +35,13 @@ export function uploadFieldToColumnDef<TData extends TDocument = TDocument>(prop
   fieldKey: string;
   collection: CollectionConfig | MediaCollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TData, string[] | undefined> {
+}): ColumnDef<TData, string | string[] | undefined> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
     header: props.fieldDef.label || props.fieldKey,
     cell: ({ row }) => {
-      const value = row.getValue(props.fieldKey) as string[] | undefined;
+      const value = row.getValue(props.fieldKey) as string | string[] | undefined;
       return (
         <UploadFieldCell<TData>
           value={value}

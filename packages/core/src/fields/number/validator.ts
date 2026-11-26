@@ -1,4 +1,4 @@
-import { ADMIN_FIELDS } from "../constants";
+import { ADMIN_FIELDS, FIELD_SCHEMA_VALIDATORS } from "../constants";
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
 import type { CollectionSlug } from "../../types/generated";
@@ -7,8 +7,9 @@ import type { NumberField } from "./types";
 /**
  * Converts a number field definition to a Convex schema validator.
  *
- * Generates the appropriate v.number() or v.optional(v.number()) code
- * for the Convex schema based on the field's required property.
+ * Generates `v.number()`/`v.int64()` (or their `v.optional(...)` wrap) for the
+ * Convex schema, based on the field's `required` property and
+ * `schema.validator`.
  *
  * **Important notes:**
  * - min/max are runtime validation constraints, NOT schema constraints
@@ -22,7 +23,7 @@ import type { NumberField } from "./types";
  *
  * @param props - numberFieldToValidator() input props
  * @param props.field - The number field definition
- * @returns Convex value type string: "v.number()" or "v.optional(v.number())"
+ * @returns Convex value type string: `"v.number()"`/`"v.int64()"`, each optionally `v.optional(...)`-wrapped
  *
  * @example
  * ```ts
@@ -32,17 +33,18 @@ import type { NumberField } from "./types";
  * const field2 = number({ required: false })
  * numberFieldToValidator({ field: field2 })  // "v.optional(v.number())"
  *
- * const field3 = number({ min: 0, max: 100 })
- * numberFieldToValidator({ field: field3 })  // "v.optional(v.number())"
- * // Note: Range constraints don't affect schema, handled at validation layer
+ * const field3 = number({ schema: { validator: "int64" }, required: true })
+ * numberFieldToValidator({ field: field3 })  // "v.int64()"
  * ```
  *
  * @internal - Used by schema generation, not typically called by users
  */
 export function numberFieldToValidator(props: { field: NumberField }): string {
+  const validator =
+    props.field.schema?.validator === FIELD_SCHEMA_VALIDATORS.int64 ? "v.int64()" : ADMIN_FIELDS.number.validator;
   return applyBaseValidators({
     field: props.field,
-    validator: ADMIN_FIELDS.number.validator,
+    validator,
   });
 }
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext } from "react";
+
+import { globalSingleton } from "../utils/globalSingleton";
 import { Toaster as SonnerToaster, type ToasterProps } from "sonner";
 
 import { ThemeContext } from "./ThemeProvider";
@@ -15,7 +17,7 @@ import { ThemeContext } from "./ThemeProvider";
  * layout, for its own public-site toasts) wants exactly one viewport, not
  * two — this context is how the nested one detects the ancestor and skips.
  */
-const ToasterMountedContext = createContext(false);
+const ToasterMountedContext = globalSingleton("ui/sonner/ToasterMountedContext", () => createContext(false));
 
 /**
  * Renders sonner's toast viewport, synced to the admin panel's light/dark

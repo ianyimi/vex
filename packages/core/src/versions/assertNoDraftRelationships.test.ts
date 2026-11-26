@@ -32,6 +32,15 @@ const bannerWithRelationship = defineGlobal({
   versions: { drafts: true },
 });
 
+const postsWithScalarRelationship = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text(),
+    owner: relationship({ collection: { slug: "posts" }, schema: { validator: "id" } }),
+  },
+  versions: { drafts: true },
+});
+
 describe("assertNoDraftRelationships", () => {
   test("resolves when the collection has no relationship fields", async () => {
     const t = convexTest(schema, modules);
@@ -109,5 +118,38 @@ describe("assertNoDraftRelationships", () => {
       expect(caught).toBeInstanceOf(ConvexError);
       expect((caught as ConvexError<{ field: string }>).data.field).toBe("featured");
     });
+  });
+
+  test("rejects, naming the field, when a scalar-storage relationship links to a draft", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const draftId = await ctx.db.insert("posts", { title: "Draft", slug: "draft", vex_status: "draft" });
+      await expect(
+        assertNoDraftRelationships({
+          ctx,
+          target: { config: postsWithScalarRelationship } as never,
+          document: { title: "Child", owner: draftId },
+        }),
+      ).rejects.toThrow(ConvexError);
+    });
+  });
+
+  test("skips a string-stored relationship value that doesn't resolve to the target collection, instead of sending it to db.get", async () => {
+    const throwingCtx = {
+      db: {
+        normalizeId: () => null,
+        get: (id: unknown) => {
+          throw new Error(`[Error] Server Error\nInvalid argument \`id\`: ${String(id)}`);
+        },
+      },
+    };
+
+    await expect(
+      assertNoDraftRelationships({
+        ctx: throwingCtx as never,
+        target: { config: postsWithScalarRelationship } as never,
+        document: { title: "Child", owner: "not-a-real-id" },
+      }),
+    ).resolves.toBeUndefined();
   });
 });

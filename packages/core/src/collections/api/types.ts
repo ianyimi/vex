@@ -303,7 +303,23 @@ type FieldDepthPopulateOption<
               ? never
               : B]?: ContainerDepthPopulate<TBlocks[B], D, _Counter>;
           }
-      : never;
+      : TEntry extends {
+            kind: "variant";
+            discriminator: string;
+            variants: infer TVariants extends Record<string, Record<string, PopulateMapEntry>>;
+          }
+        ? keyof {
+            [V in keyof TVariants as keyof ContainerDepthPopulate<TVariants[V], D, _Counter> extends never
+              ? never
+              : V]: ContainerDepthPopulate<TVariants[V], D, _Counter>;
+          } extends never
+          ? never
+          : {
+              [V in keyof TVariants as keyof ContainerDepthPopulate<TVariants[V], D, _Counter> extends never
+                ? never
+                : V]?: ContainerDepthPopulate<TVariants[V], D, _Counter>;
+            }
+        : never;
 
 /**
  * Return type of `find` / `get` / `search` when `depth` is provided instead

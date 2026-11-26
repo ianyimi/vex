@@ -97,6 +97,7 @@ export function array<
     // Core properties with defaults
     label: "",
     required: false,
+    nullable: false,
     defaultValue: [],
     ...options,
 

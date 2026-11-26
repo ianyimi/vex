@@ -31,14 +31,15 @@ Copy an existing field folder and edit its five files:
    admin form and the server mutation both validate against.
 5. **`index.ts`** — barrel: `export * from "./config"` /
    `"./types"` / `"./validator"` / `"./inputSchema"`.
-
 Then three shared registrations, all required for the new type to compile
 and be reachable:
 
 - **`fields/constants.ts`** — add an `ADMIN_FIELDS` entry: `{ type,
-  interfaceType, validator, defaultValue, kind: "data" }` (`kind: "ui"` for a
-  non-data layout field like `tabs`/`row`).
-- **`fields/types.ts`** — add `<Type>Field` to the `AdminField` union.
+  interfaceType, validator, defaultValue, kind: "data", inputMasks, hasNullToggle }`
+  (`kind: "ui"` for a non-data layout field like `tabs`/`row`).
+- **`fields/types.ts`** — add `<Type>Field` to the `AdminField` union, via BOTH an `export *
+  from "./<type>/types"` barrel re-export AND an explicit `import { <Type>Field } from
+  "./<type>"` used directly in the union — the barrel alone doesn't reach the union.
 - **`fields/validators/index.ts`** and **`fields/inputSchemas/index.ts`** —
   add a `case ADMIN_FIELDS.<type>.type:` arm to each exhaustive switch,
   calling the field's own `<type>FieldToValidator`/`<type>FieldToInputSchema`.
@@ -46,6 +47,15 @@ and be reachable:
   a forgotten arm.
 
 Finally, `fields/index.ts` gets `export * from "./<type>"`.
+
+Two options need no type-specific wiring at all: `nullable` (every data field gets it for free
+from `applyBaseValidators`/`applyBaseInputSchemaMeta` — a container type additionally wires
+`FormFieldLayout`'s null toggle in its own `Field.tsx` and sets `hasNullToggle: true` on its
+`ADMIN_FIELDS` entry) and, for a type mapping to more than one Convex validator shape, an
+opt-in `schema?: { validator }` drawn from `FIELD_SCHEMA_VALIDATORS` (`fields/constants.ts`) —
+see
+[`adding-a-field-type.md`](https://github.com/ianyimi/vex/blob/main/.agent/docs/standards/core/adding-a-field-type.md)
+for the condensed checklist version of both.
 
 ## The react half — `packages/react/src/fields/<type>/`
 
@@ -82,6 +92,26 @@ to `buildReactAdapter()`'s `fields` map — `reactAdapter.fields` (consumed by
 `fields/registry.ts`'s `fieldToFieldComponent`/`fieldToCellComponent`) is the
 one source of truth both the collection edit view and the list view read
 from.
+
+Then a handful more shared registrations, each required for the new type to actually be
+reachable end to end (none of them are caught by TypeScript the way the `adapter.ts` map is):
+
+- **`packages/react/src/adminEntry.ts`** — re-export the new field's config function
+  alongside its siblings.
+- **`packages/react/src/index.ts`** — re-export the config function.
+- **`packages/react/src/fields/index.tsx`** — add a `case ADMIN_FIELDS.<type>.type:` arm to
+  the `columnDef` switch.
+- **`packages/react/src/forms/useAppForm.ts`** — add the type's `fieldComponents` entry.
+- **`packages/react/src/forms/index.ts`** — re-export any new `forms/` leaf component.
+- **`packages/react/src/testing/fixtures/index.ts`** — re-export the new `testFixture.ts`.
+- **`packages/react/src/collections/listView/filters/listViewFilterOperators.ts`** — add the
+  type's filter operator set, or register none for a type with no meaningful single-value
+  comparison (`json`/`richtext`/`array`/`blocks`/`group`/`keyValue` register none).
+- **`packages/telemetry/src/anonymizeConfig.ts`** — add the type's case to the field walker so
+  its config contributes allowlisted attributes to `AnonymizedField`.
+- A container type (one with `hasNullToggle: true`) also registers in
+  **`packages/react/src/testing/nestedFieldContainer.ts`** (`container: "<type>"`) so the
+  shared nested-container contract suite covers it.
 
 Two more slots on that same map entry are OPTIONAL, unlike `field`/`cell`:
 

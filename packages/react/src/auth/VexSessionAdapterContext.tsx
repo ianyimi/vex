@@ -3,6 +3,8 @@
 import type { VexApiAuth } from "@vexcms/core";
 import { createContext, useContext, type ReactNode } from "react";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 /**
  * The reactive session shape `useCanAccessAdminPanel` needs on a public page,
  * where no `VexAuthProvider` is mounted (the server-resolved `{ user,
@@ -48,8 +50,8 @@ export interface VexSessionAdapter {
  * keeps the hook's existing fail-closed behavior (`canAccess: false`)
  * instead of throwing, since most apps never gate a header on it.
  */
-export const VexSessionAdapterContext = createContext<VexSessionAdapter | undefined>(
-  undefined,
+export const VexSessionAdapterContext = globalSingleton("auth/VexSessionAdapterContext", () =>
+  createContext<VexSessionAdapter | undefined>(undefined),
 );
 
 /**

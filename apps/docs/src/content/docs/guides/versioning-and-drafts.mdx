@@ -85,6 +85,13 @@ fields: { author: relationship({ to: "users", index: { name: "by_author", draftS
 - **`saveDraft` is lenient.** A draft may be incomplete — required fields aren't enforced
   until publish. It checks permission against the incoming changes, so a role restricted
   to certain fields on `update` gets the same restriction on `saveDraft`.
+- **`saveDraft`/`publish`'s `data` follows the same top-level `null`-unset rule as
+  `create`/`update`:** `null` on an optional, non-nullable field unsets it on the draft;
+  `null` on a `nullable: true` field stores `null`; `null` on a required, non-nullable field
+  fails validation (strictly at `publish`, leniently — only if the field is present in the
+  incoming changes — at `saveDraft`). An unset made on the draft carries through to the
+  published row when that draft is published. See [Nullable
+  values](/fields/text/#nullable-values).
 - **`publish` is strict.** It re-validates the merged document as strictly as `create` and
   rejects — naming the missing or invalid field, writing nothing — if it fails. It also
   rejects while any relationship field points at a document that is itself a draft.

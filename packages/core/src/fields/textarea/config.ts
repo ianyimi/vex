@@ -57,6 +57,7 @@ export function textarea<
     // Core properties with defaults
     label: "",
     required: false,
+    nullable: false,
     defaultValue: ADMIN_FIELDS.textarea.defaultValue,
     ...options,
 

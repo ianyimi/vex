@@ -559,3 +559,52 @@ runNestedFieldContainerSuite({
   // infrastructure this shared harness's `stubClientConfig` doesn't provide.
   childFieldTypes: ["text", "select", "date", "upload", "array"],
 });
+describe("blocks: null-toggle restore rule", () => {
+  const noteBlock = defineBlock({
+    slug: "note",
+    label: "Note",
+    fields: { text: text({ label: "Text" }) },
+  });
+
+  function NullableBlocksHarness(props: { initialValue: GenericBlock[] | null }) {
+    const fieldDef = blocks({ label: "Content", nullable: true, blocks: [noteBlock] });
+    const form = useForm({ defaultValues: { testField: props.initialValue } });
+    return (
+      <VexConfigProvider config={testConfig}>
+        <VexAuthProvider value={{ user: null }}>
+          <AppForm form={form}>
+            <TestBlocksFieldInput
+              name="testField"
+              fieldDef={fieldDef}
+              collection={testCollection}
+              readOnly={false}
+            />
+            <form.Subscribe selector={(state) => state.values.testField}>
+              {(value) => <output data-testid="value-probe">{JSON.stringify(value)}</output>}
+            </form.Subscribe>
+          </AppForm>
+        </VexAuthProvider>
+      </VexConfigProvider>
+    );
+  }
+
+  it("unchecking after typing restores the value typed before Null was checked", async () => {
+    const user = userEvent.setup();
+    const initialBlocks: GenericBlock[] = [
+      { id: "b1", blockType: "note", blockName: "Note", text: "typed value" },
+    ];
+    render(<NullableBlocksHarness initialValue={initialBlocks} />);
+    await user.click(screen.getByRole("checkbox", { name: /Set Content to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("null");
+    await user.click(screen.getByRole("checkbox", { name: /Set Content to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent(JSON.stringify(initialBlocks));
+  });
+
+  it("a page loaded with the field already null falls back to the field's empty default when unchecked", async () => {
+    const user = userEvent.setup();
+    render(<NullableBlocksHarness initialValue={null} />);
+    expect(screen.getByTestId("value-probe")).toHaveTextContent("null");
+    await user.click(screen.getByRole("checkbox", { name: /Set Content to null/i }));
+    expect(screen.getByTestId("value-probe")).toHaveTextContent(JSON.stringify([]));
+  });
+});

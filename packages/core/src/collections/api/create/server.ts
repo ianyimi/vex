@@ -29,7 +29,9 @@ export interface CreateServerArgs<
   collection: TCollectionSlug;
   /**
    * Field values for the new document. `_id` and `_creationTime` are
-   * excluded — Convex assigns these automatically.
+   * excluded — Convex assigns these automatically. A `null` value for an
+   * optional, non-nullable field is treated as absent (not stored); a
+   * `nullable` field stores the literal `null` instead.
    *
    * Passed through `v.any()` at the network boundary; CLI codegen validates
    * the shape against the Convex schema at build time.

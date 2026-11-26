@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useStore } from "@tanstack/react-form";
 import { useFieldContext, useFormContext } from "./formContext";
-import { FormFieldLayout } from "./FormFieldLayout";
+import { FormFieldLayout, NullFieldToggle } from "./FormFieldLayout";
 import { ArrayItemHeaderContext } from "./ArrayItemHeaderContext";
 import { useFailedSubmitAttempt, useFieldErrorCount } from "./useFieldErrorCount";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
@@ -20,6 +20,10 @@ export interface GroupFieldProps extends Omit<BaseFormFieldProps<never>, "render
   defaultOpen?: boolean;
   /** Sub-field count shown beside the label, even while collapsed. Caller-supplied since this component never walks a `fieldDef`. */
   fieldCount?: number;
+  /** Whether this group's value is currently `null`. Ignored unless `onIsNullChange` is also given. */
+  isNull?: boolean;
+  /** Toggles `isNull`; forwarded to the inner `FormFieldLayout`. */
+  onIsNullChange?: (isNull: boolean) => void;
 }
 
 /**
@@ -79,6 +83,8 @@ export function GroupField(props: GroupFieldProps): ReactNode {
           submissionAttempts={submissionAttempts}
           className={props.className}
           readOnly={props.readOnly}
+          isNull={props.isNull}
+          onIsNullChange={props.onIsNullChange}
         >
           <ArrayItemHeaderContext.Provider value={null}>{props.children}</ArrayItemHeaderContext.Provider>
         </FormFieldLayout>
@@ -86,13 +92,30 @@ export function GroupField(props: GroupFieldProps): ReactNode {
     );
   }
 
+  const nullToggle = props.onIsNullChange ? (
+    <NullFieldToggle isNull={Boolean(props.isNull)} onIsNullChange={props.onIsNullChange} label={props.label} />
+  ) : undefined;
+  const triggerActions =
+    itemHeader?.actions !== undefined || nullToggle !== undefined ? (
+      <>
+        {itemHeader?.actions}
+        {nullToggle}
+      </>
+    ) : undefined;
+
   return (
-    <Accordion value={openValue} onValueChange={setOpenValue} className="rounded-sm border-2 border-border">
-      <AccordionItem value={itemValue}>
+    <Accordion
+      value={props.isNull ? [] : openValue}
+      onValueChange={(next) => {
+        if (!props.isNull) setOpenValue(next);
+      }}
+      className="rounded-sm border-2 border-border"
+    >
+      <AccordionItem value={itemValue} disabled={props.isNull}>
         <AccordionTrigger
           className="flex gap-4 px-3 text-sm font-medium hover:no-underline"
           leading={itemHeader?.dragHandle}
-          actions={itemHeader?.actions}
+          actions={triggerActions}
         >
           <div
             className="group/field flex min-w-0 flex-col gap-1 self-center"
@@ -122,6 +145,7 @@ export function GroupField(props: GroupFieldProps): ReactNode {
             field={field}
             submissionAttempts={submissionAttempts}
             readOnly={props.readOnly}
+            isNull={props.isNull}
           >
             <ArrayItemHeaderContext.Provider value={null}>{props.children}</ArrayItemHeaderContext.Provider>
           </FormFieldLayout>

@@ -1,0 +1,93 @@
+---
+title: Agent skills
+description: Install the VexCMS agent skills into Claude Code, Cursor, Codex and other coding agents, and let your agent scaffold and run a new VexCMS project.
+---
+
+VexCMS publishes [Agent Skills](https://agentskills.io): folders of instructions your coding
+agent loads when a task matches. A skill tells the agent which commands to run, in what order,
+and where to stop and ask you. The skills live in the repo's
+[`skills/` folder](https://github.com/ianyimi/vex/tree/master/skills) and install with the
+[`skills` CLI](https://github.com/vercel-labs/skills) (Node.js 22.20 or later).
+
+## Set up a project with your agent
+
+Open your coding agent in an empty folder and send it this:
+
+```text
+Read https://docs.vexcms.dev/agent-setup.md and set up a VexCMS project here.
+```
+
+[`agent-setup.md`](https://docs.vexcms.dev/agent-setup.md) tells the agent to load the
+`vexcms-project-init` skill and follow it. You don't have to install anything first.
+
+## Available skills
+
+| #   | Skill                 | What it does                                                                                                                        |
+| --- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 01  | `vexcms-project-init` | Scaffolds a new VexCMS project and runs it locally up to a signed-in admin, then offers to model the first collections and globals. |
+
+More skills follow after 0.1.0.
+
+## Install
+
+`vexcms-project-init` runs before your project exists, and `create-vexcms` refuses to scaffold
+into a folder that isn't empty. Install it for your user, not into the project folder:
+
+```bash
+npx skills add ianyimi/vex --skill vexcms-project-init -g
+```
+
+The CLI asks which of your coding agents to install it for. Other ways to get it:
+
+```bash
+# See every VexCMS skill without installing
+npx skills add ianyimi/vex --list
+
+# Install into the current project instead (writes .agents/skills/ and skills-lock.json)
+npx skills add ianyimi/vex --skill vexcms-project-init
+
+# Hand one skill to the current agent without installing it
+npx skills use ianyimi/vex@vexcms-project-init
+```
+
+Update with `npx skills update`, remove with `npx skills remove vexcms-project-init -g`.
+
+## Use a skill
+
+Agents load a skill on their own when your request matches its description, for example "set up
+a new VexCMS project". To start one by name:
+
+| Tool                     | Invocation             |
+| ------------------------ | ---------------------- |
+| Claude Code              | `/vexcms-project-init` |
+| Cursor                   | `/vexcms-project-init` |
+| VS Code (GitHub Copilot) | `/vexcms-project-init` |
+| Codex                    | `$vexcms-project-init` |
+
+## What `vexcms-project-init` does
+
+The agent runs the [quickstart](/guides/quickstart/) for you:
+
+1. Checks Node.js 22+ and pnpm, and picks the target folder (an empty folder, or a new subfolder).
+2. Asks you for the project name, the starter (marketing site or `--bare`), organizations, and
+   whether the defaults suit you: port `3010`, email/password sign-in, no OAuth providers.
+3. Scaffolds with `pnpm create vexcms@alpha … --yes` and installs dependencies. If you want
+   other options, it gives you the interactive command to run in your own terminal.
+4. Offers to install Convex's own AI files (`npx convex ai-files install`).
+5. Creates a Convex project with a cloud dev deployment (`npx convex dev --once --configure new …`)
+   and pushes `SITE_URL` and `BETTER_AUTH_SECRET` to it.
+6. Starts `pnpm vex:dev` and `pnpm dev`, and seeds the marketing starter.
+7. Asks you to sign up. The first account becomes the admin.
+8. Asks whether to continue into the content model. On yes, it asks what content your site
+   needs, proposes collections and globals, and writes them once you confirm.
+
+It stops for you at four points: logging in to Convex, any non-default scaffold option, OAuth
+client credentials, and the first sign-up. It doesn't deploy to production; see the
+[deployment guide](/guides/deployment/) for that.
+
+## Docs for agents
+
+The docs site serves [llms.txt](https://llmstxt.org) indexes. Point an agent at `/llms.txt`
+(index), `/llms-full.txt` (complete docs) or `/llms-small.txt` (compact). For Convex itself, see
+Convex's [agent skills](https://docs.convex.dev/ai/agent-skills) and its
+[AI files](https://docs.convex.dev/cli/reference/ai-files).

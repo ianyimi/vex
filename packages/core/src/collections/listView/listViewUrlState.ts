@@ -1,4 +1,4 @@
-import { ADMIN_FIELDS, getDataFields } from "../../fields";
+import { ADMIN_FIELDS, FIELD_SCHEMA_VALIDATORS, getDataFields } from "../../fields";
 import { columnEntriesEqual, completeListViewColumnOrder } from "./listViewColumnOrder";
 import { columnEntryField, type ColumnEntry, type CollectionConfig, type VexViewState } from "../types";
 import { VERSION_SYSTEM_FIELDS } from "../../versions";
@@ -90,7 +90,7 @@ const URL_FILTER_OPS = ["eq", "neq", "gt", "gte", "lt", "lte", "isEmpty", "isNot
 type UrlFilterOp = (typeof URL_FILTER_OPS)[number];
 
 /** How a field's filter value is encoded in the `<value>` URL segment. */
-type FilterValueKind = "number" | "boolean" | "date" | "string";
+type FilterValueKind = "number" | "bigint" | "boolean" | "date" | "string";
 
 /**
  * Resolves a filter row's field to its {@link FilterValueKind}.
@@ -114,7 +114,9 @@ function filterValueKindForField(props: {
   if (props.field === "vex_status") return "string";
   const fieldDef = getDataFields({ fields: props.collection.fields })[props.field];
   if (fieldDef === undefined) return undefined;
-  if (fieldDef.type === ADMIN_FIELDS.number.type) return "number";
+  if (fieldDef.type === ADMIN_FIELDS.number.type) {
+    return fieldDef.schema?.validator === FIELD_SCHEMA_VALIDATORS.int64 ? "bigint" : "number";
+  }
   if (fieldDef.type === ADMIN_FIELDS.checkbox.type) return "boolean";
   if (fieldDef.type === ADMIN_FIELDS.date.type || fieldDef.type === ADMIN_FIELDS.commitTs.type) return "date";
   return "string";
@@ -129,6 +131,7 @@ function filterValueKindForField(props: {
 function encodeFilterValue(props: { kind: FilterValueKind; value: unknown }): string {
   switch (props.kind) {
     case "number":
+    case "bigint":
       return String(props.value);
     case "boolean":
       return props.value ? "true" : "false";
@@ -153,6 +156,8 @@ function decodeFilterValue(props: { kind: FilterValueKind; raw: string }): unkno
       const parsed = Number(props.raw);
       return Number.isNaN(parsed) ? undefined : parsed;
     }
+    case "bigint":
+      return /^-?\d+$/.test(props.raw) ? BigInt(props.raw) : undefined;
     case "boolean":
       if (props.raw === "true") return true;
       if (props.raw === "false") return false;

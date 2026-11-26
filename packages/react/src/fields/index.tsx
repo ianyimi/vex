@@ -23,10 +23,13 @@ import { colorFieldToColumnDef } from "./color";
 import { relationshipFieldToColumnDef } from "./relationship";
 import { arrayFieldToColumnDef } from "./array";
 import { groupFieldToColumnDef } from "./group";
+import { keyValueFieldToColumnDef } from "./keyValue";
 import { blocksFieldToColumnDef } from "./blocks";
 import { uploadFieldToColumnDef } from "./upload";
 import { richTextFieldToColumnDef } from "./richtext";
 import { jsonFieldToColumnDef } from "./json";
+import { bytesFieldToColumnDef } from "./bytes";
+import { variantFieldToColumnDef } from "./variant";
 
 export * from "./text";
 export * from "./email";
@@ -42,9 +45,12 @@ export * from "./upload";
 export * from "./array";
 export * from "./relationship";
 export * from "./group";
+export * from "./keyValue";
 export * from "./blocks";
 export * from "./richtext";
 export * from "./json";
+export * from "./bytes";
+export * from "./variant";
 
 import { fieldToFieldComponent, fieldToCellComponent, fieldToDisplayComponent, fieldToFilterInputComponent } from "./registry";
 export { fieldToFieldComponent, fieldToCellComponent, fieldToDisplayComponent, fieldToFilterInputComponent };
@@ -150,6 +156,10 @@ export function getCollectionColumnDefs<
         columnDef = groupFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
+      case ADMIN_FIELDS.keyValue.type:
+        columnDef = keyValueFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
+        break;
+
       case ADMIN_FIELDS.blocks.type:
         columnDef = blocksFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
@@ -164,6 +174,14 @@ export function getCollectionColumnDefs<
 
       case ADMIN_FIELDS.json.type:
         columnDef = jsonFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
+        break;
+
+      case ADMIN_FIELDS.variant.type:
+        columnDef = variantFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
+        break;
+
+      case ADMIN_FIELDS.bytes.type:
+        columnDef = bytesFieldToColumnDef<TData>({ fieldDef, fieldKey, isTitleField, collection });
         break;
 
       default: {

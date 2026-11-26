@@ -25,9 +25,12 @@
  *                                                spec's Verify passes only if the assertion is real.
  *
  * Each template's own `pnpm build` output is also asserted now, past "it compiled": the
- * public routes named in `TEMPLATES` must appear in `.next/prerender-manifest.json`, and
- * (for templates that ship the generated SEO routes) `/sitemap.xml`/`/robots.txt` must be
- * structurally valid — 200, parseable, non-empty. Per AP-012 this never asserts seeded slug
+ * public routes named in `TEMPLATES` must appear in `.next/prerender-manifest.json`,
+ * every template's production server must serve `/admin` without a 500 (the
+ * duplicate-React-context-module-instance class of Turbopack production bug —
+ * see `assertScaffoldRoutes`'s own comment), and (for templates that ship the
+ * generated SEO routes) `/sitemap.xml`/`/robots.txt` must be structurally
+ * valid — 200, parseable, non-empty. Per AP-012 this never asserts seeded slug
  * content: this gate has no live Convex deployment and builds with placeholder env (P-020).
  *
  * Precondition (not performed here — a stale dist would silently pack stale
@@ -207,8 +210,11 @@ async function assertScaffoldRoutes(projectDir, template) {
     );
   }
 
-  if (!template.seoRoutes) return steps;
-
+  // The server boots unconditionally now (previously gated on
+  // `template.seoRoutes`) — `/admin` exists in every template regardless of
+  // the marketing overlay, and this is the only place this gate proves a
+  // production BUILD actually SERVES the admin panel, not just that it
+  // compiled. See the `/admin` check below for why.
   let server;
   try {
     const port = await freePort();
@@ -229,30 +235,63 @@ async function assertScaffoldRoutes(projectDir, template) {
     }
     if (!ready) throw new Error(`server did not become ready on ${base}`);
 
-    const sitemapRes = await fetch(`${base}/sitemap.xml`);
-    record("/sitemap.xml returns 200", sitemapRes.status === 200, `got ${sitemapRes.status}`);
-    const sitemapBody = await sitemapRes.text();
-    // Structure only, deliberately NOT `<loc>` content. This gate scaffolds
-    // with placeholder env and no Convex deployment, so `publishedSlugs`
-    // throws and `createVexSitemap` degrades to `[]` by design (P-020) — an
-    // empty `<urlset>` is the CORRECT output here, and asserting at least one
-    // `<loc>` would be a criterion this environment can never satisfy
-    // (AP-012). `verify-seo-routes.mjs` asserts real slugs against `apps/www`,
-    // which has a live deployment.
+    // Regression check for the duplicate-module-instance class of Turbopack
+    // production bug (vercel/next.js#96648/#96691/#96697): `@vexcms/react`
+    // exports the SAME React Context module through multiple `package.json`
+    // `exports` subpaths (`.`, `./admin`, `./server`, `./testing`) and
+    // `@vexcms/next`/the app reach it from structurally distant parts of the
+    // route tree (root layout providers vs. the nested `/admin` layout) — a
+    // production Turbopack build has compiled that single source module into
+    // two independently-instantiated `createContext` calls before (observed:
+    // `useVexConfig()` thrown as "must be used within a VexConfigProvider"
+    // with a real `VexConfigProvider` mounted as an ancestor), and nothing
+    // about the scaffolded app's OWN code would ever catch it — this proves
+    // the PACKED, installed packages (not just a workspace symlink) serve
+    // `/admin` correctly. Every context `@vexcms/react` exports was wrapped
+    // in `globalSingleton` (`packages/react/src/utils/globalSingleton.ts`)
+    // for exactly this reason, so any context regressing back to a bare
+    // `createContext` call would surface here as a `must be used within a
+    // ...Provider` throw on SOME admin page render, not only VexConfigContext.
+    const adminRes = await fetch(`${base}/admin`, { redirect: "manual" });
     record(
-      "/sitemap.xml is a well-formed urlset",
-      /<\?xml/.test(sitemapBody) && /<urlset[\s>]/.test(sitemapBody),
+      "/admin does not 500 (no duplicate React-context module instance)",
+      adminRes.status < 500,
+      `got ${adminRes.status}`,
     );
+    if (adminRes.status < 500) {
+      const adminBody = await adminRes.text();
+      record(
+        "/admin response carries no 'must be used within a ...Provider' context-identity error",
+        !/must be used within an? \S*Provider/i.test(adminBody),
+      );
+    }
 
-    const robotsRes = await fetch(`${base}/robots.txt`);
-    record("/robots.txt returns 200", robotsRes.status === 200, `got ${robotsRes.status}`);
-    const robotsBody = await robotsRes.text();
-    record(
-      "/robots.txt names a user-agent and a sitemap",
-      /user-agent:/i.test(robotsBody) && /sitemap:/i.test(robotsBody),
-    );
+    if (template.seoRoutes) {
+      const sitemapRes = await fetch(`${base}/sitemap.xml`);
+      record("/sitemap.xml returns 200", sitemapRes.status === 200, `got ${sitemapRes.status}`);
+      const sitemapBody = await sitemapRes.text();
+      // Structure only, deliberately NOT `<loc>` content. This gate scaffolds
+      // with placeholder env and no Convex deployment, so `publishedSlugs`
+      // throws and `createVexSitemap` degrades to `[]` by design (P-020) — an
+      // empty `<urlset>` is the CORRECT output here, and asserting at least one
+      // `<loc>` would be a criterion this environment can never satisfy
+      // (AP-012). `verify-seo-routes.mjs` asserts real slugs against `apps/www`,
+      // which has a live deployment.
+      record(
+        "/sitemap.xml is a well-formed urlset",
+        /<\?xml/.test(sitemapBody) && /<urlset[\s>]/.test(sitemapBody),
+      );
+
+      const robotsRes = await fetch(`${base}/robots.txt`);
+      record("/robots.txt returns 200", robotsRes.status === 200, `got ${robotsRes.status}`);
+      const robotsBody = await robotsRes.text();
+      record(
+        "/robots.txt names a user-agent and a sitemap",
+        /user-agent:/i.test(robotsBody) && /sitemap:/i.test(robotsBody),
+      );
+    }
   } catch (error) {
-    record("SEO route harness", false, error.message);
+    record("admin/SEO route harness", false, error.message);
   } finally {
     if (server?.pid) {
       try {

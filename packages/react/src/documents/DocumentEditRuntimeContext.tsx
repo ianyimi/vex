@@ -3,6 +3,8 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { ViewedVersion } from "../versions";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 /**
  * View-local UI state `useVexDocument` deliberately excludes (S5, decision 18): which history
  * version is being previewed, how to re-point the view at a new row id after a mutation returns
@@ -32,8 +34,8 @@ export interface DocumentEditRuntimeState {
 }
 
 /** Context carrying {@link DocumentEditRuntimeState}; `undefined` outside an edit view. */
-export const DocumentEditRuntimeContext = createContext<DocumentEditRuntimeState | undefined>(
-  undefined,
+export const DocumentEditRuntimeContext = globalSingleton("documents/DocumentEditRuntimeContext", () =>
+  createContext<DocumentEditRuntimeState | undefined>(undefined),
 );
 
 /**

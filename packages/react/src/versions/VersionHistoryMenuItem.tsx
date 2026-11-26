@@ -11,15 +11,52 @@ import { Icon } from "../ui/Icon";
 import { VersionHistoryDialogContent, type VersionHistoryTarget } from "./VersionHistoryPanel";
 
 /**
+ * Hosts {@link VersionHistoryDialogContent} for one dialog-open session, deriving `activeVersion`
+ * (and the other live document fields) from {@link useVexDocument} INSIDE its own render instead
+ * of once at click time. `DocumentEditActionsMenu` stores the dialog node `openHistory()` builds
+ * in local state and never recreates that element reference while the dialog stays open — a
+ * value computed in `openHistory()` itself and baked into a prop on that frozen element would
+ * freeze at the document snapshot from the moment History was clicked, so a publish/version
+ * change landing while the dialog is still open would never move the green "shown" row. Wrapping
+ * the derivation in a component instead lets ordinary React reconciliation re-run `useVexDocument()`
+ * (and recompute `activeVersion`) on every re-render the frozen element's own re-render still
+ * triggers.
+ *
+ * @param props.target - Which versioned resource this history belongs to.
+ * @param props.onClose - Closes the dialog host.
+ * @returns The live-tracking version history dialog.
+ */
+function VersionHistoryMenuItemDialog(props: {
+  target: VersionHistoryTarget;
+  onClose: () => void;
+}) {
+  const document = useVexDocument();
+  const runtime = useDocumentEditRuntime();
+  return (
+    <VersionHistoryDialogContent
+      target={props.target}
+      hasDraft={document.status === "draft"}
+      viewingVersion={runtime.viewedVersion?.version ?? null}
+      onViewVersion={runtime.onViewVersion}
+      hasUnsavedChanges={document.isDirty}
+      activeVersion={
+        (document.saved as { vex_activeVersion?: number } | undefined)?.vex_activeVersion ?? null
+      }
+      onClose={props.onClose}
+    />
+  );
+}
+
+/**
  * Built-in `vex.versionHistory` contribution for `edit.actionsMenu` (decision: developer
  * feedback — history moved out of the always-inline header row into the ⋯ menu, right after
  * Preview, since it is consulted far less often than Save/Publish/Cancel). Renders nothing for a
  * non-versioned resource, or without `readDrafts`.
  *
- * Selecting the item opens {@link VersionHistoryDialogContent} through
- * `useEditActionsMenuDialog().open(...)` rather than owning the dialog itself — the dropdown
- * unmounts this item the instant it is selected, so any dialog it opens must be hosted outside
- * the dropdown to survive the close (same pattern `CollectionDeleteMenuItem`/
+ * Selecting the item opens {@link VersionHistoryDialogContent} (via {@link VersionHistoryMenuItemDialog})
+ * through `useEditActionsMenuDialog().open(...)` rather than owning the dialog itself — the
+ * dropdown unmounts this item the instant it is selected, so any dialog it opens must be hosted
+ * outside the dropdown to survive the close (same pattern `CollectionDeleteMenuItem`/
  * `CollectionDuplicateMenuItem` already use).
  *
  * @param props - `{ kind, slug }`.
@@ -28,7 +65,6 @@ import { VersionHistoryDialogContent, type VersionHistoryTarget } from "./Versio
 export function VersionHistoryMenuItem(props: EditSlotProps) {
   const config = useVexConfig();
   const document = useVexDocument();
-  const runtime = useDocumentEditRuntime();
   const dialog = useEditActionsMenuDialog();
 
   const resolved =
@@ -46,19 +82,7 @@ export function VersionHistoryMenuItem(props: EditSlotProps) {
       : { global: props.slug as GlobalSlug };
 
   function openHistory(): void {
-    dialog.open(
-      <VersionHistoryDialogContent
-        target={target}
-        hasDraft={document.status === "draft"}
-        viewingVersion={runtime.viewedVersion?.version ?? null}
-        onViewVersion={runtime.onViewVersion}
-        hasUnsavedChanges={document.isDirty}
-        activeVersion={
-          (document.saved as { vex_activeVersion?: number } | undefined)?.vex_activeVersion ?? null
-        }
-        onClose={dialog.close}
-      />,
-    );
+    dialog.open(<VersionHistoryMenuItemDialog target={target} onClose={dialog.close} />);
   }
 
   return (

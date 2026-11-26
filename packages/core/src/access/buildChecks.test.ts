@@ -22,6 +22,14 @@ const posts = defineCollection({
   },
 });
 
+const postsWithScalarOwner = defineCollection({
+  slug: "postsWithScalarOwner",
+  fields: {
+    title: text(),
+    ownerId: relationship({ collection: { slug: "authors" }, schema: { validator: "id" }, index: "by_owner_id" }),
+  },
+});
+
 const postsWithAutoIndex = defineCollection({
   slug: "postsWithAutoIndex",
   fields: {
@@ -158,6 +166,14 @@ describe("indexedOwnerCheck", () => {
 
     expect(name).toBe("editorIdx");
     expect(eq).toHaveBeenCalledWith("editor", ["u1"]);
+  });
+
+  it("compares the id directly for a scalar-storage (schema.validator set) relationship field", () => {
+    const check = indexedOwnerCheck({ field: "ownerId" as never, resource: postsWithScalarOwner });
+    const { eq, ix } = stubQuery();
+    const { range } = withIndexOf(check, { user: { _id: "u1" } });
+    range(ix);
+    expect(eq).toHaveBeenCalledWith("ownerId", "u1");
   });
 });
 

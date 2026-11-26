@@ -2,6 +2,8 @@
 
 import { createContext, type ReactNode, useContext } from "react";
 
+import { globalSingleton } from "../utils/globalSingleton";
+
 /**
  * Default revalidation endpoint — a same-origin relative path, since the admin
  * panel and the public site it purges are always one deployment (see
@@ -18,10 +20,12 @@ export interface VexRevalidateContextValue {
   endpoint: string;
 }
 
-const VexRevalidateContext = createContext<VexRevalidateContextValue>({
-  disabled: false,
-  endpoint: DEFAULT_VEX_REVALIDATE_ENDPOINT,
-});
+const VexRevalidateContext = globalSingleton("revalidate/VexRevalidateContext", () =>
+  createContext<VexRevalidateContextValue>({
+    disabled: false,
+    endpoint: DEFAULT_VEX_REVALIDATE_ENDPOINT,
+  }),
+);
 
 /**
  * Reads the revalidation endpoint and enabled/disabled switch that

@@ -25,6 +25,14 @@ import { makeFile } from "../fields/upload/testFixture";
 /** Member names {@link runMediaSuite}'s `only` option accepts. */
 export type MediaSuiteMember = "FilePreview" | "MediaLibraryGrid" | "MediaUploadDropzone";
 
+/**
+ * Passed as `renderGrid`'s `access` override to render with no RBAC at all
+ * (field permissions unrestricted) — explicit so a call site reads as "no
+ * access config" rather than an overloaded `null`/`undefined` pair where
+ * one of the two also means "use the describe block's own `access`".
+ */
+const UNRESTRICTED_ACCESS = Symbol("mediaSuite.unrestrictedAccess");
+
 /** Options for {@link runMediaSuite}. */
 export interface RunMediaSuiteOptions {
   /** Restrict the run to these members. Defaults to all three. */
@@ -98,14 +106,19 @@ function makeMediaDoc(overrides: Partial<VexMediaDocument> = {}): VexMediaDocume
  * so the grid's search index name matches the kit schema's own
  * `search_filename` index.
  *
+ * @param searchFields - `admin.view.state.searchFields`. @default ["filename"]
  * @returns A `MediaCollectionConfig` usable as `MediaLibraryGrid`'s `targetCollectionConfig` prop.
  */
-function makeMockMediaCollection(): MediaCollectionConfig {
+function makeMockMediaCollection(searchFields: string[] = ["filename"]): MediaCollectionConfig {
   return {
     slug: "images",
     fields: {},
     labels: { singular: "Image", plural: "Images" },
-    admin: { useAsTitle: "filename", components: {} },
+    admin: {
+      useAsTitle: "filename",
+      components: {},
+      view: { state: { searchFields } },
+    },
     meta: { storageAdapter: "convex" },
   } as unknown as MediaCollectionConfig;
 }
@@ -268,6 +281,12 @@ function describeMediaLibraryGrid(access: VexAccessConfig | undefined) {
      * Seeds `rows` and mounts the grid over the same convex-test instance.
      *
      * @param options - Seed rows plus the grid's own selection props.
+     * @param options.access - Overrides the describe block's own `access`
+     *   for this render: {@link UNRESTRICTED_ACCESS} renders with no RBAC at
+     *   all (field permissions unrestricted), so a search-field-visibility
+     *   assertion stays true for every consumer regardless of what that
+     *   project's own `access` config grants an anonymous caller. Omit to
+     *   use the describe block's `access`.
      * @returns The render result.
      */
     async function renderGrid(options: {
@@ -276,15 +295,23 @@ function describeMediaLibraryGrid(access: VexAccessConfig | undefined) {
       onSelect?: (ids: string[]) => void;
       selectedIds?: string[];
       accept?: string;
+      collection?: MediaCollectionConfig;
+      access?: VexAccessConfig | typeof UNRESTRICTED_ACCESS;
     }): Promise<{ utils: RenderResult; ids: string[] }> {
       const t = convexTest(schema, testModules);
       const ids = await seedMedia(t as never, options.rows ?? []);
       const { queryClient, convexClient } = buildConvexStack(t);
+      const resolvedAccess =
+        options.access === undefined
+          ? access
+          : options.access === UNRESTRICTED_ACCESS
+            ? undefined
+            : options.access;
       const utils = renderWithVexProviders(
         <ConvexProvider client={convexClient}>
           <QueryClientProvider client={queryClient}>
             <MediaLibraryGrid
-              targetCollectionConfig={targetCollectionConfig}
+              targetCollectionConfig={options.collection ?? targetCollectionConfig}
               multi={options.multi ?? false}
               onSelect={options.onSelect ?? (() => {})}
               selectedIds={options.selectedIds}
@@ -292,19 +319,60 @@ function describeMediaLibraryGrid(access: VexAccessConfig | undefined) {
             />
           </QueryClientProvider>
         </ConvexProvider>,
-        { access },
+        { access: resolvedAccess },
       );
       return { utils, ids };
     }
 
-    it("shows the loading copy while the initial find query is pending", async () => {
+    it("shows skeleton tiles while the initial find query is pending", async () => {
       // Asserted synchronously after mount: the real query has not resolved on
       // the first render, which is exactly the state under test.
-      await renderGrid({ rows: [{ filename: "eventual.png" }] });
-      expect(screen.getByText("Loading...")).toBeInTheDocument();
+      const { utils } = await renderGrid({ rows: [{ filename: "eventual.png" }] });
+      expect(utils.container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
       // Let the real query settle so the assertion above is a genuine
       // first-render observation, not a swallowed pending update.
       await waitFor(() => expect(screen.getByText("eventual.png")).toBeInTheDocument());
+    });
+
+    it("renders the results container with a fixed height while pending", async () => {
+      const { utils } = await renderGrid({ rows: [{ filename: "a.png" }] });
+      const scrollArea = utils.container.querySelector('[data-slot="scroll-area"]');
+      expect(scrollArea).toHaveStyle({ height: "420px" });
+    });
+
+    it("renders the results container with the same fixed height once empty", async () => {
+      const { utils } = await renderGrid({ rows: [] });
+      await waitFor(() => expect(screen.getAllByText("No media files yet").length).toBeGreaterThan(0));
+      const scrollArea = utils.container.querySelector('[data-slot="scroll-area"]');
+      expect(scrollArea).toHaveStyle({ height: "420px" });
+    });
+
+    it("renders the results container with the same fixed height once populated with many results", async () => {
+      const rows = Array.from({ length: 10 }, (_, i) => ({ filename: `many-${i}.png` }));
+      const { utils } = await renderGrid({ rows });
+      await waitFor(() => expect(screen.getByText("many-0.png")).toBeInTheDocument());
+      const scrollArea = utils.container.querySelector('[data-slot="scroll-area"]');
+      expect(scrollArea).toHaveStyle({ height: "420px" });
+    });
+
+    it("renders skeleton tiles in the same grid layout as the real result tiles", async () => {
+      const { utils } = await renderGrid({ rows: [{ filename: "a.png" }] });
+      const skeletonGrid = utils.container.querySelector(".grid");
+      expect(skeletonGrid).toHaveClass("grid-cols-3", "sm:grid-cols-4", "md:grid-cols-5", "lg:grid-cols-6");
+      expect(skeletonGrid?.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
+      await waitFor(() => expect(screen.getByText("a.png")).toBeInTheDocument());
+    });
+
+    it("hides the search input when the collection declares no readable searchFields", async () => {
+      await renderGrid({ rows: [], collection: makeMockMediaCollection([]) });
+      await waitFor(() => expect(screen.getAllByText("No media files yet").length).toBeGreaterThan(0));
+      expect(screen.queryByPlaceholderText(/Search .* by filename or alt/)).not.toBeInTheDocument();
+    });
+
+    it("shows the search input when the collection declares readable searchFields", async () => {
+      await renderGrid({ rows: [], access: UNRESTRICTED_ACCESS });
+      await waitFor(() => expect(screen.getAllByText("No media files yet").length).toBeGreaterThan(0));
+      expect(screen.getByPlaceholderText(/Search .* by filename or alt/)).toBeInTheDocument();
     });
 
     it("shows the empty-state copy once the find query resolves with no items", async () => {
@@ -376,7 +444,7 @@ function describeMediaLibraryGrid(access: VexAccessConfig | undefined) {
     });
 
     it("shows the collection's plural label in the search placeholder, not the raw config object", async () => {
-      await renderGrid({ rows: [] });
+      await renderGrid({ rows: [], access: UNRESTRICTED_ACCESS });
       expect(
         screen.getByPlaceholderText("Search Images by filename or alt…"),
       ).toBeInTheDocument();

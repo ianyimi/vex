@@ -51,6 +51,7 @@ export function json<
 
     label: "",
     required: false,
+    nullable: false,
     defaultValue: ADMIN_FIELDS.json.defaultValue,
     ...options,
 

@@ -5,6 +5,7 @@ import {
   type ArrayField,
   type ArrayType,
   type DisplayComponentProps,
+  stringifyConvexValue,
   type TDocument,
   type VexResourceSlug,
 } from "@vexcms/core";
@@ -45,7 +46,9 @@ export function ArrayFieldDisplay<
               collection={props.collection}
             />
           ) : (
-            <span className="text-sm">{typeof item === "object" ? JSON.stringify(item) : String(item)}</span>
+            <span className="text-sm">
+              {typeof item === "object" ? stringifyConvexValue({ value: item }) : String(item)}
+            </span>
           )}
         </li>
       ))}

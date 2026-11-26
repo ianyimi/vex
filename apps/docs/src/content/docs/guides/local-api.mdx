@@ -212,6 +212,15 @@ validate the shape against your Convex schema at build time, not at the network 
 the document is left alone. `remove` accepts one or many ids in the same call — pass a
 single-element array for one document, or a longer array for a bulk delete.
 
+A top-level `null` in `data` is an explicit unset signal, not a stored value, for a plain
+(non-nullable) field: sending `null` for an optional field removes its key entirely, the same
+as never setting it; for a required, non-nullable field it fails validation and names the
+field. A field with `nullable: true` is the exception — `null` is a real stored value for it,
+so sending `null` there writes `null`, not an unset. This only applies to the top level of
+`data`; a `null` nested inside a container's own value (an array item, a group's field, a
+keyValue row) is just that container's own stored value. See [Nullable
+values](/fields/text/#nullable-values).
+
 ## Globals: `get`, `find`, `upsert`
 
 ```ts
@@ -250,6 +259,10 @@ document before it reaches the caller, the same way a field map denies a write i
 `hasPermission`. See
 [Field-level permissions](/guides/access-control/#field-level-permissions) in the Access
 Control guide.
+
+`globals.upsert`'s `data` follows the same top-level `null`-unset rule as `create`/`update`
+above — `null` on an optional, non-nullable field unsets it; `null` on a `nullable: true`
+field stores `null`; `null` on a required, non-nullable field fails validation.
 
 ## Per-call access overrides: `access.action` / `access.bypass`
 

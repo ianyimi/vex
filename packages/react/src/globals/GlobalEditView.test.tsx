@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { convexTest } from "convex-test";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineAccess, defineGlobal, text, type GlobalConfig } from "@vexcms/core";
 import { ConvexError } from "convex/values";
 import type * as ConvexReactQuery from "@convex-dev/react-query";
@@ -536,5 +536,54 @@ describe("GlobalEditView — not found", () => {
     expect(utils.getByText("Global not found")).toBeInTheDocument();
     expect(utils.getByText(`Global "does-not-exist" doesn't exist.`)).toBeInTheDocument();
     expect(utils.getByRole("button", { name: "Back to dashboard" })).toBeInTheDocument();
+  });
+});
+
+describe("GlobalEditView — scroll persistence", () => {
+  const t = convexTest(schema, testModules);
+
+  afterEach(() => {
+    window.sessionStorage.clear();
+  });
+
+  it("restores the form scroll position across a full unmount/remount, keyed by the global slug", () => {
+    const stored = { _creationTime: 1, _id: "g1", siteName: "old name", tagline: "old tagline" };
+    const first = renderView(
+      createElement(GlobalEditView, {
+        global: testClientConfig.globals[0].slug,
+        initialData: stored as never,
+      }),
+      { convex: t },
+    );
+    const scroller = first.container.querySelector(".vex-scroll-area.flex-1") as HTMLElement;
+    expect(scroller).not.toBeNull();
+    scroller.scrollTop = 321;
+    fireEvent.scroll(scroller);
+    first.unmount();
+
+    const second = renderView(
+      createElement(GlobalEditView, {
+        global: testClientConfig.globals[0].slug,
+        initialData: stored as never,
+      }),
+      { convex: t },
+    );
+    const restoredScroller = second.container.querySelector(".vex-scroll-area.flex-1") as HTMLElement;
+    expect(restoredScroller.scrollTop).toBe(321);
+  });
+
+  it("carries data-vex-scroll-key on the scroll container, matching the global slug, identically on server and client", () => {
+    const stored = { _creationTime: 1, _id: "g1", siteName: "old name", tagline: "old tagline" };
+    const utils = renderView(
+      createElement(GlobalEditView, {
+        global: testClientConfig.globals[0].slug,
+        initialData: stored as never,
+      }),
+      { convex: t },
+    );
+    const scroller = utils.container.querySelector("[data-vex-scroll-key]");
+    expect(scroller).not.toBeNull();
+    expect(scroller).toHaveAttribute("data-vex-scroll-key", `global:${testClientConfig.globals[0].slug}`);
+    expect(utils.container.querySelector("script")).toBeNull();
   });
 });

@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   getDataFields,
+  stringifyConvexValue,
+  valuesEqual,
   VERSION_STATUSES,
   type AdminDataField,
   type CollectionConfig,
@@ -200,12 +202,13 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
   useEffect(() => {
     if (dnf === null) return;
     const appliedNow = computeAppliedWhere(draftGroups);
-    // `VexWhereNode` is always a plain, serializable tree (no functions,
-    // no `Date`s) — `JSON.stringify` is a sufficient semantic comparison
-    // here, and already treats `isEmpty`/`isNotEmpty`'s `value: undefined`
+    // `VexWhereNode` is always a plain, serializable tree, and may carry a
+    // `bigint` leaf for an int64 field's filter value — `valuesEqual` is the
+    // shared bigint/ArrayBuffer-safe content comparison for exactly this
+    // case, and already treats `isEmpty`/`isNotEmpty`'s `value: undefined`
     // leaf the same with or without the key present, matching how
     // Convex's own wire encoding already drops it.
-    if (JSON.stringify(appliedNow) === JSON.stringify(props.where)) return;
+    if (valuesEqual(appliedNow, props.where)) return;
     const incompleteGroups = draftGroups.filter((group) =>
       group.rows.some((row) => !isFilterRowComplete(row)),
     );
@@ -396,7 +399,7 @@ export function ListViewFilterBuilder(props: ListViewFilterBuilderProps): ReactN
       <div className="flex flex-col gap-2 rounded-sm border border-dashed border-border bg-muted/40 p-3 text-sm text-muted-foreground">
         <p>This filter comes from a config view and can&apos;t be edited here.</p>
         <pre className="overflow-x-auto rounded-sm bg-background p-2 text-xs">
-          {JSON.stringify(props.where, null, 2)}
+          {stringifyConvexValue({ value: props.where, space: 2 })}
         </pre>
       </div>
     );

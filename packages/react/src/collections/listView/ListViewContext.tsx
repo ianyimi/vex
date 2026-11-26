@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
+
+import { globalSingleton } from "../../utils/globalSingleton";
 import type { CollectionConfig, ColumnEntry, ListDensity, VexWhereNodeOf } from "@vexcms/core";
 import type { TDocument } from "@vexcms/core";
 import type { UseListViewUrlStateReturn } from "./useListViewUrlState";
@@ -165,7 +167,9 @@ export interface ListViewContextState<TDoc extends TDocument = TDocument> {
 }
 
 /** Default value is `null` so a consumer rendered outside any provider throws instead of reading stale state. */
-export const ListViewContext = createContext<ListViewContextState | null>(null);
+export const ListViewContext = globalSingleton("collections/listView/ListViewContext", () =>
+  createContext<ListViewContextState | null>(null),
+);
 
 /**
  * Mounts `ListViewContext` for the subtree it wraps. `CollectionListView` is the only

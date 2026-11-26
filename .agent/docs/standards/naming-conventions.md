@@ -125,6 +125,12 @@ rules:
     description: Hand-written docs content files are kebab-case .mdx/.md. The api/ subtree is TypeDoc-generated (symbol-named) and exempt. See /dev/naming-conventions/#docs-content-kebab.
     examples: ["docs/roadmap.md", "guides/custom-storage-adapter.mdx", "fields/blocks.mdx"]
     counter_examples: ["docs/CustomStorageAdapter.mdx", "docs/Custom_Storage_Adapter.md"]
+  - id: agent-skill-folders
+    pattern: '^(vexcms-[a-z0-9]+(-[a-z0-9]+)*|README\.md)$'
+    scope: ["skills/*"]
+    description: The public `skills/` folder holds one folder per installable Agent Skill, named `vexcms-<task>` (the frontmatter `name` must equal it and it is the slash command), plus the numbered index README.md. The number lives only in the README table, never in the name. See /dev/naming-conventions/#agent-skill-folders.
+    examples: ["skills/vexcms-project-init", "skills/README.md"]
+    counter_examples: ["skills/01-project-init", "skills/project-init", "skills/vexcms_project_init"]
   - id: react-feature-folders
     pattern: '^(access|admin|auth|client|collections|config|documents|fields|forms|globals|hooks|livePreview|media|modals|revalidate|server|slots|testing|ui|utils|versions|adapter\.ts|adminCookie\.ts|adminEntry\.ts|index\.ts)$'
     scope: ["packages/react/src/*"]

@@ -144,6 +144,49 @@ runFieldCellContractSuite({
         );
         expect(screen.getByRole("button", { name: "Requires images/read" })).toBeInTheDocument();
       });
+
+      it("renders a full-width skeleton for a scalar (non-array) unpopulated id — schema.validator storage", () => {
+        const queryClient = new QueryClient({
+          defaultOptions: { queries: { queryFn: () => new Promise<never>(() => {}) } },
+        });
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value: "images_1" });
+        render(
+          withCellConfig(
+            <QueryClientProvider client={queryClient}>
+              <UploadFieldCell
+                value={"images_1" as never}
+                row={row}
+                fieldDef={options.fixture.fieldDef}
+                fieldKey="field"
+                isTitleField={false}
+                collection={collection}
+              />
+            </QueryClientProvider>,
+          ),
+        );
+        expect(document.querySelector('[data-slot="skeleton"]')).toBeInTheDocument();
+      });
+
+      it("renders the filename straight from a populated scalar (non-array) row value — no query fired", () => {
+        const mediaDoc = makeMediaDoc();
+        const queryClient = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+        const row = makeCellRow<TDocument>({ fieldKey: "field", value: mediaDoc });
+        render(
+          withCellConfig(
+            <QueryClientProvider client={queryClient}>
+              <UploadFieldCell
+                value={mediaDoc as never}
+                row={row}
+                fieldDef={options.fixture.fieldDef}
+                fieldKey="field"
+                isTitleField={false}
+                collection={collection}
+              />
+            </QueryClientProvider>,
+          ),
+        );
+        expect(screen.getByText(mediaDoc.filename)).toBeInTheDocument();
+      });
     });
 
     // No per-cell `useQuery` fetch for a populated row (the N+1 this fix

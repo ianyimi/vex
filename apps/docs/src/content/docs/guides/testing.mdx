@@ -61,8 +61,10 @@ runVexReactSuite();
 ```
 
 With no options, this runs every section: the `fieldFixtures`-driven loops (`fields`, `cells`,
-`columnDefs` — once per registered core field type), and the five single-call suites (`shell`,
-`views`, `dataTable`, `modals`, `media`, `hooks`).
+`columnDefs` — once per registered core field type, plus once more for any field type that
+registers additional fixtures for a materially distinct mode, like `variant()`'s discriminated
+vs. primitive shapes), and the five single-call suites (`shell`, `views`, `dataTable`,
+`modals`, `media`, `hooks`).
 
 ## Sections
 

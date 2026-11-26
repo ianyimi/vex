@@ -18,12 +18,35 @@ export const numberFieldFixture: FieldFixture<NumberField, number> = {
     max: [100, "Quantity cannot exceed 100."],
   }),
   valid: 42,
-  // NOT `undefined`: `numberFieldToInputSchema` ends every branch in an
-  // unconditional `.default(field.defaultValue)`, so `undefined` is silently
-  // replaced by `0` and PASSES. `-1` genuinely fails, against the real
-  // `min` message below, so the shared contract's error-timing test has a
-  // real error to render. The unconditional-`.default()` defect itself is
-  // pinned by its own test in `Input.test.tsx`.
   invalid: -1,
-  empty: 0,
+  empty: undefined,
+};
+
+const int64FieldDef: NumberField = number({
+  label: "View Count",
+  required: true,
+  schema: { validator: "int64" },
+  min: [0n, "View Count cannot be negative."],
+  max: [1000n, "View Count cannot exceed 1000."],
+});
+
+/**
+ * Fixture for a `number()` field storing `v.int64()` — `schema: {
+ * validator: "int64" }`, a native `bigint` end to end. Registered as an
+ * `extraFieldFixtures.number` entry (`testing/fixtures/index.ts`), run
+ * through the same shared contract suite as {@link numberFieldFixture} so
+ * `BigintNumberControl` (the int64 field's own control, distinct from the
+ * `type="number"` control `numberFieldFixture` exercises) gets the same
+ * public coverage.
+ *
+ * `invalid` is `-1n` — below `min` — same choice {@link numberFieldFixture}
+ * makes for the same reason: a genuinely out-of-range value, not an
+ * artifact of any schema defect.
+ */
+export const int64NumberFieldFixture: FieldFixture<NumberField, bigint> = {
+  fieldType: "number",
+  fieldDef: int64FieldDef,
+  valid: 42n,
+  invalid: -1n,
+  empty: undefined,
 };

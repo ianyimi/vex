@@ -751,6 +751,43 @@ export const fields = defineTable({
     filterFields: [],
   })
 
+export const storage_shapes = defineTable({
+  name: v.string(),
+  nullableNote: v.optional(v.nullable(v.string())),
+  nullableCount: v.optional(v.nullable(v.number())),
+  nullableStatus: v.optional(
+    v.nullable(v.array(v.union(v.literal("draft"), v.literal("published"))))
+  ),
+  nullableMeta: v.optional(v.nullable(v.object({ note: v.optional(v.string()) }))),
+  viewCount: v.optional(v.int64()),
+  literalStatus: v.optional(v.union(v.literal("active"), v.literal("inactive"))),
+  stringStatus: v.optional(v.string()),
+  ownerId: v.optional(v.id("user")),
+  ownerRef: v.optional(v.string()),
+  cover: v.optional(v.id("images")),
+  payload: v.optional(v.bytes()),
+  scores: v.optional(v.record(v.string(), v.number())),
+  userScores: v.optional(v.record(v.id("user"), v.number())),
+  channel: v.optional(
+    v.union(
+      v.object({ kind: v.literal("email"), address: v.string() }),
+      v.object({ kind: v.literal("sms"), phoneNumber: v.string() })
+    )
+  ),
+  amount: v.optional(v.union(v.string(), v.number())),
+  updatedAt: v.optional(v.commitTs()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  vex_publishedAt: v.optional(v.number()),
+  vex_publishedId: v.optional(v.id("storage_shapes")),
+  vex_activeVersion: v.optional(v.number()),
+})
+  .index("by_viewCount", ["viewCount"])
+  .index("by_ownerId", ["ownerId"])
+  .index("by_ownerRef", ["ownerRef"])
+  .index("by_updatedAt", ["updatedAt"])
+  .index("by_status", ["vex_status"])
+  .index("by_published", ["vex_publishedId"])
+
 export const testimonials = defineTable({
   customerName: v.string(),
   company: v.optional(v.string()),
@@ -885,10 +922,13 @@ export const telemetryProjects = defineTable({
         v.literal("relationship"),
         v.literal("array"),
         v.literal("group"),
+        v.literal("keyValue"),
         v.literal("blocks"),
         v.literal("upload"),
         v.literal("richtext"),
         v.literal("json"),
+        v.literal("variant"),
+        v.literal("bytes"),
         v.literal("tabs"),
         v.literal("collapsible"),
         v.literal("row"),
@@ -1061,6 +1101,7 @@ export const invitation = defineTable({
 })
   .index("by_organizationId", ["organizationId"])
   .index("by_email", ["email"])
+  .index("by_inviterId", ["inviterId"])
 
 export const images = defineTable({
   filename: v.string(),

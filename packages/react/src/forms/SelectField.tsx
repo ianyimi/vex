@@ -28,6 +28,13 @@ export interface SelectFieldProps extends BaseFormFieldProps<string[]> {
   options: SelectFieldOption[];
   /** `false` (default) caps the selection at one value. */
   hasMany?: boolean;
+  /**
+   * `true` when the stored value is a single `string` instead of
+   * `string[]` (a `schema.validator` override — `select`'s only caller
+   * today). Converts to/from the one-element array the control itself
+   * still renders. Default `false`.
+   */
+  scalar?: boolean;
   /** `"dropdown"` (default, a searchable popover) or `"radio"` (inline, no popover). */
   display?: "dropdown" | "radio";
   /** Applies only to `"dropdown"`. */
@@ -37,13 +44,15 @@ export interface SelectFieldProps extends BaseFormFieldProps<string[]> {
 
 /**
  * A single- or multi-select field bound to the nearest `<form.AppField
- * name="...">`. Always stores `string[]`; `hasMany` caps it at one entry.
+ * name="...">`. Stores `string[]` by default; `hasMany` caps it at one
+ * entry. `scalar` rebinds to a single stored `string` instead, converting
+ * to/from the one-element array the control itself still renders.
  *
  * @param props - See {@link SelectFieldProps} and {@link BaseFormFieldProps}.
  * @returns The labelled control (popover or inline radio/checkbox list), description and error.
  */
 export function SelectField(props: SelectFieldProps): ReactNode {
-  const field = useFieldContext<string[]>();
+  const field = useFieldContext<string[] | string | undefined>();
   const form = useFormContext();
   const submissionAttempts = useStore(form.store, (state) => state.submissionAttempts);
   const isOnModalSurface = useModalSurface();
@@ -51,22 +60,31 @@ export function SelectField(props: SelectFieldProps): ReactNode {
   const describedBy = fieldDescribedBy({ id: field.name, hasDescription: Boolean(props.description), showError: invalid });
   const idPrefix = useId();
 
+  const arrayValue: string[] = props.scalar
+    ? typeof field.state.value === "string" && field.state.value !== ""
+      ? [field.state.value]
+      : []
+    : ((field.state.value as string[] | undefined) ?? []);
+
+  function commitValue(next: string[]) {
+    field.handleChange(props.scalar ? next[0] : next);
+  }
+
   function handleToggle(value: string) {
-    const current = field.state.value ?? [];
     if (props.hasMany) {
-      field.handleChange(
-        current.includes(value) ? current.filter((v) => v !== value) : [...current, value],
+      commitValue(
+        arrayValue.includes(value) ? arrayValue.filter((v) => v !== value) : [...arrayValue, value],
       );
     } else {
-      field.handleChange(current.includes(value) ? [] : [value]);
+      commitValue(arrayValue.includes(value) ? [] : [value]);
     }
   }
 
   if (props.renderControl) {
     const control = props.renderControl({
       id: field.name,
-      value: field.state.value,
-      onChange: field.handleChange,
+      value: arrayValue,
+      onChange: commitValue,
       onBlur: field.handleBlur,
       readOnly: Boolean(props.readOnly),
       invalid,
@@ -111,7 +129,7 @@ export function SelectField(props: SelectFieldProps): ReactNode {
           <label key={`${idPrefix}-option-${optionIndex}`} htmlFor={`${idPrefix}-option-${optionIndex}`} className="flex items-center gap-2 text-sm">
             <Checkbox
               id={`${idPrefix}-option-${optionIndex}`}
-              checked={(field.state.value ?? []).includes(option.value)}
+              checked={arrayValue.includes(option.value)}
               disabled={props.readOnly}
               onCheckedChange={() => handleToggle(option.value)}
               onBlur={field.handleBlur}
@@ -127,8 +145,8 @@ export function SelectField(props: SelectFieldProps): ReactNode {
       <RadioGroup
         aria-labelledby={`${idPrefix}-label`}
         disabled={props.readOnly}
-        value={(field.state.value ?? [])[0]}
-        onValueChange={(value) => field.handleChange([value as string])}
+        value={arrayValue[0]}
+        onValueChange={(value) => commitValue([value as string])}
         onBlur={field.handleBlur}
         className="gap-2"
       >
@@ -169,9 +187,9 @@ export function SelectField(props: SelectFieldProps): ReactNode {
   const control = (
     <MultiSelect
       modal={isOnModalSurface}
-      onValuesChange={field.handleChange}
+      onValuesChange={commitValue}
       single={!props.hasMany}
-      values={field.state.value}
+      values={arrayValue}
     >
       <MultiSelectTrigger
         id={field.name}

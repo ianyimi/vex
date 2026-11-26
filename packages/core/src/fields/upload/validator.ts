@@ -1,5 +1,6 @@
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
+import { FIELD_SCHEMA_VALIDATORS } from "../constants";
 import type { CollectionSlug } from "../../types/generated";
 import type { UploadField } from "./types";
 
@@ -15,8 +16,14 @@ import type { UploadField } from "./types";
  *   `"v.optional(v.id(\"images\"))"`.
  */
 export function uploadFieldToValidator(props: { field: UploadField }): string {
-  const validator = `v.array(v.id("${props.field.to}"))`;
-  return applyBaseValidators({ field: props.field, validator });
+  const { field } = props;
+  if (field.schema?.validator === FIELD_SCHEMA_VALIDATORS.id) {
+    return applyBaseValidators({ field, validator: `v.id("${field.to}")` });
+  }
+  if (field.schema?.validator === FIELD_SCHEMA_VALIDATORS.string) {
+    return applyBaseValidators({ field, validator: "v.string()" });
+  }
+  return applyBaseValidators({ field, validator: `v.array(v.id("${field.to}"))` });
 }
 
 /**

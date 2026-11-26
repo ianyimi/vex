@@ -324,7 +324,6 @@ the www migration specifically. They can land any time before or after.
 | `maprios-migration-analysis.md` | Full field-by-field and collection-by-collection mapping from Payload → VexCMS |
 | `../../product/maprios-roadmap-gaps.md` | Gap analysis cross-referencing maprios config against the roadmap |
 | `multi-component-architecture.md` | Architecture design for Spec 43 (multi-component / workspace model) |
-| `roadmap-monetization-strategy-v2.md` | Full spec list and phase plan (note: ✅ markers reflect master branch, not rebuild) |
 | `packages/core/src/fields/` | Actual field types implemented in the rebuild |
 | `packages/react/src/components/views/` | Actual admin views implemented in the rebuild |
 | `/Users/zaye/Documents/Projects/maprios-app.git/dev/apps/www/src/payload/` | Source of truth for all maprios www collections, globals, blocks, and fields |

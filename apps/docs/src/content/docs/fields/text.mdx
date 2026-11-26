@@ -50,6 +50,33 @@ author: relationship<"articles", "author">({ collection: users, index: { name: "
 For an index that does not lead with a single field's own key, declare it in the collection's
 `indexes` instead.
 
+## Nullable values
+
+Every data field accepts a top-level `nullable: boolean` option (default `false`), independent
+of `required`. It describes a Convex `v.nullable(X)` column — distinct from `required: false`,
+which describes `v.optional(X)` (the key can be absent). The two compose:
+
+| `required` | `nullable` | Schema output | TS type |
+|---|---|---|---|
+| `false` (default) | `false` (default) | `v.optional(v.string())` | `string \| undefined` |
+| `true` | `false` | `v.string()` | `string` |
+| `false` | `true` | `v.optional(v.nullable(v.string()))` | `string \| null \| undefined` |
+| `true` | `true` | `v.nullable(v.string())` | `string \| null` |
+
+Clearing a nullable field's input writes `null`, not an empty string/`undefined` — this is how
+an adopted table's existing `null` rows round-trip through the admin form. Fields with no
+natural "empty" input state — every container (`group()`, `array()`, `blocks()`, `json()`,
+`richtext()`, `keyValue()`, `variant()`) and `checkbox()` — render a **Null** switch in the
+label row instead; flipping it to on hides the field's own input and writes `null` on save.
+
+Sending `null` for a field's key in the `data` passed to `create`/`update`/`saveDraft`/
+`publish`/`globals.upsert` behaves differently depending on the field: for an optional,
+non-nullable field it **removes** the key (the stored document behaves as if it was never
+set); for a nullable field it **stores** `null`; for a required, non-nullable field it fails
+validation, naming the field. This only applies to top-level keys of the `data` argument — a
+`null` nested inside a container's own value is just that container's own stored value, not an
+unset signal. See [Writing: create, update, remove](/guides/local-api/#writing-create-update-remove)
+and [Draft, publish, unpublish](/guides/versioning-and-drafts/#draft-publish-unpublish).
 
 ## Schema output
 
