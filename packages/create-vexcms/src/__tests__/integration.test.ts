@@ -555,3 +555,30 @@ describe('organization wiring (--orgs declined vs accepted)', () => {
     }
   });
 });
+
+describe('git init without a git identity', () => {
+  // A fresh machine, container or CI runner has no user.name/user.email; the
+  // initial commit fails there. That used to fail the whole scaffold (every
+  // job of the package-manager CI matrix on its first run).
+  it('keeps the scaffold, initializes the repository and leaves every file staged', async () => {
+    const dir = path.join(tmpRoot, 'no-git-identity');
+    fs.ensureDirSync(dir);
+    const saved = { author: process.env.GIT_AUTHOR_NAME, committer: process.env.GIT_COMMITTER_NAME };
+    process.env.GIT_AUTHOR_NAME = '';
+    process.env.GIT_COMMITTER_NAME = '';
+    try {
+      const options: ProjectOptions = { ...YES_DEFAULTS, projectName: 'no-git-identity', projectDir: dir, bare: true, monorepo: false, initGit: true };
+      await createInstaller({ framework: 'nextjs', projectDir: dir, projectName: options.projectName }).initProject(options);
+    } finally {
+      for (const [key, value] of [['GIT_AUTHOR_NAME', saved.author], ['GIT_COMMITTER_NAME', saved.committer]] as const) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+
+    expect(fs.existsSync(path.join(dir, '.git'))).toBe(true);
+    expect(spawnSync('git', ['rev-parse', 'HEAD'], { cwd: dir }).status).not.toBe(0);
+    const staged = spawnSync('git', ['diff', '--cached', '--name-only'], { cwd: dir, encoding: 'utf-8' }).stdout;
+    expect(staged).toContain('package.json');
+  });
+});

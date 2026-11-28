@@ -432,32 +432,43 @@ export abstract class VexFrameworkInstaller {
   }
 
   /**
-   * Initialize Git repository in target directory
+   * Initialize a Git repository in the target directory with an initial commit.
+   *
+   * Never fails the scaffold: the project is complete by the time this runs, so
+   * a missing `git` or a failed commit (most often no `user.name`/`user.email`,
+   * as on a fresh machine, a container or a CI runner) becomes a warning that
+   * says what's left to do. A failed commit keeps the repository with every
+   * file staged, so `git commit` is all that's missing.
    */
   protected async initGitRepo(): Promise<void> {
     const spinner = ora('Initializing Git repository...').start();
 
     try {
-      try {
-        await execa('git', ['--version'], { stdio: 'pipe' });
-      } catch {
-        spinner.fail('Git is not installed');
-        throw new Error('Git is not installed. Please install Git to initialize a repository.');
-      }
+      await execa('git', ['--version'], { stdio: 'pipe' });
+    } catch {
+      spinner.warn('Git is not installed; skipped creating a repository');
+      return;
+    }
 
+    try {
       await execa('git', ['init'], { cwd: this.targetPath, stdio: 'pipe' });
       await execa('git', ['add', '.'], { cwd: this.targetPath, stdio: 'pipe' });
+    } catch (error) {
+      spinner.warn(`Could not initialize a Git repository: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return;
+    }
+
+    try {
       await execa(
         'git',
         ['commit', '-m', 'Initial commit from create-vexcms'],
         { cwd: this.targetPath, stdio: 'pipe' }
       );
-
       spinner.succeed('Git repository initialized');
-    } catch (error) {
-      spinner.fail('Failed to initialize Git repository');
-      throw new Error(
-        `Git initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    } catch {
+      spinner.warn(
+        'Git repository initialized with every file staged, but the initial commit failed ' +
+          '(is git user.name/user.email set?). Run `git commit` when ready.'
       );
     }
   }
