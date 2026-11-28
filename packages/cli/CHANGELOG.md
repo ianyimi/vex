@@ -1,5 +1,14 @@
 # @vexcms/cli
 
+## 0.1.0-alpha.42
+
+### Patch Changes
+
+- 3597ac4: `vex dev` and `vex deploy` run `convex` through `deno x` in a project with a `deno.lock`.
+  Before, a Deno project fell through to `npx`, which needs a separate Node.js and npm install.
+  When `deno` isn't on PATH (a Deno project checked out on a Node.js-only machine), they warn and
+  keep using `npx`.
+
 ## 0.1.0-alpha.41
 
 ### Patch Changes
