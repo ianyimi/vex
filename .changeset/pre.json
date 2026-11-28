@@ -60,6 +60,7 @@
     "can-access-admin-panel-everywhere",
     "cli-deploy-flag-passthrough",
     "cli-dev-flag-passthrough",
+    "cli-schema-collision-warning",
     "cli-telemetry-and-env-local",
     "closed-generated-document-interfaces",
     "codebase-conventions-refactor",
