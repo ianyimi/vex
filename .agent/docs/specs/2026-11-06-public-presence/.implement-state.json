@@ -1,7 +1,7 @@
 {
   "version": 1,
   "slug": "2026-11-06-public-presence",
-  "updated": "2026-11-22T23:02:21.024Z",
+  "updated": "2026-11-27T01:47:04.964Z",
   "groups": {
     "Step 1": {
       "attempts": 1,
@@ -205,6 +205,53 @@
         "[Deprecation] The \"oidc-provider\" plugin is deprecated and will be removed in the next major version. Migrate to @better-auth/oauth-provider. See: https://www.better-auth.com/docs/plugins/oauth-provider",
         "[Deprecation] The \"oidc-provider\" plugin is deprecated and will be removed in the next major version. Migrate to @better-auth/oauth-provider. See: https://www.better-auth.com/docs/plugins/oauth-provider",
         "[Deprecation] The \"oidc-provider\" plugin is deprecated and will be removed in the next major version. Migrate to @better-auth/oauth-provider. See: https://www.better-auth.com/docs/plugins/oauth-provider"
+      ]
+    },
+    "Step 15": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "packages/tsconfig/package.json",
+        "packages/tsconfig/react-library.json",
+        "patches/@convex-dev__better-auth@0.13.0.patch",
+        "patches/@daveyplate__better-auth-ui@3.4.0.patch",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        "scripts/check-announcement-placeholder.mjs",
+        "scripts/check-import-cost.mjs",
+        "scripts/check-import-cost.test.mjs",
+        "scripts/check-packed-manifests.mjs",
+        "scripts/check-pr-title.mjs",
+        "scripts/check-pr-title.test.mjs",
+        "scripts/check-site-bundle.mjs",
+        "scripts/check-site-bundle.test.mjs",
+        "scripts/export-names.mjs",
+        "scripts/move-modules.mjs",
+        "scripts/move-modules.test.mjs",
+        "scripts/open-release-pr.mjs",
+        "scripts/open-release-pr.test.mjs",
+        "scripts/preserveModulesPlugin.mjs",
+        "scripts/preserveModulesPlugin.test.mjs",
+        "scripts/record-test-findings.mjs",
+        "scripts/regen-template-schema.mjs",
+        "scripts/scaffold-smoke.d.mts",
+        "scripts/scaffold-smoke.mjs",
+        "scripts/sync-labels.mjs",
+        "scripts/sync-labels.test.mjs",
+        "scripts/sync-template-versions.mjs",
+        "scripts/template-diff.mjs",
+        "scripts/validate-html.mjs",
+        "scripts/vercel-build-check.mjs",
+        "scripts/verify-hooks-wiring.mjs",
+        "scripts/verify-scaffold.mjs",
+        "scripts/verify-seo-routes.mjs",
+        "scripts/vex-dev.mjs",
+        "skills/README.md",
+        "skills/vexcms-project-init/SKILL.md",
+        "skills/vexcms-project-init/references/content-model.md",
+        "tsconfig.json",
+        "turbo.json"
       ]
     },
     "Step 17": {

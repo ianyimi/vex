@@ -19,6 +19,8 @@ forms, starter issues, Discussions posts), changesets and release notes, and the
 - Entries marked **inferred, unconfirmed** were read off existing copy on 2026-11-09, not given
   by the developer. Confirming or overruling one is a new entry that names it; entries are never
   edited or deleted.
+- **The REVIEW spec** (launch plan phase G, from 2026-11-27) applies these rules unchanged and
+  appends to this same log, as the LK spec's pass 2 does. Rulings still open: VW-011, VW-012.
 
 Format: `- VW-NNN (date) rule — before → after — why`
 

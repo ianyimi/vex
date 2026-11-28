@@ -1,0 +1,238 @@
+---
+title: Adopt an existing Convex table
+description: Point a VexCMS collection at a Convex table that already holds data, without migrating it — a collection whose slug matches the table, every Convex validator mapped to the field that describes it.
+---
+
+If your Convex app already has a table full of documents, a VexCMS collection can take it over
+without moving or rewriting any data. You describe the table with fields until the schema VexCMS
+generates matches the `defineTable` you wrote by hand, then swap one for the other. Your existing
+queries and mutations keep working, because the table, its documents and its index names stay the
+same.
+
+This guide assumes VexCMS already runs in your app: `vex dev` starts and `/admin` loads (see the
+[quickstart](/guides/quickstart/)). Try it first on a dev deployment that holds a copy of your
+data (`npx convex export`, then `npx convex import` into the dev deployment).
+
+## How adoption works
+
+- **The collection's `slug` is the table name.** There is no option to point a collection at a
+  table with a different name, so the slug must match the `defineSchema` key exactly.
+- **`vex dev` generates the table into `convex/vex.schema.ts`.** As long as `convex/schema.ts`
+  still defines the table by hand, Convex keeps using your hand-written definition and the
+  generated one is not wired in.
+- **`vex dev` compares the two.** When they differ, it prints which fields and indexes differ, so
+  you know what to change before you swap.
+- **When you swap, Convex checks every document.** On the next push, Convex validates each
+  existing document against the generated table. A document that doesn't fit fails the push and
+  is named in the error. Nothing is written, so your data is safe either way.
+
+## 1. Define the collection
+
+```ts title="src/vexcms/collections/posts.ts"
+import { defineCollection, text } from "@vexcms/core"
+
+export const posts = defineCollection({
+  slug: "posts", // the existing table's name
+  timestamps: false,
+  admin: { useAsTitle: "title" },
+  fields: {
+    title: text({ required: true }),
+    // …one field per column, see the table below
+  },
+})
+```
+
+Add it to `collections` in `vex.config.ts`, and give it access rules like any other collection
+(see [access control](/guides/access-control/)).
+
+**`timestamps: false`.** By default every collection carries an `updatedAt` field
+(`v.optional(v.commitTs())`) with a `by_updatedAt` index, and VexCMS stamps it on every write.
+Turning timestamps off keeps the table's shape as it is.
+
+**No drafts.** Leave `versions.drafts` off. Drafts add four `vex_` fields, and published reads
+filter on `vex_status`, which no existing document has yet. To turn drafts on later, follow
+[Migrating off a hand-rolled status field](/guides/versioning-and-drafts/#migrating-off-a-hand-rolled-status-field),
+which stamps every existing document as published.
+
+## 2. Map each validator to a field
+
+Fields are optional unless you set `required: true`. So a bare validator becomes a field with
+`required: true`, and `v.optional(x)` becomes the field for `x` with no `required` option.
+
+| Convex validator | VexCMS field | Notes |
+| --- | --- | --- |
+| `v.string()` | `text()` | `textarea()`, `email()`, `url()` and `color()` store `v.string()` too. Pick the one with the input you want. |
+| `v.number()`, `v.float64()` | `number()` | A millisecond timestamp can use [`date()`](/fields/date/), which also stores `v.number()`. |
+| `v.int64()` | `number({ schema: { validator: "int64" } })` | Values are `bigint`. See [storage override](/fields/number/#storage-override). |
+| `v.boolean()` | [`checkbox()`](/fields/checkbox/) | |
+| `v.bytes()` | [`bytes()`](/fields/bytes/) | Values are `ArrayBuffer`. |
+| `v.any()` | [`json()`](/fields/json/) | |
+| `v.object({ … })` | [`group({ fields: { … } })`](/fields/group/) | Map each property the same way, recursively. |
+| `v.record(v.string(), x)` | [`keyValue({ value: … })`](/fields/key-value/) | `value` is the field for `x`. |
+| `v.record(v.id("t"), x)` | `keyValue({ keys: { collection: { slug: "t" } }, value: … })` | `t` must be a collection. |
+| `v.union(v.object({ kind: v.literal("a"), … }), …)` | [`variant({ discriminator: "kind", variants: { … } })`](/fields/variant/) | An object union whose members share a literal key. Each `variants` key is that literal. |
+| `v.union(v.string(), v.number())` | `variant({ variants: { label: text(), amount: number() } })` | A primitive union. Members must have distinct runtime kinds. |
+| `v.id("t")` | `relationship({ collection: { slug: "t" }, schema: { validator: "id" } })` | `t` must be a collection. For a media collection, use `upload({ to: "t", schema: { validator: "id" } })`. See [storage override](/fields/relationship/#storage-override). |
+| `v.array(v.id("t"))` | `relationship({ collection: { slug: "t" }, hasMany: true })` | The default storage. |
+| `v.union(v.literal("a"), v.literal("b"))` | `select({ options: […], schema: { validator: "literal" } })` | A single option stores a bare `v.literal("a")`. See [storage override](/fields/select/#storage-override). |
+| `v.array(v.union(v.literal("a"), …))` | `select({ options: […], hasMany: true })` | The default storage. |
+| `v.string()` holding one of a known set | `select({ options: […], schema: { validator: "string" } })` | Editors get a dropdown; stored values may still be off the list. |
+| `v.array(x)` | [`array({ items: … })`](/fields/array/) | `items` is the field for `x`. |
+| `v.array(v.object({ … }))` | `array({ items: group({ fields: { … } }) })` | The generated validator adds `id: v.optional(v.string())` to each item. Existing items still validate, because the key is optional, but `vex dev` lists the field as different until you swap. |
+| `v.nullable(x)`, `v.union(x, v.null())` | the field for `x` with `nullable: true` | See [nullable values](/fields/text/#nullable-values). |
+
+Here is a hand-written table and the collection that generates the same table:
+
+```ts title="convex/schema.ts (hand-written)"
+posts: defineTable({
+  title: v.string(),
+  slug: v.string(),
+  body: v.optional(v.any()),
+  author: v.id("authors"),
+  tags: v.array(v.string()),
+  status: v.union(v.literal("draft"), v.literal("live")),
+  views: v.int64(),
+  seo: v.optional(v.object({ description: v.optional(v.string()) })),
+  scores: v.optional(v.record(v.string(), v.number())),
+  checksum: v.optional(v.bytes()),
+  embed: v.optional(
+    v.union(
+      v.object({ kind: v.literal("video"), url: v.string() }),
+      v.object({ kind: v.literal("quote"), text: v.string() }),
+    ),
+  ),
+  rating: v.optional(v.union(v.number(), v.null())),
+})
+  .index("by_slug", ["slug"])
+  .index("by_author", ["author"]),
+```
+
+```ts title="src/vexcms/collections/posts.ts"
+import {
+  array, bytes, defineCollection, group, json, keyValue, number,
+  relationship, select, text, textarea, url, variant,
+} from "@vexcms/core"
+
+export const posts = defineCollection({
+  slug: "posts",
+  timestamps: false,
+  admin: { useAsTitle: "title" },
+  fields: {
+    title: text({ required: true }),
+    slug: text({ required: true, index: "by_slug" }),
+    body: json(),
+    author: relationship({
+      collection: { slug: "authors" },
+      required: true,
+      schema: { validator: "id" },
+      index: "by_author",
+    }),
+    tags: array({ items: text(), required: true }),
+    status: select({
+      required: true,
+      schema: { validator: "literal" },
+      options: [
+        { label: "Draft", value: "draft" },
+        { label: "Live", value: "live" },
+      ],
+    }),
+    views: number({ required: true, schema: { validator: "int64" } }),
+    seo: group({ fields: { description: text() } }),
+    scores: keyValue({ value: number() }),
+    checksum: bytes(),
+    embed: variant({
+      discriminator: "kind",
+      variants: {
+        video: { label: "Video", fields: { url: url({ required: true }) } },
+        quote: { label: "Quote", fields: { text: textarea({ required: true }) } },
+      },
+    }),
+    rating: number({ nullable: true }),
+  },
+})
+```
+
+### When no field matches exactly
+
+A few shapes have no field that stores exactly the same validator:
+
+- `v.null()` on its own.
+- `v.id("_storage")`, or an id into a table that isn't a VexCMS collection.
+- An object union whose members share no literal key.
+- A union whose members share a runtime kind, such as `v.union(v.literal("a"), v.string())`.
+- An array of objects without the `blockType` key that [`blocks()`](/fields/blocks/) stores. Don't
+  use `blocks()` for an existing column: it requires keys your documents don't have.
+
+For these, pick a field whose validator accepts every value already stored. `json()` stores
+`v.any()`, which accepts anything. `text()` stores `v.string()`, which accepts any id. The
+generated table is then looser than yours: the swap still works, and `vex dev` keeps listing
+that field as different until you swap.
+
+## 3. Keep your indexes
+
+Your existing functions call `withIndex` with your index names, so declare each one under the
+same name:
+
+- **One field:** `index: "by_slug"` on the field.
+- **Several fields:** `index: { name: "by_author_status", additionalFields: ["status"] }` on the
+  first field, or a collection-level entry:
+  `indexes: [{ name: "by_author_status", fields: ["author", "status"] }]`.
+- **Search indexes:** `searchIndex: { name: "search_title", filterFields: [] }` on a `text()`,
+  `textarea()` or `email()` field.
+
+VexCMS adds some indexes of its own:
+
+- Every `relationship()` field gets `by_<fieldKey>`, unless the field declares its own `index`
+  (as `author` does above) or the collection lists an index with that name.
+- When another collection has a relationship to this one, the collection gets a search index on
+  its `useAsTitle` field, unless that field declares its own `searchIndex`.
+
+An index that only the generated table has is safe: Convex builds it from the existing documents
+when you push. An index that only your table has must be declared, or any function that uses it
+breaks.
+
+## 4. Compare, then swap
+
+Run `vex dev` with the hand-written table still in `convex/schema.ts`. If the generated table
+differs, the CLI prints a warning like this one:
+
+```txt
+[vex] convex/schema.ts defines table "posts" by hand, and convex/vex.schema.ts generates a different "posts" table. Convex uses the hand-written one; the generated table is not wired in.
+  fields only in convex/schema.ts: legacyFlag
+  fields with different validators: author
+  indexes only in convex/schema.ts: by_author
+Describe these differences in the "posts" collection, then replace the hand-written entry with the generated import. See https://docs.vexcms.dev/guides/adopt-existing-tables/
+```
+
+- **Fields only in `convex/schema.ts`:** add a field for each one. If you don't, every document
+  that holds the field fails validation.
+- **Fields only in `vex.schema.ts`:** a field VexCMS added. It's safe when it's optional;
+  otherwise, existing documents fail validation.
+- **Different validators:** match the mapping table above, or accept a looser validator (see
+  [When no field matches exactly](#when-no-field-matches-exactly)).
+- **Indexes:** see [Keep your indexes](#3-keep-your-indexes).
+
+When the warning is gone, or only lists differences you've decided to accept, delete the
+hand-written `posts: defineTable(...)` entry from `convex/schema.ts`. The next `vex dev` adds
+`posts` to the import from `./vex.schema` and to `defineSchema`. Then Convex validates every
+existing document against the generated table.
+
+The warning prints once per table per `vex dev` session, and again only when the difference
+changes. It also fires when an index chained onto an imported generated table
+(`posts: posts.index("by_slug", …)`) reuses a generated index's name, because Convex rejects
+duplicate index names.
+
+### What the comparison can't see
+
+- **Computed keys.** The CLI reads `convex/schema.ts` as text, so a key like
+  `[TABLE_SLUG_POSTS]: defineTable(…)` is never compared. Use a literal key (`posts:`) while you
+  adopt the table.
+- **Equivalent spellings.** Field order, whitespace, quotes, trailing commas,
+  `v.float64()` versus `v.number()` and `v.nullable(x)` versus `v.union(x, v.null())` are treated
+  as equal. Other spellings of the same validator show up as different.
+
+## Not covered yet
+
+VexCMS can't yet generate a collection from an existing `defineTable`, or point a collection at a
+table with a different name. Both are part of **Brownfield adoption** on the
+[roadmap](/roadmap/).

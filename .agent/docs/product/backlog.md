@@ -2056,3 +2056,55 @@ wrapper/panel (`packages/react/src/ui/sidebar.tsx`), and a browser test that del
 response and asserts the wrapper's computed `display` is `flex`.
 
 **Why deferred.** Dev-only; the production build doesn't reproduce it.
+
+## Template `account` table lacks three of the generated indexes
+
+**What.** `base-nextjs`, `marketing-site`, `apps/www` and `apps/test` hand-write the Better Auth
+`account` table as `[TABLE_SLUG_ACCOUNTS]: defineTable(...)` with `by_userId` and `by_accountId`.
+The generated `account` in `vex.schema.ts` also has `by_accountId_providerId`,
+`by_accountId_providerId_userId` and `by_providerId_userId`. Convex uses the hand-written table,
+so those three indexes don't exist in any scaffold.
+**Why.** If the Better Auth adapter picks an index by name for an account lookup, the lookup
+either fails or scans the table. Not checked which lookups use them.
+**Lift.** Small: add the three indexes to the hand-written table in both templates and both apps
+(template-sync rules, `apps/test/**` lock), or import the generated `account` instead. Needs an
+alpha.
+**Why deferred.** Found during ADOPT (2026-11-25); out of its scope. The ADOPT collision warning
+skips computed keys, so it never reports this table.
+**Detail.** `.agent/docs/specs/2026-11-25-adopt-existing-tables/spec.md` Design Decision 9.
+
+## `select.mdx` says select stores `v.array(v.string())`
+
+**What.** `apps/docs/src/content/docs/fields/select.mdx` § "Stored values are always a list" says
+`select()` stores `v.array(v.string())`. The generator emits `v.array(v.union(v.literal(…), …))`
+(`packages/core/src/fields/select/validator.ts`), which `apps/test`'s generated schema confirms.
+**Why.** A reader adopting an existing table maps by the docs; the adoption guide states the
+literal union.
+**Lift.** One sentence (and the schema-output comment above it).
+**Why deferred.** Found during ADOPT (2026-11-25); not ADOPT's page.
+
+---
+
+## Publish the four example apps as free templates (post-launch)
+
+**What.** Publish the four golden-use-case example apps — magazine, real estate, conference,
+restaurant — as free templates, each deployed, reviewed and made public.
+
+**Why.** They were built as a live-demo proof during the golden-use-cases spec
+(`2026-11-09-golden-use-cases`) and cover every shipped feature except `--orgs` and a custom
+storage adapter; turning them into free templates is the natural next use once 0.1.0 ships.
+
+**Lift.** Unassessed. Each app needs a version bump to the current release and its checks
+re-run (the apps were built against `0.1.0-alpha.36`, not 0.1.0) before any of the four can be
+reviewed or deployed.
+
+**Blockers.** Dropped from 0.1.0 (developer, 2026-11-27): not deployed, not made public, not
+reviewed for launch. The private repo stays untouched until this is picked up.
+
+**Why deferred.** Business decision D4-9 / D4-16 — the examples are raw material for the
+post-launch free-template track, not a launch deliverable. The GU spec
+(`2026-11-09-golden-use-cases`) only had to prove the features worked locally, not ship a
+public demo.
+
+**Detail.** Local clone `~/Documents/Projects/vex-examples`; private GitHub repo
+`vexcms/examples`; spec `.agent/docs/specs/2026-11-09-golden-use-cases/`.

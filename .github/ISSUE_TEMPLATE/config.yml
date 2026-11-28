@@ -5,7 +5,7 @@ contact_links:
     about: Questions about using VexCMS go to Discussions, not issues.
   - name: Suggest a feature
     url: https://github.com/ianyimi/vex/discussions/categories/ideas
-    about: Feature ideas go to Discussions, where 👍 votes rank them.
+    about: Feature ideas go to Discussions, where upvotes rank them.
   - name: Contribute a fix or feature
     url: https://github.com/ianyimi/vex/blob/master/CONTRIBUTING.md
     about: Read this before opening a pull request.

@@ -13,9 +13,17 @@ import {
 } from "@vexcms/core/internal";
 
 import { waitForDeploy } from "./convexProcess.js";
+import { createResolver } from "./loadConfig.js";
 import { logger } from "./logger.js";
 import { executeMigration, executeFieldRemoval } from "./migrate.js";
 import { resolveConvexUrl } from "./resolveConvexUrl.js";
+import {
+  findSchemaCollisions,
+  formatSchemaCollision,
+  readGeneratedTables,
+  readSchemaEntries,
+  type SchemaEntry,
+} from "./schemaSource.js";
 
 /**
  * Result of a `generateAndWrite` run.
@@ -321,7 +329,115 @@ function formatString(source: string, filepath: string, cwd: string): string {
   return source;
 }
 
-function syncSchemaImports(
+/**
+ * Collision warnings already printed by this process, keyed by schema path and
+ * table. `vex dev` re-runs the sync on every config change; a warning prints
+ * again only when its text changes, or after the collision went away and came back.
+ */
+const printedCollisionWarnings = new Map<string, string>();
+
+/**
+ * Resolves a computed `defineSchema` key to the table name it holds, when that
+ * name is a string literal: `["posts"]`, a `const` in `schema.ts`, or an
+ * `export const` in a module `schema.ts` imports by name.
+ *
+ * @param props - Input props.
+ * @param props.key - Source of the key expression, between the brackets.
+ * @param props.schemaPath - Absolute path of `convex/schema.ts`.
+ * @param props.schemaContent - Source of `convex/schema.ts`.
+ * @returns The table name, or `undefined` when the key isn't a literal the CLI can follow.
+ */
+function resolveComputedKey(props: {
+  key: string;
+  schemaPath: string;
+  schemaContent: string;
+}): string | undefined {
+  const { key, schemaPath, schemaContent } = props;
+  const literal = /^"([^"]*)"$/.exec(key);
+  if (literal) return literal[1];
+  if (!/^[A-Za-z_$][\w$]*$/.test(key)) return undefined;
+
+  const constValue = (source: string, name: string, exported: boolean) =>
+    new RegExp(
+      `${exported ? "\\bexport\\s+" : "\\b"}const\\s+${name.replace(/\$/g, "\\$")}\\s*(?::[^=]+)?=\\s*(["'\`])([^"'\`$]*)\\1`,
+    ).exec(source)?.[2];
+
+  const local = constValue(schemaContent, key, false);
+  if (local !== undefined) return local;
+
+  for (const match of schemaContent.matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/g)) {
+    for (const specifier of match[1]!.split(",")) {
+      const [imported, localName = imported] = specifier.trim().split(/\s+as\s+/);
+      if (localName?.trim() !== key || !imported) continue;
+      try {
+        let resolved = createResolver(schemaPath).esmResolve(match[2]!, { parentURL: schemaPath }) as string;
+        if (resolved.startsWith("file://")) resolved = new URL(resolved).pathname;
+        return constValue(readFileSync(resolved, "utf-8"), imported.trim(), true);
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Warns about tables and indexes `schema.ts` writes by hand that the generated
+ * schema also defines, once per table per process (see {@link printedCollisionWarnings}).
+ *
+ * @param props - Input props.
+ * @param props.schemaPath - Absolute path of `convex/schema.ts`.
+ * @param props.entries - `readSchemaEntries` output for it.
+ * @param props.vexContent - Generated schema source.
+ * @param props.outputRelPath - The generated schema's configured path (`/convex/vex.schema.ts`).
+ */
+function warnSchemaCollisions(props: {
+  schemaPath: string;
+  entries: readonly SchemaEntry[];
+  vexContent: string;
+  outputRelPath: string;
+}) {
+  const collisions = findSchemaCollisions({
+    entries: props.entries,
+    generatedTables: readGeneratedTables({ source: props.vexContent }),
+  });
+  const current = new Set<string>();
+  for (const collision of collisions) {
+    const key = `${props.schemaPath}\0${collision.table}`;
+    current.add(key);
+    const message = formatSchemaCollision({
+      collision,
+      schemaFile: "convex/schema.ts",
+      generatedFile: props.outputRelPath.replace(/^\//, ""),
+    });
+    if (printedCollisionWarnings.get(key) === message) continue;
+    printedCollisionWarnings.set(key, message);
+    logger.warn(message);
+  }
+  for (const key of printedCollisionWarnings.keys()) {
+    if (key.startsWith(`${props.schemaPath}\0`) && !current.has(key)) printedCollisionWarnings.delete(key);
+  }
+}
+
+/**
+ * Keeps `convex/schema.ts` in step with the generated schema: creates it when
+ * missing, adds each generated table it doesn't list yet (import + `defineSchema`
+ * entry), removes stale ones when `schema.autoRemove` is on, and warns when it
+ * defines a generated table or index by hand.
+ *
+ * A table counts as listed when it is a `defineSchema` key — shorthand, `name:`,
+ * `"name":`, or a computed key that resolves to a string literal. When the object
+ * has a key the CLI can't read (a spread, an unresolved computed key), or there's
+ * no `defineSchema({` literal at all, an unlisted name falls back to "appears
+ * anywhere in the file", so nothing is added twice.
+ *
+ * @param schemaPath - Absolute path of `convex/schema.ts`.
+ * @param vexContent - Generated schema source.
+ * @param outputRelPath - The generated schema's configured path (`/convex/vex.schema.ts`).
+ * @param config - The resolved config (`schema.autoRemove`).
+ * @param previousVexContent - The generated schema before this run, for `autoRemove`.
+ */
+export function syncSchemaImports(
   schemaPath: string,
   vexContent: string,
   outputRelPath: string,
@@ -355,14 +471,32 @@ function syncSchemaImports(
   }
 
   let schemaContent = readFileSync(schemaPath, "utf-8");
+  const entries = readSchemaEntries({ source: schemaContent });
 
   // --- Auto-add missing exports ---
-  const missing = exportNames.filter((name) => !schemaContent.includes(name));
+  const listed = new Set<string>();
+  let hasUnreadableKey = entries === undefined;
+  for (const entry of entries ?? []) {
+    if (entry.kind === "shorthand" || entry.kind === "property") listed.add(entry.name);
+    else if (entry.kind === "opaque") hasUnreadableKey = true;
+    else {
+      const name = resolveComputedKey({ key: entry.key, schemaPath, schemaContent });
+      if (name === undefined) hasUnreadableKey = true;
+      else listed.add(name);
+    }
+  }
+  const missing = exportNames.filter(
+    (name) => !listed.has(name) && !(hasUnreadableKey && schemaContent.includes(name)),
+  );
 
   if (missing.length > 0) {
     schemaContent = addToImport(schemaContent, missing, vexImportPath);
     schemaContent = addToDefineSchema(schemaContent, missing);
     logger.success(`Added to schema.ts: ${missing.join(", ")}`);
+  }
+
+  if (entries !== undefined) {
+    warnSchemaCollisions({ schemaPath, entries, vexContent, outputRelPath });
   }
 
   // --- Auto-remove stale exports ---

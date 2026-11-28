@@ -49,15 +49,15 @@ and what isn't planned. This page is the source of truth for the roadmap; the
 
 Everything below is free and lands in the Apache-2.0 core. It ships in this order.
 
-1. **Plugin system** — The extension points 0.1.0 ships (admin slots, component overrides, action contributions) become a supported plugin API for collections, fields, hooks, access rules and admin views.
-2. **Free features, as demand appears** — No fixed order.
-   - **Localization** — Per-field locale values, opted into per collection and per field, with locale-aware drafts.
+1. **`vex init`** — One command adds VexCMS to an existing Next.js + Convex app. It never changes your existing Convex tables.
+2. **Plugin launch** — The extension points 0.1.0 ships become a supported plugin API for collections, fields, hooks, access rules and admin views. It launches with a plugin marketplace and a free agent plugin.
+3. **Form builder, SEO fields and localization** — Forms for site visitors with generated validation and stored submissions; meta title, description, Open Graph image, canonical URL and redirects; per-field locale values with locale-aware drafts.
+4. **Brownfield adoption** — Add VexCMS to an existing Convex app table by table, without migrating the data it already holds. Until then, [adopt a table by hand](/guides/adopt-existing-tables/).
+5. **Voted features** — Ordered by votes in the [roadmap vote](https://github.com/ianyimi/vex/discussions/97) on GitHub Discussions.
    - **Scheduled publishing** — Publish and unpublish at a set time, on Convex's scheduler.
    - **TanStack Start adapter** — The admin panel and the caching helpers on a second framework.
-   - **Form builder** — Collect input from site visitors, with generated validation and stored submissions.
    - **Outbound webhooks** — Notify other services when content changes.
    - **API keys and team management** — Invite people, assign roles, and issue scoped keys for reading content from outside.
-3. **Brownfield adoption** — Add VexCMS to an existing Convex app table by table, without migrating the data it already holds.
 
 How VexCMS compares today: [Compare](/compare/).
 
@@ -67,4 +67,4 @@ Assessed and deliberately excluded, so you do not have to wonder:
 
 - **`imageUrl` field** — use `upload` with the media library, or a `url` field.
 
-Paid add-ons may come later, as separate packages, after the free roadmap. The core stays Apache-2.0, and nothing free becomes paid.
+Paid add-ons may come later, as separate packages. The core stays Apache-2.0, and nothing free becomes paid.

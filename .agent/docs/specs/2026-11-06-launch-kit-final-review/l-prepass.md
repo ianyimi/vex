@@ -1,5 +1,9 @@
 # L pre-pass evidence — VexCMS 0.1.0 launch
 
+> **Carried over to the REVIEW spec (developer, 2026-11-27; LK spec Design Decision 27).** The
+> 2026-11-10 evidence below and `l-evidence/` read the working tree, not production; REVIEW
+> re-runs what it needs against production and owns this file from here.
+>
 > Mechanical evidence only, attached next to each `surface-review.md` row so the read-through
 > in steps 14–21 is judgement, not grep. No pass/fail judgement below except where the check is
 > itself mechanical. After any fix, append a new dated run under the same section — never

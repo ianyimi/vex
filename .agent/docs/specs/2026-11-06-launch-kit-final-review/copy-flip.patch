@@ -1,5 +1,5 @@
 diff --git a/.github/ISSUE_TEMPLATE/1-bug_report.yml b/.github/ISSUE_TEMPLATE/1-bug_report.yml
-index d1660bd5..557d3c02 100644
+index d1660bd..557d3c0 100644
 --- a/.github/ISSUE_TEMPLATE/1-bug_report.yml
 +++ b/.github/ISSUE_TEMPLATE/1-bug_report.yml
 @@ -13,8 +13,8 @@ body:
@@ -23,7 +23,7 @@ index d1660bd5..557d3c02 100644
          1. ...
          2. ...
 diff --git a/README.md b/README.md
-index ac42c54b..43f5d299 100644
+index ee0efab..6420d82 100644
 --- a/README.md
 +++ b/README.md
 @@ -1,14 +1,5 @@
@@ -51,7 +51,7 @@ index ac42c54b..43f5d299 100644
  npx convex dev --once
  npx convex env set SITE_URL http://localhost:3010
 diff --git a/SECURITY.md b/SECURITY.md
-index b63898fd..bff9261c 100644
+index b63898f..bff9261 100644
 --- a/SECURITY.md
 +++ b/SECURITY.md
 @@ -2,8 +2,7 @@
@@ -65,7 +65,7 @@ index b63898fd..bff9261c 100644
  ## Reporting a vulnerability
  
 diff --git a/apps/docs/astro.config.mjs b/apps/docs/astro.config.mjs
-index c57583c1..a69e2375 100644
+index 9dbee94..9fd24b4 100644
 --- a/apps/docs/astro.config.mjs
 +++ b/apps/docs/astro.config.mjs
 @@ -38,7 +38,7 @@ export default defineConfig({
@@ -78,7 +78,7 @@ index c57583c1..a69e2375 100644
  						'- The Convex schema and TypeScript types are GENERATED from the config by `vex dev` / `vex generate`; never hand-edit `convex/vex.schema.ts` or `src/vex.types.ts`.',
  						'- `/api/**` pages are generated from source TSDoc by TypeDoc. They are the precise signatures; the guides and field pages carry the intent.',
 diff --git a/apps/docs/src/content/docs/dev/contributing.mdx b/apps/docs/src/content/docs/dev/contributing.mdx
-index 2b57d489..07583469 100644
+index 2b57d48..0758346 100644
 --- a/apps/docs/src/content/docs/dev/contributing.mdx
 +++ b/apps/docs/src/content/docs/dev/contributing.mdx
 @@ -140,8 +140,8 @@ Path-based `area:` and `adapter:` labels are added automatically.
@@ -92,8 +92,34 @@ index 2b57d489..07583469 100644
  
  ## Repo map
  
+diff --git a/apps/docs/src/content/docs/guides/agent-skills.mdx b/apps/docs/src/content/docs/guides/agent-skills.mdx
+index ca40761..c19bfcb 100644
+--- a/apps/docs/src/content/docs/guides/agent-skills.mdx
++++ b/apps/docs/src/content/docs/guides/agent-skills.mdx
+@@ -71,7 +71,7 @@ The agent runs the [quickstart](/guides/quickstart/) for you:
+ 1. Checks Node.js 22+ and pnpm, and picks the target folder (an empty folder, or a new subfolder).
+ 2. Asks you for the project name, the starter (marketing site or `--bare`), organizations, and
+    whether the defaults suit you: port `3010`, email/password sign-in, no OAuth providers.
+-3. Scaffolds with `pnpm create vexcms@alpha … --yes` and installs dependencies. If you want
++3. Scaffolds with `pnpm create vexcms … --yes` and installs dependencies. If you want
+    other options, it gives you the interactive command to run in your own terminal.
+ 4. Offers to install Convex's own AI files (`npx convex ai-files install`).
+ 5. Creates a Convex project with a cloud dev deployment (`npx convex dev --once --configure new …`)
+diff --git a/apps/docs/src/content/docs/guides/deployment.mdx b/apps/docs/src/content/docs/guides/deployment.mdx
+index eccc4ee..32b4199 100644
+--- a/apps/docs/src/content/docs/guides/deployment.mdx
++++ b/apps/docs/src/content/docs/guides/deployment.mdx
+@@ -15,7 +15,7 @@ the right build command and environment variables.
+ - A Convex account, logged in locally (`npx convex login` if you haven't already).
+ - A Vercel project connected to this repository (or the Vercel CLI).
+ - The `vex:deploy` script in `package.json` (`"vex:deploy": "vex deploy"`). Every project
+-  scaffolded by `create-vexcms@alpha` ships it by default; if yours predates that, add the
++  scaffolded by `create-vexcms` ships it by default; if yours predates that, add the
+   script yourself.
+ 
+ ## Deploy Convex to production
 diff --git a/apps/docs/src/content/docs/guides/quickstart.mdx b/apps/docs/src/content/docs/guides/quickstart.mdx
-index 3a4c7eaf..3156b984 100644
+index 353f883..2020483 100644
 --- a/apps/docs/src/content/docs/guides/quickstart.mdx
 +++ b/apps/docs/src/content/docs/guides/quickstart.mdx
 @@ -11,7 +11,7 @@ panel, and (by default) a marketing site starter — ready to run.
@@ -106,71 +132,71 @@ index 3a4c7eaf..3156b984 100644
  
  By default this includes the full marketing-site starter: pages, headers, footers, themes, and a
 diff --git a/apps/test/convex/seed.ts b/apps/test/convex/seed.ts
-index a08cfaee..e0103932 100644
+index a8cb027..15f58c2 100644
 --- a/apps/test/convex/seed.ts
 +++ b/apps/test/convex/seed.ts
-@@ -681,8 +681,8 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
-         blockName: "Hero",
-         id: "home-hero",
-         variant: ["full"],
--        installCommand: "pnpm create vexcms@alpha",
--        badgeText: "Public alpha — now on npm",
-+        installCommand: "pnpm create vexcms",
-+        badgeText: "0.1.0 — now on npm",
-         badgeLink: "https://www.npmjs.com/package/@vexcms/core",
-         heading: "The content backend for everything Convex.",
-         subheading:
-@@ -701,7 +701,7 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
-             value: "1",
-             label: "command to a running CMS",
-             description:
--              "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel in one step",
-+              "pnpm create vexcms scaffolds Next.js, Convex, auth, and the admin panel in one step",
-           },
-           {
-             value: "0",
-@@ -937,7 +937,7 @@ export const featuredPosts = query({
-             icon: "Terminal",
-             title: "Scaffold the project",
-             description:
--              "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
-+              "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
-           },
-           {
-             icon: "Code",
-@@ -995,7 +995,7 @@ export const featuredPosts = query({
-           {
-             question: "Is it production ready?",
-             answer:
--              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation and live preview have landed; the big ones left are versioning and drafts, and the richtext field. The roadmap page has the full list.",
-+              "0.1.0 is the first release on npm's default tag. It is early: APIs can still change between 0.x minor releases, and every breaking change ships with migration notes in the changelog. The roadmap page lists what shipped and what comes next.",
-           },
-           {
-             question: "Which frameworks does it support?",
-@@ -1364,7 +1364,7 @@ export const testimonials = defineTable({
-         badgeText: "Roadmap",
-         heading: "What's shipped, what's next, and what's still an idea.",
-         subheading:
--          "VexCMS is in public alpha. Ten specs stand between the current alpha and the 0.1.0 tag, and they ship in the order below. This page itself is edited in the admin panel, not in a source file.",
-+          "VexCMS is built in the open. This page itself is edited in the admin panel, not in a source file.",
-         primaryCtaLabel: "Get started",
-         primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
-       },
-@@ -1386,10 +1386,10 @@ export const testimonials = defineTable({
-               "Each spec consumes what the last one built. The mobile pass is the final gate",
-           },
-           {
--            value: "0.1.0-alpha.16",
-+            value: "0.1.0",
-             label: "on npm today",
-             description:
--              "Published from the dev branch. The whole track lands before anything is tagged 0.1.0",
-+              "The first release. The free roadmap keeps shipping after it",
-           },
-         ],
-       },
+@@ -695,8 +695,8 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
+           blockName: "Hero",
+           id: "home-hero",
+           variant: ["full"],
+-          installCommand: "pnpm create vexcms@alpha",
+-          badgeText: "Public alpha — now on npm",
++          installCommand: "pnpm create vexcms",
++          badgeText: "0.1.0 — now on npm",
+           badgeLink: "https://www.npmjs.com/package/@vexcms/core",
+           heading: "The content backend for everything Convex.",
+           subheading:
+@@ -715,7 +715,7 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
+               value: "1",
+               label: "command to a running CMS",
+               description:
+-                "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel in one step",
++                "pnpm create vexcms scaffolds Next.js, Convex, auth, and the admin panel in one step",
+             },
+             {
+               value: "0",
+@@ -954,7 +954,7 @@ export const featuredPosts = query({
+               icon: "Terminal",
+               title: "Scaffold the project",
+               description:
+-                "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
++                "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
+             },
+             {
+               icon: "Code",
+@@ -1012,7 +1012,7 @@ export const featuredPosts = query({
+             {
+               question: "Is it production ready?",
+               answer:
+-                "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation and live preview have landed; the big ones left are versioning and drafts, and the richtext field. The roadmap page has the full list.",
++                "0.1.0 is the first release on npm's default tag. It is early: APIs can still change between 0.x minor releases, and every breaking change ships with migration notes in the changelog. The roadmap page lists what shipped and what comes next.",
+             },
+             {
+               question: "Which frameworks does it support?",
+@@ -1411,7 +1411,7 @@ export const testimonials = defineTable({
+           badgeText: "Roadmap",
+           heading: "What's shipped, what's next, and what's still an idea.",
+           subheading:
+-            "VexCMS is in public alpha. Ten specs stand between the current alpha and the 0.1.0 tag, and they ship in the order below. This page itself is edited in the admin panel, not in a source file.",
++            "VexCMS is built in the open. This page itself is edited in the admin panel, not in a source file.",
+           primaryCtaLabel: "Get started",
+           primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
+         },
+@@ -1433,10 +1433,10 @@ export const testimonials = defineTable({
+                 "Each spec consumes what the last one built. The mobile pass is the final gate",
+             },
+             {
+-              value: "0.1.0-alpha.16",
++              value: "0.1.0",
+               label: "on npm today",
+               description:
+-                "Published from the dev branch. The whole track lands before anything is tagged 0.1.0",
++                "The first release. The free roadmap keeps shipping after it",
+             },
+           ],
+         },
 diff --git a/apps/test/src/vexcms/blocks/FAQ/config.ts b/apps/test/src/vexcms/blocks/FAQ/config.ts
-index 9f2464eb..ededa280 100644
+index 1957701..bccee4c 100644
 --- a/apps/test/src/vexcms/blocks/FAQ/config.ts
 +++ b/apps/test/src/vexcms/blocks/FAQ/config.ts
 @@ -60,7 +60,7 @@ export const faqBlock = defineBlock({
@@ -183,7 +209,7 @@ index 9f2464eb..ededa280 100644
        ],
      }),
 diff --git a/apps/test/src/vexcms/blocks/Hero/config.ts b/apps/test/src/vexcms/blocks/Hero/config.ts
-index 28d51c2c..9de558e2 100644
+index 28d51c2..9de558e 100644
 --- a/apps/test/src/vexcms/blocks/Hero/config.ts
 +++ b/apps/test/src/vexcms/blocks/Hero/config.ts
 @@ -18,7 +18,7 @@ export const heroBlock = defineBlock({
@@ -205,7 +231,7 @@ index 28d51c2c..9de558e2 100644
          "Optional. Renders a copy-to-clipboard command row under the CTAs. Full variant only.",
      }),
 diff --git a/apps/test/src/vexcms/blocks/HowItWorks/config.ts b/apps/test/src/vexcms/blocks/HowItWorks/config.ts
-index d50dd1a7..1bc361f0 100644
+index d50dd1a..1bc361f 100644
 --- a/apps/test/src/vexcms/blocks/HowItWorks/config.ts
 +++ b/apps/test/src/vexcms/blocks/HowItWorks/config.ts
 @@ -35,7 +35,7 @@ export const howItWorksBlock = defineBlock({
@@ -218,71 +244,71 @@ index d50dd1a7..1bc361f0 100644
          {
            icon: "Code",
 diff --git a/apps/www/convex/seed.ts b/apps/www/convex/seed.ts
-index f5aae949..d0f526d3 100644
+index 6fd5f2e..bf6fe1f 100644
 --- a/apps/www/convex/seed.ts
 +++ b/apps/www/convex/seed.ts
-@@ -685,8 +685,8 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
-         blockName: "Hero",
-         id: "home-hero",
-         variant: ["full"],
--        installCommand: "pnpm create vexcms@alpha",
--        badgeText: "Public alpha — now on npm",
-+        installCommand: "pnpm create vexcms",
-+        badgeText: "0.1.0 — now on npm",
-         badgeLink: "https://www.npmjs.com/package/@vexcms/core",
-         heading: "The content backend for everything Convex.",
-         subheading:
-@@ -705,7 +705,7 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
-             value: "1",
-             label: "command to a running CMS",
-             description:
--              "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel in one step",
-+              "pnpm create vexcms scaffolds Next.js, Convex, auth, and the admin panel in one step",
-           },
-           {
-             value: "0",
-@@ -941,7 +941,7 @@ export const featuredPosts = query({
-             icon: "Terminal",
-             title: "Scaffold the project",
-             description:
--              "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
-+              "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
-           },
-           {
-             icon: "Code",
-@@ -999,7 +999,7 @@ export const featuredPosts = query({
-           {
-             question: "Is it production ready?",
-             answer:
--              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation, live preview, versioning and drafts, the richtext/json/email/textarea fields, the edit-view and list-view overhauls, and the field input consistency pass have all landed; the remaining big one is a responsive pass. The roadmap page has the full list.",
-+              "0.1.0 is the first release on npm's default tag. It is early: APIs can still change between 0.x minor releases, and every breaking change ships with migration notes in the changelog. The roadmap page lists what shipped and what comes next.",
-           },
-           {
-             question: "Which frameworks does it support?",
-@@ -1368,7 +1368,7 @@ export const testimonials = defineTable({
-         badgeText: "Roadmap",
-         heading: "What's shipped, what's next, and what's not planned.",
-         subheading:
--          "VexCMS is in public alpha, built in the open. This page is edited right here in the admin panel, not in a source file.",
-+          "VexCMS is built in the open. This page is edited right here in the admin panel, not in a source file.",
-         primaryCtaLabel: "Get started",
-         primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
-       },
-@@ -1388,10 +1388,10 @@ export const testimonials = defineTable({
-             description: "core, react, next, cli, better-auth, file-storage-convex, richtext-plate, create-vexcms",
-           },
-           {
--            value: "0.1.0-alpha",
-+            value: "0.1.0",
-             label: "on npm today",
-             description:
--              "0.1.0 tags when the launch checklist is done. The free roadmap keeps shipping after it",
-+              "The first release. The free roadmap keeps shipping after it",
-           },
-         ],
-       },
+@@ -699,8 +699,8 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
+           blockName: "Hero",
+           id: "home-hero",
+           variant: ["full"],
+-          installCommand: "pnpm create vexcms@alpha",
+-          badgeText: "Public alpha — now on npm",
++          installCommand: "pnpm create vexcms",
++          badgeText: "0.1.0 — now on npm",
+           badgeLink: "https://www.npmjs.com/package/@vexcms/core",
+           heading: "The content backend for everything Convex.",
+           subheading:
+@@ -719,7 +719,7 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
+               value: "1",
+               label: "command to a running CMS",
+               description:
+-                "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel in one step",
++                "pnpm create vexcms scaffolds Next.js, Convex, auth, and the admin panel in one step",
+             },
+             {
+               value: "0",
+@@ -958,7 +958,7 @@ export const featuredPosts = query({
+               icon: "Terminal",
+               title: "Scaffold the project",
+               description:
+-                "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
++                "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
+             },
+             {
+               icon: "Code",
+@@ -1016,7 +1016,7 @@ export const featuredPosts = query({
+             {
+               question: "Is it production ready?",
+               answer:
+-                "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation, live preview, versioning and drafts, the richtext/json/email/textarea fields, the edit-view and list-view overhauls, and the field input consistency pass have all landed; the remaining big one is a responsive pass. The roadmap page has the full list.",
++                "0.1.0 is the first release on npm's default tag. It is early: APIs can still change between 0.x minor releases, and every breaking change ships with migration notes in the changelog. The roadmap page lists what shipped and what comes next.",
+             },
+             {
+               question: "Which frameworks does it support?",
+@@ -1391,7 +1391,7 @@ export const testimonials = defineTable({
+           badgeText: "Roadmap",
+           heading: "What's shipped, what's next, and what's not planned.",
+           subheading:
+-            "VexCMS is in public alpha, built in the open. This page is edited right here in the admin panel, not in a source file.",
++            "VexCMS is built in the open. This page is edited right here in the admin panel, not in a source file.",
+           primaryCtaLabel: "Get started",
+           primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
+         },
+@@ -1412,10 +1412,10 @@ export const testimonials = defineTable({
+                 "core, react, next, cli, better-auth, file-storage-convex, richtext-plate, create-vexcms",
+             },
+             {
+-              value: "0.1.0-alpha",
++              value: "0.1.0",
+               label: "on npm today",
+               description:
+-                "0.1.0 tags when the launch checklist is done. The free roadmap keeps shipping after it",
++                "The first release. The free roadmap keeps shipping after it",
+             },
+           ],
+         },
 diff --git a/apps/www/package.json b/apps/www/package.json
-index 93dc3e69..f127c00c 100644
+index e7fdb58..2a3e456 100644
 --- a/apps/www/package.json
 +++ b/apps/www/package.json
 @@ -18,7 +18,7 @@
@@ -295,7 +321,7 @@ index 93dc3e69..f127c00c 100644
    "dependencies": {
      "@base-ui/react": "catalog:",
 diff --git a/apps/www/src/vexcms/blocks/FAQ/config.ts b/apps/www/src/vexcms/blocks/FAQ/config.ts
-index 9f2464eb..ededa280 100644
+index 1957701..bccee4c 100644
 --- a/apps/www/src/vexcms/blocks/FAQ/config.ts
 +++ b/apps/www/src/vexcms/blocks/FAQ/config.ts
 @@ -60,7 +60,7 @@ export const faqBlock = defineBlock({
@@ -308,7 +334,7 @@ index 9f2464eb..ededa280 100644
        ],
      }),
 diff --git a/apps/www/src/vexcms/blocks/Hero/config.ts b/apps/www/src/vexcms/blocks/Hero/config.ts
-index 28d51c2c..9de558e2 100644
+index 28d51c2..9de558e 100644
 --- a/apps/www/src/vexcms/blocks/Hero/config.ts
 +++ b/apps/www/src/vexcms/blocks/Hero/config.ts
 @@ -18,7 +18,7 @@ export const heroBlock = defineBlock({
@@ -330,7 +356,7 @@ index 28d51c2c..9de558e2 100644
          "Optional. Renders a copy-to-clipboard command row under the CTAs. Full variant only.",
      }),
 diff --git a/apps/www/src/vexcms/blocks/HowItWorks/config.ts b/apps/www/src/vexcms/blocks/HowItWorks/config.ts
-index d50dd1a7..1bc361f0 100644
+index d50dd1a..1bc361f 100644
 --- a/apps/www/src/vexcms/blocks/HowItWorks/config.ts
 +++ b/apps/www/src/vexcms/blocks/HowItWorks/config.ts
 @@ -35,7 +35,7 @@ export const howItWorksBlock = defineBlock({
@@ -343,7 +369,7 @@ index d50dd1a7..1bc361f0 100644
          {
            icon: "Code",
 diff --git a/packages/core/README.md b/packages/core/README.md
-index cb5d79ac..ef70e530 100644
+index cb5d79a..ef70e53 100644
 --- a/packages/core/README.md
 +++ b/packages/core/README.md
 @@ -9,7 +9,7 @@ The foundational package for [VEX CMS](https://github.com/ianyimi/vex) — a hea
@@ -368,7 +394,7 @@ index cb5d79ac..ef70e530 100644
  
  ## Features
 diff --git a/packages/create-vexcms/README.md b/packages/create-vexcms/README.md
-index 059d64bf..784fcdf6 100644
+index 14d9d0f..2342dc5 100644
 --- a/packages/create-vexcms/README.md
 +++ b/packages/create-vexcms/README.md
 @@ -1,15 +1,5 @@
@@ -431,7 +457,7 @@ index 059d64bf..784fcdf6 100644
  ```
  
  ## Interactive prompts
-@@ -178,7 +168,7 @@ Run from inside an existing pnpm workspace to scaffold a new app under it instea
+@@ -179,7 +169,7 @@ Run from inside an existing pnpm workspace to scaffold a new app under it instea
  standalone project:
  
  ```bash
@@ -440,7 +466,7 @@ index 059d64bf..784fcdf6 100644
  ```
  
  The installer walks up from the current directory for the nearest `pnpm-workspace.yaml`, targets
-@@ -196,13 +186,11 @@ always off in CI. Every field sent is listed in the
+@@ -203,13 +193,11 @@ always off in CI. Every field sent is listed in the
  
  ## Versioning
  
@@ -458,85 +484,85 @@ index 059d64bf..784fcdf6 100644
  
  The scaffolded project's `@vexcms/*` dependencies match the version of `create-vexcms` used to
 diff --git a/packages/create-vexcms/templates/marketing-site/convex/seed.ts b/packages/create-vexcms/templates/marketing-site/convex/seed.ts
-index edb0ad84..2b9ce0e3 100644
+index 80d61e0..f873515 100644
 --- a/packages/create-vexcms/templates/marketing-site/convex/seed.ts
 +++ b/packages/create-vexcms/templates/marketing-site/convex/seed.ts
-@@ -618,8 +618,8 @@ export const init = internalMutation({
-             blockName: "Hero",
-             id: "home-hero",
-             variant: ["full"],
--            installCommand: "pnpm create vexcms@alpha",
--            badgeText: "v0.1.0-alpha — now on npm",
-+            installCommand: "pnpm create vexcms",
-+            badgeText: "0.1.0 — now on npm",
-             badgeLink: "https://www.npmjs.com/package/@vexcms/core",
-             heading: "The CMS that thinks in types.",
-             subheading:
-@@ -655,7 +655,7 @@ export const init = internalMutation({
-                 value: "1",
-                 label: "command to start",
-                 description:
--                  "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel",
-+                  "pnpm create vexcms scaffolds Next.js, Convex, auth, and the admin panel",
+@@ -663,8 +663,8 @@ export const init = internalMutation({
+                 blockName: "Hero",
+                 id: "home-hero",
+                 variant: ["full"],
+-                installCommand: "pnpm create vexcms@alpha",
+-                badgeText: "v0.1.0-alpha — now on npm",
++                installCommand: "pnpm create vexcms",
++                badgeText: "0.1.0 — now on npm",
+                 badgeLink: "https://www.npmjs.com/package/@vexcms/core",
+                 heading: "The CMS that thinks in types.",
+                 subheading:
+@@ -701,7 +701,7 @@ export const init = internalMutation({
+                     value: "1",
+                     label: "command to start",
+                     description:
+-                      "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel",
++                      "pnpm create vexcms scaffolds Next.js, Convex, auth, and the admin panel",
+                   },
+                 ],
                },
-             ],
-           },
-@@ -781,7 +781,7 @@ export const articles = defineTable({
-                 icon: "Terminal",
-                 title: "Scaffold your project",
-                 description:
--                  "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
-+                  "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
+@@ -828,7 +828,7 @@ export const articles = defineTable({
+                     icon: "Terminal",
+                     title: "Scaffold your project",
+                     description:
+-                      "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
++                      "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
+                   },
+                   {
+                     icon: "Code",
+@@ -856,7 +856,7 @@ export const articles = defineTable({
+                 id: "home-roadmap",
+                 heading: "Roadmap",
+                 subheading:
+-                  "What we've shipped and what's coming next. VexCMS is actively developed and everything ships as 0.1.0-alpha.",
++                  "What we've shipped and what's coming next.",
+                 items: [
+                   {
+                     feature: "12 Field Types",
+@@ -1001,7 +1001,7 @@ export const articles = defineTable({
+                   {
+                     question: "Is it production ready?",
+                     answer:
+-                      "No. Everything ships as 0.1.0-alpha. Versioning, drafts, and live preview are in progress. There are 12 field types today; richtext, json, tabs, and ui are planned, not built. See the roadmap.",
++                      "0.1.0 is the first release on npm's default tag. It is early: APIs can still change between 0.x minor releases, and every breaking change ships with migration notes in the changelog. The roadmap page lists what shipped and what comes next.",
+                   },
+                   {
+                     question: "Which frameworks does it support?",
+@@ -1107,7 +1107,7 @@ export const articles = defineTable({
+                     icon: "Terminal",
+                     title: "Scaffold your project",
+                     description:
+-                      "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
++                      "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
+                   },
+                   {
+                     icon: "Code",
+@@ -1177,7 +1177,7 @@ export const articles = defineTable({
+                 variant: ["compact"],
+                 heading: "Shipped, in progress, and being explored.",
+                 subheading:
+-                  "VexCMS is under active development. Everything ships as 0.1.0-alpha until the core feature set is stable enough for a v0.1.0 release. This page is edited from the admin panel, not from a source file.",
++                  "VexCMS is built in the open. This page is edited from the admin panel, not from a source file.",
+                 primaryCtaLabel: "Read the docs",
+                 primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
                },
-               {
-                 icon: "Code",
-@@ -809,7 +809,7 @@ export const articles = defineTable({
-             id: "home-roadmap",
-             heading: "Roadmap",
-             subheading:
--              "What we've shipped and what's coming next. VexCMS is actively developed and everything ships as 0.1.0-alpha.",
-+              "What we've shipped and what's coming next.",
-             items: [
-               {
-                 feature: "12 Field Types",
-@@ -947,7 +947,7 @@ export const articles = defineTable({
-               {
-                 question: "Is it production ready?",
-                 answer:
--                  "No. Everything ships as 0.1.0-alpha. Versioning, drafts, and live preview are in progress. There are 12 field types today; richtext, json, tabs, and ui are planned, not built. See the roadmap.",
-+                  "0.1.0 is the first release on npm's default tag. It is early: APIs can still change between 0.x minor releases, and every breaking change ships with migration notes in the changelog. The roadmap page lists what shipped and what comes next.",
-               },
-               {
-                 question: "Which frameworks does it support?",
-@@ -1040,7 +1040,7 @@ export const articles = defineTable({
-                 icon: "Terminal",
-                 title: "Scaffold your project",
-                 description:
--                  "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
-+                  "pnpm create vexcms gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
-               },
-               {
-                 icon: "Code",
-@@ -1098,7 +1098,7 @@ export const articles = defineTable({
-             variant: ["compact"],
-             heading: "Shipped, in progress, and being explored.",
-             subheading:
--              "VexCMS is under active development. Everything ships as 0.1.0-alpha until the core feature set is stable enough for a v0.1.0 release. This page is edited from the admin panel, not from a source file.",
-+              "VexCMS is built in the open. This page is edited from the admin panel, not from a source file.",
-             primaryCtaLabel: "Read the docs",
-             primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
-           },
-@@ -1108,7 +1108,7 @@ export const articles = defineTable({
-             id: "roadmap-roadmap",
-             heading: "Roadmap",
-             subheading:
--              "What we've shipped and what's coming next. VexCMS is actively developed and everything ships as 0.1.0-alpha.",
-+              "What we've shipped and what's coming next.",
-             items: [
-               {
-                 feature: "12 Field Types",
+@@ -1187,7 +1187,7 @@ export const articles = defineTable({
+                 id: "roadmap-roadmap",
+                 heading: "Roadmap",
+                 subheading:
+-                  "What we've shipped and what's coming next. VexCMS is actively developed and everything ships as 0.1.0-alpha.",
++                  "What we've shipped and what's coming next.",
+                 items: [
+                   {
+                     feature: "12 Field Types",
 diff --git a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/FAQ/config.ts b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/FAQ/config.ts
-index 818302ed..ee8cf40f 100644
+index 818302e..ee8cf40 100644
 --- a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/FAQ/config.ts
 +++ b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/FAQ/config.ts
 @@ -60,7 +60,7 @@ export const faqBlock = defineBlock({
@@ -549,7 +575,7 @@ index 818302ed..ee8cf40f 100644
        ],
      }),
 diff --git a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/Hero/config.ts b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/Hero/config.ts
-index 28d51c2c..9de558e2 100644
+index 28d51c2..9de558e 100644
 --- a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/Hero/config.ts
 +++ b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/Hero/config.ts
 @@ -18,7 +18,7 @@ export const heroBlock = defineBlock({
@@ -571,7 +597,7 @@ index 28d51c2c..9de558e2 100644
          "Optional. Renders a copy-to-clipboard command row under the CTAs. Full variant only.",
      }),
 diff --git a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/HowItWorks/config.ts b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/HowItWorks/config.ts
-index d50dd1a7..1bc361f0 100644
+index d50dd1a..1bc361f 100644
 --- a/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/HowItWorks/config.ts
 +++ b/packages/create-vexcms/templates/marketing-site/src/vexcms/blocks/HowItWorks/config.ts
 @@ -35,7 +35,7 @@ export const howItWorksBlock = defineBlock({
@@ -584,7 +610,7 @@ index d50dd1a7..1bc361f0 100644
          {
            icon: "Code",
 diff --git a/packages/next/README.md b/packages/next/README.md
-index 5937d7d8..a2321301 100644
+index 5937d7d..a232130 100644
 --- a/packages/next/README.md
 +++ b/packages/next/README.md
 @@ -5,7 +5,7 @@ The Next.js adapter for [VEX CMS](https://github.com/ianyimi/vex). Provides the
@@ -597,7 +623,7 @@ index 5937d7d8..a2321301 100644
  
  ## Quick Setup
 diff --git a/packages/react/README.md b/packages/react/README.md
-index 9fe2075f..79e2f7b7 100644
+index 9fe2075..79e2f7b 100644
 --- a/packages/react/README.md
 +++ b/packages/react/README.md
 @@ -5,7 +5,7 @@ React admin components and hooks for [VexCMS](https://github.com/ianyimi/vex). P
@@ -610,7 +636,7 @@ index 9fe2075f..79e2f7b7 100644
  
  ## Field Components
 diff --git a/packages/richtext-plate/README.md b/packages/richtext-plate/README.md
-index badf74db..a7068334 100644
+index badf74d..a706833 100644
 --- a/packages/richtext-plate/README.md
 +++ b/packages/richtext-plate/README.md
 @@ -9,7 +9,7 @@ Install `@vexcms/richtext-plate` alongside a `richtext()` field: register
@@ -622,3 +648,35 @@ index badf74db..a7068334 100644
  ```
  
  ## Exports
+diff --git a/skills/vexcms-project-init/SKILL.md b/skills/vexcms-project-init/SKILL.md
+index 4703adb..b9d6a10 100644
+--- a/skills/vexcms-project-init/SKILL.md
++++ b/skills/vexcms-project-init/SKILL.md
+@@ -10,8 +10,7 @@ Takes an empty folder to a running VexCMS project with a signed-in admin. Run ev
+ yourself. Stop only at the steps marked **Ask** (you need an answer) or **User** (only the user can
+ do it: a browser, a login, an interactive prompt), and wait for the reply before going on.
+ 
+-VexCMS is pre-release: scaffold with the `@alpha` tag. On npm, `latest` still points to an old,
+-unrelated line. Docs: https://docs.vexcms.dev. The whole docs set in one file for agents:
++Docs: https://docs.vexcms.dev. The whole docs set in one file for agents:
+ https://docs.vexcms.dev/llms-small.txt.
+ 
+ ## 1. Check the machine and the folder
+@@ -50,7 +49,7 @@ Answer 5 is yes → step 3a. Answer 5 is no → step 3b.
+ ### 3a. Defaults
+ 
+ ```bash
+-pnpm create vexcms@alpha <name> --yes        # add --bare / --orgs / --monorepo per the answers
++pnpm create vexcms <name> --yes        # add --bare / --orgs / --monorepo per the answers
+ cd <name>                                    # skip when the target is "."
+ pnpm install                                 # with --monorepo: run it from the workspace root
+ ```
+@@ -65,7 +64,7 @@ The CLI's prompts need an interactive terminal. Give the user this command to ru
+ terminal, from the current folder:
+ 
+ ```bash
+-pnpm create vexcms@alpha <name>              # plus --bare / --orgs / --monorepo per the answers
++pnpm create vexcms <name>              # plus --bare / --orgs / --monorepo per the answers
+ ```
+ 
+ Add the flags before handing it over: the prompts never ask for the starter, so a bare project
