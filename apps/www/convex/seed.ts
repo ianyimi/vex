@@ -1026,7 +1026,7 @@ export const featuredPosts = query({
             {
               question: "What does it cost?",
               answer:
-                "The core is Apache-2.0 and stays that way: every field type, the admin panel, the CLI, RBAC, drafts, live preview, and hooks. You pay Convex for usage, and Convex has a free tier. Paid add-ons may come later, as separate packages, after the free roadmap. The core stays Apache-2.0, and nothing free becomes paid.",
+                "The core is Apache-2.0 and stays that way: every field type, the admin panel, the CLI, RBAC, drafts, live preview, and hooks. You pay Convex for usage, and Convex has a free tier. Paid add-ons will come later, as separate packages. The core stays Apache-2.0, and nothing free becomes paid.",
             },
             {
               question: "Who builds VexCMS?",
@@ -1904,6 +1904,10 @@ export const testimonials = defineTable({
           { type: "li", children: [{ text: "Plugin launch" }] },
           { type: "li", children: [{ text: "Form builder, SEO fields and localization" }] },
           { type: "li", children: [{ text: "Brownfield adoption" }] },
+          {
+            type: "li",
+            children: [{ text: "Voted features, in the order the roadmap vote sets" }],
+          },
         ],
       },
       { type: "h2", children: [{ text: "Who builds this" }] },
