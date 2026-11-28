@@ -16,8 +16,10 @@ const previewAssertions = bypassSecret
 const assertions = {
   "categories:accessibility": ["error", { minScore: 1 }],
   "categories:best-practices": ["error", { minScore: 0.9 }],
-  // Performance and LCP gate at the real targets: at Lighthouse's default
-  // 4x they have passed on every CI run since the per-module split.
+  // Performance and LCP gate at the real targets (Lighthouse's default 4x).
+  // `/` sits closest to the 0.9 line (0.88–0.97 warm in CI): its hero animates
+  // `filter: blur()` per word, which runs on the main thread. Each job's first
+  // run is cold, so `e2e/lighthouseBypassCookie.cjs` warms the browser first.
   // TBT alone swings with the runner's CPU (143–371 ms across routes on
   // one run, 8–77 ms on a fast Mac), so it warns and shows per route in
   // the job summary; today's site pages miss it on hydration cost

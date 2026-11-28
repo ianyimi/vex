@@ -1,3 +1,6 @@
+/** Set once the first audited URL has had its unmeasured warm-up load. */
+let warmedUp = false;
+
 /**
  * LHCI `puppeteerScript`: runs before each audited URL and sets Vercel's
  * protection-bypass cookie (`_vercel_jwt`) in the browser Lighthouse is about
@@ -10,6 +13,15 @@
  * cookie here, outside the measured load, covers both. Lighthouse's storage
  * reset leaves cookies alone, so the cookie is still there when the audit runs.
  *
+ * Before the first URL it also loads that page once, unmeasured. The first
+ * Lighthouse run of a CI job is cold: in every job checked (2026-11-28, five
+ * jobs back to 8d855a4f) it scored 0.55–0.87 with 540–3040 ms TBT, against
+ * 0.89–0.97 for the same page's next two runs. LHCI drives one browser for
+ * every run, so loading the page here absorbs that first-run cost. Without it
+ * the first route (`/`) kept only two usable runs where every other route had
+ * three, and failed the performance gate on code that had passed an hour
+ * earlier (release PR #101, run 46120409200).
+ *
  * @param {import("puppeteer-core").Browser} browser - The browser LHCI drives.
  * @param {{ url: string }} context - The URL about to be audited.
  */
@@ -20,5 +32,9 @@ module.exports = async (browser, context) => {
     "x-vercel-set-bypass-cookie": "true",
   });
   await page.goto(new URL("/robots.txt", context.url).href);
+  if (!warmedUp) {
+    await page.goto(context.url, { timeout: 60_000, waitUntil: "load" });
+    warmedUp = true;
+  }
   await page.close();
 };
