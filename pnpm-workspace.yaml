@@ -98,6 +98,7 @@ catalog:
   shiki: 4.6.0
   sonner: 2.0.8
   sort-package-json: 2.10.0
+  starlight-package-managers: 0.13.1
   starlight-llms-txt: 0.12.0
   starlight-typedoc: 0.23.2
   tailwind-merge: 3.7.0

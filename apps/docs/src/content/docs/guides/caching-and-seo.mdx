@@ -5,6 +5,9 @@ sidebar:
   hidden: true
 ---
 
+import PmCommand from '../../../components/PmCommand.astro';
+import PmTabs from '../../../components/PmTabs.astro';
+
 Public pages read Convex through a cached client so Next.js can prerender them at build time
 and serve them from the CDN. `@vexcms/next`'s `cache` and `seo` entry points, plus a
 `routes.map` function in `vex.config.ts`, are what make that possible without hand-writing the
@@ -12,7 +15,7 @@ plumbing per project.
 
 ## Setup checklist
 
-The default `pnpm create vexcms` marketing-site starter already wires all of this — read on to
+The default `create-vexcms` marketing-site starter already wires all of this — read on to
 understand how it works, or to add it yourself to a `--bare` scaffold or an existing project
 once you have a collection of public, slug-addressed documents (pages, posts, docs). Build in
 this order — each step is consumed by the one after it:
@@ -48,9 +51,7 @@ src/
 
 Verify with a real build, not the dev server — `next dev` never shows which routes are static:
 
-```bash
-pnpm build
-```
+<PmCommand type="run" pkg="build" />
 
 Check the printed route table for `○`/`●` (static/SSG) on every public route and `ƒ` only on
 `/admin`, auth routes, and the revalidate handler. A public route still showing `ƒ` means
@@ -237,7 +238,7 @@ fire-and-forget — a failed purge is a stale page, but a failed save is lost wo
 never delays or fails the mutation the caller is waiting on.
 
 The **`RevalidateButton`** (`@vexcms/react`) covers what an automatic purge can't reach: a
-Convex dashboard edit, `npx convex import`, a streaming import, or a tab that closed mid-request
+Convex dashboard edit, `convex import`, a streaming import, or a tab that closed mid-request
 — none of those run application code, so nothing purges automatically. It's user-initiated, so
 unlike the automatic purge it renders the request's pending state and surfaces a failure instead
 of swallowing it:
@@ -356,9 +357,13 @@ a performance metric until you add it.
 
 Install the package and mount `<Analytics />` once, in the root layout:
 
-```bash
-pnpm add @vercel/analytics
-```
+<PmTabs
+	npm="npm install @vercel/analytics"
+	pnpm="pnpm add @vercel/analytics"
+	yarn="yarn add @vercel/analytics"
+	bun="bun add @vercel/analytics"
+	deno="deno add npm:@vercel/analytics"
+/>
 
 ```tsx
 // src/app/layout.tsx
@@ -409,7 +414,7 @@ a traffic spike. Omit it to sample every page view. See https://vercel.com/docs/
   `robots.ts` and read through `fetchQuery`/dynamic rendering, not the shared `vex` client —
   caching an authenticated, per-user surface behind a shared CDN entry is the wrong trade in
   either direction.
-- **A Convex dashboard edit, `npx convex import`, or a streaming import never runs application
+- **A Convex dashboard edit, `convex import`, or a streaming import never runs application
   code**, so nothing purges automatically for any of them. That's exactly what the manual
   **Revalidate** button and the `export const revalidate` ISR window exist to cover — the button
   for "purge now", the window as a backstop for whichever write nobody caught in time.

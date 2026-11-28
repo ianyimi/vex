@@ -3,6 +3,8 @@ title: Versioning & Drafts
 description: Turn on a draft/publish workflow for a collection or global — a stable published row, at most one draft beside it, immutable version history, and a live preview that can show the draft.
 ---
 
+import PmCommand from '../../../components/PmCommand.astro';
+
 A versioned document is **one published row with a stable `_id`**, plus at most one
 **draft row** pointing back at it through `vex_publishedId`. Edits land on the draft;
 publishing copies them onto the published row and deletes the draft, so the `_id` your
@@ -245,10 +247,9 @@ exist.
    })
    ```
 
-   ```sh
-   npx convex run backfillPagesStatus:run '{"paginationOpts":{"numItems":200,"cursor":null}}'
-   # repeat with the returned continueCursor until isDone: true
-   ```
+   <PmCommand type="exec" pkg="convex" args={`run backfillPagesStatus:run '{"paginationOpts":{"numItems":200,"cursor":null}}'`} />
+
+   Repeat it with the returned `continueCursor` until `isDone` is `true`.
 
 3. Delete your old `status` field and point any query that filtered on it at the built-in
    `drafts` argument instead.

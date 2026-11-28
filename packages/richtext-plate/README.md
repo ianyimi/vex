@@ -8,9 +8,50 @@ Install `@vexcms/richtext-plate` alongside a `richtext()` field: register
 
 ## Installation
 
+<details open>
+<summary>npm</summary>
+
+```bash
+npm install @vexcms/richtext-plate@alpha
+```
+
+</details>
+
+<details>
+<summary>pnpm</summary>
+
 ```bash
 pnpm add @vexcms/richtext-plate@alpha
 ```
+
+</details>
+
+<details>
+<summary>yarn</summary>
+
+```bash
+yarn add @vexcms/richtext-plate@alpha
+```
+
+</details>
+
+<details>
+<summary>bun</summary>
+
+```bash
+bun add @vexcms/richtext-plate@alpha
+```
+
+</details>
+
+<details>
+<summary>deno</summary>
+
+```bash
+deno add npm:@vexcms/richtext-plate@alpha
+```
+
+</details>
 
 ## Exports
 

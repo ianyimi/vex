@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
+import { parse as parseYaml } from 'yaml';
 import { spawnSync } from 'child_process';
 import { createInstaller } from '../installers/index.js';
 import type { ProjectOptions } from '../installers/types.js';
@@ -30,6 +31,7 @@ const YES_DEFAULTS = {
   installDependencies: false,
   workspaceRoot: null as string | null,
   yes: true,
+  packageManager: { name: 'pnpm', version: null } as ProjectOptions['packageManager'],
 };
 
 async function scaffold(overrides: {
@@ -40,6 +42,7 @@ async function scaffold(overrides: {
   workspaceRoot?: string | null;
   orgs?: boolean;
   port?: number;
+  packageManager?: ProjectOptions['packageManager'];
 }): Promise<void> {
   const options: ProjectOptions = { ...YES_DEFAULTS, ...overrides };
   const installer = createInstaller({
@@ -60,6 +63,8 @@ let orgsBareDir: string;
 let orgsFullDir: string;
 let customPortDir: string;
 let pmStubDir: string;
+let yarnDir: string;
+let denoDir: string;
 
 beforeAll(async () => {
   if (!fs.existsSync(baseTemplateDir)) {
@@ -156,19 +161,33 @@ beforeAll(async () => {
 
   pmStubDir = path.join(tmpRoot, 'pm-stub-project');
   fs.ensureDirSync(pmStubDir);
-  const savedUserAgent = process.env.npm_config_user_agent;
-  process.env.npm_config_user_agent = 'pnpm/9.1.0 npm/? node/v20.11.0 darwin arm64';
-  try {
-    await scaffold({
-      projectName: 'pm-stub-project',
-      projectDir: pmStubDir,
-      bare: true,
-      monorepo: false,
-    });
-  } finally {
-    if (savedUserAgent === undefined) delete process.env.npm_config_user_agent;
-    else process.env.npm_config_user_agent = savedUserAgent;
-  }
+  await scaffold({
+    projectName: 'pm-stub-project',
+    projectDir: pmStubDir,
+    bare: true,
+    monorepo: false,
+    packageManager: { name: 'pnpm', version: '9.1.0' },
+  });
+
+  yarnDir = path.join(tmpRoot, 'yarn-project');
+  fs.ensureDirSync(yarnDir);
+  await scaffold({
+    projectName: 'yarn-project',
+    projectDir: yarnDir,
+    bare: false,
+    monorepo: false,
+    packageManager: { name: 'yarn', version: '4.19.0' },
+  });
+
+  denoDir = path.join(tmpRoot, 'deno-project');
+  fs.ensureDirSync(denoDir);
+  await scaffold({
+    projectName: 'deno-project',
+    projectDir: denoDir,
+    bare: true,
+    monorepo: false,
+    packageManager: { name: 'deno', version: null },
+  });
 }, 120_000);
 
 afterAll(() => {
@@ -394,10 +413,30 @@ describe('scaffolder hygiene (WP-5)', () => {
     expect(pkg.packageManager).toBe('pnpm@9.1.0');
   });
 
-  it('e: the better-auth/passkey pin is mirrored into npm overrides and yarn resolutions', () => {
-    const pkg = fs.readJsonSync(path.join(bareDir, 'package.json'));
-    expect(pkg.overrides?.['@better-auth/passkey']).toBe(pkg.pnpm.overrides['@better-auth/passkey']);
-    expect(pkg.resolutions?.['@better-auth/passkey']).toBe(pkg.pnpm.overrides['@better-auth/passkey']);
+  it('d2: no packageManager field without an exact version, or for deno', () => {
+    expect(fs.readJsonSync(path.join(bareDir, 'package.json')).packageManager).toBeUndefined();
+    expect(fs.readJsonSync(path.join(denoDir, 'package.json')).packageManager).toBeUndefined();
+  });
+
+  it('e: pins land where each manager reads them — pnpm-workspace.yaml, resolutions, overrides', () => {
+    const template = fs.readJsonSync(path.join(baseTemplateDir, 'package.json'));
+    const pins = template.overrides;
+    expect(pins['@better-auth/passkey']).toBe('1.7.18');
+
+    const pnpmPkg = fs.readJsonSync(path.join(bareDir, 'package.json'));
+    expect(pnpmPkg.pnpm).toBeUndefined();
+    expect(pnpmPkg.overrides).toBeUndefined();
+    const pnpmSettings = parseYaml(fs.readFileSync(path.join(bareDir, 'pnpm-workspace.yaml'), 'utf-8'));
+    expect(pnpmSettings.overrides).toEqual(pins);
+    expect(pnpmSettings.allowBuilds).toEqual(template.pnpm.allowBuilds);
+
+    const yarnPkg = fs.readJsonSync(path.join(yarnDir, 'package.json'));
+    expect(yarnPkg.resolutions).toEqual(pins);
+    expect(yarnPkg.overrides).toBeUndefined();
+
+    const denoPkg = fs.readJsonSync(path.join(denoDir, 'package.json'));
+    expect(denoPkg.overrides).toEqual(pins);
+    expect(denoPkg.pnpm).toBeUndefined();
   });
 
   it('f: --bare has no seed script (no convex/seed.ts to run); full scaffold has both', () => {
@@ -411,6 +450,35 @@ describe('scaffolder hygiene (WP-5)', () => {
   });
 });
 
+describe('package manager (yarn and deno scaffolds)', () => {
+  it('yarn: node-modules linker, yarn add in vex:update, yarn commands in the README', () => {
+    expect(parseYaml(fs.readFileSync(path.join(yarnDir, '.yarnrc.yml'), 'utf-8'))).toEqual({
+      nodeLinker: 'node-modules',
+      npmPreapprovedPackages: ['@vexcms/*'],
+    });
+    const pkg = fs.readJsonSync(path.join(yarnDir, 'package.json'));
+    expect(pkg.packageManager).toBe('yarn@4.19.0');
+    expect(pkg.pnpm).toBeUndefined();
+    expect(fs.existsSync(path.join(yarnDir, 'pnpm-workspace.yaml'))).toBe(false);
+    expect(pkg.scripts['vex:update']).toMatch(/^yarn add @vexcms\/core@latest /);
+
+    const readme = fs.readFileSync(path.join(yarnDir, 'README.md'), 'utf-8');
+    expect(readme).toContain('yarn convex env set SITE_URL');
+    expect(readme).toContain("yarn vex:deploy --cmd 'yarn build'");
+    expect(readme).not.toMatch(/\bpnpm\b|\bnpx\b/);
+  });
+
+  it('deno: deno task / deno add commands, no .yarnrc.yml', () => {
+    expect(fs.existsSync(path.join(denoDir, '.yarnrc.yml'))).toBe(false);
+    const pkg = fs.readJsonSync(path.join(denoDir, 'package.json'));
+    expect(pkg.scripts['vex:update']).toMatch(/^deno add npm:@vexcms\/core@latest /);
+
+    const readme = fs.readFileSync(path.join(denoDir, 'README.md'), 'utf-8');
+    expect(readme).toContain('deno task vex:dev');
+    expect(readme).toContain("deno task vex:deploy --cmd 'deno task build'");
+    expect(readme).not.toMatch(/\bpnpm\b|\bnpx\b/);
+  });
+});
 
 describe('organization wiring (--orgs declined vs accepted)', () => {
   function walkTsFiles(dir: string): string[] {

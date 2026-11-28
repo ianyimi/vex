@@ -24,12 +24,31 @@ const LOCK_FILES: Array<{ file: string; pm: PackageManager }> = [
   { file: "yarn.lock", pm: { cmd: "yarn", args: [] } },
   { file: "bun.lockb", pm: { cmd: "bunx", args: [] } },
   { file: "bun.lock", pm: { cmd: "bunx", args: [] } },
+  // `deno x` (Deno 2.6+) runs the project's own `convex` bin; without this row a Deno
+  // project fell through to `npx`, which needs a separate Node.js + npm install.
+  { file: "deno.lock", pm: { cmd: "deno", args: ["x"] } },
   { file: "package-lock.json", pm: { cmd: "npx", args: [] } },
 ];
 
 /**
+ * Whether `cmd` runs on this machine (`<cmd> --version` exits 0).
+ * @param cmd - Executable name to look up on PATH.
+ * @returns `false` when it's missing or fails.
+ */
+function canRun(cmd: string): boolean {
+  try {
+    execFileSync(cmd, ["--version"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Detect the package manager. Checks lock files in `cwd` first, then
- * walks up the directory tree. Falls back to npx if nothing is found.
+ * walks up the directory tree. Falls back to npx if nothing is found, or
+ * when a `deno.lock` is found but `deno` isn't installed (a project
+ * checked out on a machine that only has Node.js).
  * @param cwd - Directory to start the lockfile search from.
  * @returns The detected package manager's invocation (`cmd` plus any
  * wrapper `args`, e.g. `pnpm exec`) used to run `convex` through it;
@@ -41,7 +60,12 @@ function detectPackageManager(cwd: string): PackageManager {
 
   while (true) {
     for (const { file, pm } of LOCK_FILES) {
-      if (existsSync(resolve(dir, file))) return pm;
+      if (!existsSync(resolve(dir, file))) continue;
+      if (pm.cmd === "deno" && !canRun("deno")) {
+        logger.warn("Found deno.lock but `deno` isn't on PATH; running convex through npx instead.");
+        return { cmd: "npx", args: [] };
+      }
+      return pm;
     }
     const parent = dirname(dir);
     if (parent === dir || dir === root) break;

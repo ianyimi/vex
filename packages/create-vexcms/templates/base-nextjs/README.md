@@ -92,16 +92,19 @@ sent to `/admin` — see `convex/vex/firstUser.ts`.
 
 ## Scripts
 
-```bash
-pnpm dev              # Start the Next.js dev server
-pnpm vex:dev           # Start VexCMS's schema watcher + convex dev
-pnpm vex:generate      # Regenerate the Convex schema and types once
-pnpm build             # Build for production
-pnpm typecheck         # Type check without emitting
-pnpm lint              # Lint
-pnpm format            # Format with Prettier
-pnpm secret:create     # Generate a Better Auth secret
-```
+| Command | What it does |
+| --- | --- |
+| `pnpm dev` | Start the Next.js dev server |
+| `pnpm vex:dev` | Start VexCMS's schema watcher + `convex dev` |
+| `pnpm vex:generate` | Regenerate the Convex schema and types once |
+| `pnpm build` | Build for production |
+| `pnpm start` | Serve the production build |
+| `pnpm typecheck` | Type check without emitting |
+| `pnpm lint` | Lint |
+| `pnpm format` | Format with Prettier |
+| `pnpm secret:create` | Generate a Better Auth secret |
+| `pnpm vex:update` | Update every `@vexcms/*` package |
+| `pnpm vex:deploy` | Generate the schema and deploy to Convex production |
 
 ## Documentation
 

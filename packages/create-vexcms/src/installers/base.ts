@@ -13,7 +13,15 @@ import { execa } from 'execa';
 import ora from 'ora';
 import crypto from 'crypto';
 import path from 'path';
-import type { ProjectOptions, PackageManager } from './types.js';
+import { stringify as stringifyYaml } from 'yaml';
+import type { ProjectOptions, ResolvedPackageManager } from './types.js';
+import {
+  addPackagesCommand,
+  installCommandLine,
+  packageManagerField,
+  rewriteCommands,
+  runScriptCommandLine,
+} from '../helpers/packageManager.js';
 import { copyTemplate, overlayTemplate } from '../helpers/fileOperations.js';
 import { readWorkspaceCatalog, rewriteManifestForMonorepo } from '../helpers/monorepo.js';
 import {
@@ -156,8 +164,7 @@ export abstract class VexFrameworkInstaller {
   }
 
   /**
-   * Update the package.json name field, the vex:update script (to match the
-   * detected package manager), and README.md's `{{PROJECT_NAME}}` heading.
+   * Update the package.json name field and README.md's `{{PROJECT_NAME}}` heading.
    *
    * @param name - npm package name to write into `package.json`'s `name` field
    *   and to substitute for `{{PROJECT_NAME}}` in `README.md`.
@@ -166,21 +173,6 @@ export abstract class VexFrameworkInstaller {
     const pkgPath = path.join(this.targetPath, 'package.json');
     const pkg = await fs.readJson(pkgPath);
     pkg.name = name;
-
-    // Only write `packageManager` when `npm_config_user_agent` actually
-    // identifies one — corepack enforces this field strictly, so a guessed
-    // value (the detector's `npm` default with no signal at all) would make
-    // every other package manager refuse to install against the scaffold.
-    const packageManagerField = this.buildPackageManagerField();
-    if (packageManagerField) pkg.packageManager = packageManagerField;
-
-    // Update vex:update script to use detected package manager
-    const pm = this.detectPackageManager();
-    if (pkg.scripts?.['vex:update'] && pm !== 'pnpm') {
-      const addCmd = pm === 'yarn' ? 'yarn add' : pm === 'bun' ? 'bun add' : 'npm install';
-      pkg.scripts['vex:update'] = pkg.scripts['vex:update'].replace(/^pnpm add/, addCmd);
-    }
-
     await fs.writeJson(pkgPath, pkg, { spaces: 2 });
 
     // README.md's title carries the same {{PROJECT_NAME}} marker as
@@ -285,49 +277,94 @@ export abstract class VexFrameworkInstaller {
   }
 
   /**
-   * Detect the package manager used to invoke the CLI
+   * Point the scaffold at its package manager. The templates are written for pnpm; this
+   * rewrites everything that names a manager:
    *
-   * @returns The package manager inferred from `npm_config_user_agent`, defaulting to `"npm"` when it can't be determined.
+   * - `packageManager` (Corepack's `pm@x.y.z`) only when the invoking command reported an
+   *   exact version: Corepack enforces the field strictly, so a guess (or Deno's `npm/?`)
+   *   would make the project refuse to install.
+   * - `vex:update` uses the manager's own add command.
+   * - the template's version pins live once, in npm's `overrides` (also read by bun and
+   *   deno). Yarn reads `resolutions`, so yarn gets them there instead. For pnpm they move,
+   *   with the template's `package.json#pnpm` settings (build allowlist, peer rules), into
+   *   `pnpm-workspace.yaml` — pnpm 11+ no longer reads the `pnpm` field. Every other manager
+   *   drops the `pnpm` field. `--monorepo` leaves all of it alone: the host workspace owns
+   *   those settings.
+   * - yarn gets a `.yarnrc.yml`: `nodeLinker: node-modules` (yarn 2+ defaults to Plug'n'Play,
+   *   which Next.js and the Convex CLI don't run under) and `@vexcms/*` exempt from yarn 4's
+   *   one-day release-age gate, since a scaffold pins the `@vexcms/*` release it was created
+   *   with. Yarn 1 ignores the file. Deno 2.9+ has the same one-day gate, so deno gets a
+   *   `deno.json` exempting the scaffold's `@vexcms/*` dependencies.
+   * - every `pnpm …`/`npx …` command in README.md becomes the manager's own.
+   *
+   * @param pm - The resolved package manager.
+   * @param monorepo - Whether this is a `--monorepo` scaffold inside a host pnpm workspace.
    */
-  protected detectPackageManager(): PackageManager {
-    const userAgent = process.env.npm_config_user_agent;
+  protected async configurePackageManager(pm: ResolvedPackageManager, monorepo: boolean): Promise<void> {
+    const pkgPath = path.join(this.targetPath, 'package.json');
+    let pkg = await fs.readJson(pkgPath);
 
-    if (userAgent) {
-      if (userAgent.includes('pnpm')) return 'pnpm';
-      if (userAgent.includes('yarn')) return 'yarn';
-      if (userAgent.includes('bun')) return 'bun';
+    const field = packageManagerField(pm);
+    if (field) pkg.packageManager = field;
+
+    const update: string | undefined = pkg.scripts?.['vex:update'];
+    if (update) {
+      const packages = update.replace(/^pnpm add\s+/, '').split(/\s+/);
+      pkg.scripts['vex:update'] = addPackagesCommand(pm.name, packages);
     }
 
-    return 'npm';
+    if (!monorepo) {
+      const { overrides, pnpm: pnpmSettings, ...rest } = pkg;
+      if (pm.name === 'pnpm') {
+        const workspaceSettings = { ...(overrides ? { overrides } : {}), ...pnpmSettings };
+        await fs.writeFile(path.join(this.targetPath, 'pnpm-workspace.yaml'), stringifyYaml(workspaceSettings));
+        pkg = rest;
+      } else if (pm.name === 'yarn') {
+        pkg = { ...rest, ...(overrides ? { resolutions: overrides } : {}) };
+      } else {
+        pkg = { ...rest, ...(overrides ? { overrides } : {}) };
+      }
+    }
+    await fs.writeJson(pkgPath, pkg, { spaces: 2 });
+
+    if (pm.name === 'yarn') {
+      await fs.writeFile(
+        path.join(this.targetPath, '.yarnrc.yml'),
+        stringifyYaml({ nodeLinker: 'node-modules', npmPreapprovedPackages: ['@vexcms/*'] }),
+      );
+    }
+
+    if (pm.name === 'deno') {
+      const vexPackages = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })
+        .filter((name) => name.startsWith('@vexcms/'))
+        .map((name) => `npm:${name}`);
+      await fs.writeJson(
+        path.join(this.targetPath, 'deno.json'),
+        { minimumDependencyAge: { age: 'P1D', exclude: vexPackages } },
+        { spaces: 2 },
+      );
+    }
+
+    const readmePath = path.join(this.targetPath, 'README.md');
+    if (await fs.pathExists(readmePath)) {
+      const readme = await fs.readFile(readmePath, 'utf-8');
+      // `seed` too: the README's marketing-only seed step is also in a --bare scaffold's copy.
+      const scripts = [...Object.keys(pkg.scripts ?? {}), 'seed'];
+      await fs.writeFile(readmePath, rewriteCommands(readme, pm.name, scripts));
+    }
   }
 
   /**
-   * Build the `packageManager` field value (Corepack's `pm@version` shape)
-   * from `npm_config_user_agent`, when it names a version for the detected
-   * package manager. Returns `undefined` when there is no real signal (a
-   * direct `node` invocation, or a user agent that doesn't carry a version)
-   * rather than guessing — Corepack/pnpm enforce this field strictly, so a
-   * wrong guess (e.g. `npm@…` on a pnpm workspace) breaks the next install
-   * instead of merely being unhelpful.
+   * Install project dependencies with the scaffold's package manager.
    *
-   * @returns A string like `"pnpm@9.1.0"`, or `undefined` when undetectable.
+   * @param pm - The resolved package manager.
    */
-  protected buildPackageManagerField(): string | undefined {
-    const pm = this.detectPackageManager();
-    const userAgent = process.env.npm_config_user_agent;
-    const match = userAgent?.match(new RegExp(`${pm}/(\\S+)`));
-    return match ? `${pm}@${match[1]}` : undefined;
-  }
-
-  /**
-   * Install project dependencies using detected package manager
-   */
-  protected async installDependencies(): Promise<void> {
-    const packageManager = this.detectPackageManager();
-    const spinner = ora(`Installing dependencies with ${packageManager}...`).start();
+  protected async installDependencies(pm: ResolvedPackageManager): Promise<void> {
+    const spinner = ora(`Installing dependencies with ${pm.name}...`).start();
+    const { command, args } = installCommandLine(pm.name);
 
     try {
-      await execa(packageManager, ['install'], {
+      await execa(command, args, {
         cwd: this.targetPath,
         stdio: 'pipe',
       });
@@ -342,13 +379,15 @@ export abstract class VexFrameworkInstaller {
 
   /**
    * Format code using project's formatter
+   *
+   * @param pm - The resolved package manager.
    */
-  protected async formatCode(): Promise<void> {
-    const packageManager = this.detectPackageManager();
+  protected async formatCode(pm: ResolvedPackageManager): Promise<void> {
     const spinner = ora('Formatting code...').start();
+    const { command, args } = runScriptCommandLine(pm.name, 'format');
 
     try {
-      const result = await execa(packageManager, ['run', 'format'], {
+      const result = await execa(command, args, {
         cwd: this.targetPath,
         stdio: 'pipe',
         reject: false,
@@ -367,17 +406,15 @@ export abstract class VexFrameworkInstaller {
 
   /**
    * Lint and fix code using project's ESLint configuration
+   *
+   * @param pm - The resolved package manager.
    */
-  protected async lintCode(): Promise<void> {
-    const packageManager = this.detectPackageManager();
+  protected async lintCode(pm: ResolvedPackageManager): Promise<void> {
     const spinner = ora('Linting and fixing code...').start();
+    const { command, args } = runScriptCommandLine(pm.name, 'lint', ['--fix']);
 
     try {
-      const args = packageManager === 'pnpm'
-        ? ['lint', '--fix']
-        : ['run', 'lint', '--', '--fix'];
-
-      const result = await execa(packageManager, args, {
+      const result = await execa(command, args, {
         cwd: this.targetPath,
         stdio: 'pipe',
         reject: false,
@@ -650,6 +687,16 @@ export abstract class VexFrameworkInstaller {
       throw error;
     }
 
+    // Step 9.5: Point scripts, README and yarn config at the package manager
+    const pmSpinner = ora(`Configuring for ${options.packageManager.name}...`).start();
+    try {
+      await this.configurePackageManager(options.packageManager, options.monorepo);
+      pmSpinner.succeed(`Configured for ${options.packageManager.name}`);
+    } catch (error) {
+      pmSpinner.fail(`Failed to configure for ${options.packageManager.name}`);
+      throw error;
+    }
+
     // Step 10.5: Rewrite package.json for the host workspace (--monorepo only)
     if (options.monorepo) {
       const monorepoSpinner = ora('Rewriting dependencies for the host workspace...').start();
@@ -664,9 +711,9 @@ export abstract class VexFrameworkInstaller {
 
     // Step 10: Install dependencies (optional; --monorepo defers to the host's install)
     if (options.installDependencies && !options.monorepo) {
-      await this.installDependencies();
-      await this.lintCode();
-      await this.formatCode();
+      await this.installDependencies(options.packageManager);
+      await this.lintCode(options.packageManager);
+      await this.formatCode(options.packageManager);
     }
 
     // Step 11: Initialize Git repository (optional; --monorepo defers to the host repo).

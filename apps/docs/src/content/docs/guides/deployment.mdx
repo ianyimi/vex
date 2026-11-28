@@ -5,6 +5,9 @@ sidebar:
   hidden: true
 ---
 
+import PmCommand from '../../../components/PmCommand.astro';
+import PmTabs from '../../../components/PmTabs.astro';
+
 This guide covers the two deploys a VexCMS project needs for production: pushing your schema
 and functions to a Convex production deployment, and deploying the Next.js app to Vercel with
 the right build command and environment variables.
@@ -12,17 +15,20 @@ the right build command and environment variables.
 ## Prerequisites
 
 - A scaffolded project already running locally — see the [quickstart guide](/guides/quickstart/).
-- A Convex account, logged in locally (`npx convex login` if you haven't already).
+- A Convex account, logged in locally (`convex login`, below, if you haven't already).
 - A Vercel project connected to this repository (or the Vercel CLI).
 - The `vex:deploy` script in `package.json` (`"vex:deploy": "vex deploy"`). Every project
   scaffolded by `create-vexcms@alpha` ships it by default; if yours predates that, add the
   script yourself.
 
+Commands on this page are shown for each package manager; pick yours in any tab and the rest
+follow. To log in to Convex:
+
+<PmCommand type="exec" pkg="convex" args="login" />
+
 ## Deploy Convex to production
 
-```bash
-pnpm vex:deploy
-```
+<PmCommand type="run" pkg="vex:deploy" />
 
 `vex deploy` resolves `vex.config.server.ts`, regenerates the Convex schema
 (`convex/vex.schema.ts`) and types (`src/vex.types.ts`) if they've drifted from your config,
@@ -33,7 +39,7 @@ your linked production deployment.
 `vex deploy [--cwd <dir>] [convex deploy flags…]` forwards every flag it doesn't own straight
 through to that final `convex deploy` call — `--cmd`, `--preview-create`, and the rest. See
 [Passing flags to convex deploy](#passing-flags-to-convex-deploy) below — the Vercel build
-command uses exactly this to run `pnpm build` as part of the same deploy.
+command uses exactly this to run your `build` script as part of the same deploy.
 
 ## Set the production Convex environment
 
@@ -41,18 +47,34 @@ Better Auth runs inside your Convex deployment, not inside the Next.js server, s
 reads anything from Vercel. Set these on the deployment itself, before or right after your
 first `vex:deploy`:
 
-```bash
-npx convex env set SITE_URL https://your-prod-domain.example --prod
-npx convex env set BETTER_AUTH_SECRET <the same BETTER_AUTH_SECRET you set in Vercel below> --prod
-```
+<PmTabs
+	npm={`npx convex env set SITE_URL https://your-prod-domain.example --prod
+npx convex env set BETTER_AUTH_SECRET <the same BETTER_AUTH_SECRET you set in Vercel below> --prod`}
+	pnpm={`pnpm convex env set SITE_URL https://your-prod-domain.example --prod
+pnpm convex env set BETTER_AUTH_SECRET <the same BETTER_AUTH_SECRET you set in Vercel below> --prod`}
+	yarn={`yarn convex env set SITE_URL https://your-prod-domain.example --prod
+yarn convex env set BETTER_AUTH_SECRET <the same BETTER_AUTH_SECRET you set in Vercel below> --prod`}
+	bun={`bunx convex env set SITE_URL https://your-prod-domain.example --prod
+bunx convex env set BETTER_AUTH_SECRET <the same BETTER_AUTH_SECRET you set in Vercel below> --prod`}
+	deno={`deno x convex env set SITE_URL https://your-prod-domain.example --prod
+deno x convex env set BETTER_AUTH_SECRET <the same BETTER_AUTH_SECRET you set in Vercel below> --prod`}
+/>
 
 If your project added any OAuth providers, their Client ID/Secret pair needs setting here too
 — `convex/auth/options.ts` reads them the same way it reads `SITE_URL`:
 
-```bash
-npx convex env set GITHUB_CLIENT_ID <value> --prod
-npx convex env set GITHUB_CLIENT_SECRET <value> --prod
-```
+<PmTabs
+	npm={`npx convex env set GITHUB_CLIENT_ID <value> --prod
+npx convex env set GITHUB_CLIENT_SECRET <value> --prod`}
+	pnpm={`pnpm convex env set GITHUB_CLIENT_ID <value> --prod
+pnpm convex env set GITHUB_CLIENT_SECRET <value> --prod`}
+	yarn={`yarn convex env set GITHUB_CLIENT_ID <value> --prod
+yarn convex env set GITHUB_CLIENT_SECRET <value> --prod`}
+	bun={`bunx convex env set GITHUB_CLIENT_ID <value> --prod
+bunx convex env set GITHUB_CLIENT_SECRET <value> --prod`}
+	deno={`deno x convex env set GITHUB_CLIENT_ID <value> --prod
+deno x convex env set GITHUB_CLIENT_SECRET <value> --prod`}
+/>
 
 (Swap `GITHUB_*` for whichever provider(s) you selected while scaffolding — the variable names
 match your project's own `src/env.mjs` exactly.)
@@ -75,12 +97,10 @@ only until two environments need to accept a sign-in at the same time.
 
 ## Seed production (marketing-site starter)
 
-The marketing-site starter ships `pnpm seed` → `convex run seed:init`, an idempotent mutation
+The marketing-site starter ships a `seed` script (`convex run seed:init`), an idempotent mutation
 that only inserts documents missing from the target deployment. Run it against prod directly:
 
-```bash
-npx convex run seed:init --prod
-```
+<PmCommand type="exec" pkg="convex" args="run seed:init --prod" />
 
 A `--bare` project has no `convex/seed.ts` — skip this step.
 
@@ -102,22 +122,28 @@ Set every variable `src/env.mjs`'s schema requires, for the **Production** envir
 
 `CONVEX_DEPLOY_KEY` is what the `convex deploy` call inside `vex:deploy` authenticates with
 when it runs as part of the Vercel build — without it, the build command below fails before it
-ever reaches `pnpm build`. Scope it to **Production** only: a Preview build should never be
+ever reaches the build. Scope it to **Production** only: a Preview build should never be
 able to push schema to your real deployment.
 
 ### Build command
 
 Override Vercel's build command (Project → Settings → Build and Deployment) to:
 
-```
-pnpm vex:deploy --cmd 'pnpm build'
-```
+<PmTabs
+	frame="code"
+	npm="npm run vex:deploy -- --cmd 'npm run build'"
+	pnpm="pnpm run vex:deploy --cmd 'pnpm run build'"
+	yarn="yarn run vex:deploy --cmd 'yarn run build'"
+	bun="bun run vex:deploy --cmd 'bun run build'"
+	deno="deno task vex:deploy --cmd 'deno task build'"
+/>
 
 This is `vex deploy`'s version of
 [Convex's own "Using Convex with Vercel" recipe](https://docs.convex.dev/production/hosting/vercel):
-`--cmd` runs the deploy, then runs `pnpm build` with the resulting Convex URL injected into its
-environment — the same as `npx convex deploy --cmd 'npm run build'` does, just running through
-`vex deploy` first so your schema generation and auto-migration happen before the build.
+`--cmd` runs the deploy, then runs your `build` script with the resulting Convex URL injected
+into its environment — the same as Convex's own `convex deploy --cmd '<build command>'`, just
+running through `vex deploy` first so your schema generation and auto-migration happen before
+the build.
 `--cmd` infers and injects `NEXT_PUBLIC_CONVEX_URL` for a Next.js build automatically; rename
 the injected variable with `--cmd-url-env-var-name <name>` if your build can't infer it.
 `NEXT_PUBLIC_CONVEX_SITE_URL` isn't something `--cmd` knows how to inject — set it as an
@@ -125,7 +151,10 @@ ordinary Vercel Production environment variable (above).
 
 ### Install command
 
-Vercel's default (`pnpm install`) is correct — no override needed.
+No override needed for npm, pnpm, yarn or bun: Vercel picks the package manager from your
+lockfile (`package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock`) and runs its install.
+Deno isn't one of the package managers Vercel detects; deploying a Deno-managed project to
+Vercel is untested.
 
 ## Create your first admin
 
@@ -152,13 +181,11 @@ emailAndPassword: {
 Then, once you've signed up yourself (above) and created every other account the deployment
 needs:
 
-```bash
-npx convex env set AUTH_DISABLE_SIGN_UP true --prod
-```
+<PmCommand type="exec" pkg="convex" args="env set AUTH_DISABLE_SIGN_UP true --prod" />
 
 `POST /api/auth/sign-up/email` now returns an error status on this deployment; existing
-accounts can still sign in. Reverse it with
-`npx convex env set AUTH_DISABLE_SIGN_UP false --prod`.
+accounts can still sign in. Reverse it by setting `AUTH_DISABLE_SIGN_UP` back to `false` the
+same way.
 
 ## Live preview on production
 
@@ -202,6 +229,6 @@ would otherwise report it as failed before it finished.
 - **No environment-variable management.** It neither reads nor writes Vercel or Convex
   environment variables itself — every value on this page is set by hand (or by your own CI
   secrets, or by `--cmd`'s own URL injection above), never by `vex deploy` directly.
-- **No Vercel step of its own.** `vex deploy` only talks to Convex. `pnpm build` (run directly,
-  or through `--cmd` above) is Vercel's own build step, not something `vex deploy` runs unless
-  you pass `--cmd`.
+- **No Vercel step of its own.** `vex deploy` only talks to Convex. Your `build` script (run
+  directly, or through `--cmd` above) is Vercel's own build step, not something `vex deploy`
+  runs unless you pass `--cmd`.

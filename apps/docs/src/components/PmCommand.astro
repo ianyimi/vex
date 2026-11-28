@@ -1,0 +1,12 @@
+---
+/**
+ * `<PackageManagers>` from starlight-package-managers with the five managers VexCMS
+ * documents, in a fixed order (the plugin's default is npm, pnpm, yarn only). Every
+ * other prop passes through: `type`, `pkg`, `args`, `comment`, `prefix`.
+ */
+import { PackageManagers, type PackageManagersProps } from 'starlight-package-managers';
+
+type Props = Omit<PackageManagersProps, 'pkgManagers'>;
+---
+
+<PackageManagers pkgManagers={['npm', 'pnpm', 'yarn', 'bun', 'deno']} {...Astro.props} />

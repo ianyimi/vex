@@ -4,9 +4,50 @@
 
 ## Installation
 
+<details open>
+<summary>npm</summary>
+
 ```bash
-pnpm add @vexcms/better-auth
+npm install @vexcms/better-auth@alpha
 ```
+
+</details>
+
+<details>
+<summary>pnpm</summary>
+
+```bash
+pnpm add @vexcms/better-auth@alpha
+```
+
+</details>
+
+<details>
+<summary>yarn</summary>
+
+```bash
+yarn add @vexcms/better-auth@alpha
+```
+
+</details>
+
+<details>
+<summary>bun</summary>
+
+```bash
+bun add @vexcms/better-auth@alpha
+```
+
+</details>
+
+<details>
+<summary>deno</summary>
+
+```bash
+deno add npm:@vexcms/better-auth@alpha
+```
+
+</details>
 
 ## Two entry points
 

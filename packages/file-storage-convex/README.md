@@ -4,9 +4,50 @@
 
 ## Installation
 
+<details open>
+<summary>npm</summary>
+
 ```bash
-pnpm add @vexcms/file-storage-convex
+npm install @vexcms/file-storage-convex@alpha
 ```
+
+</details>
+
+<details>
+<summary>pnpm</summary>
+
+```bash
+pnpm add @vexcms/file-storage-convex@alpha
+```
+
+</details>
+
+<details>
+<summary>yarn</summary>
+
+```bash
+yarn add @vexcms/file-storage-convex@alpha
+```
+
+</details>
+
+<details>
+<summary>bun</summary>
+
+```bash
+bun add @vexcms/file-storage-convex@alpha
+```
+
+</details>
+
+<details>
+<summary>deno</summary>
+
+```bash
+deno add npm:@vexcms/file-storage-convex@alpha
+```
+
+</details>
 
 ## Usage
 

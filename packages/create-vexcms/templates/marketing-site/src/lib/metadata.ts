@@ -43,13 +43,11 @@ export async function generatePageMetadata(props: { slug?: string }): Promise<Me
       return { title: "Untitled" }
     }
 
-    let pageData: Record<string, unknown> | undefined
-    if (props.slug) {
-      const pages = (await vex.query(api.pages.getBySlug, { slug: props.slug })) as
-        | Record<string, unknown>[]
-        | undefined
-      pageData = pages?.[0]
-    }
+    // Typed by the query itself: `vex dev` regenerates `PagesDocument` without an index
+    // signature, so a cast to `Record<string, unknown>[]` stops compiling after the first run.
+    const pageData = props.slug
+      ? (await vex.query(api.pages.getBySlug, { slug: props.slug }))?.[0]
+      : undefined
 
     const pageTitle = firstNonBlank(pageData?.metaTitle, pageData?.title)
     const siteName = firstNonBlank(settings.name)
@@ -59,7 +57,7 @@ export async function generatePageMetadata(props: { slug?: string }): Promise<Me
 
     // `upload()` fields always store an array of media ids — the first entry
     // is the selection. Page-level ogImage wins over the site default.
-    const pageOgImageId = (pageData?.ogImage as string[] | undefined)?.[0]
+    const pageOgImageId = pageData?.ogImage?.[0]
     const siteOgImageId = (settings.ogImage as string[] | undefined)?.[0]
     const ogImageId = pageOgImageId ?? siteOgImageId
     const ogImageUrl = ogImageId ? await resolveMediaUrl(ogImageId) : undefined

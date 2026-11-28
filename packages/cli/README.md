@@ -4,9 +4,50 @@ The CLI tool for [VEX CMS](https://github.com/ianyimi/vex) — handles schema ge
 
 ## Installation
 
+<details open>
+<summary>npm</summary>
+
 ```bash
-pnpm add -D @vexcms/cli
+npm install -D @vexcms/cli@alpha
 ```
+
+</details>
+
+<details>
+<summary>pnpm</summary>
+
+```bash
+pnpm add -D @vexcms/cli@alpha
+```
+
+</details>
+
+<details>
+<summary>yarn</summary>
+
+```bash
+yarn add -D @vexcms/cli@alpha
+```
+
+</details>
+
+<details>
+<summary>bun</summary>
+
+```bash
+bun add -d @vexcms/cli@alpha
+```
+
+</details>
+
+<details>
+<summary>deno</summary>
+
+```bash
+deno add -D npm:@vexcms/cli@alpha
+```
+
+</details>
 
 The CLI is exposed as the `vex` binary.
 

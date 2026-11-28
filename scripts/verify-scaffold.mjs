@@ -11,7 +11,12 @@
  * invariants, extended to a full project build.
  *
  * Usage:
- *   node scripts/verify-scaffold.mjs             pack + scaffold both templates, install/typecheck/build each
+ *   node scripts/verify-scaffold.mjs             pack + scaffold both templates, install/typecheck/lint/build each
+ *   node scripts/verify-scaffold.mjs --pm <manager>[@<version>]
+ *                                                scaffold for npm, pnpm (default), yarn, bun or deno
+ *                                                (`--use-<manager>`) and run every step with that manager;
+ *                                                a version also lands in the scaffold's `packageManager`
+ *                                                field, so Corepack runs that yarn/pnpm (`--pm yarn@4.19.0`)
  *   node scripts/verify-scaffold.mjs --keep      preserve the tmp pack/scaffold dirs for debugging
  *   node scripts/verify-scaffold.mjs --negative  AP-013 self-test: corrupt one override mapping and confirm
  *                                                the pipeline (correctly) fails — see the file-level note
@@ -41,6 +46,7 @@
  */
 
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import os from "node:os";
 import net from "node:net";
@@ -54,6 +60,33 @@ const cliArgs = process.argv.slice(2);
 const keep = cliArgs.includes("--keep");
 const negative = cliArgs.includes("--negative");
 const negativeRoutes = cliArgs.includes("--negative-routes");
+
+const pmArg = cliArgs.includes("--pm") ? cliArgs[cliArgs.indexOf("--pm") + 1] ?? "" : "pnpm";
+const [pmName, pmVersion] = pmArg.split("@");
+
+/**
+ * Command lines per package manager — the same spellings the scaffolder writes into the
+ * project's README (`packages/create-vexcms/src/helpers/packageManager.ts`). pnpm keeps
+ * `--no-frozen-lockfile` (CI defaults it on); yarn 4 turns immutable installs on under CI,
+ * so `runStep` sets `YARN_ENABLE_IMMUTABLE_INSTALLS=false` instead of a flag yarn 1 lacks.
+ */
+const PM_COMMANDS = {
+  npm: { install: ["install"], run: (script, args = []) => ["run", script, ...(args.length ? ["--", ...args] : [])] },
+  pnpm: { install: ["install", "--no-frozen-lockfile"], run: (script, args = []) => ["run", script, ...args] },
+  yarn: { install: ["install"], run: (script, args = []) => ["run", script, ...args] },
+  bun: { install: ["install"], run: (script, args = []) => ["run", script, ...args] },
+  deno: { install: ["install"], run: (script, args = []) => ["task", script, ...args] },
+};
+if (!PM_COMMANDS[pmName]) {
+  console.error(`verify-scaffold: --pm must be one of ${Object.keys(PM_COMMANDS).join(", ")} (got "${pmArg}")`);
+  process.exit(1);
+}
+const pm = { name: pmName, version: pmVersion ?? null, ...PM_COMMANDS[pmName] };
+
+/** `yaml` comes from create-vexcms's own dependencies; the repo root doesn't declare it. */
+const { parse: parseYaml, stringify: stringifyYaml } = createRequire(
+  path.join(root, "packages/create-vexcms/package.json"),
+)("yaml");
 
 /**
  * Derives the publishable package list from the workspace itself — a
@@ -154,7 +187,13 @@ function runStep(label, command, args, cwd) {
   const result = spawnSync(command, args, {
     cwd,
     stdio: "inherit",
-    env: { ...process.env, VEX_TELEMETRY_DISABLED: "1" },
+    env: {
+      ...process.env,
+      VEX_TELEMETRY_DISABLED: "1",
+      YARN_ENABLE_IMMUTABLE_INSTALLS: "false",
+      // The scaffolder reads the invoking manager's version from here for `packageManager`.
+      ...(pm.version ? { npm_config_user_agent: `${pm.name}/${pm.version} npm/? node/${process.version}` } : {}),
+    },
   });
   const ok = result.status === 0;
   const ms = Date.now() - start;
@@ -219,7 +258,7 @@ async function assertScaffoldRoutes(projectDir, template) {
   try {
     const port = await freePort();
     const base = `http://127.0.0.1:${port}`;
-    server = spawn("pnpm", ["run", "start", "--port", String(port)], {
+    server = spawn(pm.name, pm.run("start", ["--port", String(port)]), {
       cwd: projectDir,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -319,9 +358,16 @@ function freePort() {
 
 /**
  * Points every packed package's dependents at its local tarball instead of
- * the registry, via `pnpm.overrides` — this is what makes the install
- * actually exercise what would ship, rather than whatever `@vexcms/*`
- * version last hit npm.
+ * the registry — this is what makes the install actually exercise what would
+ * ship, rather than whatever `@vexcms/*` version last hit npm. The direct
+ * `@vexcms/*` dependencies become `file:` specs; transitive ones are pinned
+ * where the scaffold's manager reads pins: `pnpm-workspace.yaml#overrides`
+ * for pnpm, `resolutions` for yarn, `overrides` for bun. npm gets the direct
+ * specs only: its resolver rejects `file:` overrides on packages that are
+ * also peers (`ERESOLVE … peer overridden`), and the root copies already
+ * satisfy every nested `@vexcms/*` range. Deno can't install `file:`
+ * tarballs, so `--pm deno` leaves the scaffold on the published
+ * `@vexcms/*` release (Deno support is best-effort).
  *
  * @param {string} projectDir absolute path to a scaffolded project
  * @param {Map<string, string>} tarballs package name -> absolute tarball path
@@ -331,13 +377,28 @@ function injectOverrides(projectDir, tarballs) {
   if (!fs.existsSync(pkgPath)) {
     throw new Error(`${pkgPath} does not exist \u2014 scaffold did not produce a package.json`);
   }
+  if (pm.name === "deno") {
+    console.log("  (deno: installing the published @vexcms/* release, not the packed tarballs)");
+    return;
+  }
 
+  const specs = Object.fromEntries([...tarballs].map(([name, tarball]) => [name, `file:${tarball}`]));
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-  pkg.pnpm = pkg.pnpm ?? {};
-  pkg.pnpm.overrides = {
-    ...pkg.pnpm.overrides,
-    ...Object.fromEntries([...tarballs].map(([name, tarball]) => [name, `file:${tarball}`])),
-  };
+  for (const field of ["dependencies", "devDependencies"]) {
+    for (const name of Object.keys(pkg[field] ?? {})) {
+      if (specs[name]) pkg[field][name] = specs[name];
+    }
+  }
+
+  if (pm.name === "pnpm") {
+    const workspacePath = path.join(projectDir, "pnpm-workspace.yaml");
+    const settings = fs.existsSync(workspacePath) ? parseYaml(fs.readFileSync(workspacePath, "utf-8")) ?? {} : {};
+    settings.overrides = { ...settings.overrides, ...specs };
+    fs.writeFileSync(workspacePath, stringifyYaml(settings));
+  } else if (pm.name === "yarn" || pm.name === "bun") {
+    const field = pm.name === "yarn" ? "resolutions" : "overrides";
+    pkg[field] = { ...pkg[field], ...specs };
+  }
 
   fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
 }
@@ -390,8 +451,8 @@ async function runTemplate({ key, label, bare, staticRoutes, seoRoutes, cliEntry
     return step.ok;
   };
 
-  const scaffoldArgs = [cliEntry, key, "--yes", ...(bare ? ["--bare"] : [])];
-  if (!ok(runStep("scaffold (create-vexcms --yes)", "node", scaffoldArgs, scaffoldRoot))) {
+  const scaffoldArgs = [cliEntry, key, "--yes", `--use-${pm.name}`, ...(bare ? ["--bare"] : [])];
+  if (!ok(runStep(`scaffold (create-vexcms --yes --use-${pm.name})`, "node", scaffoldArgs, scaffoldRoot))) {
     return { key, label, steps };
   }
 
@@ -409,11 +470,11 @@ async function runTemplate({ key, label, bare, staticRoutes, seoRoutes, cliEntry
   const overrideStart = Date.now();
   try {
     injectOverrides(projectDir, tarballs);
-    ok({ label: "inject pnpm.overrides", ok: true, ms: Date.now() - overrideStart });
-    console.log(`  \u2713 inject pnpm.overrides (${Date.now() - overrideStart}ms)`);
+    ok({ label: "inject tarball overrides", ok: true, ms: Date.now() - overrideStart });
+    console.log(`  \u2713 inject tarball overrides (${Date.now() - overrideStart}ms)`);
   } catch (error) {
-    ok({ label: "inject pnpm.overrides", ok: false, ms: Date.now() - overrideStart });
-    console.error(`  \u2717 inject pnpm.overrides \u2014 ${error.message}`);
+    ok({ label: "inject tarball overrides", ok: false, ms: Date.now() - overrideStart });
+    console.error(`  \u2717 inject tarball overrides \u2014 ${error.message}`);
     return { key, label, steps };
   }
 
@@ -429,13 +490,14 @@ async function runTemplate({ key, label, bare, staticRoutes, seoRoutes, cliEntry
   }
 
   const remainingSteps = [
-    ["pnpm install", ["install", "--no-frozen-lockfile"]],
-    ["pnpm typecheck", ["run", "typecheck"]],
-    ["pnpm build", ["run", "build"]],
+    [`${pm.name} install`, pm.install],
+    [`${pm.name} typecheck`, pm.run("typecheck")],
+    [`${pm.name} lint`, pm.run("lint")],
+    [`${pm.name} build`, pm.run("build")],
   ];
   let built = true;
   for (const [stepLabel, args] of remainingSteps) {
-    built = ok(runStep(stepLabel, "pnpm", args, projectDir));
+    built = ok(runStep(stepLabel, pm.name, args, projectDir));
     if (!built) break;
   }
 
@@ -535,7 +597,7 @@ async function runNegativeSelfTest({ publishables, cliEntry }) {
       tarballs,
     });
 
-    const install = steps.find((step) => step.label === "pnpm install");
+    const install = steps.find((step) => step.label === `${pm.name} install`);
     if (install?.ok) {
       console.error(
         "\n\u2717 CRITICAL: pnpm install SUCCEEDED despite a broken @vexcms/core override mapping. " +
@@ -596,7 +658,7 @@ async function runNegativeRoutesSelfTest({ publishables, cliEntry }) {
     const scaffolded = runStep(
       "scaffold (create-vexcms --yes)",
       "node",
-      [cliEntry, template.key, "--yes"],
+      [cliEntry, template.key, "--yes", `--use-${pm.name}`],
       scaffoldRoot,
     );
     if (!scaffolded.ok) throw new Error("scaffold step failed \u2014 cannot run the routes self-test");
@@ -609,10 +671,10 @@ async function runNegativeRoutesSelfTest({ publishables, cliEntry }) {
     injectOverrides(projectDir, tarballs);
 
     for (const [stepLabel, args] of [
-      ["pnpm install", ["install", "--no-frozen-lockfile"]],
-      ["pnpm build", ["run", "build"]],
+      [`${pm.name} install`, pm.install],
+      [`${pm.name} build`, pm.run("build")],
     ]) {
-      const step = runStep(stepLabel, "pnpm", args, projectDir);
+      const step = runStep(stepLabel, pm.name, args, projectDir);
       if (!step.ok) throw new Error(`${stepLabel} failed before the route assertion could run`);
     }
 

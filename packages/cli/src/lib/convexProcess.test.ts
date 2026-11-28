@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { execFileSync } = vi.hoisted(() => ({ execFileSync: vi.fn() }));
@@ -109,5 +112,34 @@ describe("deployToProduction", () => {
 
     const [, , options] = execFileSync.mock.calls[0];
     expect(options).not.toHaveProperty("timeout");
+  });
+});
+
+describe("runner for a Deno project (deno.lock)", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    execFileSync.mockReset();
+    dir = mkdtempSync(join(tmpdir(), "vex-deno-lock-"));
+    writeFileSync(join(dir, "deno.lock"), "{}");
+    return () => rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("runs convex through `deno x` when deno is installed", () => {
+    deployToProduction({ cwd: dir });
+
+    const [cmd, argv] = execFileSync.mock.calls.at(-1)!;
+    expect([cmd, ...argv.slice(0, 3)]).toEqual(["deno", "x", "convex", "deploy"]);
+  });
+
+  it("falls back to npx when deno isn't on PATH", () => {
+    execFileSync.mockImplementation((cmd: string) => {
+      if (cmd === "deno") throw Object.assign(new Error("spawn deno ENOENT"), { code: "ENOENT" });
+    });
+
+    deployToProduction({ cwd: dir });
+
+    const [cmd, argv] = execFileSync.mock.calls.at(-1)!;
+    expect([cmd, ...argv.slice(0, 2)]).toEqual(["npx", "convex", "deploy"]);
   });
 });

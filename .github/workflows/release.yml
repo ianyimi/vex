@@ -8,8 +8,17 @@ on:
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
+  # Every package manager the docs list scaffolds, installs, lints and builds from this
+  # tree's tarballs before anything is versioned or published.
+  scaffold-package-managers:
+    name: Scaffold package managers
+    permissions:
+      contents: read
+    uses: ./.github/workflows/scaffold-package-managers.yml
+
   release:
     name: Release
+    needs: scaffold-package-managers
     runs-on: ubuntu-latest
     permissions:
       contents: write
