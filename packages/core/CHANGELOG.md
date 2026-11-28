@@ -1,5 +1,7 @@
 # @vexcms/core
 
+## 0.1.0-alpha.42
+
 ## 0.1.0-alpha.41
 
 ## 0.1.0-alpha.40
