@@ -2083,6 +2083,52 @@ literal union.
 **Lift.** One sentence (and the schema-output comment above it).
 **Why deferred.** Found during ADOPT (2026-11-25); not ADOPT's page.
 
+## `vexcms-project-init` skill is pnpm-only
+
+**What.** `skills/vexcms-project-init/SKILL.md` checks for pnpm, scaffolds with
+`pnpm create vexcms@alpha … --yes` and starts `pnpm vex:dev`/`pnpm dev`;
+`guides/agent-skills.mdx` describes those steps. The scaffolder now supports npm, yarn, bun and
+Deno (`2026-11-27-package-manager-support`).
+**Why.** An agent on a machine without pnpm stops at its first check.
+**Lift.** Small: detect the manager the user has, run its create command (or `--use-<manager>`),
+use the scaffold README's commands; re-run the skill's run-through.
+**Why deferred.** Out of the package-manager spec's scope (developer, 2026-11-27).
+
+## Telemetry reports Deno as `unknown`
+
+**What.** `@vexcms/telemetry`'s `packageManager` is `"pnpm" | "npm" | "yarn" | "bun" | "unknown"`
+and reads lockfiles without `deno.lock`, so a Deno project reports `unknown`.
+**Lift.** Small, but a telemetry schema change: add `"deno"`, the `deno.lock` row, the
+Telemetry guide's field table, and the receiver if it validates the enum.
+**Why deferred.** Found in `2026-11-27-package-manager-support`; Deno is best-effort.
+
+## `vex:update` installs `@latest`
+
+**What.** The scaffold's `vex:update` script adds `@vexcms/*@latest`. Until 0.1.0 moves
+`latest`, that tag is the unrelated `0.0.20` line (`next`/`react`/`richtext-plate`:
+`0.1.0-alpha.2`).
+**Lift.** Trivial either way: `@alpha` until launch, or leave it for `copy-flip.patch` to make
+correct by moving `latest` at Release.
+**Why deferred.** Pre-launch only; the Release step fixes it by itself.
+
+## Marketing first sign-up lands on `/`, not `/admin`
+
+**What.** On a fresh marketing-site scaffold the first account is promoted to admin, but the
+browser ends on `/` instead of `/admin` (every package manager, matrix 2026-11-27). The base
+template redirects. `FirstAdminBootstrap` calls `router.push("/admin")` after promotion; the
+auth view's own post-sign-up redirect to `/` likely wins the race. Not confirmed.
+**Lift.** Small once confirmed; check `AuthViewProvider`'s redirect and the bootstrap order.
+**Why deferred.** Template behaviour, not package-manager behaviour; reported to the developer.
+
+## Admin list links a draft row that 404s after Publish
+
+**What.** On the marketing `pages` collection (drafts on), after "Save Draft" the list links the
+draft row's `_id`; publishing deletes that row, so the open edit URL shows "Document not found".
+Seen in the 2026-11-27 package-manager matrix. The versioning guide says admin URLs point at
+the stable published `_id`.
+**Lift.** Unknown; core list/edit routing for versioned collections.
+**Why deferred.** Core behaviour, outside the package-manager spec; reported to the developer.
+
 ---
 
 ## Publish the four example apps as free templates (post-launch)

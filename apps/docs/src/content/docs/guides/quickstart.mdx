@@ -5,31 +5,55 @@ sidebar:
   hidden: true
 ---
 
+import PmCommand from '../../../components/PmCommand.astro';
+import PmTabs from '../../../components/PmTabs.astro';
+
 VexCMS ships a scaffolding CLI that generates a complete Next.js + Convex project — auth, admin
 panel, and (by default) a marketing site starter — ready to run.
 
+## Requirements
+
+- Node.js 22 or newer.
+- One of npm 10+, pnpm 10+, yarn 4+ or bun 1.2+. Deno 2.6+ and yarn 1.22 work on a best-effort
+  basis: they're tested, but a regression there doesn't block a release.
+- On Node.js 25 and newer, Corepack is no longer bundled; install pnpm or yarn directly if your
+  setup relied on `corepack enable`.
+
+Pick your package manager in any tab below; every command block on the page follows it.
+
 ## Scaffold a project
 
-```bash
-pnpm create vexcms@alpha my-site
-```
+<PmTabs
+	npm="npm create vexcms@alpha my-site"
+	pnpm="pnpm create vexcms@alpha my-site"
+	yarn="yarn create vexcms@alpha my-site"
+	bun="bun create vexcms@alpha my-site"
+	deno="deno run -A npm:create-vexcms@alpha my-site"
+/>
+
+The project is set up for the package manager that ran the command: its scripts, `README.md`
+and the printed next steps all use that manager. Pass `--use-npm`, `--use-pnpm`, `--use-yarn`,
+`--use-bun` or `--use-deno` to set it up for a different one. Yarn 1 can't run a tagged
+`create` package, so on yarn 1 scaffold with `npx create-vexcms@alpha my-site --use-yarn`.
 
 By default this includes the full marketing-site starter: pages, headers, footers, themes, and a
 seeded home page built from the shipped content blocks. Pass `--bare` for an empty project with
-no starter collections, or `--orgs` to enable multi-tenant organizations. See the
+no starter collections, or `--orgs` to enable multi-tenant organizations (npm needs a `--` before
+flags: `npm create vexcms@alpha my-site -- --bare`). See the
 [`create-vexcms` flags reference](https://github.com/ianyimi/vex/blob/master/packages/create-vexcms/README.md)
 for the full list, including `--monorepo` and `--yes`.
 
 The CLI asks eight questions (name, framework, dev server port — default `3010` — email/password
 auth, organizations, OAuth providers, `git init`, install). Installing dependencies defaults to
-**no**; if you kept that default, run `pnpm install` in the new folder first.
+**no**; if you kept that default, install them in the new folder first:
+
+<PmCommand type="install" />
 
 ## Stand up your deployment
 
-```bash
-cd my-site
-npx convex dev --once
-```
+From the new folder (`cd my-site`):
+
+<PmCommand type="exec" pkg="convex" args="dev --once" />
 
 The first run links or creates your Convex deployment and writes your real
 `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` and `CONVEX_DEPLOYMENT` into
@@ -43,30 +67,35 @@ Better Auth runs inside the Convex deployment, not the Next.js server, so it nev
 `.env.local`. Push the same `SITE_URL` and `BETTER_AUTH_SECRET` values to the deployment itself
 (use the port you chose; `3010` is the default):
 
-```bash
-npx convex env set SITE_URL http://localhost:3010
-npx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
-```
+<PmTabs
+	npm={`npx convex env set SITE_URL http://localhost:3010
+npx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>`}
+	pnpm={`pnpm convex env set SITE_URL http://localhost:3010
+pnpm convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>`}
+	yarn={`yarn convex env set SITE_URL http://localhost:3010
+yarn convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>`}
+	bun={`bunx convex env set SITE_URL http://localhost:3010
+bunx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>`}
+	deno={`deno x convex env set SITE_URL http://localhost:3010
+deno x convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>`}
+/>
 
 Skipping this step is the most common cause of a `403` on your first sign-in attempt.
 
 ## Run the dev servers
 
-Two terminals:
+Two terminals. The first regenerates the schema and types from `vex.config.ts` and runs
+`convex dev`:
 
-```bash
-# Terminal 1: regenerates the schema and types from vex.config.ts, and runs `convex dev`
-pnpm vex:dev
+<PmCommand type="run" pkg="vex:dev" />
 
-# Terminal 2: Next.js
-pnpm dev
-```
+The second runs Next.js:
 
-On the marketing-site starter, seed the starter content once, with `pnpm vex:dev` running:
+<PmCommand type="run" pkg="dev" />
 
-```bash
-pnpm seed
-```
+On the marketing-site starter, seed the starter content once, with `vex:dev` running:
+
+<PmCommand type="run" pkg="seed" />
 
 Open `http://localhost:3010` (or the port you chose while scaffolding).
 

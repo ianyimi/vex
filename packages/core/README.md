@@ -8,19 +8,109 @@ The foundational package for [VEX CMS](https://github.com/ianyimi/vex) — a hea
 
 The easiest way to get started is with the `create-vexcms` CLI:
 
+<details open>
+<summary>npm</summary>
+
+```bash
+npm create vexcms@alpha
+```
+
+</details>
+
+<details>
+<summary>pnpm</summary>
+
 ```bash
 pnpm create vexcms@alpha
 ```
 
+</details>
+
+<details>
+<summary>yarn</summary>
+
+```bash
+yarn create vexcms@alpha   # yarn 1: npx create-vexcms@alpha --use-yarn
+```
+
+</details>
+
+<details>
+<summary>bun</summary>
+
+```bash
+bun create vexcms@alpha
+```
+
+</details>
+
+<details>
+<summary>deno</summary>
+
+```bash
+deno run -A npm:create-vexcms@alpha
+```
+
+</details>
+
 This scaffolds a complete project with all `@vexcms/*` packages, authentication, and an admin panel. See the [create-vexcms README](https://www.npmjs.com/package/create-vexcms) for full setup instructions.
 
 ### Manual Installation
+
+<details open>
+<summary>npm</summary>
+
+```bash
+npm install @vexcms/core@alpha @vexcms/cli@alpha @vexcms/next@alpha @vexcms/react@alpha @vexcms/better-auth@alpha @vexcms/file-storage-convex@alpha
+# Rich text editor package — attaches to a `richtext()` field via `editor: plateEditor()`
+npm install @vexcms/richtext-plate@alpha
+```
+
+</details>
+
+<details>
+<summary>pnpm</summary>
 
 ```bash
 pnpm add @vexcms/core@alpha @vexcms/cli@alpha @vexcms/next@alpha @vexcms/react@alpha @vexcms/better-auth@alpha @vexcms/file-storage-convex@alpha
 # Rich text editor package — attaches to a `richtext()` field via `editor: plateEditor()`
 pnpm add @vexcms/richtext-plate@alpha
 ```
+
+</details>
+
+<details>
+<summary>yarn</summary>
+
+```bash
+yarn add @vexcms/core@alpha @vexcms/cli@alpha @vexcms/next@alpha @vexcms/react@alpha @vexcms/better-auth@alpha @vexcms/file-storage-convex@alpha
+# Rich text editor package — attaches to a `richtext()` field via `editor: plateEditor()`
+yarn add @vexcms/richtext-plate@alpha
+```
+
+</details>
+
+<details>
+<summary>bun</summary>
+
+```bash
+bun add @vexcms/core@alpha @vexcms/cli@alpha @vexcms/next@alpha @vexcms/react@alpha @vexcms/better-auth@alpha @vexcms/file-storage-convex@alpha
+# Rich text editor package — attaches to a `richtext()` field via `editor: plateEditor()`
+bun add @vexcms/richtext-plate@alpha
+```
+
+</details>
+
+<details>
+<summary>deno</summary>
+
+```bash
+deno add npm:@vexcms/core@alpha npm:@vexcms/cli@alpha npm:@vexcms/next@alpha npm:@vexcms/react@alpha npm:@vexcms/better-auth@alpha npm:@vexcms/file-storage-convex@alpha
+# Rich text editor package — attaches to a `richtext()` field via `editor: plateEditor()`
+deno add npm:@vexcms/richtext-plate@alpha
+```
+
+</details>
 
 ## Features
 

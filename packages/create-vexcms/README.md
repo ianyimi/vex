@@ -16,21 +16,75 @@ panel — ready to run.
 
 ## Usage
 
+Run it with the package manager you want the project set up for. npm, pnpm, yarn 4 and bun are
+supported; Deno 2.6+ and yarn 1 work on a best-effort basis. Node.js 22 or newer.
+
+<details open>
+<summary>npm</summary>
+
 ```bash
-pnpm create vexcms@alpha
+npm create vexcms@alpha my-project
+# flags go after `--`
+npm create vexcms@alpha my-project -- --bare
 ```
 
-Or with a project name:
+</details>
+
+<details>
+<summary>pnpm</summary>
 
 ```bash
 pnpm create vexcms@alpha my-project
+pnpm create vexcms@alpha my-project --bare
 ```
 
-Supports relative paths, including scaffolding straight into a monorepo app directory:
+</details>
+
+<details>
+<summary>yarn</summary>
 
 ```bash
-pnpm create vexcms@alpha apps/website
+yarn create vexcms@alpha my-project
+yarn create vexcms@alpha my-project --bare
 ```
+
+Yarn 1 can't run a tagged `create` package (it looks for a binary named `create-vexcms@alpha`);
+on yarn 1 run `npx create-vexcms@alpha my-project --use-yarn`.
+
+</details>
+
+<details>
+<summary>bun</summary>
+
+```bash
+bun create vexcms@alpha my-project
+bun create vexcms@alpha my-project --bare
+```
+
+</details>
+
+<details>
+<summary>deno</summary>
+
+```bash
+deno run -A npm:create-vexcms@alpha my-project
+deno run -A npm:create-vexcms@alpha my-project --bare
+```
+
+</details>
+
+Leave out the name to be asked for it. Relative paths work too, including scaffolding straight
+into a monorepo app directory (`apps/website`).
+
+The project is set up for the package manager that ran the command:
+
+| Manager | What the scaffold gets |
+|---------|------------------------|
+| all | `packageManager` field (when the manager reported its version; never for Deno), `vex:update` and every README command in that manager's syntax, next steps printed in it |
+| npm, bun, deno | version pins in `overrides` |
+| pnpm | version pins, build allowlist and peer rules in `pnpm-workspace.yaml` (pnpm 11+ no longer reads `package.json#pnpm`) |
+| yarn | version pins in `resolutions`; `.yarnrc.yml` with `nodeLinker: node-modules` (Next.js and the Convex CLI don't run under Plug'n'Play) and `@vexcms/*` exempt from yarn 4's one-day release-age gate |
+| deno | `deno.json` exempting `@vexcms/*` from Deno 2.9's one-day release-age gate |
 
 ## Flags
 
@@ -38,8 +92,9 @@ pnpm create vexcms@alpha apps/website
 |------|-------------|
 | `--bare` | Skip the marketing-site overlay. Scaffolds `base-nextjs` alone — auth, admin panel, media, and no starter collections. |
 | `--orgs` | Enable multi-tenant organizations (adds the Better Auth organizations plugin). |
-| `--monorepo` | Scaffold into `apps/<name>` under the nearest ancestor `pnpm-workspace.yaml` instead of a standalone project. Rewrites `@vexcms/*` dependencies to `workspace:*` and any dependency present in the host workspace's catalog to `catalog:`; every other dependency stays a literal version. Skips `git init` and dependency install — the root workspace owns both. |
+| `--monorepo` | Scaffold into `apps/<name>` under the nearest ancestor `pnpm-workspace.yaml` instead of a standalone project. Rewrites `@vexcms/*` dependencies to `workspace:*` and any dependency present in the host workspace's catalog to `catalog:`; every other dependency stays a literal version. Skips `git init` and dependency install — the root workspace owns both. Implies pnpm. |
 | `--yes` | Accept every interactive prompt's default (bare: no, orgs: no, port: `3010`, no OAuth providers, git init: yes, install: no) — no prompts at all. |
+| `--use-npm`, `--use-pnpm`, `--use-yarn`, `--use-bun`, `--use-deno` | Set the project up for that package manager instead of the one that ran the command. At most one. |
 
 ```bash
 # Empty project, no pre-built collections
@@ -53,6 +108,9 @@ pnpm create vexcms@alpha my-app --yes
 
 # Inside a pnpm workspace, catalog-aware
 pnpm create vexcms@alpha my-app --monorepo --yes
+
+# Run with npm, set up for bun
+npm create vexcms@alpha my-app -- --use-bun
 ```
 
 ## Interactive prompts
@@ -113,65 +171,37 @@ flag) — the client config calls `betterAuthCollections()` on it directly, and
 
 ## Getting started
 
-After scaffolding:
+The CLI prints the next steps when it finishes, and the scaffolded `README.md` walks through
+them; both use the package manager the project was set up for. In order:
 
-```bash
-cd my-project
-pnpm install            # skip if you answered "yes" to install during scaffolding
-```
+1. Install dependencies, if you declined the install prompt.
+2. `convex dev --once` through your package manager (`npx convex`, `pnpm convex`,
+   `yarn convex`, `bunx convex`, `deno x convex`): creates or links a Convex project and writes
+   its URLs and `CONVEX_DEPLOYMENT` into `.env.local`, replacing the placeholders.
+3. `convex env set SITE_URL http://localhost:3010` and `convex env set BETTER_AUTH_SECRET <the
+   value from .env.local>`, the same way. Better Auth runs inside the Convex deployment and never
+   reads `.env.local`; skipping this is the most common cause of a `403` on the first sign-in.
+4. Run the `vex:dev` script and the `dev` script in two terminals. On the marketing-site
+   starter, run the `seed` script once while `vex:dev` runs.
+5. Open `http://localhost:3010` (or your chosen port) and sign up. The first account is
+   promoted to admin and redirected into `/admin`.
 
-### 1. Stand up your Convex deployment
-
-```bash
-npx convex dev
-```
-
-First run only — links or creates a Convex project and prints your real
-`NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL`. Paste them into `.env.local`,
-replacing the generated placeholder values so the app stops pointing at
-`https://placeholder.convex.cloud`. Leave `Ctrl-C` once it reports functions are ready.
-
-`next.config.ts` derives `images.remotePatterns` from `NEXT_PUBLIC_CONVEX_URL`
-automatically, so `next/image` picks up the real deployment's hostname without any
-further edits.
-
-### 2. Configure environment variables
-
-The installer writes `.env.local` with a generated `BETTER_AUTH_SECRET`,
-`NEXT_PUBLIC_SITE_URL`, and `SITE_URL` already filled in — only the two Convex URLs above need
-replacing for local dev.
-
-Better Auth runs *inside* the Convex deployment, not the Next.js server, so it never reads
-`.env.local`. Push the same two values to the deployment itself:
-
-```bash
-npx convex env set SITE_URL http://localhost:3010
-npx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
-```
-
-Skipping this step is the most common cause of a `403` on the first sign-in attempt.
-
-### 3. Run the dev servers
-
-```bash
-pnpm dev        # Next.js + convex dev + the vex config watcher, together
-```
-
-### 4. Create your admin account
-
-Open `http://localhost:3010` (or your chosen port) and sign up. The first account created is
-automatically promoted to admin and redirected into `/admin`.
+Every command for every package manager is in the
+[quickstart](https://docs.vexcms.dev/guides/quickstart/).
 
 ### Available scripts
 
 | Script | Description |
 |--------|-------------|
-| `pnpm dev` | Start Next.js, `convex dev`, and the `vex` watcher together |
-| `pnpm build` | Production build |
-| `pnpm typecheck` | Type-check the project |
-| `pnpm seed` | Run the marketing-site seed mutation (marketing-site only) |
-| `pnpm secret:create` | Generate a random 32-character secret and copy it to the clipboard |
-| `pnpm vex:deploy` | Generate schema/types and deploy to Convex production |
+| `dev` | Start the Next.js dev server |
+| `vex:dev` | Start the `vex` schema watcher and `convex dev` |
+| `build` / `start` | Production build / serve it |
+| `typecheck` | Type-check the project |
+| `lint` / `format` | ESLint / Prettier |
+| `seed` | Run the marketing-site seed mutation (marketing-site only) |
+| `secret:create` | Generate a random 32-character secret and copy it to the clipboard |
+| `vex:update` | Update every `@vexcms/*` package |
+| `vex:deploy` | Generate schema/types and deploy to Convex production |
 
 ## Monorepo mode (`--monorepo`)
 
@@ -190,8 +220,8 @@ versions), and skips both `git init` and dependency install — the root workspa
 ## Deployment
 
 See the [deployment guide](https://docs.vexcms.dev/guides/deployment/) — Convex production via
-`pnpm vex:deploy`, then a Vercel production deploy with the build command
-`pnpm vex:deploy --cmd 'pnpm build'`.
+the `vex:deploy` script, then a Vercel production deploy whose build command runs `vex:deploy`
+with `--cmd '<your build command>'` (for example `pnpm vex:deploy --cmd 'pnpm build'`).
 
 ## Telemetry
 

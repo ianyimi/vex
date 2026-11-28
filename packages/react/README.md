@@ -4,9 +4,50 @@ React admin components and hooks for [VexCMS](https://github.com/ianyimi/vex). P
 
 ## Installation
 
+<details open>
+<summary>npm</summary>
+
+```bash
+npm install @vexcms/react@alpha
+```
+
+</details>
+
+<details>
+<summary>pnpm</summary>
+
 ```bash
 pnpm add @vexcms/react@alpha
 ```
+
+</details>
+
+<details>
+<summary>yarn</summary>
+
+```bash
+yarn add @vexcms/react@alpha
+```
+
+</details>
+
+<details>
+<summary>bun</summary>
+
+```bash
+bun add @vexcms/react@alpha
+```
+
+</details>
+
+<details>
+<summary>deno</summary>
+
+```bash
+deno add npm:@vexcms/react@alpha
+```
+
+</details>
 
 ## Field Components
 

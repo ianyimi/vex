@@ -1,0 +1,40 @@
+---
+/**
+ * One command per package manager, as tabs that stay in sync with every
+ * `<PackageManagers>` block (starlight-package-managers) on the page: same
+ * `syncKey`, same labels and icons, same order. Use it where the plugin can't
+ * produce the command — `create` for Deno, a dist-tag on `yarn create` (the
+ * plugin strips it), an argument that differs per manager (`--cmd '<build>'`).
+ */
+import { Code, TabItem, Tabs } from '@astrojs/starlight/components';
+
+interface Props {
+	/** The full command for each manager, in tab order. */
+	npm: string;
+	pnpm: string;
+	yarn: string;
+	bun: string;
+	deno: string;
+	/** Expressive Code frame; `terminal` matches the plugin's default. */
+	frame?: 'terminal' | 'code' | 'none';
+}
+
+const { frame = 'terminal', ...commands } = Astro.props;
+const tabs = [
+	{ label: 'npm', icon: 'seti:npm', code: commands.npm },
+	{ label: 'pnpm', icon: 'pnpm', code: commands.pnpm },
+	{ label: 'yarn', icon: 'seti:yarn', code: commands.yarn },
+	{ label: 'bun', icon: 'bun', code: commands.bun },
+	{ label: 'deno', icon: 'deno', code: commands.deno },
+] as const;
+---
+
+<Tabs syncKey="starlight-package-managers-pkg">
+	{
+		tabs.map((tab) => (
+			<TabItem label={tab.label} icon={tab.icon}>
+				<Code code={tab.code} lang="sh" frame={frame} />
+			</TabItem>
+		))
+	}
+</Tabs>

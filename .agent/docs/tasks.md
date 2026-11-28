@@ -76,3 +76,4 @@
 - P — Launch analytics & monitoring: Vercel Web Analytics + Speed Insights on www and docs, template default, privacy page, Vercel spend + Convex usage alerts, uptime checks (launch plan § P)
 - Live preview across pages (spec 2026-11-11-live-preview-cross-page)
 - Adopt existing tables: guide + schema collision warning (spec 2026-11-25-adopt-existing-tables)
+- Package-manager support (spec 2026-11-27-package-manager-support)

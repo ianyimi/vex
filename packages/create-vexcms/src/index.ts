@@ -7,7 +7,7 @@
  * Forked from create-z3-app.
  *
  * Usage:
- *   pnpm create vexcms@alpha [project-name] [--bare] [--orgs]
+ *   npm create vexcms@alpha [project-name] -- [--bare] [--orgs] [--use-<manager>]
  */
 
 import { Command } from 'commander';
@@ -17,10 +17,11 @@ import { input, select, confirm, checkbox } from '@inquirer/prompts';
 import path from 'path';
 import fs from 'fs-extra';
 import { validateProjectName, checkDirectoryExists, isDirectoryEmpty, resolveProjectName } from './utils/validation.js';
-import { displayInvalidNameError, displayDirectoryNotEmptyError, displaySuccessMessage } from './utils/messages.js';
+import { displayInvalidNameError, displayDirectoryNotEmptyError, displaySuccessMessage, displayNextSteps } from './utils/messages.js';
 import { findWorkspaceRoot } from './helpers/monorepo.js';
+import { resolvePackageManager } from './helpers/packageManager.js';
 import { createInstaller, getPopularProviders, getAdditionalProviders } from './installers/index.js';
-import type { Framework, ProjectOptions } from './installers/types.js';
+import type { Framework, PackageManager, ProjectOptions } from './installers/types.js';
 import { classifyTelemetryError, recordTelemetryEvent } from '@vexcms/telemetry';
 
 const program = new Command()
@@ -31,11 +32,55 @@ const program = new Command()
   .option('--orgs', 'Enable multi-tenant organizations')
   .option('--monorepo', 'Scaffold into apps/<name> under the detected pnpm workspace root, rewriting dependencies to workspace/catalog protocols')
   .option('--yes', 'Accept every prompt default without rendering (for automation)')
+  .option('--use-npm', 'Set the project up for npm (default: the package manager that ran this command)')
+  .option('--use-pnpm', 'Set the project up for pnpm')
+  .option('--use-yarn', 'Set the project up for yarn')
+  .option('--use-bun', 'Set the project up for bun')
+  .option('--use-deno', 'Set the project up for deno')
   .version('0.0.2')
   .parse();
 
 const args = program.args;
-const opts = program.opts<{ bare?: boolean; orgs?: boolean; monorepo?: boolean; yes?: boolean }>();
+const opts = program.opts<{
+  bare?: boolean;
+  orgs?: boolean;
+  monorepo?: boolean;
+  yes?: boolean;
+  useNpm?: boolean;
+  usePnpm?: boolean;
+  useYarn?: boolean;
+  useBun?: boolean;
+  useDeno?: boolean;
+}>();
+
+/**
+ * The manager named by a `--use-<manager>` flag. Exits on more than one; `--monorepo`
+ * scaffolds into a pnpm workspace, so it implies pnpm and rejects any other flag.
+ *
+ * @returns The forced manager, or `undefined` to detect it from the invoking command.
+ */
+function packageManagerOverride(): PackageManager | undefined {
+  const flags: Array<[PackageManager, boolean | undefined]> = [
+    ['npm', opts.useNpm],
+    ['pnpm', opts.usePnpm],
+    ['yarn', opts.useYarn],
+    ['bun', opts.useBun],
+    ['deno', opts.useDeno],
+  ];
+  const chosen = flags.filter(([, on]) => on).map(([pm]) => pm);
+  if (chosen.length > 1) {
+    console.error(chalk.red(`\nError: pass at most one --use-<manager> flag (got ${chosen.map((pm) => `--use-${pm}`).join(', ')}).`));
+    process.exit(1);
+  }
+  if (opts.monorepo) {
+    if (chosen[0] && chosen[0] !== 'pnpm') {
+      console.error(chalk.red(`\nError: --monorepo scaffolds into a pnpm workspace; --use-${chosen[0]} can't apply.`));
+      process.exit(1);
+    }
+    return 'pnpm';
+  }
+  return chosen[0];
+}
 
 async function main() {
   console.log();
@@ -45,6 +90,11 @@ async function main() {
   const bare = opts.bare ?? false;
   const yes = opts.yes ?? false;
   const monorepo = opts.monorepo ?? false;
+  const packageManager = resolvePackageManager({
+    userAgent: process.env.npm_config_user_agent,
+    override: packageManagerOverride(),
+    runningUnderDeno: 'deno' in process.versions,
+  });
 
   // 1. Project name / path
   // The arg can be a simple name ("my-app"), a path ("apps/www"), or "."
@@ -225,6 +275,7 @@ async function main() {
     monorepo,
     workspaceRoot,
     yes,
+    packageManager,
   };
 
   // Create project directory
@@ -275,6 +326,14 @@ async function main() {
   if (monorepo && workspaceRoot) {
     console.log(chalk.cyan(`  Run 'pnpm install' from ${workspaceRoot} to link the new workspace member.`));
     console.log();
+  } else {
+    displayNextSteps({
+      packageManager: packageManager.name,
+      cdPath: inputArg === '.' ? null : path.relative(process.cwd(), targetDir) || null,
+      installed: options.installDependencies,
+      port: options.port,
+      marketing: !options.bare,
+    });
   }
 }
 

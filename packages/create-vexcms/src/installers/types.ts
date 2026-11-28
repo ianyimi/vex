@@ -1,8 +1,19 @@
 /**
- * Package manager detected or chosen for the scaffolded project; determines
- * which install/format/lint commands the installer shells out to.
+ * Package manager a scaffold is set up for; decides the install/run/exec commands the
+ * installer runs and writes into `package.json` scripts, the README and the next steps.
  */
-export type PackageManager = "pnpm" | "npm" | "yarn" | "bun"
+export type PackageManager = "pnpm" | "npm" | "yarn" | "bun" | "deno"
+
+/** The package manager a scaffold is set up for, and the version that invoked it when known. */
+export interface ResolvedPackageManager {
+  /** Package manager whose commands the scaffold's scripts, README and next steps use. */
+  name: PackageManager
+  /**
+   * Exact `x.y.z` version read from `npm_config_user_agent`, or `null` when the user agent
+   * names another manager, carries no version (`npm/?`), or is missing.
+   */
+  version: string | null
+}
 
 /**
  * Frontend framework selected for the scaffolded project. Only `"nextjs"` is
@@ -114,4 +125,10 @@ export interface ProjectOptions {
    * diagnostics only, nothing downstream branches on it directly.
    */
   yes: boolean
+  /**
+   * Package manager resolved from `--use-<manager>` or the invoking command's
+   * `npm_config_user_agent`. Decides the install command, the `packageManager` field,
+   * `vex:update`, `.yarnrc.yml`, and every command in the README and next steps.
+   */
+  packageManager: ResolvedPackageManager
 }

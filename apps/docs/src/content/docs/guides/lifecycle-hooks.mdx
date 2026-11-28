@@ -132,7 +132,7 @@ Hooks fire only for writes made through the vexcms API, built on a
 `createVexMutations`-wrapped `mutation`/`internalMutation`. They do **not** fire for:
 
 - Edits made directly in the Convex dashboard's data browser.
-- `npx convex import` (and any other direct `ctx.db` write outside the wrapped builders —
+- `convex import` (and any other direct `ctx.db` write outside the wrapped builders —
   your own custom Convex functions included, unless you build them on the same wrapped
   `mutation`/`internalMutation`).
 

@@ -24,20 +24,93 @@ Next.js admin panel for editing content.
 
 ## Quick Start
 
-Scaffold a complete Next.js + Convex + Vex project (answer "yes" to installing dependencies):
+Scaffold a complete Next.js + Convex + Vex project (answer "yes" to installing dependencies),
+then follow the steps for your package manager. npm, pnpm, yarn 4 and bun are supported; Deno
+and yarn 1 work on a best-effort basis. Node.js 22 or newer.
+
+<details open>
+<summary>npm</summary>
 
 ```bash
-pnpm create vexcms@alpha my-site
+npm create vexcms@alpha my-site
 cd my-site
 npx convex dev --once
 npx convex env set SITE_URL http://localhost:3010
 npx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
+npm run vex:dev   # terminal 1
+npm run dev       # terminal 2
+npm run seed      # marketing-site starter only: once, while vex:dev runs
 ```
 
-Then run `pnpm vex:dev` and `pnpm dev` in two terminals (on the marketing-site starter, run
-`pnpm seed` once while `pnpm vex:dev` is running). Open `http://localhost:3010` (or your chosen
-port) and sign up — the first account is automatically promoted to admin and redirected into
-`/admin`.
+</details>
+
+<details>
+<summary>pnpm</summary>
+
+```bash
+pnpm create vexcms@alpha my-site
+cd my-site
+pnpm convex dev --once
+pnpm convex env set SITE_URL http://localhost:3010
+pnpm convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
+pnpm vex:dev      # terminal 1
+pnpm dev          # terminal 2
+pnpm seed         # marketing-site starter only: once, while vex:dev runs
+```
+
+</details>
+
+<details>
+<summary>yarn</summary>
+
+```bash
+yarn create vexcms@alpha my-site   # yarn 1: npx create-vexcms@alpha my-site --use-yarn
+cd my-site
+yarn convex dev --once
+yarn convex env set SITE_URL http://localhost:3010
+yarn convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
+yarn vex:dev      # terminal 1
+yarn dev          # terminal 2
+yarn seed         # marketing-site starter only: once, while vex:dev runs
+```
+
+</details>
+
+<details>
+<summary>bun</summary>
+
+```bash
+bun create vexcms@alpha my-site
+cd my-site
+bunx convex dev --once
+bunx convex env set SITE_URL http://localhost:3010
+bunx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
+bun run vex:dev   # terminal 1
+bun run dev       # terminal 2
+bun run seed      # marketing-site starter only: once, while vex:dev runs
+```
+
+</details>
+
+<details>
+<summary>deno</summary>
+
+```bash
+deno run -A npm:create-vexcms@alpha my-site
+cd my-site
+deno x convex dev --once
+deno x convex env set SITE_URL http://localhost:3010
+deno x convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
+deno task vex:dev # terminal 1
+deno task dev     # terminal 2
+deno task seed    # marketing-site starter only: once, while vex:dev runs
+```
+
+</details>
+
+Open `http://localhost:3010` (or your chosen port) and sign up — the first account is
+automatically promoted to admin and redirected into `/admin`. The scaffolded project's README
+and the CLI's closing message use the package manager you ran it with.
 
 See the [quickstart guide](https://docs.vexcms.dev/guides/quickstart/) for each step in detail.
 

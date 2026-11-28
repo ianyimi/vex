@@ -4,9 +4,50 @@ The Next.js adapter for [VEX CMS](https://github.com/ianyimi/vex). Provides the 
 
 ## Installation
 
+<details open>
+<summary>npm</summary>
+
+```bash
+npm install @vexcms/next@alpha
+```
+
+</details>
+
+<details>
+<summary>pnpm</summary>
+
 ```bash
 pnpm add @vexcms/next@alpha
 ```
+
+</details>
+
+<details>
+<summary>yarn</summary>
+
+```bash
+yarn add @vexcms/next@alpha
+```
+
+</details>
+
+<details>
+<summary>bun</summary>
+
+```bash
+bun add @vexcms/next@alpha
+```
+
+</details>
+
+<details>
+<summary>deno</summary>
+
+```bash
+deno add npm:@vexcms/next@alpha
+```
+
+</details>
 
 ## Quick Setup
 
