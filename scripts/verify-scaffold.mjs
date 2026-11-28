@@ -365,9 +365,11 @@ function freePort() {
  * for pnpm, `resolutions` for yarn, `overrides` for bun. npm gets the direct
  * specs only: its resolver rejects `file:` overrides on packages that are
  * also peers (`ERESOLVE … peer overridden`), and the root copies already
- * satisfy every nested `@vexcms/*` range. Deno can't install `file:`
- * tarballs, so `--pm deno` leaves the scaffold on the published
- * `@vexcms/*` release (Deno support is best-effort).
+ * satisfy every nested `@vexcms/*` range. Deno links a `file:` spec to the
+ * `.tgz` itself without unpacking it, so for `--pm deno` each tarball is
+ * unpacked and listed in `deno.json#links`: Deno resolves the scaffold's own
+ * `@vexcms/*` ranges (which name the version being released, not yet on npm)
+ * to those directories and installs their registry dependencies as usual.
  *
  * @param {string} projectDir absolute path to a scaffolded project
  * @param {Map<string, string>} tarballs package name -> absolute tarball path
@@ -378,7 +380,17 @@ function injectOverrides(projectDir, tarballs) {
     throw new Error(`${pkgPath} does not exist \u2014 scaffold did not produce a package.json`);
   }
   if (pm.name === "deno") {
-    console.log("  (deno: installing the published @vexcms/* release, not the packed tarballs)");
+    const links = [];
+    for (const [name, tarball] of tarballs) {
+      if (name === "create-vexcms") continue;
+      const unpacked = path.join(path.dirname(tarball), "unpacked");
+      fs.mkdirSync(unpacked, { recursive: true });
+      execFileSync("tar", ["-xzf", tarball, "-C", unpacked]);
+      links.push(path.join(unpacked, "package"));
+    }
+    const denoJsonPath = path.join(projectDir, "deno.json");
+    const denoJson = fs.existsSync(denoJsonPath) ? JSON.parse(fs.readFileSync(denoJsonPath, "utf-8")) : {};
+    fs.writeFileSync(denoJsonPath, JSON.stringify({ ...denoJson, links }, null, 2) + "\n");
     return;
   }
 

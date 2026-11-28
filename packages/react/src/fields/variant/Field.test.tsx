@@ -82,7 +82,9 @@ describe("VariantFieldAdmin — discriminated", () => {
     const user = userEvent.setup();
     render(<Harness fieldDef={channel} defaultValue={{ kind: "email", address: "a@b.com" }} />);
     await user.click(screen.getByRole("combobox"));
-    await user.click(screen.getByRole("option", { name: "SMS" }));
+    // The popup renders after the open click resolves (Base UI portal + positioner);
+    // a synchronous lookup raced it and failed on loaded CI runners (release run 46124542279).
+    await user.click(await screen.findByRole("option", { name: "SMS" }));
     expect(screen.getByLabelText("Phone number", { exact: false })).toHaveValue("");
     expect(screen.queryByLabelText("Address", { exact: false })).not.toBeInTheDocument();
   });
