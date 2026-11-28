@@ -7,7 +7,7 @@
 
 ## Paid-work line
 
-Paid add-ons may come later, as separate packages, after the free roadmap. The core stays Apache-2.0, and nothing free becomes paid.
+Paid add-ons may come later, as separate packages. The core stays Apache-2.0, and nothing free becomes paid.
 
 ## Licence line
 
@@ -17,15 +17,15 @@ VexCMS is Apache-2.0 licensed.
 
 Intro: Everything below is free and lands in the Apache-2.0 core. It ships in this order.
 
-1. **Plugin system** — The extension points 0.1.0 ships (admin slots, component overrides, action contributions) become a supported plugin API for collections, fields, hooks, access rules and admin views.
-2. **Free features, as demand appears** — No fixed order.
-   - **Localization** — Per-field locale values, opted into per collection and per field, with locale-aware drafts.
+1. **`vex init`** — One command adds VexCMS to an existing Next.js + Convex app. It never changes your existing Convex tables.
+2. **Plugin launch** — The extension points 0.1.0 ships become a supported plugin API for collections, fields, hooks, access rules and admin views. It launches with a plugin marketplace and a free agent plugin.
+3. **Form builder, SEO fields and localization** — Forms for site visitors with generated validation and stored submissions; meta title, description, Open Graph image, canonical URL and redirects; per-field locale values with locale-aware drafts.
+4. **Brownfield adoption** — Add VexCMS to an existing Convex app table by table, without migrating the data it already holds. Until then, [adopt a table by hand](https://docs.vexcms.dev/guides/adopt-existing-tables/).
+5. **Voted features** — Ordered by votes in the [roadmap vote](https://github.com/ianyimi/vex/discussions/97) on GitHub Discussions.
    - **Scheduled publishing** — Publish and unpublish at a set time, on Convex's scheduler.
    - **TanStack Start adapter** — The admin panel and the caching helpers on a second framework.
-   - **Form builder** — Collect input from site visitors, with generated validation and stored submissions.
    - **Outbound webhooks** — Notify other services when content changes.
    - **API keys and team management** — Invite people, assign roles, and issue scoped keys for reading content from outside.
-3. **Brownfield adoption** — Add VexCMS to an existing Convex app table by table, without migrating the data it already holds.
 
 Not planned: `imageUrl` field — use `upload` with the media library, or a `url` field.
 
@@ -39,7 +39,11 @@ I give every pull request a first review within a week.
 
 ## Funding
 
-Sponsorship pays for time on the free core: faster bug fixes first, then the free roadmap. Sponsor on [GitHub Sponsors](https://github.com/sponsors/ianyimi) (monthly or one-time), or [buy me a coffee](https://buymeacoffee.com/zaye).
+Sponsorship pays for time on the free core: faster bug fixes first, then the free roadmap. Sponsor on [GitHub Sponsors](https://github.com/sponsors/ianyimi) (monthly or one-time), or [buy me a coffee](https://buymeacoffee.com/zaye). If your company relies on VexCMS, please sponsor.
+
+## Founding members
+
+Empty state (README `### Founding members`, until the first founding member): No founding members yet.
 
 ## Support channels
 
@@ -60,7 +64,7 @@ Reports are acknowledged within a week. Supported versions: the latest 0.1.x rel
 
 ## GitHub Sponsors
 
-Bio: I build VexCMS, a type-safe headless CMS built on Convex, in my free time. Sponsorship funds the free core: faster bug fixes first, then the free roadmap. Paid add-ons may come later, as separate packages, after the free roadmap. The core stays Apache-2.0, and nothing free becomes paid.
+Bio: I build VexCMS, a type-safe headless CMS built on Convex, in my free time. Sponsorship funds the free core: faster bug fixes first, then the free roadmap. Paid add-ons may come later, as separate packages. The core stays Apache-2.0, and nothing free becomes paid.
 
 | Tier | Monthly | Description (published text — immutable once published) |
 |---|---|---|

@@ -585,15 +585,18 @@ effortless — the guide is Convex's own, not something VexCMS automates.
 
 - `public-copy.md` "Paid-work line" is the verbatim public answer everywhere this question
   comes up.
+- `/founding` (https://vexcms.dev/founding) is public at launch. Point to it; don't summarise
+  it.
 
 #### Verbatim
 
-"Paid add-ons may come later, as separate packages, after the free roadmap. The core stays
-Apache-2.0, and nothing free becomes paid." — `public-copy.md` § Paid-work line.
+"Paid add-ons may come later, as separate packages. The core stays Apache-2.0, and nothing free
+becomes paid." — `public-copy.md` § Paid-work line.
 
 #### Links
 
 - https://docs.vexcms.dev/roadmap/
+- https://vexcms.dev/founding
 
 #### Don't say
 
@@ -662,8 +665,10 @@ Don't promise a response time faster than a week, or imply a team.
   backlog (spec.md § Out of Scope).
 - A related but different capability is on the public roadmap: "Brownfield adoption — Add
   VexCMS to an existing Convex app table by table, without migrating the data it already
-  holds." — `public-copy.md` § Roadmap — after 0.1.0, item 3. That's about adopting VexCMS
+  holds." — `public-copy.md` § Roadmap — after 0.1.0, item 4. That's about adopting VexCMS
   inside an existing Convex project, not importing content from a different CMS platform.
+  Today, one existing Convex table can be adopted by hand:
+  https://docs.vexcms.dev/guides/adopt-existing-tables/.
 
 #### Verbatim
 
@@ -673,6 +678,7 @@ the data it already holds." — `public-copy.md` § Roadmap — after 0.1.0.
 #### Links
 
 - https://docs.vexcms.dev/roadmap/
+- https://docs.vexcms.dev/guides/adopt-existing-tables/
 
 #### Don't say
 
@@ -726,8 +732,9 @@ summarizing from memory.
   scaffolds should not carry production traffic or real user data." (re-check in step 13 —
   this banner is removed by the copy-flip patch at Release, so quote the _shipped_ 0.1.0
   posture from the roadmap and non-goals below, not this alpha-era banner.)
-- What comes after 0.1.0 is `public-copy.md` § Roadmap — after 0.1.0 (plugin system → free
-  features as demand appears → brownfield adoption) plus its "Not planned" line. The
+- What comes after 0.1.0 is `public-copy.md` § Roadmap — after 0.1.0 (`vex init` → plugin
+  launch → form builder, SEO fields and localization → brownfield adoption → voted features,
+  ordered by the roadmap vote on GitHub Discussions) plus its "Not planned" line. The
   launch plan's internal non-goal list is not quoted: several of its items are kept off every
   public surface (public-presence Design Decision 5).
 - The docs roadmap carries the same shape once public-presence step 9 lands

@@ -7,8 +7,8 @@ This page compares what each product gives you without paying for a plan. Each c
 carries the date it was checked; if a date looks stale, check the vendor's docs — feature sets
 move fast.
 
-Paid add-ons may come later, as separate packages, after the free roadmap. The core stays
-Apache-2.0, and nothing free becomes paid.
+Paid add-ons may come later, as separate packages. The core stays Apache-2.0, and nothing free
+becomes paid.
 
 ## Free-tier capability table
 
@@ -37,13 +37,9 @@ Apache-2.0, and nothing free becomes paid.
 
 ## When to pick something else
 
-- **You need a database other than Convex.** VexCMS has no adapter layer — it runs on Convex only. Payload or Strapi let you bring MongoDB, Postgres, or MySQL.
-- **You need REST or GraphQL out of the box.** VexCMS exposes a typed Local API you call from your own Convex functions; it has no separate HTTP API surface. Payload, Sanity, and Strapi all ship a queryable HTTP API today.
-- **You need localization today.** It's on VexCMS's post-0.1.0 roadmap, not shipped. Payload, Sanity, and Strapi all ship it free, now.
-- **Your editors need to model content in a UI**, not read/review TypeScript. Strapi's Content-type Builder lets a non-developer define content types from the admin panel; VexCMS's model is code-only.
-- **You want a vendor-hosted SaaS**, with no server of your own to run. Sanity's Content Lake is hosted for you. VexCMS, Payload, and self-hosted Strapi all require you to run something yourself (for VexCMS, that's a Convex deployment plus your Next.js app).
-- **You need a mature plugin ecosystem.** Payload, Sanity, and Strapi each have years of community plugins and a form-builder plugin already available (Payload's is official: `@payloadcms/plugin-form-builder`). VexCMS's plugin system doesn't exist yet — it's the first item on the post-0.1.0 roadmap, and until then an extension point only covers admin component overrides and action contributions.
-- **You need a long-stable API.** VexCMS is at 0.1 — the config shape and the Local API can still change between minor versions. Payload (v3), Sanity (Studio v6) and Strapi (v5) are well past their first stable major.
+VexCMS runs on Convex, so its scope is Convex's scope. If Convex doesn't fit your problem, pick a
+CMS that runs on a database that does. Convex's [limits page](https://docs.convex.dev/production/state/limits)
+lists the boundaries. If your app runs on Convex, VexCMS is the content layer built for it.
 
 ## Sources
 

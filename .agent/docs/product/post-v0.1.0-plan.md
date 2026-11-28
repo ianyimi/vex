@@ -49,10 +49,14 @@
 | 0 | **INIT** — automated `vex init` (add VexCMS to an existing Next.js + Convex app, no table takeover); 0.1.0 ships the manual guide and check script it builds on | Existing apps can add the admin without re-scaffolding | ☐ |
 | 1 | **PL** — Plugin system + admin extension points, shipping together with a plugin marketplace site and a free agent plugin (the "plugin launch"); includes a free access-control extension hook | Third parties (incl. Convex component authors) extend Vex without forking; slots pre-built in G / H / I | ☐ |
 | 2 | **FR-core** — Form builder (plugin or core, decided in its spec), SEO fields (meta title/description, OG image, canonical, redirects), localization; small items alongside: rich-text markdown/HTML export, admin title/logo | A CMS needs these before paid work ships | ☐ |
-| 3 | **PRES** — Presence and facepile (free) | Editors see who else is on a document | ☐ |
-| 3b | **Paid add-ons** — planned privately (separate packages; nothing free becomes paid); first release targeted by end of 2027 | — | ☐ |
+| 3 | **Paid add-ons** — planned privately (separate packages; nothing free becomes paid); first release targeted by end of 2027 | — | ☐ |
 | 4 | **AD** — Brownfield adoption | An existing Convex app can adopt Vex table by table without rewriting | ☐ |
-| 5 | **FR-rest** — Remaining free features (scheduled publishing, webhooks, API keys + team management, search improvements), ordered by upvotes in a pinned GitHub Discussion | Interleave as demand appears; none gates the tracks above | ☐ |
+| 5 | **FR-rest** — Remaining free features (scheduled publishing, TanStack Start adapter, outbound webhooks, API keys + team management), ordered by upvotes in a pinned GitHub Discussion | Interleave as demand appears; none gates the tracks above | ☐ |
+| — | **PRES** — Presence and facepile (free) | Unscheduled; the developer builds it some time after 0.1.0 when time allows. Never on a public surface (no roadmap entry, no vote, no "coming soon") until it ships (developer, 2026-11-26) | ☐ |
+
+Public roadmap order (COPY, 2026-11-26): `vex init` → plugin launch → form builder, SEO fields,
+localization → brownfield adoption → voted features. Paid add-ons are never on it. The maprios www
+migration (Track MW) is not in the track order.
 
 Free line (developer, 2026-11-24): everything a developer can express in code — roles,
 collection- and field-level permissions, organizations — stays free.
@@ -75,8 +79,8 @@ items built; nothing ships inert code whose only justification is a later item.
   today becomes paid later"* (`apps/www/convex/seed.ts:989`). The line must be public before
   code lands. Paid add-ons' first release is targeted by the end of 2027.
 - The remaining free features interleave by community vote: a pinned GitHub Discussion
-  collects upvotes on scheduled publishing, webhooks, API keys + team management, and
-  search improvements; votes set the order they ship in.
+  collects upvotes on scheduled publishing, the TanStack Start adapter, outbound webhooks,
+  and API keys + team management; votes set the order they ship in.
 
 **Inherited from 0.1.0:** MW depends on launch spec G for `admin.width` (maprios uses 3
 `row` layouts), the media-picker MIME filter (the PDF block), and `admin.condition`.

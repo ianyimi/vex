@@ -1022,7 +1022,7 @@ export const featuredPosts = query({
             {
               question: "What does it cost?",
               answer:
-                "The core is Apache-2.0 and stays that way: every field type, the admin panel, the CLI, RBAC, drafts, live preview, and hooks. You pay Convex for usage, and Convex has a free tier. Paid add-ons may come later, as separate packages, after the free roadmap. The core stays Apache-2.0, and nothing free becomes paid.",
+                "The core is Apache-2.0 and stays that way: every field type, the admin panel, the CLI, RBAC, drafts, live preview, and hooks. You pay Convex for usage, and Convex has a free tier. Paid add-ons may come later, as separate packages. The core stays Apache-2.0, and nothing free becomes paid.",
             },
             {
               question: "Who builds VexCMS?",
@@ -1581,51 +1581,51 @@ export const testimonials = defineTable({
               status: ["future"],
             },
             {
-              feature: "Scheduled Publishing",
+              feature: "vex init",
               description:
-                "After 0.1.0, phase 2 (unordered, demand-driven): publish and unpublish at a set time, on Convex's scheduler.",
+                "After 0.1.0, phase 1: one command adds VexCMS to an existing Next.js + Convex app. It never changes your existing Convex tables.",
               status: ["future"],
             },
             {
-              feature: "API Keys & Team Management",
+              feature: "Plugin Launch",
               description:
-                "After 0.1.0, phase 2 (unordered, demand-driven): invite people, assign roles, and issue scoped keys for reading content from outside.",
+                "After 0.1.0, phase 2: the extension points 0.1.0 ships become a supported plugin API for collections, fields, hooks, access rules and admin views. It launches with a plugin marketplace and a free agent plugin.",
               status: ["future"],
             },
             {
-              feature: "TanStack Start Adapter",
+              feature: "Form Builder, SEO Fields & Localization",
               description:
-                "The data layer already works with any Convex client. This is the admin panel and the caching helpers on a second framework.",
-              status: ["future"],
-            },
-            {
-              feature: "Form Builder",
-              description:
-                "defineFormCollection: fields for collecting input rather than editing content. Generated validation, stored submissions.",
-              status: ["future"],
-            },
-            {
-              feature: "Plugin System",
-              description:
-                "Third-party extensions over collections, fields, and admin views, including custom field types. The panel grows without forking.",
-              status: ["future"],
-            },
-            {
-              feature: "Localization",
-              description:
-                "After 0.1.0, phase 2 (unordered, demand-driven): per-field locale values, opted into per collection and per field, with locale-aware drafts.",
-              status: ["future"],
-            },
-            {
-              feature: "Outbound Webhooks",
-              description:
-                "After 0.1.0, phase 2 (unordered, demand-driven): notify other services when content changes.",
+                "After 0.1.0, phase 3: forms for site visitors with generated validation and stored submissions; meta title, description, Open Graph image, canonical URL and redirects; per-field locale values with locale-aware drafts.",
               status: ["future"],
             },
             {
               feature: "Brownfield Adoption",
               description:
-                "After 0.1.0, phase 3: add VexCMS to an existing Convex app table by table, without migrating the data it already holds.",
+                "After 0.1.0, phase 4: add VexCMS to an existing Convex app table by table, without migrating the data it already holds. Until then, the adoption guide covers adopting a table by hand: https://docs.vexcms.dev/guides/adopt-existing-tables/",
+              status: ["future"],
+            },
+            {
+              feature: "Scheduled Publishing",
+              description:
+                "After 0.1.0, phase 5 (ordered by the roadmap vote: https://github.com/ianyimi/vex/discussions/97): publish and unpublish at a set time, on Convex's scheduler.",
+              status: ["future"],
+            },
+            {
+              feature: "TanStack Start Adapter",
+              description:
+                "After 0.1.0, phase 5 (ordered by the roadmap vote): the admin panel and the caching helpers on a second framework.",
+              status: ["future"],
+            },
+            {
+              feature: "Outbound Webhooks",
+              description:
+                "After 0.1.0, phase 5 (ordered by the roadmap vote): notify other services when content changes.",
+              status: ["future"],
+            },
+            {
+              feature: "API Keys & Team Management",
+              description:
+                "After 0.1.0, phase 5 (ordered by the roadmap vote): invite people, assign roles, and issue scoped keys for reading content from outside.",
               status: ["future"],
             },
           ],

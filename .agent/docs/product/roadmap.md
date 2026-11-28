@@ -6,7 +6,7 @@
 > post-launch vision.
 >
 > **After 0.1.0, follow `post-v0.1.0-plan.md`** — tracks INIT (automated `vex init`), PL (plugin
-> system), FR-core, PRES (presence), AD (brownfield adoption), FR-rest (voted free features), DB (backend adapters, unscheduled).
+> system), FR-core, AD (brownfield adoption), FR-rest (voted free features), PRES (presence; unscheduled, never public until shipped), DB (backend adapters, unscheduled).
 > Paid add-ons are planned privately as separate packages; nothing free becomes paid.
 > Decided 2026-10-16/17/21; summarised under **After 0.1.0** below.
 
@@ -76,10 +76,10 @@ the leading candidate).
 | 0 | **INIT** — automated `vex init` | Adds VexCMS to an existing Next.js + Convex app (0.1.0 ships the manual guide and check it builds on); no table takeover |
 | 1 | **PL** — Plugin system + admin extension points | `definePlugin` with typed contributions to any part of the config, semantic admin slots (pre-built in G / H / I), dependencies, Convex-component plugins via external collections (`specs/2026-10-21-plugin-system/stem.md`); ships with the marketplace and a free agent plugin |
 | 2 | **FR-core** — Form builder, SEO fields, localization | Basic CMS features first; rich-text markdown/HTML export and admin title/logo alongside |
-| 3 | **PRES** — Presence and facepile (free) | Editors see who else is on a document |
-| 4 | **Paid add-ons** — planned privately (separate packages; nothing free becomes paid) | — |
-| 5 | **AD** — Brownfield adoption | An existing Convex app adopts Vex table by table: adopt existing tables, schema introspection, raw-validator field, auth bridge, live-data migrations |
-| — | **FR-rest** — Remaining free features | Ordered by community vote: scheduling, webhooks, S3/R2, image transforms, API keys / team management, MCP server, framework adapters (TanStack Start → React + Vite → Astro), `tabs` / `ui` |
+| 3 | **Paid add-ons** — planned privately (separate packages; nothing free becomes paid) | — |
+| 4 | **AD** — Brownfield adoption | An existing Convex app adopts Vex table by table: adopt existing tables, schema introspection, raw-validator field, auth bridge, live-data migrations |
+| 5 | **FR-rest** — Remaining free features | Ordered by the pinned GitHub Discussion vote: scheduled publishing, TanStack Start adapter, outbound webhooks, API keys / team management. Unvoted backlog: S3/R2, image transforms, MCP server, React + Vite / Astro adapters |
+| — | **PRES** — Presence and facepile (free) | Unscheduled, after 0.1.0 when time allows; never on a public surface until it ships |
 | — | **DB** — Backend adapters | Unscheduled. Split Convex out of core; Supabase first (`research/db-adapter-feasibility.md`) |
 
 Multi-component workspaces (`research/legacy-planning/multi-component-architecture.md`)
@@ -89,7 +89,7 @@ component split. Revisit when a customer needs isolation.
 ## Licensing
 
 **Open core.** The Apache-2.0 core stays free forever — every field type, the admin panel,
-CLI, drafts and versions, RBAC, live preview, hooks, localization, and presence. Paid
+CLI, drafts and versions, RBAC, live preview, hooks, and localization. Paid
 add-ons may come later, as separate packages; nothing free becomes paid. Details are
 planned privately.
 

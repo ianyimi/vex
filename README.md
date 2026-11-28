@@ -57,12 +57,19 @@ hooks, admin customization, list views), and the generated API reference live at
 [llms.txt](https://llmstxt.org) indexes for AI coding agents — point your agent at `/llms.txt`
 (index), `/llms-full.txt` (complete docs), or `/llms-small.txt` (compact).
 
+- **Set up with your coding agent**: install the `vexcms-project-init` skill and your agent
+  scaffolds and runs a new project — see [agent skills](https://docs.vexcms.dev/guides/agent-skills/).
+- **Already have a Convex app?** Point a collection at a table that already holds data —
+  see [adopt an existing Convex table](https://docs.vexcms.dev/guides/adopt-existing-tables/).
+
 ## Roadmap
 
-Next comes a plugin system, then free features as demand appears — localization, scheduled
-publishing, a TanStack Start adapter, a form builder, outbound webhooks, API keys and team
-management — then brownfield adoption. All of it is free, in the Apache-2.0 core. See the
-full [roadmap](https://docs.vexcms.dev/roadmap/).
+Next comes `vex init`, then the plugin launch (a plugin system, a plugin marketplace and a free
+agent plugin), then a form builder, SEO fields and localization, then brownfield adoption. After
+that, scheduled publishing, a TanStack Start adapter, outbound webhooks, and API keys and team
+management ship in the order the
+[roadmap vote](https://github.com/ianyimi/vex/discussions/97) sets. All of it is
+free, in the Apache-2.0 core. See the full [roadmap](https://docs.vexcms.dev/roadmap/).
 
 ## Compare
 
@@ -86,11 +93,16 @@ severity and on sponsorship.
 
 Sponsorship pays for time on the free core: faster bug fixes first, then the free roadmap.
 Sponsor on [GitHub Sponsors](https://github.com/sponsors/ianyimi) (monthly or one-time), or
-[buy me a coffee](https://buymeacoffee.com/zaye).
+[buy me a coffee](https://buymeacoffee.com/zaye). If your company relies on VexCMS, please
+sponsor.
 
 No sponsors yet — be the first.
 
+### Founding members
+
+No founding members yet.
+
 ## License
 
-VexCMS is Apache-2.0 licensed. Paid add-ons may come later, as separate packages, after the
-free roadmap. The core stays Apache-2.0, and nothing free becomes paid.
+VexCMS is Apache-2.0 licensed. Paid add-ons may come later, as separate packages. The core stays
+Apache-2.0, and nothing free becomes paid.
