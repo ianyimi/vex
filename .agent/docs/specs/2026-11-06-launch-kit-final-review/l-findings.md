@@ -1,5 +1,10 @@
 # L findings — VexCMS 0.1.0 launch
 
+> **Carried over to the REVIEW spec (developer, 2026-11-27; LK spec Design Decision 27).** This
+> file is REVIEW's starting input and REVIEW owns it from here; the LK spec no longer edits it.
+> "Steps 14–21" below are the 2026-11-10 L steps REVIEW replaced. L-001 and L-002 are fixed in
+> the tree; the rest are open. LK's own pass-2 findings go to `pass2-findings.md`.
+>
 > One row per finding from steps 14–21. `blocker` = a cross-surface contradiction, a false or
 > unsupported claim, a broken link or route on a launch path, a paid tier/price/customer named
 > anywhere, or alpha wording outside `copy-flip.patch`'s scope. Everything else is `backlog`.

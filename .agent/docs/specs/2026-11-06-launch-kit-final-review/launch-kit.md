@@ -779,10 +779,13 @@ inherits, not something this repo builds or supports directly.
 
 Every slot below is empty — filled by the developer in step 6. Nothing here is prose.
 
-**For the developer (2026-11-10, Design Decision 26):** no slot links a `planned` issue or asks
-readers to 👍 one — those issues are deleted before launch and roadmap items have no issue or
-discussion. Link https://docs.vexcms.dev/roadmap/ instead. Feature ideas go to Discussions →
-Ideas (VW-016); contributing lines quote the PR response window verbatim.
+**For the developer (2026-11-10, updated 2026-11-27; Design Decisions 26, 27):** no slot links
+a `planned` issue or asks readers to 👍 one — those issues are deleted. The roadmap's one
+discussion is the roadmap vote, https://github.com/ianyimi/vex/discussions/97 (`public-copy.md`
+§ Roadmap item 5); linking it is your call, but on HN and Product Hunt it must not read as vote
+solicitation. Link https://docs.vexcms.dev/roadmap/ for the roadmap itself. Feature ideas go to
+Discussions → Ideas (VW-016); contributing lines quote the PR response window verbatim. You
+write these after the REVIEW spec and step 25's kit refresh.
 
 ### D1 — www announcement
 

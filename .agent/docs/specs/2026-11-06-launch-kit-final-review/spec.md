@@ -62,13 +62,13 @@ The research ran first (`sources.md`, every URL fetched 2026-11-06), and it chan
     - **No footer entry.** Neither the recap page nor anything else in this spec adds a www footer or `socialLinks` entry. If one is ever added, it goes at its position in `2026-11-06-public-presence/public-copy.md` § Footer (cross-spec decision 4), the one canonical ordered list.
 11. **Clips are silent H.264 MP4s, ≤ 60 s and ≤ 10 MB, in `apps/www/public/launch/`.** Posts link them, and LinkedIn gets them as native uploads. Why: same-origin files fall under the quality pass's CSP `'self'` and need no third-party embed or privacy-page entry. With no audio there's no caption track to author; the post text describes what each clip shows. The 10 MB cap matches public-presence's media budget.
 12. **The announcement and each feature post carry the `public-copy.md` Funding line and link the `planned` issues.** Why: the plan asks for the community-funding ask in every post, and the 👍 on `planned` issues is the public roadmap's demand signal. *Superseded in part by decision 26 (2026-11-10): the Funding line stays; the `planned`-issue links are dropped.*
-13. **Public-presence step 18's release-day copy flip is pre-staged as `copy-flip.patch` and reviewed inside L.** Its scope is every alpha string on any inventoried public surface. Release applies it unchanged. Why: nothing may change after L unreviewed (hard constraint 9). Step 18's own `rg` covers four paths, but the alpha strings also live in package READMEs, the Hero block defaults and the templates.
-14. **L reads the pre-Release state.** That means the Vercel previews of the reviewed `dev` SHA, the branch files, packed tarballs and live GitHub settings. The kit's launch-morning checklist confirms that live matches what was reviewed. Why: www and docs production deploy from `master` (GitHub deployments "Production – vex-www" at `1d07d23`, the dev → master merge of PR #50); npm shows `0.1.0-alpha.29` until publish; GitHub reads issue forms and community files from `master`. `git diff --stat <reviewed-sha>..origin/master` showing only the Release version bumps and the patch's files is the live = reviewed proof.
-15. **L's first step re-derives the surface inventory with commands, and anything not in this spec's baseline is flagged `new` and given a checklist.** Why: three parallel specs are still adding pages.
-16. **An agent pre-pass attaches evidence and the developer judges.** The evidence is string sweeps, a link check, packed manifests and READMEs, GitHub API dumps, scaffolds and the docs build. Why: the developer reads every surface, and the evidence turns the mechanical half (versions, links, verbatim strings) into lookups instead of searches.
-17. **Findings are either `blocker` or `backlog`.** Blockers are cross-surface contradictions, false or unsupported claims, broken launch-path links or routes, any named paid tier, price or customer, and alpha wording outside the patch. They are fixed and re-checked before sign-off. Everything else becomes a `backlog.md` entry, written by step 23 (cross-spec decision 8). Why: the plan says "Contradictions between surfaces are launch blockers; anything else structural goes to `backlog.md`".
+13. **Public-presence step 18's release-day copy flip is pre-staged as `copy-flip.patch` and reviewed inside L.** Its scope is every alpha string on any inventoried public surface. Release applies it unchanged. Why: nothing may change after L unreviewed (hard constraint 9). Step 18's own `rg` covers four paths, but the alpha strings also live in package READMEs, the Hero block defaults and the templates. *Amended by decision 27: the patch is rebuilt from the final copy after pass 2 (step 14) and read in step 22, not L.*
+14. **L reads the pre-Release state.** That means the Vercel previews of the reviewed `dev` SHA, the branch files, packed tarballs and live GitHub settings. The kit's launch-morning checklist confirms that live matches what was reviewed. Why: www and docs production deploy from `master` (GitHub deployments "Production – vex-www" at `1d07d23`, the dev → master merge of PR #50); npm shows `0.1.0-alpha.29` until publish; GitHub reads issue forms and community files from `master`. `git diff --stat <reviewed-sha>..origin/master` showing only the Release version bumps and the patch's files is the live = reviewed proof. *Superseded by decision 27: the big review moved to the REVIEW spec, which reads production.*
+15. **L's first step re-derives the surface inventory with commands, and anything not in this spec's baseline is flagged `new` and given a checklist.** Why: three parallel specs are still adding pages. *Moved to the REVIEW spec (decision 27); step 12's 2026-11-10 inventory is its starting input.*
+16. **An agent pre-pass attaches evidence and the developer judges.** The evidence is string sweeps, a link check, packed manifests and READMEs, GitHub API dumps, scaffolds and the docs build. Why: the developer reads every surface, and the evidence turns the mechanical half (versions, links, verbatim strings) into lookups instead of searches. *Moved to the REVIEW spec (decision 27); step 13's 2026-11-10 evidence is its starting input.*
+17. **Findings are either `blocker` or `backlog`.** Blockers are cross-surface contradictions, false or unsupported claims, broken launch-path links or routes, any named paid tier, price or customer, and alpha wording outside the patch. They are fixed and re-checked before sign-off. Everything else becomes a `backlog.md` entry, written by step 23 (cross-spec decision 8). Why: the plan says "Contradictions between surfaces are launch blockers; anything else structural goes to `backlog.md`". *Still the classes for pass 2 (`pass2-findings.md`, decision 27); `l-findings.md` belongs to the REVIEW spec now.*
 18. **Three questions join the plan's six prepared answers: telemetry, production readiness and Convex self-hosting.** Why: M ships opt-out CLI telemetry, the most predictable objection on HN. "Is it production-ready?" is the obvious question at 0.1.0. The lock-in answer depends on whether Convex can be self-hosted.
-19. **Channel rules are re-fetched when L starts.** Why: HN's rules changed during 2026 (dang's edit is dated 2026-03-28). A rule fetched weeks before launch can be stale on the day.
+19. **Channel rules are re-fetched when L starts.** Why: HN's rules changed during 2026 (dang's edit is dated 2026-03-28). A rule fetched weeks before launch can be stale on the day. *Amended by decision 27: re-fetched in step 12 (2026-11-10) and again in pass 2 (step 14), within 7 days of D1.*
 20. **No new permanent scripts.** Lint, the verbatim check and the link check are commands and throwaway scripts in this spec, each with a negative test (AP-013). Why: the kit is single-use, and a committed script nothing else calls is dead weight.
 21. **The schedule is in US Pacific time.** Why: the developer's timezone, and PH's day starts at 00:01 PT (`sources.md` §2.2).
 22. **The 4 feature posts and `/launch-week` enter `QUALITY_ROUTES` in `apps/www/e2e/routes.ts` with `draft: true` (step 9).** CI skips drafts. Before L, each is audited locally: publish on the dev deployment, run the suite with `CI` unset, record the result in quality-pass `findings.md`, unpublish. Each launch-day publish removes its route's `draft` flag in the same edit as the seed `vex_status` flip (decision 8). Why: cross-spec decision 3. The routes are drafts in production until their day, so CI can't reach them, but they still get the same audit as every other www route before L reads them.
@@ -78,8 +78,17 @@ The research ran first (`sources.md`, every URL fetched 2026-11-06), and it chan
     - **Example posts, a new step before step 6.** The agent finds strong real launch posts for each slot, records their numbers and opening lines, explains why they worked, and distils a per-slot checklist into `launch-post-examples.md`. It drafts nothing. The step is numbered **24** and sits before step 6 in both files, so steps 6–23 keep the numbers the coordination board, the sibling specs and the cross-spec decisions cite. Why: reading strong posts from the same platform and genre is the fastest preparation that keeps every word the developer's.
     - **L excludes JSDoc and the TypeDoc API pages.** L covers the public docs pages (`apps/docs/src/content/docs/**` outside `api/`, plus `llms.txt`), www (including the `/admin` demo), GitHub (README, community files, issue forms, starter issues, Discussions), the npm READMEs (with the manifest fields npm renders beside them), template output, the launch posts and listings, and the release notes. The docs build still runs in step 13, because the link check reads its HTML, but `dist/api/**` is skipped and TypeDoc output is not a review item. Why: the developer's call; the API reference is generated from code and reviewed with the code.
     - **L is a review-and-iterate loop.** In steps 14–22 the developer reads and gives feedback in this session. The agent applies each item to every surface it affects (found with `rg` over the `voice-and-wording.md` surfaces and step 13's sweeps), records it in `l-findings.md`, logs it as a `VW` entry in `.agent/docs/standards/docs/voice-and-wording.md` (or an `AP` entry in `anti-patterns.md` when it corrects an agent mistake) in the same turn, re-runs the touched evidence, and the developer re-reads. Decision 17's `blocker`/`backlog` classes stay; what changes is that a finding is applied now unless the developer defers it, and only deferred findings become `backlog.md` entries. Why: one pass of feedback reaches every surface that repeats the wording, and the voice log keeps later copy consistent.
-    - **Step 8's shot list is owned by the demo spec** named on the coordination board. `media-session.md`'s shot list is superseded by that version; step 8's checks (H.264, ≤ 60 s, ≤ 10 MB, silent, served 200, `/tour` 1280×800 and mirrored into `apps/test`) run against whatever files it lists. Why: the developer moved the media plan into its own spec.
+    - **Step 8's shot list is owned by the demo spec** named on the coordination board. `media-session.md`'s shot list is superseded by that version; step 8's checks (H.264, ≤ 60 s, ≤ 10 MB, silent, served 200, `/tour` 1280×800 and mirrored into `apps/test`) run against whatever files it lists. Why: the developer moved the media plan into its own spec. *No longer applies (developer, 2026-11-27; decision 27): the shot list is step 8's own again.* The two L bullets above (scope, review loop) now describe the REVIEW spec and this spec's pass 2 (decision 27).
 26. **No `planned`-issue links (developer, 2026-11-10; contributor-workflow spec decision 9).** The 8 `planned` issues (#53, #54, #57, #59–#61, #63, #64) are deleted before launch, and roadmap items have no issue or Discussions thread. Every post links the docs roadmap page instead and asks no one to 👍 an issue; feature ideas go to Discussions → Ideas (VW-016). L's roadmap checks become "no planned-issue link or 👍-the-issue ask anywhere". Two contributor rows join the consistency matrix: "contributor flow" (PRs target `dev`; bug PRs link an issue, feature PRs an `accepted` Ideas discussion; Conventional Commits titles; squash merge; patch-only changesets) and "PR response window" (`public-copy.md` § Pull request response window, byte for byte). The contributor surfaces (CONTRIBUTING, the PR template, issue `config.yml`, SECURITY, CODE_OF_CONDUCT, `labels.yml`, the docs Development pages, `guides/auth.mdx`) join the inventory: docs pages in step 14, GitHub files in step 19. The workflows and the `github-review` skill are not L-editable: wording issues in them are findings only. Why: the developer's contributor-workflow decisions; decision 12's demand signal now lives in Ideas.
+27. **Scope change (developer, 2026-11-10, updated 2026-11-27): the big review leaves this spec.** The public-content review (L pass 1: steps 14–21 as written on 2026-11-10) moves to a new **REVIEW spec** (launch plan phase G) run in its own session. It reads **production**, after every deployment and account move (phases C/F). The example apps are out of 0.1.0; the only live demo is https://vexcms.dev/admin. This spec keeps:
+    - **Step 25 (new, numbered 25 to keep the cited numbers): kit refresh after REVIEW**, the agent half of LK-6. The fact sheet, briefs, canonical links and not-yet-live table are re-checked against production and REVIEW's outcome before the developer writes. Agents still write no post prose (decision 2).
+    - **Steps 6, 7, 8, 9, 10** as specified. Step 8's shot list is its own again (decision 25's demo-spec bullet no longer applies), recorded on `apps/www` at `:3030`; `media-session.md` is its capture checklist. "Live demo" anywhere in this spec means the www demo only.
+    - **Step 14, rewritten: pass 2**, a smaller review-and-iterate loop over what this spec produces: the posts and listings (kit slots, the seeded announcement + 4 feature posts + `launch-week` page via live preview), the media (step 8's clips, the `/tour` PNGs, public-presence step 16's files) and the www live demo on production. It re-fetches the channel rules (decision 19). Findings go to a new `pass2-findings.md`, decision 17's classes; wording feedback becomes a `VW`/`AP` entry in the same turn (decision 25's loop).
+    - **Step 11, moved after step 14**: `copy-flip.patch` is rebuilt from the final copy (after REVIEW and pass 2). The 2026-11-10 build and the COPY spec's rebuild (COPY-2) are interim.
+    - **Step 22, rewritten: sign-off** of pass 2 and the developer's line-by-line read of the rebuilt patch. **Step 23**: bookkeeping as before, minus the L items REVIEW owns.
+    - **Carried over to the REVIEW spec** as its starting input, owned by REVIEW from now on (this spec no longer edits them): `l-findings.md` (L-001…L-014; L-001 and L-002 already fixed in the tree), `surface-review.md` (inventory, per-surface checklists, consistency matrix with the "contributor flow" and "PR response window" rows), `l-prepass.md` and `l-evidence/`. The rules in `.agent/docs/standards/docs/voice-and-wording.md` (VW-001…, including the open VW-011/VW-012 rulings) apply to REVIEW unchanged, and REVIEW appends to the same log. Steps 12 and 13 stay done (2026-11-10); steps 15–21 are removed from this spec.
+
+    Decision 26's "roadmap items have no Discussions thread" is overtaken by the public-copy alignment spec's roadmap vote (Discussion #97, `public-copy.md` § Roadmap item 5). Posts still link no `planned` issue; whether a post links the vote is the developer's call, and on HN and Product Hunt it must not read as vote solicitation (`sources.md` §1.2, §2.4). Why: the developer's 2026-11-27 re-plan (coordination board § Log, PlanDocsSync); one review of production replaces a working-tree read that every later deployment would have invalidated.
 
 ## Out of Scope
 
@@ -88,8 +97,10 @@ The research ran first (`sources.md`, every URL fetched 2026-11-06), and it chan
 - A posts index route, RSS, tags or authors: the recap page covers launch week (decision 10).
 - Launch metrics reporting (traffic, downloads, stars). P's analytics and M's telemetry exist; reading them isn't part of this spec.
 - Launch itself (item 19): it runs `launch-kit.md`. Release mechanics (item 18): unchanged, except applying `copy-flip.patch` and the announcement handoff below.
-- Fixing L findings the developer defers: recorded as `backlog.md` entries only (step 23). Findings the developer doesn't defer are applied in the session (Design Decision 25).
-- JSDoc and the TypeDoc API pages in L (Design Decision 25).
+- The big public-content review (docs, READMEs, npm, templates, GitHub, release notes, the consistency matrix): the REVIEW spec (decision 27). Pass 2 here covers posts, media and the www live demo only.
+- The example apps (`vexcms/examples`): out of 0.1.0 (developer, 2026-11-27).
+- Fixing pass-2 findings the developer defers: recorded as `backlog.md` entries only (step 23). Findings the developer doesn't defer are applied in the session (Design Decision 25).
+- JSDoc and the TypeDoc API pages (Design Decision 25).
 - Editing other specs. Step 23 edits the launch plan and `backlog.md` directly (cross-spec decision 8).
 - The unstaged telemetry work in `packages/cli`, `packages/telemetry`, `packages/create-vexcms`, `apps/test` and `scripts/`. Steps that edit `apps/test` wait for it to be committed.
 
@@ -1242,7 +1253,24 @@ One edit: append `## 6. Launch-post examples and guides (step 24)`, one `### 6.N
 
 Verify: `test -f .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-post-examples.md`. Every kit slot has a section: `for s in $(rg -o '<!-- slot:([a-z0-9:_.-]+) -->' -r '$1' .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md | sort -u); do rg -qF "## $s" .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-post-examples.md || echo "MISSING $s"; done` prints nothing (negative test: rename one `## <slot>` heading in a `/tmp` copy → one `MISSING` line). `rg -c '^### Checklist$'` on the file equals the slot count (25). Every URL in the file is in `sources.md`, run from the spec folder: `export LC_ALL=C; x(){ rg -o 'https?://[^\s)>|"\x60*,\]]+' "$1" | sed 's/[.;:]*$//' | sort -u; }; comm -23 <(x launch-post-examples.md) <(x sources.md)` prints nothing (negative test: append an unknown URL to a `/tmp` copy → that URL is printed). Step 1's rule still holds: `rg -c '^Status:' sources.md` is one less than `rg -c '^### ' sources.md`. Manual: no section contains a title, tagline or sentence written for VexCMS.
 
-### Step 6 — Hand-written posts and listing copy [dev]
+### Step 25 — Kit refresh after REVIEW [agent]
+
+Numbered 25 but runs before step 6, after the REVIEW spec has finished with production (Design Decision 27). The developer writes the posts against what is live after REVIEW, so the kit's facts are re-checked first. This step edits facts, links and rules only; it writes no post prose (decision 2), and every slot stays empty.
+
+- [ ] Fact sheet: package versions, requirements (Node, Next.js, React, Convex), shipped features and their docs URLs, the roadmap order (incl. the vote Discussion #97), the try-it paths — each re-read from production (`docs.vexcms.dev`, `vexcms.dev`, npm, GitHub), with the source cited
+- [ ] Canonical links and the Not-yet-live table: every URL HEAD-checked against production; the table lists exactly what is still a draft or unpublished
+- [ ] Briefs and prepared answers Q1–Q9: any fact REVIEW changed (its findings and the `voice-and-wording.md` entries it added) is reflected; the Posts-section note to the developer is current
+- [ ] While the developer writes (step 6): answer fact questions from the kit and its sources only
+
+#### .agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md
+
+Edits inside existing sections only (fact sheet, canonical links, not-yet-live table, briefs, prepared answers). Slot wrappers are never touched.
+
+Verify: every URL in `launch-kit.md` outside the Not-yet-live table returns 200 (`node /tmp/link-check.mjs`, step 7's script). Every fact-sheet claim cites a production URL or a file. The slot-emptiness scan (`/tmp/slot-empty.mjs`, the 2026-11-07 session log) prints no `PROSE` line. `rg -ni "pro tier|agency|enterprise|maprios|\bSSO\b|audit log|co-edit|annual licen" launch-kit.md` prints nothing.
+
+### Step 6 — Hand-written posts and listing copy [dev] [blocked: REVIEW done, step 25]
+
+Runs after the REVIEW spec and step 25's kit refresh (Design Decision 27), so the posts describe what production shows.
 
 Write every slot in `launch-kit.md` yourself, working from that channel's brief and the fact sheet. No AI generation or AI editing of any slot's text (decision 2). Spell-checkers and grammar tools that only flag issues are fine; anything that rewrites isn't. Where a brief lists a `public-copy.md` string, paste it as is. If you want different wording, change `public-copy.md` first and then every surface, as its header requires.
 
@@ -1465,7 +1493,7 @@ One recording session captures every frozen image of the UI that ships at launch
 
 Attach to the developer's already running `apps/www` dev server on `:3030` (P-024 — never start one) and the Convex dev deployment it's wired to; nothing here starts a server. Re-seed the dev deployment first (`pnpm --filter www exec convex run seed:reinit`, cross-spec decision 9) so the recorded content is the seeded copy.
 
-**Shot list owner (Design Decision 25, 2026-11-09).** The demo spec named on the coordination board rewrites this step's shot list; `media-session.md`'s shot list is superseded by it. The Verify below runs against the files that version lists: every clip H.264, ≤ 60 s, ≤ 10 MB, silent and served `200`; every `/tour` PNG 1280×800 and byte-identical in `apps/test/public/tour/`.
+**Shot list (developer, 2026-11-27; Design Decision 27).** The shot list is this step's own (below), recorded on `apps/www` at `:3030`; Design Decision 25's demo-spec shot list no longer applies, and `media-session.md` is the capture checklist. The example apps are out of 0.1.0: "live demo" means the www demo only.
 
 - [ ] Record `real-time-admin-and-live-preview.mp4`, `one-config-schema-and-types.mp4`, `access-control-hooks-validation.mp4`, `create-vexcms-to-deployed.mp4` as raw `.mov`/`.mp4` captures
 - [ ] Encode each with the command below; `ffprobe` each result for duration, codec and no audio stream; check file size
@@ -1937,7 +1965,7 @@ the check actually compares content rather than just checking presence (AP-013).
 Verify: `pnpm --filter www typecheck && pnpm --filter www test`. For all 4 posts (title, excerpt, body) and the recap page (title, badge, hero, CTA, actions), the script prints `OK …` for every check and exits 0. `node
 /tmp/verbatim-check.mjs` against a scratch copy with one word changed prints a `DIFF` line.
 
-### Step 10 — Schedule lock and listings [dev] [blocked: items 14–16 landed and L's start date known]
+### Step 10 — Schedule lock and listings [dev] [blocked: REVIEW done and launch dates known]
 
 Dates are fixed only when every surface-changing spec has landed: the quality pass, launch infrastructure through N's run-through, and public presence up to (not including) step 18. Then work back from launch:
 
@@ -1961,8 +1989,10 @@ Verify: the Dates table has no empty cell, and D1 is a Monday (`date -j -f %F <D
 
 ### Step 11 — Pre-stage the release-day copy flip [dev]
 
+**Runs after step 14 (pass 2), from the final copy (Design Decision 27).** The 2026-11-10 build and the public-copy alignment spec's rebuild (COPY-2, 27 files) are interim; the final build re-runs the scope command below on the post-REVIEW, post-pass-2 tree and is read line by line in step 22.
+
 The patch is built in a scratch worktree so it never touches `dev`'s real history before Release,
-and so L (step 21) reviews the exact diff Release will apply.
+and so step 22 reviews the exact diff Release will apply.
 
 - [ ] `git worktree add --detach ../vex-flip HEAD` (the `dev` branch is already checked out in this worktree, so the scratch copy is detached); make every edit below inside `../vex-flip`
 - [ ] `git -C ../vex-flip diff > .agent/docs/specs/2026-11-06-launch-kit-final-review/copy-flip.patch`
@@ -2102,6 +2132,8 @@ and `packages/create-vexcms/templates/base-nextjs/package.json` dependency range
 above, both owned by Release's own version-bump mechanisms).
 
 ### Step 12 — L: inventory refresh, review record, rules re-fetch [agent]
+
+**Done 2026-11-10. Carried over to the REVIEW spec (Design Decision 27):** `surface-review.md` and the `sources.md` Re-fetch log are REVIEW's starting input; REVIEW owns `surface-review.md` from now on. The channel rules are re-fetched again in step 14 (pass 2).
 
 Why: surfaces kept changing across the parallel specs, so the inventory is re-derived from the repo, GitHub and npm right before the read, not copied from this spec's own baseline. The channel rules are re-fetched for the same reason — HN added its generated-text rule in 2026, and `sources.md` records every URL with a fetch date so staleness is visible.
 
@@ -2562,6 +2594,8 @@ means "I read both sides and they agree," not "the sweep found nothing."
 Verify: `test -f .agent/docs/specs/2026-11-06-launch-kit-final-review/surface-review.md`. `rg -n "Reviewed \`dev\` SHA:" .agent/docs/specs/2026-11-06-launch-kit-final-review/surface-review.md` prints a match. `rg -c "^\| new \|$|new$" .agent/docs/specs/2026-11-06-launch-kit-final-review/surface-review.md` is non-zero (every parallel-spec surface is marked `new`). Each of these prints at least one inventory row: `for s in '/privacy' '/tour' 'admin/error.tsx' '/accessibility' 'docs/accessibility.md' '/brand' '/posts/vexcms-0-1-0' '/posts/real-time-admin-and-live-preview' '/launch-week' 'compare.mdx'; do rg -c -F "$s" .agent/docs/specs/2026-11-06-launch-kit-final-review/surface-review.md || echo "MISSING $s"; done` prints no `MISSING` line. The refresh commands' output for `apps/www/src/app` lists `tour/page.tsx` and `(vexcms)/admin/error.tsx`. `rg -c "^\|" .agent/docs/specs/2026-11-06-launch-kit-final-review/sources.md` grows by one row per URL the extraction command printed.
 
 ### Step 13 — L: evidence pre-pass [agent]
+
+**Done 2026-11-10. Carried over to the REVIEW spec (Design Decision 27):** `l-prepass.md`, `l-evidence/` and `l-findings.md` (L-001…L-014) are REVIEW's starting input and owned by REVIEW from now on. The script bodies below stay here for reference.
 
 Why: puts the mechanical evidence (strings, links, manifests, settings, scaffolds) next to each `surface-review.md` row so the read-through in steps 14–21 is judgement, not grep. It attaches evidence only — no pass/fail judgement below except where the check is itself mechanical ("banned term found").
 
@@ -3050,164 +3084,74 @@ See `launch-kit.md`'s lint log (step 7) for the appended run; linked here: <link
 
 Verify: `rg -c "^### " .agent/docs/specs/2026-11-06-launch-kit-final-review/l-prepass.md` prints at least 14 (one per matrix row) plus the five named checks. `node /tmp/l-link-check.mjs --negative-test | rg "404 https://vexcms\.dev/__l-link-check-negative-test__"` prints a match. `pnpm --filter docs build` exits 0.
 
-### Step 14 — L: public docs pages [dev]
+### Step 14 — Pass 2: posts, media and the www live demo [dev]
 
-Why: the docs are where a stranger checks whether a claim is real.
+Why: the REVIEW spec reads every other public surface on production (Design Decision 27). What it can't read yet is what this spec produces after it: the hand-written posts and listings, the media, and the live demo as an HN reader meets it. Pass 2 reads those, after steps 6–10 and before the copy flip is rebuilt.
 
-**How every L step runs (steps 14–22, Design Decision 25).** You read and give feedback in the session. For each item the agent: applies it to every surface it affects (`rg` the old wording over the `voice-and-wording.md` surfaces and step 13's sweeps); adds an `l-findings.md` row; logs it as a `VW` entry in `.agent/docs/standards/docs/voice-and-wording.md`, or an `AP` entry in `anti-patterns.md` when it corrects an agent mistake, in the same turn; re-runs the touched evidence and appends it to `l-prepass.md`, dated; and regenerates `copy-flip.patch` if a touched file is in it. You re-read and mark the row.
+**How pass 2 runs (Design Decision 25's loop).** You read and give feedback in the LK session. For each item the agent: applies it to every surface it affects (`rg` the old wording over the `voice-and-wording.md` surfaces); adds a `pass2-findings.md` row; logs it as a `VW` entry in `.agent/docs/standards/docs/voice-and-wording.md`, or an `AP` entry in `anti-patterns.md` when it corrects an agent mistake, in the same turn; re-runs the touched check (step 7's lint, step 9's verbatim check, step 8's media checks). The agent never edits post text itself: a wording finding in a post goes back to you, and the agent re-transcribes the slot (step 9) once you've changed it. You re-read and mark the row.
 
-- [ ] Work through `surface-review.md`'s Docs section, file by file, plus `roadmap.md`, `compare.mdx`, `accessibility.md` and `llms.txt`'s dedicated checklists. JSDoc and the TypeDoc `api/**` pages are out of scope
-- [ ] Mark every row pass or link an `l-findings.md` id
+- [ ] Agent, first: re-fetch the in-use channel rules (`sources.md` §1, §2, §5 in-use rows, as step 12 did on 2026-11-10), append a dated block to the Re-fetch log, and update any brief a changed rule affects; must run within 7 days of D1 (decision 19)
+- [ ] Agent, first: re-run step 7's lint and link check over every filled slot, step 9's verbatim check, and step 8's media checks; attach the output to `pass2-findings.md` § Evidence
+- [ ] Posts and listings: every kit slot (Show HN, Product Hunt, LinkedIn ×5, Convex Discord comment, dev.to, Hashnode, DevHunt, Cooperpress, This Week in React, jamstack.org, awesome-nextjs) against its brief and the fact sheet; the seeded announcement, 4 feature posts and `launch-week` page through live preview on `:3030` (drafts), at 390 px and 1280 px, light and dark
+- [ ] Media: the 4 clips (play, silent, the post describes each), the 4 `/tour` PNGs on `/tour`, public-presence step 16's screenshots, demo MP4, GIF and the Product Hunt gallery image
+- [ ] The www live demo on production, https://vexcms.dev/admin, as an anonymous visitor on desktop and phone: every view renders read-only, every create/edit/delete control is hidden or disabled (click one anyway), `/tour` matches today's admin
+- [ ] Every finding you don't defer is applied in the session; mark every row `pass` or link a `pass2-findings.md` id
 
-The checklist content — including the concrete question for every file type — lives in
-`surface-review.md`'s Docs section (step 12); this step is the read itself, grounded in
-`l-prepass.md`'s evidence (link check, ABAC/RBAC sweep, docs-build output) rather than a fresh
-grep. Open `apps/docs/dist/**/*.html` or the `vex-docs` preview — not the source `.mdx`, since
-Starlight transforms admonitions, code tabs and the autogenerated sidebar order.
-
-Verify: every docs row in `surface-review.md` is marked pass or links a finding.
-
-### Step 15 — L: READMEs and npm manifests [dev]
-
-Why: the README and npm pages are the first thing the npm and GitHub crowd reads.
-
-- [ ] Work through `surface-review.md`'s READMEs and npm manifests section
-- [ ] Mark every row pass or link an `l-findings.md` id
-
-Read the packed README from `/tmp/l-pack-evidence/<name>/README.md` (`l-prepass.md`'s packed-
-manifest evidence), not `packages/<name>/README.md` directly — a relative link or image that
-resolves in the source tree can still break once npm renders the packed copy with no repo base
-path.
-
-Verify: every README/npm row is marked pass or links a finding.
-
-### Step 16 — L: www and launch content [dev]
-
-Why: vexcms.dev is the Show HN link.
-
-- [ ] Work through `surface-review.md`'s www and launch content section at 390 px and 1280 px, light and dark
-- [ ] Open the announcement, each feature post and the recap page through live preview (they are drafts)
-- [ ] Mark every row pass or link an `l-findings.md` id
-
-Verify: every www row is marked pass or links a finding, at 390 px and 1280 px, light and dark.
-
-### Step 17 — L: live demo [dev]
-
-Why: the first thing an HN reader clicks.
-
-- [ ] Work through `surface-review.md`'s Live demo section on the production `vexcms.dev/admin`, as an anonymous visitor, desktop and phone
-- [ ] Mark every row pass or link an `l-findings.md` id
-
-Verify: every demo row is marked pass or links a finding, on desktop and phone.
-
-### Step 18 — L: templates as a stranger sees them [dev]
-
-Why: `create-vexcms` output is the product people keep.
-
-- [ ] Read launch-infrastructure's `n-runthrough.md` before starting; reuse its Convex projects for both templates
-- [ ] Work through `surface-review.md`'s Templates section for both templates. The expected `marketing-site` contents come from cross-spec decision 6: the `launch-week` page and every post document (Design Decision 23), plus the other vexcms-specific pages, routes and footer links, are absent
-- [ ] Mark every row pass or link an `l-findings.md` id
-
-Verify: every template row is marked pass or links a finding, for both templates.
-
-### Step 19 — L: GitHub and external profiles [dev]
-
-Why: repo settings are live now, and files on `dev` go live at the Release merge.
-
-- [ ] Work through `surface-review.md`'s GitHub and external profiles section
-- [ ] Mark every row pass or link an `l-findings.md` id
-
-Verify: every GitHub/external row is marked pass or links a finding.
-
-### Step 20 — L: launch kit and release notes against their surfaces [dev]
-
-Why: every post links somewhere; each claim must match the page it points to.
-
-- [ ] Work through `surface-review.md`'s Launch kit and release notes section
-- [ ] Mark every row pass or link an `l-findings.md` id
-
-Verify: every kit/release-notes row is marked pass or links a finding.
-
-### Step 21 — L: consistency matrix and the copy-flip patch [dev]
-
-Why: contradictions between surfaces are launch blockers.
-
-- [ ] Fill `surface-review.md`'s Consistency matrix from your read plus `l-prepass.md`'s evidence
-- [ ] Read `copy-flip.patch` line by line against `surface-review.md`'s Copy-flip patch review checklist
-- [ ] Mark `copy-flip.patch` reviewed
-
-Verify: every matrix cell is filled (match / finding / n/a); `copy-flip.patch` is marked reviewed.
-
-### Step 22 — L: findings and sign-off [dev]
-
-Why: blockers are fixed before Release; everything else is recorded, not lost.
-
-- [ ] `l-findings.md`: one row per finding from steps 14–21
-- [ ] The agent applies every finding you don't defer, in the session, to every surface it affects; re-check the touched surfaces and every matrix row they feed
-- [ ] Regenerate `copy-flip.patch` if a fix touched a file it covers; re-read it line by line
-- [ ] Advance the reviewed SHA; sign off in `surface-review.md`
-
-#### .agent/docs/specs/2026-11-06-launch-kit-final-review/l-findings.md
+#### .agent/docs/specs/2026-11-06-launch-kit-final-review/pass2-findings.md
 
 ```markdown
-# L findings — VexCMS 0.1.0 launch
+# Pass 2 findings — posts, media and the www live demo
 
-> One row per finding from steps 14–21. `blocker` = a cross-surface contradiction, a false or
-> unsupported claim, a broken link or route on a launch path, a paid tier/price/customer named
-> anywhere, or alpha wording outside `copy-flip.patch`'s scope. Everything else is `backlog`.
-> Every finding is applied in the session unless the developer defers it; a `blocker` can't be
-> deferred. No open `blocker` survives this file at sign-off. Wording findings also carry their
-> `VW-NNN` (or `AP-NNN`) id in the evidence cell.
+> Step 14 of `2026-11-06-launch-kit-final-review` (Design Decision 27). The big public-content
+> review's findings live in the REVIEW spec (it carries `l-findings.md`); this file holds only
+> what pass 2 finds. `blocker` = a false or unsupported claim, a broken link or route on a
+> launch path, a paid tier/price/customer named, vote solicitation, or a post that contradicts
+> its link target. Everything else is `backlog`. A `blocker` can't be deferred. Wording
+> findings carry their `VW-NNN` (or `AP-NNN`) id.
 
-| id | surface | severity | evidence | fix commit | re-check | backlog entry |
+| id | surface | severity | evidence | fix | re-check | backlog entry |
 |---|---|---|---|---|---|---|
-| L-001 |  | blocker / backlog |  |  |  |  |
+| P2-001 |  | blocker / backlog |  |  |  |  |
 
-## Fix loop
+## Evidence
 
-For each finding that isn't deferred (every `blocker`, plus every `backlog` row the developer wants applied now):
+<re-fetch log block, lint + link check, verbatim check, media checks — command and output, dated>
 
-1. The agent fixes it in the session, on every surface it affects, and logs the VW/AP entry (Design Decision 25).
-2. Re-check the surface it was found on, and every `surface-review.md` consistency-matrix row
-   it feeds — not only the one row that caught it.
-3. If the fix touched a file `copy-flip.patch` covers, regenerate the patch and re-run step
-   21's line-by-line read on the new patch.
-4. Advance the reviewed SHA in `surface-review.md`'s Review record to the fix commit.
-5. Re-run step 12's refresh commands and step 13's evidence commands for the touched surfaces
-   only, not the full pre-pass; append the new output to `l-prepass.md` under the existing
-   section for that surface, dated.
-6. Mark the `re-check` column `pass` with the new commit SHA.
-
-For each `backlog` row, step 23 adds one `backlog.md` entry carrying this row's `id`; record the
-entry's heading in the `backlog entry` column.
-```
-
-#### .agent/docs/specs/2026-11-06-launch-kit-final-review/surface-review.md
-
-One edit: fill the placeholders left under the `## Sign-off` heading (step 12).
-
-```markdown
 ## Sign-off
 
-- Reviewed SHA: <final reviewed/fix commit SHA>
-- Signed off by: <developer name>
-- Date: <date>
-- Every matrix cell above reads `match` or `n/a`; every row in every section above is `pass` or links an `l-findings.md` finding; `l-findings.md` carries no open `blocker`.
+- Final tree SHA:
+- `copy-flip.patch` read line by line (step 22):
+- Signed off by:
+- Date:
 ```
 
-Verify: `rg '\| blocker \|' .agent/docs/specs/2026-11-06-launch-kit-final-review/l-findings.md | rg -v 'pass [0-9a-f]{7}'` prints nothing (every blocker carries a passing re-check with its commit). `rg -n "Reviewed SHA:" .agent/docs/specs/2026-11-06-launch-kit-final-review/surface-review.md | tail -1` shows the final commit SHA, not blank.
+Verify: every pass-2 surface above has a `pass` mark or a `pass2-findings.md` id. `pass2-findings.md` § Evidence carries a re-fetch dated within 7 days of D1.
+
+### Steps 15–21 — moved to the REVIEW spec
+
+Removed from this spec (developer, 2026-11-27; Design Decision 27). The 2026-11-10 L steps (READMEs and npm manifests, www and launch content, live demo, templates, GitHub and external profiles, launch kit and release notes, consistency matrix) are covered by the REVIEW spec, which reads production and starts from `surface-review.md`, `l-prepass.md`, `l-evidence/` and `l-findings.md`. The launch posts, media and the www live demo are this spec's pass 2 (step 14); the copy-flip read is step 22.
+
+### Step 22 — Pass-2 sign-off [dev]
+
+Why: nothing reaches launch unread (hard constraint 9). Runs after step 11 has rebuilt `copy-flip.patch` from the final copy.
+
+- [ ] `pass2-findings.md` has no open `blocker`; each applied finding's surface is re-checked
+- [ ] Read the rebuilt `copy-flip.patch` line by line: every hunk only flips alpha wording; no hunk touches an announcement or post `vex_status`; every alpha string the step 11 scope command finds is covered. The agent's replacement copy in it (the "Is it production ready?" answer, roadmap stats, `create-vexcms` § Versioning, SECURITY's supported-versions line) is yours to approve or rewrite
+- [ ] Sign off in `pass2-findings.md` § Sign-off with the final tree SHA
+
+Verify: `rg '\| blocker \|' .agent/docs/specs/2026-11-06-launch-kit-final-review/pass2-findings.md | rg -v '\| pass'` prints nothing. `git apply --check .agent/docs/specs/2026-11-06-launch-kit-final-review/copy-flip.patch` exits 0 on the signed-off SHA. § Sign-off has no blank field.
 
 ### Step 23 — Launch plan and backlog updates [agent]
 
 Cross-spec decision 8: this step edits `.agent/docs/product/v0.1.0-launch-plan.md` and `.agent/docs/product/backlog.md` directly. No proposal file. Handoffs to sibling specs were applied through the 2026-11-07 cross-spec review, so only the Release item stays open here.
 
 - [ ] Launch plan § Release mechanics: the npm `latest` dist-tag task (edit 1). It goes in by this step at the latest. Write it as soon as anyone works on Release mechanics; if it's already there, confirm the wording and move on
-- [ ] Launch plan: item 17, the § U tasks and the § L tasks ticked with evidence (edits 2–4)
-- [ ] `backlog.md`: the deferred channels and extras, plus one entry per `backlog` row in `l-findings.md`
+- [ ] Launch plan: item 26 and the § U tasks ticked with evidence (edits 2–3). The § L tasks belong to the REVIEW spec (Design Decision 27)
+- [ ] `backlog.md`: the deferred channels and extras, plus one entry per `backlog` row in `pass2-findings.md`. `l-findings.md`'s backlog rows are the REVIEW spec's
 
 #### .agent/docs/product/v0.1.0-launch-plan.md
 
-4 edits. Everything not shown is unchanged.
+3 edits (edit 4 moved to the REVIEW spec). Everything not shown is unchanged.
 
 **1 — § Release mechanics, the task list**, a new task directly after `- [ ] \`changeset pre exit\``:
 
@@ -3215,10 +3159,10 @@ Cross-spec decision 8: this step edits `.agent/docs/product/v0.1.0-launch-plan.m
 - [ ] Publish 0.1.0 to npm `latest`: drop `--tag alpha` from the root `release` script and `publishConfig.tag` from the 8 published packages (or `npm dist-tag add <pkg>@0.1.0 latest` per package). Until then `create-vexcms`'s `latest` stays `0.0.20`, and the post-flip `pnpm create vexcms` installs the old scaffolder. The launch-morning checklist in `2026-11-06-launch-kit-final-review/launch-kit.md` stops the launch if `latest` isn't `0.1.0`
 ```
 
-**2 — Task order item 17**, `[ ]` → `[x]`, with the annotation appended:
+**2 — Task order item 26** (renumbered from 17 in the 2026-11-27 plan), `[ ]` → `[x]` once REVIEW has also signed off, with the annotation appended:
 
 ```markdown
-(`2026-11-06-launch-kit-final-review` steps 1–22; reviewed SHA <sha>)
+(`2026-11-06-launch-kit-final-review` steps 1–14, 22; pass 2 signed off at <sha>)
 ```
 
 **3 — § U tasks.** Tick "Write spec", "Developer-feature highlight series", "Extras the spec weighs", "Implement", "Prepared answers", "Submission list", "Launch schedule" and "Post-launch routine". In the Implement line, replace `.agent/docs/product/launch-kit.md` with `.agent/docs/specs/2026-11-06-launch-kit-final-review/launch-kit.md`. Append to the format task:
@@ -3227,7 +3171,7 @@ Cross-spec decision 8: this step edits `.agent/docs/product/v0.1.0-launch-plan.m
 5-day launch week Mon–Fri, Release T-1; channels Show HN, Product Hunt, LinkedIn, Convex Discord, dev.to + Hashnode, DevHunt; Reddit/X/Bluesky/Lobsters deferred (see backlog)
 ```
 
-**4 — § L tasks.** Tick "Write spec", "Implement" and its sub-items, and "Consistency matrix", each annotated with `surface-review.md` and the reviewed SHA.
+**4 — § L tasks.** Moved to the REVIEW spec (Design Decision 27); not edited here.
 
 #### .agent/docs/product/backlog.md
 
@@ -3242,14 +3186,14 @@ One new entry per row, in `backlog.md`'s entry format (**What / Why / Lift / Why
 | Convex Templates gallery / Stack outreach | `sources.md` §5.11–5.12 |
 | "Coming from Payload" docs guide | launch plan § U extras |
 | Scaffold-to-deployed live-build video | launch plan § U extras |
-| <one entry per `backlog` row in `l-findings.md`> | `l-findings.md` <id> |
+| <one entry per `backlog` row in `pass2-findings.md`> | `pass2-findings.md` <id> |
 
-Verify: `rg -n "Publish 0\.1\.0 to npm" .agent/docs/product/v0.1.0-launch-plan.md` prints one line, inside § Release mechanics. `rg -n '^17\. \[x\] \*\*Launch kit' .agent/docs/product/v0.1.0-launch-plan.md` prints one line. Every `l-findings.md` row with severity `backlog` has a non-empty `backlog entry` cell, and that heading exists in `backlog.md`. `harness doctor` reports no errors.
+Verify: `rg -n "Publish 0\.1\.0 to npm" .agent/docs/product/v0.1.0-launch-plan.md` prints one line, inside § Release mechanics. `rg -n '^26\. \[x\] \*\*Launch kit' .agent/docs/product/v0.1.0-launch-plan.md` prints one line. Every `pass2-findings.md` row with severity `backlog` has a non-empty `backlog entry` cell, and that heading exists in `backlog.md`. `harness doctor` reports no errors.
 
 ## Verification
 
 - `pnpm typecheck && pnpm test && pnpm lint` green after step 9 (the only code step), plus `pnpm --filter www build`.
 - Step 7's lint and step 9's verbatim check each pass, and each was proven to fail on a seeded defect (AP-013).
-- Step 13's link check reports a deliberately broken URL, and is then clean apart from the documented not-yet-live URLs.
-- `surface-review.md` carries the reviewed SHA and the developer's sign-off, and `l-findings.md` has no open `blocker`.
+- Step 13's link check reported a deliberately broken URL (2026-11-10); step 14 re-runs step 7's link check on the filled kit.
+- `pass2-findings.md` carries the final tree SHA and the developer's sign-off, with no open `blocker`. `l-findings.md` and `surface-review.md` are signed off in the REVIEW spec.
 - `harness doctor` reports no errors.

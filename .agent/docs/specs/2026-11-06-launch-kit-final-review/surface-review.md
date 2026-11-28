@@ -1,5 +1,10 @@
 # Surface review — VexCMS 0.1.0 launch
 
+> **Carried over to the REVIEW spec (developer, 2026-11-27; LK spec Design Decision 27).** The
+> inventory, per-surface checklists and consistency matrix below are REVIEW's starting input;
+> REVIEW reads production and owns this file from here. The LK spec no longer edits it. Rows
+> for the launch posts, clips and the www live demo are re-read in LK's pass 2 (LK step 14).
+>
 > The developer's final read-through of every public surface, directly before Release (launch
 > plan item 17, L). Nothing changes after step 22 except the Release version bumps and
 > `copy-flip.patch`. Every row below is marked `pass` or links an `l-findings.md` row — never

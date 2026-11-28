@@ -1,7 +1,7 @@
-import type { WithoutSystemFields } from "convex/server"
+import type { WithoutSystemFields } from "convex/server";
 
-import { assignArrayItemIds } from "@vexcms/core"
-import { getGlobal, upsertGlobal } from "@vexcms/core/server"
+import { assignArrayItemIds } from "@vexcms/core";
+import { getGlobal, upsertGlobal } from "@vexcms/core/server";
 
 import {
   GLOBAL_SLUG_SITE_SETTINGS,
@@ -18,8 +18,8 @@ import {
   TABLE_SLUG_THEMES,
   TABLE_SLUG_USERS,
   TESTIMONIAL_SOURCES,
-} from "~/db/constants"
-import config from "~/vex.config.server"
+} from "~/db/constants";
+import config from "~/vex.config.server";
 import {
   BLOCK_SLUG_CODE_SHOWCASE,
   BLOCK_SLUG_CTA,
@@ -32,12 +32,12 @@ import {
   BLOCK_SLUG_ROADMAP,
   BLOCK_SLUG_SPLIT,
   BLOCK_SLUG_STATS,
-} from "~/vexcms/blocks/constants"
-import { footers, headers, pages, products } from "~/vexcms/collections"
+} from "~/vexcms/blocks/constants";
+import { footers, headers, pages, products } from "~/vexcms/collections";
 
-import type { Doc } from "./_generated/dataModel"
+import type { Doc } from "./_generated/dataModel";
 
-import { internalMutation, type MutationCtx } from "./_generated/server"
+import { internalMutation, type MutationCtx } from "./_generated/server";
 
 /**
  * The 6 tweakcn theme presets, lifted verbatim from
@@ -484,20 +484,20 @@ const THEME_PRESETS = [
       sidebarRing: "oklch(63.33% 0.0309 154.9)",
     },
   },
-]
+];
 
 /** Per-document outcome of a seed run, keyed by a stable natural label. */
 export type SeedReport = {
   /** Documents that did not exist and were inserted. */
-  created: string[]
+  created: string[];
   /** Documents that existed and were reconciled against this file. */
-  patched: string[]
+  patched: string[];
   /** Documents that existed and were left exactly as they were. */
-  skipped: string[]
-}
+  skipped: string[];
+};
 
 /** How `runSeed` treats a document that already exists. */
-type SeedMode = "insert" | "patch"
+type SeedMode = "insert" | "patch";
 
 /**
  * Builds the whole marketing site: the 6 theme presets ("Stark × Ember" active
@@ -517,32 +517,32 @@ type SeedMode = "insert" | "patch"
  *   point; it is not a merge.
  */
 async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
-  const created: string[] = []
-  const patched: string[] = []
-  const skipped: string[] = []
+  const created: string[] = [];
+  const patched: string[] = [];
+  const skipped: string[] = [];
 
-  let activeThemeId: null | string = null
+  let activeThemeId: null | string = null;
   for (const preset of THEME_PRESETS) {
     const existing = await ctx.db
       .query(TABLE_SLUG_THEMES)
       .withIndex("by_name", (q) => q.eq("name", preset.name))
-      .first()
+      .first();
     if (existing) {
       if (mode === "patch") {
-        await ctx.db.patch(TABLE_SLUG_THEMES, existing._id, preset)
-        patched.push(`theme:${preset.name}`)
+        await ctx.db.patch(TABLE_SLUG_THEMES, existing._id, preset);
+        patched.push(`theme:${preset.name}`);
       } else {
-        skipped.push(`theme:${preset.name}`)
+        skipped.push(`theme:${preset.name}`);
       }
       if (preset.name === "Stark × Ember") {
-        activeThemeId = existing._id
+        activeThemeId = existing._id;
       }
-      continue
+      continue;
     }
-    const id = await ctx.db.insert(TABLE_SLUG_THEMES, preset)
-    created.push(`theme:${preset.name}`)
+    const id = await ctx.db.insert(TABLE_SLUG_THEMES, preset);
+    created.push(`theme:${preset.name}`);
     if (preset.name === "Stark × Ember") {
-      activeThemeId = id
+      activeThemeId = id;
     }
   }
 
@@ -551,15 +551,15 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
     config,
     slug: GLOBAL_SLUG_SITE_SETTINGS,
     access: { bypass: true },
-  })
+  });
   const siteSettingsDoc = {
     name: "VexCMS",
     description:
       "Define your collections in TypeScript. VexCMS generates the Convex schema and types, and ships a real-time admin panel your whole team can use.",
     activeTheme: activeThemeId ? [activeThemeId] : [],
-  }
+  };
   if (existingSettings && mode !== "patch") {
-    skipped.push("siteSettings")
+    skipped.push("siteSettings");
   } else {
     // `upsertGlobal` merges field by field, so passing only the seeded keys
     // leaves `adminTheme` and every SEO field an editor had set untouched.
@@ -569,18 +569,18 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
       slug: GLOBAL_SLUG_SITE_SETTINGS,
       data: siteSettingsDoc,
       access: { bypass: true },
-    })
+    });
     if (existingSettings) {
-      patched.push("siteSettings")
+      patched.push("siteSettings");
     } else {
-      created.push("siteSettings")
+      created.push("siteSettings");
     }
   }
 
   const existingHeader = await ctx.db
     .query(TABLE_SLUG_HEADERS)
     .withIndex("by_name", (q) => q.eq("name", "Main Header"))
-    .first()
+    .first();
   const headerDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_HEADERS>> = assignArrayItemIds({
     fields: headers.fields,
     data: {
@@ -608,23 +608,23 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
         },
       ],
     },
-  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_HEADERS>>
+  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_HEADERS>>;
   if (existingHeader) {
     if (mode === "patch") {
-      await ctx.db.patch(TABLE_SLUG_HEADERS, existingHeader._id, headerDoc)
-      patched.push("header")
+      await ctx.db.patch(TABLE_SLUG_HEADERS, existingHeader._id, headerDoc);
+      patched.push("header");
     } else {
-      skipped.push("header")
+      skipped.push("header");
     }
   } else {
-    await ctx.db.insert(TABLE_SLUG_HEADERS, headerDoc)
-    created.push("header")
+    await ctx.db.insert(TABLE_SLUG_HEADERS, headerDoc);
+    created.push("header");
   }
 
   const existingFooter = await ctx.db
     .query(TABLE_SLUG_FOOTERS)
     .withIndex("by_name", (q) => q.eq("name", "Main Footer"))
-    .first()
+    .first();
   const footerDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_FOOTERS>> = assignArrayItemIds({
     fields: footers.fields,
     data: {
@@ -665,17 +665,17 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
         },
       ],
     },
-  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_FOOTERS>>
+  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_FOOTERS>>;
   if (existingFooter) {
     if (mode === "patch") {
-      await ctx.db.patch(TABLE_SLUG_FOOTERS, existingFooter._id, footerDoc)
-      patched.push("footer")
+      await ctx.db.patch(TABLE_SLUG_FOOTERS, existingFooter._id, footerDoc);
+      patched.push("footer");
     } else {
-      skipped.push("footer")
+      skipped.push("footer");
     }
   } else {
-    await ctx.db.insert(TABLE_SLUG_FOOTERS, footerDoc)
-    created.push("footer")
+    await ctx.db.insert(TABLE_SLUG_FOOTERS, footerDoc);
+    created.push("footer");
   }
 
   const existingHome = await ctx.db
@@ -684,7 +684,7 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
     // `pages` is versioned: a draft row shares its published row's slug, and
     // patching the draft here would leave two published rows.
     .filter((q) => q.neq(q.field("vex_status"), "draft"))
-    .first()
+    .first();
   const homePageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = assignArrayItemIds({
     fields: pages.fields,
     data: {
@@ -1050,17 +1050,17 @@ export const featuredPosts = query({
         },
       ],
     },
-  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>
+  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>;
   if (existingHome) {
     if (mode === "patch") {
-      await ctx.db.patch(TABLE_SLUG_PAGES, existingHome._id, homePageDoc)
-      patched.push("page:home")
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingHome._id, homePageDoc);
+      patched.push("page:home");
     } else {
-      skipped.push("page:home")
+      skipped.push("page:home");
     }
   } else {
-    await ctx.db.insert(TABLE_SLUG_PAGES, homePageDoc)
-    created.push("page:home")
+    await ctx.db.insert(TABLE_SLUG_PAGES, homePageDoc);
+    created.push("page:home");
   }
 
   const existingFeatures = await ctx.db
@@ -1069,7 +1069,7 @@ export const featuredPosts = query({
     // `pages` is versioned: a draft row shares its published row's slug, and
     // patching the draft here would leave two published rows.
     .filter((q) => q.neq(q.field("vex_status"), "draft"))
-    .first()
+    .first();
   const featuresPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = assignArrayItemIds({
     fields: pages.fields,
     data: {
@@ -1354,17 +1354,17 @@ export const testimonials = defineTable({
         },
       ],
     },
-  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>
+  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>;
   if (existingFeatures) {
     if (mode === "patch") {
-      await ctx.db.patch(TABLE_SLUG_PAGES, existingFeatures._id, featuresPageDoc)
-      patched.push("page:features")
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingFeatures._id, featuresPageDoc);
+      patched.push("page:features");
     } else {
-      skipped.push("page:features")
+      skipped.push("page:features");
     }
   } else {
-    await ctx.db.insert(TABLE_SLUG_PAGES, featuresPageDoc)
-    created.push("page:features")
+    await ctx.db.insert(TABLE_SLUG_PAGES, featuresPageDoc);
+    created.push("page:features");
   }
 
   const existingRoadmapPage = await ctx.db
@@ -1373,7 +1373,7 @@ export const testimonials = defineTable({
     // `pages` is versioned: a draft row shares its published row's slug, and
     // patching the draft here would leave two published rows.
     .filter((q) => q.neq(q.field("vex_status"), "draft"))
-    .first()
+    .first();
   const roadmapPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = assignArrayItemIds({
     fields: pages.fields,
     data: {
@@ -1636,24 +1636,24 @@ export const testimonials = defineTable({
         },
       ],
     },
-  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>
+  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>;
   if (existingRoadmapPage) {
     if (mode === "patch") {
-      await ctx.db.patch(TABLE_SLUG_PAGES, existingRoadmapPage._id, roadmapPageDoc)
-      patched.push("page:roadmap")
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingRoadmapPage._id, roadmapPageDoc);
+      patched.push("page:roadmap");
     } else {
-      skipped.push("page:roadmap")
+      skipped.push("page:roadmap");
     }
   } else {
-    await ctx.db.insert(TABLE_SLUG_PAGES, roadmapPageDoc)
-    created.push("page:roadmap")
+    await ctx.db.insert(TABLE_SLUG_PAGES, roadmapPageDoc);
+    created.push("page:roadmap");
   }
 
   const existingPrivacyPage = await ctx.db
     .query(TABLE_SLUG_PAGES)
     .withIndex("by_slug", (q) => q.eq("slug", "privacy"))
     .filter((q) => q.neq(q.field("vex_status"), "draft"))
-    .first()
+    .first();
   const privacyPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = assignArrayItemIds({
     fields: pages.fields,
     data: {
@@ -1722,24 +1722,24 @@ export const testimonials = defineTable({
         },
       ],
     },
-  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>
+  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>;
   if (existingPrivacyPage) {
     if (mode === "patch") {
-      await ctx.db.patch(TABLE_SLUG_PAGES, existingPrivacyPage._id, privacyPageDoc)
-      patched.push("page:privacy")
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingPrivacyPage._id, privacyPageDoc);
+      patched.push("page:privacy");
     } else {
-      skipped.push("page:privacy")
+      skipped.push("page:privacy");
     }
   } else {
-    await ctx.db.insert(TABLE_SLUG_PAGES, privacyPageDoc)
-    created.push("page:privacy")
+    await ctx.db.insert(TABLE_SLUG_PAGES, privacyPageDoc);
+    created.push("page:privacy");
   }
 
   const existingBrandPage = await ctx.db
     .query(TABLE_SLUG_PAGES)
     .withIndex("by_slug", (q) => q.eq("slug", "brand"))
     .filter((q) => q.neq(q.field("vex_status"), "draft"))
-    .first()
+    .first();
   const brandPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = assignArrayItemIds({
     fields: pages.fields,
     data: {
@@ -1775,24 +1775,24 @@ export const testimonials = defineTable({
         },
       ],
     },
-  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>
+  }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>;
   if (existingBrandPage) {
     if (mode === "patch") {
-      await ctx.db.patch(TABLE_SLUG_PAGES, existingBrandPage._id, brandPageDoc)
-      patched.push("page:brand")
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingBrandPage._id, brandPageDoc);
+      patched.push("page:brand");
     } else {
-      skipped.push("page:brand")
+      skipped.push("page:brand");
     }
   } else {
-    await ctx.db.insert(TABLE_SLUG_PAGES, brandPageDoc)
-    created.push("page:brand")
+    await ctx.db.insert(TABLE_SLUG_PAGES, brandPageDoc);
+    created.push("page:brand");
   }
 
   const existingAccessibilityPage = await ctx.db
     .query(TABLE_SLUG_PAGES)
     .withIndex("by_slug", (q) => q.eq("slug", "accessibility"))
     .filter((q) => q.neq(q.field("vex_status"), "draft"))
-    .first()
+    .first();
   const accessibilityPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> =
     assignArrayItemIds({
       fields: pages.fields,
@@ -1846,17 +1846,17 @@ export const testimonials = defineTable({
           },
         ],
       },
-    }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>
+    }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>>;
   if (existingAccessibilityPage) {
     if (mode === "patch") {
-      await ctx.db.patch(TABLE_SLUG_PAGES, existingAccessibilityPage._id, accessibilityPageDoc)
-      patched.push("page:accessibility")
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingAccessibilityPage._id, accessibilityPageDoc);
+      patched.push("page:accessibility");
     } else {
-      skipped.push("page:accessibility")
+      skipped.push("page:accessibility");
     }
   } else {
-    await ctx.db.insert(TABLE_SLUG_PAGES, accessibilityPageDoc)
-    created.push("page:accessibility")
+    await ctx.db.insert(TABLE_SLUG_PAGES, accessibilityPageDoc);
+    created.push("page:accessibility");
   }
 
   // ── Posts ──────────────────────────────────────────────────────────────
@@ -1868,9 +1868,9 @@ export const testimonials = defineTable({
   const announcementRows = await ctx.db
     .query(TABLE_SLUG_POSTS)
     .withIndex("by_slug", (q) => q.eq("slug", "vexcms-0-1-0"))
-    .collect()
+    .collect();
   const existingAnnouncementPost =
-    announcementRows.find((row) => row.vex_status !== "draft") ?? announcementRows[0]
+    announcementRows.find((row) => row.vex_status !== "draft") ?? announcementRows[0];
   const announcementPostDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_POSTS>> = {
     title: "VexCMS 0.1.0",
     slug: "vexcms-0-1-0",
@@ -1934,7 +1934,7 @@ export const testimonials = defineTable({
         ],
       },
     ],
-  }
+  };
   // D1 publish guard: `reinit` reconciles every other seeded document
   // unconditionally, but once an admin has published this post from the
   // panel, blind-patching it back to this file's hard-coded `draft` status
@@ -1945,21 +1945,21 @@ export const testimonials = defineTable({
   // `draft` — the inverse (seed flips to `"published"` on D1, cross-spec
   // decision 1) is allowed to patch through normally.
   const announcementPublishedInAdmin =
-    existingAnnouncementPost !== undefined && existingAnnouncementPost.vex_status !== "draft"
+    existingAnnouncementPost !== undefined && existingAnnouncementPost.vex_status !== "draft";
   if (existingAnnouncementPost) {
     if (mode === "patch") {
       if (announcementPublishedInAdmin && announcementPostDoc.vex_status === "draft") {
-        skipped.push("post:vexcms-0-1-0 (published in admin; seed is draft)")
+        skipped.push("post:vexcms-0-1-0 (published in admin; seed is draft)");
       } else {
-        await ctx.db.patch(TABLE_SLUG_POSTS, existingAnnouncementPost._id, announcementPostDoc)
-        patched.push("post:vexcms-0-1-0")
+        await ctx.db.patch(TABLE_SLUG_POSTS, existingAnnouncementPost._id, announcementPostDoc);
+        patched.push("post:vexcms-0-1-0");
       }
     } else {
-      skipped.push("post:vexcms-0-1-0")
+      skipped.push("post:vexcms-0-1-0");
     }
   } else {
-    await ctx.db.insert(TABLE_SLUG_POSTS, announcementPostDoc)
-    created.push("post:vexcms-0-1-0")
+    await ctx.db.insert(TABLE_SLUG_POSTS, announcementPostDoc);
+    created.push("post:vexcms-0-1-0");
   }
 
   // ── Testimonials ──────────────────────────────────────────────────────
@@ -1972,12 +1972,12 @@ export const testimonials = defineTable({
   // Review" hidden-where preset). `contributorId` is only set when the
   // `user` table already has rows — www seeds before the first sign-in, so
   // it can be empty and this must never throw.
-  const existingTestimonials = await ctx.db.query(TABLE_SLUG_TESTIMONIALS).take(1)
+  const existingTestimonials = await ctx.db.query(TABLE_SLUG_TESTIMONIALS).take(1);
   if (existingTestimonials.length > 0) {
-    skipped.push("testimonials (already seeded)")
+    skipped.push("testimonials (already seeded)");
   } else {
-    const contributors = await ctx.db.query(TABLE_SLUG_USERS).take(3)
-    const sources = Object.values(TESTIMONIAL_SOURCES)
+    const contributors = await ctx.db.query(TABLE_SLUG_USERS).take(3);
+    const sources = Object.values(TESTIMONIAL_SOURCES);
     const companies = [
       "Northwind",
       "Acme Robotics",
@@ -1987,7 +1987,7 @@ export const testimonials = defineTable({
       "Hooli",
       "Soylent",
       "Stark Industries",
-    ]
+    ];
     const names = [
       "Alex Rivera",
       "Jordan Lee",
@@ -1999,9 +1999,9 @@ export const testimonials = defineTable({
       "Jamie Fischer",
       "Drew Tanaka",
       "Avery Costa",
-    ]
+    ];
     for (let i = 0; i < 200; i++) {
-      const name = names[i % names.length]
+      const name = names[i % names.length];
       await ctx.db.insert(TABLE_SLUG_TESTIMONIALS, {
         customerName: `${name} ${i}`,
         company: companies[i % companies.length],
@@ -2013,9 +2013,9 @@ export const testimonials = defineTable({
         contributorId:
           contributors.length > 0 ? [contributors[i % contributors.length]._id] : undefined,
         internalScore: 10 + ((i * 7) % 90),
-      })
+      });
     }
-    created.push("testimonials x200")
+    created.push("testimonials x200");
   }
 
   // ── Products ─────────────────────────────────────────────────────────
@@ -2025,11 +2025,11 @@ export const testimonials = defineTable({
   // values, `archived` true for every 5th row (hidden from the Catalog/
   // Pricing preset views), `highlights`/`specs`/`metadata` populated so the
   // Fields tab has real nested data to show.
-  const existingProducts = await ctx.db.query(TABLE_SLUG_PRODUCTS).take(1)
+  const existingProducts = await ctx.db.query(TABLE_SLUG_PRODUCTS).take(1);
   if (existingProducts.length > 0) {
-    skipped.push("products (already seeded)")
+    skipped.push("products (already seeded)");
   } else {
-    const productStatuses = Object.values(PRODUCT_STATUSES)
+    const productStatuses = Object.values(PRODUCT_STATUSES);
     const productNames = [
       "Launchpad",
       "Pulse",
@@ -2041,11 +2041,11 @@ export const testimonials = defineTable({
       "Cascade",
       "Vertex",
       "Horizon",
-    ]
-    const baseLaunchedOn = new Date("2024-01-08T00:00:00Z").getTime()
+    ];
+    const baseLaunchedOn = new Date("2024-01-08T00:00:00Z").getTime();
     for (let i = 0; i < 10; i++) {
-      const productName = productNames[i]
-      const slug = productName.toLowerCase()
+      const productName = productNames[i];
+      const slug = productName.toLowerCase();
       await ctx.db.insert(
         TABLE_SLUG_PRODUCTS,
         assignArrayItemIds({
@@ -2076,10 +2076,10 @@ export const testimonials = defineTable({
             specs: { sku: `SKU-${1000 + i}`, weightGrams: 100 + i * 50 },
             metadata: { tier: productStatuses[i % productStatuses.length], seedIndex: i },
           },
-        }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PRODUCTS>>
-      )
+        }) as WithoutSystemFields<Doc<typeof TABLE_SLUG_PRODUCTS>>,
+      );
     }
-    created.push("products x10")
+    created.push("products x10");
   }
 
   // ── Leads ────────────────────────────────────────────────────────────
@@ -2087,12 +2087,12 @@ export const testimonials = defineTable({
   // rotates through all 4 values, `status` through all 5, `score` spans
   // 0-100 with every 4th row at 80+ (the "Hot Leads" hidden-where preset),
   // `subscribed` true for roughly 1 in 3 (the "Newsletter" preset).
-  const existingLeads = await ctx.db.query(TABLE_SLUG_LEADS).take(1)
+  const existingLeads = await ctx.db.query(TABLE_SLUG_LEADS).take(1);
   if (existingLeads.length > 0) {
-    skipped.push("leads (already seeded)")
+    skipped.push("leads (already seeded)");
   } else {
-    const leadSources = Object.values(LEAD_SOURCES)
-    const leadStatuses = Object.values(LEAD_STATUSES)
+    const leadSources = Object.values(LEAD_SOURCES);
+    const leadStatuses = Object.values(LEAD_STATUSES);
     const companies = [
       "Northwind",
       "Acme Robotics",
@@ -2104,7 +2104,7 @@ export const testimonials = defineTable({
       "Stark Industries",
       "Wayne Enterprises",
       "Cyberdyne",
-    ]
+    ];
     const names = [
       "Blake Harmon",
       "Noa Feldman",
@@ -2116,11 +2116,11 @@ export const testimonials = defineTable({
       "Yuki Sato",
       "Imani Clarke",
       "Rafael Costa",
-    ]
-    const baseFollowUpOn = new Date("2024-02-01T00:00:00Z").getTime()
+    ];
+    const baseFollowUpOn = new Date("2024-02-01T00:00:00Z").getTime();
     for (let i = 0; i < 60; i++) {
-      const name = names[i % names.length]
-      const company = companies[i % companies.length]
+      const name = names[i % names.length];
+      const company = companies[i % companies.length];
       await ctx.db.insert(TABLE_SLUG_LEADS, {
         fullName: `${name} ${i}`,
         company,
@@ -2131,12 +2131,12 @@ export const testimonials = defineTable({
         internalNotes: `Lead #${i} — follow up after the ${leadStatuses[i % leadStatuses.length]} touchpoint.`,
         followUpOn: baseFollowUpOn + i * 7 * 24 * 60 * 60 * 1000,
         subscribed: i % 3 === 0,
-      })
+      });
     }
-    created.push("leads x60")
+    created.push("leads x60");
   }
 
-  return { created, patched, skipped }
+  return { created, patched, skipped };
 }
 
 /**
@@ -2152,7 +2152,7 @@ export const testimonials = defineTable({
 export const init = internalMutation({
   args: {},
   handler: async (ctx) => runSeed(ctx, "insert"),
-})
+});
 
 /**
  * Re-seed a deployment, reconciling every seeded document in place.
@@ -2172,4 +2172,4 @@ export const init = internalMutation({
 export const reinit = internalMutation({
   args: {},
   handler: async (ctx) => runSeed(ctx, "patch"),
-})
+});
